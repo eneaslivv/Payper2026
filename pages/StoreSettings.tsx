@@ -408,6 +408,7 @@ const StoreSettings: React.FC = () => {
                 .from('stores')
                 .update({
                     name: store.name,
+                    slug: store.slug,
                     address: store.address,
                     tax_info: store.tax_info,
                     logo_url: store.logo_url,
@@ -550,9 +551,13 @@ const StoreSettings: React.FC = () => {
                                     </div>
                                     <div className="space-y-3">
                                         <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] ml-2">Identificador Slug (Fijo)</label>
-                                        <div className="w-full h-16 bg-black/40 border border-white/5 rounded-[1.2rem] px-6 text-white/20 text-xs font-bold flex items-center">
-                                            {store.slug || 'autoselect-slug'}
-                                        </div>
+                                        <input
+                                            value={store.slug || ''}
+                                            onChange={e => setStore({ ...store, slug: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
+                                            className="w-full h-16 bg-white/[0.03] border border-white/10 rounded-[1.2rem] px-6 text-white text-xs font-bold focus:border-neon outline-none uppercase transition-all shadow-inner"
+                                            placeholder="mi-tienda-slug"
+                                        />
+                                        <p className="text-[9px] text-neon/50 mt-1 ml-2 font-bold uppercase tracking-widest">⚠️ Cambiar esto invalidará los QRs existentes</p>
                                     </div>
                                     <div className="space-y-3">
                                         <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] ml-2">Dirección Operativa</label>
