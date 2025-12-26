@@ -41,6 +41,9 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
    // Metrics
    const [metrics, setMetrics] = useState({ totalStores: 0, totalUsers: 0, mrr: 0 });
 
+   // Global users list
+   const [globalUsers, setGlobalUsers] = useState<any[]>([]);
+
    const [configTab, setConfigTab] = useState<'negocio' | 'staff' | 'audit' | 'ai' | 'payment'>('negocio');
 
    const fetchData = useCallback(async () => {
@@ -84,6 +87,24 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
             totalUsers: userCount || 0,
             mrr
          });
+
+         // Fetch all global users with their store info
+         const { data: allProfiles, error: profilesError } = await supabase
+            .from('profiles')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+         if (!profilesError && allProfiles) {
+            // Get all stores to map store names
+            const storeMap = new Map((dbStores || []).map((s: any) => [s.id, s]));
+
+            const usersWithStores = allProfiles.map((p: any) => ({
+               ...p,
+               store_name: (storeMap.get(p.store_id) as any)?.name || null,
+               store_slug: (storeMap.get(p.store_id) as any)?.slug || null
+            }));
+            setGlobalUsers(usersWithStores);
+         }
       } catch (e: any) {
          console.error("FETCH_EXCEPTION:", e);
       } finally {
@@ -420,6 +441,100 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                   {stores.length === 0 && (
                      <div className="p-12 text-center text-zinc-600 text-xs uppercase tracking-widest font-bold">
                         No se encontraron locales
+                     </div>
+                  )}
+               </div>
+            </div>
+         )}
+
+         {/* GLOBAL USERS SECTION */}
+         {activeTab === 'users' && (
+            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+               <div className="flex items-center justify-between">
+                  <div>
+                     <h2 className="text-2xl font-black italic text-white uppercase tracking-tighter">Usuarios Globales</h2>
+                     <p className="text-xs text-zinc-500 font-medium mt-1">Todos los registros de la plataforma con sus locales asociados.</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                     <div className="px-4 py-2 bg-white/5 rounded-xl text-[10px] font-black text-white/60 uppercase tracking-widest">
+                        {globalUsers.length} Usuarios
+                     </div>
+                  </div>
+               </div>
+
+               <div className="rounded-3xl border border-white/5 overflow-hidden bg-[#0A0C0A]">
+                  <table className="w-full text-left">
+                     <thead>
+                        <tr className="border-b border-white/5 bg-white/[0.02]">
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Usuario</th>
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Email</th>
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Local</th>
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Rol</th>
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Registrado</th>
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Estado</th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y divide-white/5">
+                        {globalUsers.map(user => (
+                           <tr key={user.id} className="hover:bg-white/[0.02] transition-colors">
+                              <td className="p-4">
+                                 <div className="flex items-center gap-3">
+                                    <div className="size-9 rounded-xl bg-neon/10 text-neon flex items-center justify-center font-black italic text-xs">
+                                       {user.full_name?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || '?'}
+                                    </div>
+                                    <span className="text-sm font-bold text-white">{user.full_name || 'Sin Nombre'}</span>
+                                 </div>
+                              </td>
+                              <td className="p-4">
+                                 <span className="text-xs text-white/70 font-medium">{user.email}</span>
+                              </td>
+                              <td className="p-4">
+                                 {user.store_name ? (
+                                    <div className="flex items-center gap-2">
+                                       <span className="px-2.5 py-1 rounded-lg bg-accent/10 text-accent text-[10px] font-black uppercase">
+                                          {user.store_name}
+                                       </span>
+                                    </div>
+                                 ) : (
+                                    <span className="text-[10px] text-zinc-600 italic">Sin Local</span>
+                                 )}
+                              </td>
+                              <td className="p-4">
+                                 <span className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-wider ${user.role === 'super_admin' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
+                                    user.role === 'store_owner' ? 'bg-accent/10 text-accent border border-accent/20' :
+                                       'bg-white/5 text-zinc-500 border border-white/10'
+                                    }`}>
+                                    {user.role === 'super_admin' ? 'Super Admin' :
+                                       user.role === 'store_owner' ? 'Dueño' :
+                                          user.role || 'Staff'}
+                                 </span>
+                              </td>
+                              <td className="p-4">
+                                 <span className="text-[10px] text-zinc-500">
+                                    {user.created_at ? new Date(user.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                                 </span>
+                              </td>
+                              <td className="p-4">
+                                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${(!user.status || user.status === 'active')
+                                    ? 'bg-neon/10 text-neon border border-neon/20'
+                                    : user.status === 'pending'
+                                       ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                                       : 'bg-red-500/10 text-red-500 border border-red-500/20'
+                                    }`}>
+                                    <div className={`size-1.5 rounded-full ${(!user.status || user.status === 'active') ? 'bg-neon animate-pulse' :
+                                       user.status === 'pending' ? 'bg-amber-500' : 'bg-red-500'
+                                       }`}></div>
+                                    {(!user.status || user.status === 'active') ? 'Activo' :
+                                       user.status === 'pending' ? 'Pendiente' : 'Suspendido'}
+                                 </span>
+                              </td>
+                           </tr>
+                        ))}
+                     </tbody>
+                  </table>
+                  {globalUsers.length === 0 && (
+                     <div className="p-12 text-center text-zinc-600 text-xs uppercase tracking-widest font-bold">
+                        No se encontraron usuarios registrados
                      </div>
                   )}
                </div>
