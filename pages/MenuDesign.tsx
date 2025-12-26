@@ -70,6 +70,12 @@ const MenuDesign: React.FC = () => {
         );
     }, [items, searchTerm]);
 
+    // Categories for preview - extract from real items
+    const previewCategories = useMemo(() => {
+        const cats = new Set(items.filter(i => i.is_menu_visible).map(i => i.category_id || 'General'));
+        return Array.from(cats).slice(0, 4);
+    }, [items]);
+
     useEffect(() => {
         // Ejecutar inmediatamente - fetchData tiene fallback de store_id
         fetchData();
@@ -1192,7 +1198,7 @@ const MenuDesign: React.FC = () => {
                     {/* Dynamic Content */}
                     <div className="flex-1 p-5 space-y-4 overflow-y-auto no-scrollbar bg-background-dark">
                         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-                            {['Café', 'Pastelería', 'Bebidas'].map(cat => (
+                            {(previewCategories.length > 0 ? previewCategories : ['General']).map(cat => (
                                 <button key={cat} className={`px-4 py-1.5 ${preview.rounded} text-[9px] font-black uppercase tracking-widest border transition-all whitespace-nowrap`} style={{ borderColor: theme.accentColor, color: theme.accentColor }}>{cat}</button>
                             ))}
                         </div>
