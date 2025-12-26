@@ -1,38 +1,34 @@
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { UserProfile, MenuItem, OrderHistoryItem } from '../types';
-import { MENU_ITEMS } from '../constants';
-import LoyaltyLockedView from '../components/LoyaltyLockedView';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useClient } from '../../contexts/ClientContext';
+import { OrderHistoryItem } from '../../components/client/types';
+import LoyaltyLockedView from '../../components/client/LoyaltyLockedView';
 
-interface ProfilePageProps {
-  user: UserProfile | null;
-  setUser: (user: UserProfile | null) => void;
-  addToCart?: (item: MenuItem, quantity: number, customs: string[], size: string) => void;
-}
-
-const ProfilePage: React.FC<ProfilePageProps> = ({ user, setUser, addToCart }) => {
+const ProfilePage: React.FC = () => {
+  const { user, setUser, addToCart, products } = useClient();
+  const { slug } = useParams();
   const navigate = useNavigate();
   const [editMode, setEditMode] = useState(false);
-  const [formData, setFormData] = useState<Partial<UserProfile>>(user || {});
-  
+  const [formData, setFormData] = useState<Partial<typeof user>>(user || {});
+
   const [showTopUp, setShowTopUp] = useState(false);
   const [showQR, setShowQR] = useState<{ isOpen: boolean; data: string; title: string }>({ isOpen: false, data: '', title: '' });
   const [selectedAmount, setSelectedAmount] = useState<number | null>(20);
   const [customAmount, setCustomAmount] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
 
   if (!user) {
     return (
-        <div className="flex flex-col min-h-screen pb-32 bg-black font-display text-white">
-            <header className="sticky top-0 z-50 bg-black/95 backdrop-blur-3xl px-6 pt-[calc(1.2rem+env(safe-area-inset-top))] pb-6 border-b border-white/5">
-                <h1 className="text-xl font-black tracking-tight uppercase italic text-center">Tu Perfil</h1>
-            </header>
-            <LoyaltyLockedView title="Tu Perfil Personal" icon="person" />
-        </div>
+      <div className="flex flex-col min-h-screen pb-32 bg-black font-display text-white">
+        <header className="sticky top-0 z-50 bg-black/95 backdrop-blur-3xl px-6 pt-[calc(1.2rem+env(safe-area-inset-top))] pb-6 border-b border-white/5">
+          <h1 className="text-xl font-black tracking-tight uppercase italic text-center">Tu Perfil</h1>
+        </header>
+        <LoyaltyLockedView title="Tu Perfil Personal" icon="person" />
+      </div>
     );
   }
 
@@ -70,9 +66,9 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, setUser, addToCart }) =
     let addedCount = 0;
 
     itemNames.forEach(name => {
-      const menuItem = MENU_ITEMS.find(i => i.name.toLowerCase() === name.toLowerCase());
+      const menuItem = products.find(i => i.name.toLowerCase() === name.toLowerCase());
       if (menuItem) {
-        addToCart(menuItem, 1, [], 'Chico');
+        addToCart(menuItem, 1, [], 'Chico', '');
         addedCount++;
       }
     });
@@ -111,12 +107,12 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, setUser, addToCart }) =
         <div className="flex flex-col items-center bg-white/[0.02] rounded-[3rem] p-12 shadow-2xl border border-white/5 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-48 h-48 bg-primary/5 rounded-full blur-[100px] -mr-20 -mt-20"></div>
           <div className="relative group cursor-pointer" onClick={() => setShowQR({ isOpen: true, data: user.id, title: 'Tu ID de Miembro' })}>
-            <div 
-              className="rounded-[2.2rem] h-40 w-40 shadow-2xl ring-2 ring-white/10 bg-cover bg-center overflow-hidden transition-transform duration-700 group-hover:scale-105" 
+            <div
+              className="rounded-[2.2rem] h-40 w-40 shadow-2xl ring-2 ring-white/10 bg-cover bg-center overflow-hidden transition-transform duration-700 group-hover:scale-105"
               style={{ backgroundImage: `url(${user.avatar})` }}
             ></div>
             <div className="absolute bottom-3 right-3 bg-primary h-12 w-12 rounded-[1rem] flex items-center justify-center border-4 border-[#000] shadow-xl">
-               <span className="material-symbols-outlined text-black text-2xl font-black fill-icon">qr_code_2</span>
+              <span className="material-symbols-outlined text-black text-2xl font-black fill-icon">qr_code_2</span>
             </div>
           </div>
           <div className="mt-8 text-center">
@@ -129,8 +125,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, setUser, addToCart }) =
           <div className="bg-white/[0.02] rounded-[2.5rem] p-8 border border-white/5 flex flex-col items-center justify-center gap-2 shadow-xl">
             <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20 mb-2">Saldo</span>
             <span className="text-[32px] font-black text-white tracking-tighter italic leading-none">${user.balance.toFixed(2)}</span>
-            <button 
-              onClick={() => setShowTopUp(true)} 
+            <button
+              onClick={() => setShowTopUp(true)}
               className="mt-6 h-14 flex items-center justify-center bg-primary text-black px-10 rounded-full text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl border border-white/20"
             >
               Recargar
@@ -139,8 +135,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, setUser, addToCart }) =
           <div className="bg-white/[0.02] rounded-[2.5rem] p-8 border border-white/5 flex flex-col items-center justify-center gap-2 shadow-xl">
             <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20 mb-2">Puntos</span>
             <span className="text-[32px] font-black text-white tracking-tighter italic leading-none">{user.points}</span>
-            <button 
-              onClick={() => navigate('/loyalty')} 
+            <button
+              onClick={() => navigate('/loyalty')}
               className="mt-6 h-14 flex items-center justify-center bg-white/5 text-slate-300 px-10 rounded-full text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all border border-white/10"
             >
               Canjear
@@ -156,8 +152,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, setUser, addToCart }) =
             </button>
           </div>
           <div className="bg-white/[0.02] rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/5 flex flex-col divide-y divide-white/5">
-            <EditableInfoItem icon="person" label="Nombre" value={formData.name || ''} editMode={editMode} onChange={(v) => setFormData({...formData, name: v})} />
-            <EditableInfoItem icon="call" label="Teléfono" value={formData.phone || ''} editMode={editMode} onChange={(v) => setFormData({...formData, phone: v})} />
+            <EditableInfoItem icon="person" label="Nombre" value={formData.name || ''} editMode={editMode} onChange={(v) => setFormData({ ...formData, name: v })} />
+            <EditableInfoItem icon="call" label="Teléfono" value={formData.phone || ''} editMode={editMode} onChange={(v) => setFormData({ ...formData, phone: v })} />
           </div>
         </div>
 
@@ -185,7 +181,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, setUser, addToCart }) =
                     <span className="material-symbols-outlined text-[14px] text-primary fill-icon">stars</span>
                     <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">+{order.pointsEarned || 0} Granos</span>
                   </div>
-                  <button 
+                  <button
                     onClick={() => handleOrderAgain(order)}
                     className="flex items-center gap-3 h-11 px-6 rounded-full bg-white/5 border border-white/10 text-primary text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all hover:bg-primary hover:text-black hover:border-primary group/btn"
                   >
@@ -209,18 +205,17 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, setUser, addToCart }) =
                 <span className="material-symbols-outlined text-xl">close</span>
               </button>
             </div>
-            
+
             <div className="space-y-8">
               <div className="grid grid-cols-3 gap-3">
                 {[10, 20, 50].map(amount => (
-                  <button 
+                  <button
                     key={amount}
                     onClick={() => selectPreset(amount)}
-                    className={`h-20 rounded-2xl font-black text-[20px] italic transition-all duration-500 border ${
-                      selectedAmount === amount 
-                      ? 'bg-primary text-black border-primary' 
+                    className={`h-20 rounded-2xl font-black text-[20px] italic transition-all duration-500 border ${selectedAmount === amount
+                      ? 'bg-primary text-black border-primary'
                       : 'bg-white/[0.02] text-white/20 border-white/5'
-                    }`}
+                      }`}
                   >
                     ${amount}
                   </button>
@@ -230,7 +225,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, setUser, addToCart }) =
                 <label className="text-[8px] font-black uppercase tracking-[0.4em] text-white/20 ml-5 mb-2 block italic">Monto Personalizado</label>
                 <div className="flex items-center h-20 px-8 rounded-2xl border bg-white/[0.01] border-white/5">
                   <span className="text-xl font-black italic mr-3 text-white/10">$</span>
-                  <input 
+                  <input
                     type="number"
                     value={customAmount}
                     onChange={(e) => handleCustomInput(e.target.value)}
@@ -239,14 +234,13 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, setUser, addToCart }) =
                   />
                 </div>
               </div>
-              <button 
+              <button
                 onClick={handleConfirmTopUp}
                 disabled={isProcessing || (!selectedAmount && !customAmount)}
-                className={`w-full h-24 rounded-full font-black uppercase text-[14px] tracking-[0.15em] active:scale-[0.97] transition-all duration-700 flex items-center justify-center gap-4 border border-white/20 ${
-                  (selectedAmount || customAmount) 
-                  ? 'bg-primary text-black shadow-[0_25px_60px_rgba(54,226,123,0.3)]' 
+                className={`w-full h-24 rounded-full font-black uppercase text-[14px] tracking-[0.15em] active:scale-[0.97] transition-all duration-700 flex items-center justify-center gap-4 border border-white/20 ${(selectedAmount || customAmount)
+                  ? 'bg-primary text-black shadow-[0_25px_60px_rgba(54,226,123,0.3)]'
                   : 'bg-white/5 text-white/10 grayscale cursor-not-allowed'
-                }`}
+                  }`}
               >
                 {isProcessing ? (
                   <span className="material-symbols-outlined animate-spin text-[32px]">refresh</span>
@@ -266,16 +260,16 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, setUser, addToCart }) =
       )}
 
       {showQR.isOpen && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-8 bg-black/98 backdrop-blur-2xl animate-in fade-in duration-500" onClick={() => setShowQR({...showQR, isOpen: false})}>
-           <div className="w-full max-w-sm flex flex-col items-center" onClick={e => e.stopPropagation()}>
-              <div className="w-full bg-white rounded-[3rem] p-14 shadow-[0_0_100px_rgba(54,226,123,0.4)] mb-14 animate-in zoom-in-95 duration-500">
-                 <img src={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${showQR.data}&color=000`} alt="ID QR" className="w-full aspect-square" />
-              </div>
-              <h3 className="text-[32px] font-black text-white uppercase tracking-tighter italic text-center mb-10 leading-none">{showQR.title}</h3>
-              <button onClick={() => setShowQR({...showQR, isOpen: false})} className="w-24 h-24 rounded-full bg-white/5 text-white flex items-center justify-center border border-white/10 active:scale-90 transition-transform">
-                 <span className="material-symbols-outlined text-5xl">close</span>
-              </button>
-           </div>
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-8 bg-black/98 backdrop-blur-2xl animate-in fade-in duration-500" onClick={() => setShowQR({ ...showQR, isOpen: false })}>
+          <div className="w-full max-w-sm flex flex-col items-center" onClick={e => e.stopPropagation()}>
+            <div className="w-full bg-white rounded-[3rem] p-14 shadow-[0_0_100px_rgba(54,226,123,0.4)] mb-14 animate-in zoom-in-95 duration-500">
+              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${showQR.data}&color=000`} alt="ID QR" className="w-full aspect-square" />
+            </div>
+            <h3 className="text-[32px] font-black text-white uppercase tracking-tighter italic text-center mb-10 leading-none">{showQR.title}</h3>
+            <button onClick={() => setShowQR({ ...showQR, isOpen: false })} className="w-24 h-24 rounded-full bg-white/5 text-white flex items-center justify-center border border-white/10 active:scale-90 transition-transform">
+              <span className="material-symbols-outlined text-5xl">close</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -298,12 +292,12 @@ const EditableInfoItem: React.FC<{ icon: string, label: string, value: string, e
     <div className="flex flex-col flex-1 min-w-0">
       <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 mb-2">{label}</span>
       {editMode ? (
-        <input 
-          autoFocus 
-          className="bg-primary/5 rounded-[1rem] border border-primary/20 p-3 text-lg font-black w-full text-white tracking-tight focus:ring-0 focus:border-primary/50 transition-all" 
-          type="text" 
-          value={value} 
-          onChange={(e) => onChange(e.target.value)} 
+        <input
+          autoFocus
+          className="bg-primary/5 rounded-[1rem] border border-primary/20 p-3 text-lg font-black w-full text-white tracking-tight focus:ring-0 focus:border-primary/50 transition-all"
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
         />
       ) : (
         <span className="text-xl font-black tracking-tight truncate italic">{value}</span>
