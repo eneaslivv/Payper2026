@@ -109,7 +109,20 @@
 <link rel="stylesheet" href="/index.css">
 </head>
 <body class="bg-[#0D0F0D] text-[#E0E2DF] font-display selection:bg-neon/30">
-    <div id="root"></div>
-<script type="module" src="/index.tsx"></script>
+    <div id="root">
+        <!-- Fallback content while JS loads -->
+        <div id="loading-fallback" style="display:flex;height:100vh;align-items:center;justify-content:center;flex-direction:column;gap:20px;">
+            <div style="width:48px;height:48px;border:4px solid rgba(74,222,128,0.2);border-top-color:#4ADE80;border-radius:50%;animation:spin 1s linear infinite;"></div>
+            <p style="color:#4ADE80;font-size:12px;text-transform:uppercase;letter-spacing:0.2em;font-weight:700;">Cargando Sistema...</p>
+        </div>
+        <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+        <noscript>
+            <div style="padding:40px;text-align:center;color:#f87171;">
+                <h1>JavaScript Deshabilitado</h1>
+                <p>Esta aplicación requiere JavaScript para funcionar.</p>
+            </div>
+        </noscript>
+    </div>
+<script type="module" src="/src/main.tsx"></script>
 </body>
 </html>
