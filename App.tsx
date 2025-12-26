@@ -26,6 +26,9 @@ import ClientProductPage from './pages/client/ProductPage';
 import ClientCartPage from './pages/client/CartPage';
 import ClientCheckoutPage from './pages/client/CheckoutPage';
 import ClientTrackingPage from './pages/client/TrackingPage';
+import ClientAuthPage from './pages/client/AuthPage';
+import ClientProfilePage from './pages/client/ProfilePage';
+import ClientLoyaltyPage from './pages/client/LoyaltyPage';
 import { MenuPage } from './pages/MenuPage';
 import { OrderConfirmationPage } from './pages/OrderConfirmationPage';
 import AIChat from './components/AIChat';
@@ -453,9 +456,9 @@ const MainRouter: React.FC = () => {
             <Route path="cart" element={<ClientCartPage />} />
             <Route path="checkout" element={<ClientCheckoutPage />} />
             <Route path="tracking/:orderId" element={<ClientTrackingPage />} />
-            <Route path="auth" element={<div className="h-screen flex items-center justify-center text-white bg-black">Auth Page (WIP)</div>} />
-            <Route path="profile" element={<div className="h-screen flex items-center justify-center text-white bg-black">Profile Page (WIP)</div>} />
-            <Route path="loyalty" element={<div className="h-screen flex items-center justify-center text-white bg-black">Loyalty Page (WIP)</div>} />
+            <Route path="auth" element={<ClientAuthPage />} />
+            <Route path="profile" element={<ClientProfilePage />} />
+            <Route path="loyalty" element={<ClientLoyaltyPage />} />
           </Route>
 
           {/* Order Confirmation Routes */}
