@@ -545,7 +545,12 @@ const StoreSettings: React.FC = () => {
                                         <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] ml-2">Nombre Comercial</label>
                                         <input
                                             value={store.name || ''}
-                                            onChange={e => setStore({ ...store, name: e.target.value })}
+                                            onChange={e => {
+                                                const newName = e.target.value;
+                                                // Auto-generate slug from name
+                                                const newSlug = newName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+                                                setStore({ ...store, name: newName, slug: newSlug });
+                                            }}
                                             className="w-full h-16 bg-white/[0.03] border border-white/10 rounded-[1.2rem] px-6 text-white text-xs font-bold focus:border-neon outline-none uppercase transition-all shadow-inner"
                                         />
                                     </div>
