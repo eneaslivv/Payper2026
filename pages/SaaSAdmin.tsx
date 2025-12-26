@@ -174,17 +174,37 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
       setGeneratedLink('');
       try {
          const cleanEmail = newStore.ownerEmail.trim().toLowerCase();
-         // Generate safer slug
-         const baseSlug = newStore.name.toLowerCase().trim()
-            .replace(/[áéíóúñü]/g, (c) => ({ 'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ñ': 'n', 'ü': 'u' }[c] || c)) // Normalize accents
-            .replace(/\s+/g, '-') // Spaces to dashes
-            .replace(/[^a-z0-9-]/g, ''); // Remove other chars
 
-         const slug = `${baseSlug}-${Math.floor(1000 + Math.random() * 9000)}`;
+         // Generate clean slug from name (NO random numbers)
+         const baseSlug = newStore.name.toLowerCase().trim()
+            .replace(/[áéíóúñü]/g, (c) => ({ 'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ñ': 'n', 'ü': 'u' }[c] || c))
+            .replace(/\s+/g, '-')
+            .replace(/[^a-z0-9-]/g, '')
+            .replace(/-+/g, '-') // Collapse multiple dashes
+            .replace(/^-|-$/g, ''); // Remove leading/trailing dashes
+
+         // Check if slug already exists
+         let finalSlug = baseSlug;
+         const { data: existingStores } = await supabase
+            .from('stores')
+            .select('slug')
+            .ilike('slug', `${baseSlug}%`);
+
+         if (existingStores && existingStores.length > 0) {
+            const existingSlugs = new Set(existingStores.map((s: any) => s.slug));
+            if (existingSlugs.has(baseSlug)) {
+               // Find next available number
+               let counter = 2;
+               while (existingSlugs.has(`${baseSlug}-${counter}`)) {
+                  counter++;
+               }
+               finalSlug = `${baseSlug}-${counter}`;
+            }
+         }
 
          const { data: store, error: storeError } = await supabase.from('stores').insert({
             name: newStore.name.trim(),
-            slug,
+            slug: finalSlug,
             plan: newStore.plan,
             owner_email: cleanEmail,
             address: newStore.address.trim(),
@@ -338,13 +358,13 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                               </td>
                               <td className="p-4">
                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${store.onboarding_status === 'COMPLETED'
-                                       ? 'bg-neon/10 text-neon border border-neon/20'
-                                       : store.onboarding_status === 'PENDING'
-                                          ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                                          : 'bg-white/5 text-zinc-500 border border-white/10'
+                                    ? 'bg-neon/10 text-neon border border-neon/20'
+                                    : store.onboarding_status === 'PENDING'
+                                       ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                                       : 'bg-white/5 text-zinc-500 border border-white/10'
                                     }`}>
                                     <div className={`size-1.5 rounded-full ${store.onboarding_status === 'COMPLETED' ? 'bg-neon animate-pulse' :
-                                          store.onboarding_status === 'PENDING' ? 'bg-amber-500' : 'bg-zinc-500'
+                                       store.onboarding_status === 'PENDING' ? 'bg-amber-500' : 'bg-zinc-500'
                                        }`}></div>
                                     {store.onboarding_status === 'COMPLETED' ? 'Activo' :
                                        store.onboarding_status === 'PENDING' ? 'Pendiente' : 'Setup'}
@@ -354,8 +374,8 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                                  <button
                                     onClick={() => { setPlanModalStore(store); setShowPlanModal(true); }}
                                     className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all hover:scale-105 ${store.plan === 'PRO' ? 'text-accent border-accent/30 hover:bg-accent/10' :
-                                          store.plan === 'VIP' ? 'text-purple-400 border-purple-400/30 hover:bg-purple-400/10' :
-                                             'text-zinc-500 border-zinc-500/30 hover:bg-white/5'
+                                       store.plan === 'VIP' ? 'text-purple-400 border-purple-400/30 hover:bg-purple-400/10' :
+                                          'text-zinc-500 border-zinc-500/30 hover:bg-white/5'
                                        }`}
                                  >
                                     {store.plan || 'FREE'}

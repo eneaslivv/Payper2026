@@ -584,14 +584,37 @@ const StoreSettings: React.FC = () => {
                                         />
                                     </div>
                                     <div className="space-y-3">
-                                        <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] ml-2">Identificador Slug (Fijo)</label>
-                                        <input
-                                            value={store.slug || ''}
-                                            onChange={e => setStore({ ...store, slug: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
-                                            className="w-full h-16 bg-white/[0.03] border border-white/10 rounded-[1.2rem] px-6 text-white text-xs font-bold focus:border-neon outline-none uppercase transition-all shadow-inner"
-                                            placeholder="mi-tienda-slug"
-                                        />
-                                        <p className="text-[9px] text-neon/50 mt-1 ml-2 font-bold uppercase tracking-widest">⚠️ Cambiar esto invalidará los QRs existentes</p>
+                                        <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] ml-2">Identificador Slug (URL del Menú)</label>
+                                        <div className="flex gap-3">
+                                            <input
+                                                value={store.slug || ''}
+                                                onChange={e => setStore({ ...store, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/\s+/g, '-') })}
+                                                className="flex-1 h-16 bg-white/[0.03] border border-white/10 rounded-[1.2rem] px-6 text-white text-xs font-bold focus:border-neon outline-none lowercase transition-all shadow-inner"
+                                                placeholder="mi-tienda"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (store.name) {
+                                                        const newSlug = store.name.toLowerCase().trim()
+                                                            .replace(/[áéíóúñü]/g, (c) => ({ 'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ñ': 'n', 'ü': 'u' }[c] || c))
+                                                            .replace(/\s+/g, '-')
+                                                            .replace(/[^a-z0-9-]/g, '')
+                                                            .replace(/-+/g, '-')
+                                                            .replace(/^-|-$/g, '');
+                                                        setStore({ ...store, slug: newSlug });
+                                                    }
+                                                }}
+                                                className="h-16 px-6 bg-accent/10 border border-accent/20 rounded-[1.2rem] text-accent text-[10px] font-black uppercase tracking-widest hover:bg-accent hover:text-black transition-all flex items-center gap-2"
+                                                title="Regenerar desde Nombre"
+                                            >
+                                                <span className="material-symbols-outlined text-lg">autorenew</span>
+                                                Regenerar
+                                            </button>
+                                        </div>
+                                        <p className="text-[9px] text-white/40 mt-1 ml-2 font-bold uppercase tracking-widest">
+                                            URL del menú: <span className="text-neon">/m/{store.slug || 'tu-slug'}</span>
+                                        </p>
                                     </div>
                                     <div className="space-y-3">
                                         <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] ml-2">Dirección Operativa</label>
