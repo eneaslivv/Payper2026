@@ -80,26 +80,39 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         fetchStore();
     }, [slug]);
 
-    // Fetch Products when Store is set
+    // Fetch Products from inventory_items (synced with MenuDesign)
     useEffect(() => {
         if (!store?.id) return;
         const fetchProducts = async () => {
             setLoadingProducts(true);
             try {
-                // Assuming simplified product schema mapping or usage of *
+                // Fetch from inventory_items where is_menu_visible = true
                 const { data, error } = await supabase
-                    .from('products')
+                    .from('inventory_items')
                     .select('*')
                     .eq('store_id', store.id)
-                    .eq('is_archived', false); // Assuming available flag
+                    .eq('is_menu_visible', true)
+                    .eq('is_active', true);
 
                 if (error) throw error;
 
-                // Map DB products to MenuItem interface if necessary
-                // For now assuming direct mapping or compatible fields
-                setProducts(data as any || []);
+                // Map inventory_items to MenuItem interface
+                const mappedProducts: MenuItem[] = (data || []).map((item: any) => ({
+                    id: item.id,
+                    name: item.name,
+                    description: item.description || '',
+                    price: item.price || 0,
+                    image: item.image_url || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
+                    category: item.category || 'General',
+                    isPopular: item.is_popular || false,
+                    isOutOfStock: (item.current_stock !== undefined && item.current_stock <= 0) || false,
+                    sizes: item.variants?.map((v: any) => v.name) || [],
+                    customizations: item.addons?.map((a: any) => a.name) || []
+                }));
+
+                setProducts(mappedProducts);
             } catch (err) {
-                console.error(err);
+                console.error('Error fetching menu products:', err);
             } finally {
                 setLoadingProducts(false);
             }
