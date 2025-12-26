@@ -156,37 +156,66 @@ const StoreSettings: React.FC = () => {
 
             if (staffError) throw staffError;
 
-            const staffMembers = staffData.map((m: any) => ({
-                id: m.id,
-                name: m.full_name || 'Sin Nombre',
-                email: m.email,
-                roleId: m.role_id,
-                status: m.status as any,
-                avatar: '',
-                joinDate: m.created_at
-            }));
+            // Deduplicate by email (keep the first one)
+            const seenEmails = new Set<string>();
+            const uniqueStaff = (staffData || []).filter((m: any) => {
+                if (!m.email || seenEmails.has(m.email.toLowerCase())) return false;
+                seenEmails.add(m.email.toLowerCase());
+                return true;
+            });
 
-            // Fetch pending invitations
-            const { data: inviteData, error: inviteError } = await supabase
-                .from('team_invitations' as any)
-                .select('*')
-                .eq('store_id', profile.store_id)
-                .eq('status', 'pending');
+            const staffMembers = uniqueStaff.map((m: any) => {
+                // Determine display role: use system role if no custom role_id
+                let displayRoleId = m.role_id;
+                let systemRoleName = null;
 
-            if (!inviteError && inviteData) {
-                const pendingMembers = inviteData
-                    .filter((inv: any) => !staffMembers.some((m: any) => m.email === inv.email))
-                    .map((inv: any) => ({
-                        id: `invite-${inv.id}`,
-                        name: inv.email.split('@')[0],
-                        email: inv.email,
-                        roleId: inv.role,
-                        status: 'pending' as any,
-                        avatar: '',
-                        joinDate: inv.created_at
-                    }));
-                setMembers([...staffMembers, ...pendingMembers]);
-            } else {
+                if (!m.role_id && m.role) {
+                    // Map system roles to display names
+                    if (m.role === 'store_owner') systemRoleName = 'Dueño';
+                    else if (m.role === 'super_admin') systemRoleName = 'Super Admin';
+                    else if (m.role === 'staff') systemRoleName = 'Staff';
+                }
+
+                return {
+                    id: m.id,
+                    name: m.full_name || 'Sin Nombre',
+                    email: m.email,
+                    roleId: displayRoleId,
+                    systemRole: systemRoleName, // For display when no custom role
+                    // Default to 'active' if status is null/undefined/empty
+                    status: (m.status && m.status !== '') ? m.status : 'active',
+                    avatar: '',
+                    joinDate: m.created_at
+                };
+            });
+
+            // Fetch pending invitations (only if table exists)
+            try {
+                const { data: inviteData, error: inviteError } = await supabase
+                    .from('team_invitations' as any)
+                    .select('*')
+                    .eq('store_id', profile.store_id)
+                    .eq('status', 'pending');
+
+                if (!inviteError && inviteData) {
+                    const pendingMembers = inviteData
+                        .filter((inv: any) => !seenEmails.has(inv.email?.toLowerCase()))
+                        .map((inv: any) => ({
+                            id: `invite-${inv.id}`,
+                            name: inv.email.split('@')[0],
+                            email: inv.email,
+                            roleId: inv.role,
+                            systemRole: null,
+                            status: 'pending' as any,
+                            avatar: '',
+                            joinDate: inv.created_at
+                        }));
+                    setMembers([...staffMembers, ...pendingMembers]);
+                } else {
+                    setMembers(staffMembers);
+                }
+            } catch {
+                // Table may not exist, just use staff data
                 setMembers(staffMembers);
             }
         } catch (error: any) {
@@ -654,7 +683,10 @@ const StoreSettings: React.FC = () => {
                                                                 </div>
                                                             </td>
                                                             <td className="px-8 py-5">
-                                                                <span className="text-[10px] font-black bg-white/5 px-2 py-1 rounded text-white/60 uppercase tracking-widest italic">{roles.find(r => r.id === m.roleId)?.name || 'Sin Rol'}</span>
+                                                                <span className={`text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest italic ${(m as any).systemRole ? 'bg-accent/10 text-accent' : 'bg-white/5 text-white/60'
+                                                                    }`}>
+                                                                    {(m as any).systemRole || roles.find(r => r.id === m.roleId)?.name || 'Sin Rol'}
+                                                                </span>
                                                             </td>
                                                             <td className="px-8 py-5 text-center">
                                                                 <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase border ${m.status === 'active' ? 'bg-neon/5 text-neon border-neon/10' : m.status === 'pending' ? 'bg-amber-500/5 text-amber-500 border-amber-500/10' : 'bg-red-500/5 text-red-500 border-red-500/10'}`}>
