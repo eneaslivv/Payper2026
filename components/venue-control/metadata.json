@@ -1,0 +1,7 @@
+{
+  "name": "Payper Venue OS",
+  "description": "A high-performance real-time management system for bars and venues, handling tables, bars, QRs, and orders in a unified dark-themed dashboard.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "name": "CoffeeSaaS - Integrated Management Suite",
+  "description": "A comprehensive SaaS platform for coffee shop management, featuring sales dashboards, product inventory, menu design, loyalty programs, and real-time operational monitoring.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

@@ -1,0 +1,18 @@
+
+{
+  "name": "Morning Brew Co.",
+  "short_name": "MorningBrew",
+  "description": "High-end specialty coffee shop experience.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#112117",
+  "theme_color": "#36e27b",
+  "icons": [
+    {
+      "src": "https://lh3.googleusercontent.com/aida-public/AB6AXuAxLIjvzJwo7zX-RhqFA6Xmx6wO5BmBJ1P63sqmmVG89p4FDh0wy7gbA9GgfMiYZnGxg0X3RctrfC6hOQzIImqOfCtSOprQgNpJ0bWIbgtzm6sL7MgfRgdoIs6yKFXYdFBIC2iXpriNQq0lFsmXzXDzZr5TvmzQi6LVKkYcvDDVJ116eqelBLWSUJYTbq3Ud4uoOFnVmI0tPDSdTCjYsNumSKOZg6SZkOd9KVjdPAGi0PsfRF-pou04wg56Uou15mpaFb5uPATOiCm0",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

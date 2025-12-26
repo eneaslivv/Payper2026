@@ -1,0 +1,591 @@
+
+import React, { useState, useMemo, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
+import { Client, LoyaltyTransaction } from '../types';
+
+const Clients: React.FC = () => {
+  const { profile } = useAuth();
+  const [clients, setClients] = useState<Client[]>([]); // Start empty, no mocks
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'blocked'>('all');
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (profile?.store_id) {
+      fetchClients();
+    }
+  }, [profile?.store_id]);
+
+  const fetchClients = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('store_id', profile?.store_id as string);
+
+      if (error) throw error;
+
+      // Map DB to UI Type
+      const realClients: Client[] = (data || []).map(c => ({
+        id: c.id,
+        name: c.name || 'Sin Nombre',
+        email: c.email || 'No Email',
+        join_date: new Date(c.created_at).toLocaleDateString(),
+        last_visit: '-',
+        total_spent: 0,
+        orders_count: 0,
+        points_balance: c.loyalty_points || 0,
+        status: 'active',
+        is_vip: false,
+        notes: []
+      }));
+
+      setClients(realClients);
+    } catch (e) {
+      console.error("Error fetching clients:", e);
+    }
+  };
+
+  // Invitation State
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteTab, setInviteTab] = useState<'email' | 'link'>('email');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [isSendingInvite, setIsSendingInvite] = useState(false);
+  const [inviteSentSuccess, setInviteSentSuccess] = useState(false);
+  const [isLinkCopied, setIsLinkCopied] = useState(false);
+
+  // Wallet Modal State
+  const [showWalletModal, setShowWalletModal] = useState(false);
+  const [walletClient, setWalletClient] = useState<Client | null>(null);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [walletAmount, setWalletAmount] = useState('');
+  const [walletDescription, setWalletDescription] = useState('');
+  const [isLoadingWallet, setIsLoadingWallet] = useState(false);
+  const [walletTransactions, setWalletTransactions] = useState<any[]>([]);
+
+  const inviteLink = "https://coffeesquad.app/join/node-alpha-001";
+
+  const selectedClient = useMemo(() =>
+    clients.find(c => c.id === selectedClientId),
+    [clients, selectedClientId]);
+
+  const filteredClients = useMemo(() => {
+    return clients.filter(c => {
+      const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+        c.email.toLowerCase().includes(search.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [clients, search, statusFilter]);
+
+  const toggleBlockStatus = (id: string) => {
+    setClients(prev => prev.map(c =>
+      c.id === id ? { ...c, status: c.status === 'active' ? 'blocked' : 'active' } : c
+    ));
+  };
+
+  const handleSendInvite = () => {
+    if (!inviteEmail) return;
+    setIsSendingInvite(true);
+    // Simulación de envío
+    setTimeout(() => {
+      setIsSendingInvite(false);
+      setInviteSentSuccess(true);
+      setTimeout(() => {
+        setInviteSentSuccess(false);
+        setInviteEmail('');
+        setShowInviteModal(false);
+      }, 2000);
+    }, 1500);
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(inviteLink);
+    setIsLinkCopied(true);
+    setTimeout(() => setIsLinkCopied(false), 2000);
+  };
+
+  // Wallet Functions
+  const openWalletModal = async (client: Client) => {
+    setWalletClient(client);
+    setShowWalletModal(true);
+    setIsLoadingWallet(true);
+    setWalletAmount('');
+    setWalletDescription('');
+
+    try {
+      // Fetch current balance
+      const { data: walletData } = await supabase
+        .from('wallets' as any)
+        .select('balance')
+        .eq('user_id', client.id)
+        .single();
+
+      setWalletBalance((walletData as any)?.balance || 0);
+
+      // Fetch recent transactions
+      const { data: txData } = await supabase
+        .from('wallet_transactions' as any)
+        .select('*, staff:staff_id(full_name)')
+        .eq('wallet_id', client.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      setWalletTransactions(txData || []);
+    } catch (e) {
+      console.error('Error fetching wallet:', e);
+    } finally {
+      setIsLoadingWallet(false);
+    }
+  };
+
+  const handleAddBalance = async () => {
+    if (!walletClient || !walletAmount || parseFloat(walletAmount) <= 0) return;
+
+    setIsLoadingWallet(true);
+    try {
+      const { data, error } = await (supabase.rpc as any)('admin_add_balance', {
+        target_user_id: walletClient.id,
+        amount: parseFloat(walletAmount),
+        staff_id: profile?.id,
+        description: walletDescription || 'Carga de saldo desde panel admin'
+      });
+
+      if (error) throw error;
+
+      setWalletBalance(data);
+      setWalletAmount('');
+      setWalletDescription('');
+
+      // Refresh transactions
+      const { data: txData } = await supabase
+        .from('wallet_transactions' as any)
+        .select('*, staff:staff_id(full_name)')
+        .eq('wallet_id', walletClient.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      setWalletTransactions(txData || []);
+    } catch (e: any) {
+      console.error('Error adding balance:', e);
+      alert('Error al agregar saldo: ' + e.message);
+    } finally {
+      setIsLoadingWallet(false);
+    }
+  };
+
+  return (
+    <div className="p-6 md:p-10 space-y-10 max-w-[1400px] mx-auto animate-in fade-in duration-700 pb-32">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-neon/60 font-bold text-[10px] uppercase tracking-[0.3em]">
+            <span className="size-1 rounded-full bg-neon shadow-neon-soft"></span>
+            Customer Relations Hub
+          </div>
+          <h1 className="text-4xl italic-black tracking-tighter text-text-main dark:text-white uppercase leading-none">
+            Directorio de <span className="text-neon/80">Clientes</span>
+          </h1>
+          <p className="text-text-secondary text-xs font-semibold opacity-50 uppercase tracking-widest mt-2">Expedientes de usuarios y trazabilidad de consumo</p>
+        </div>
+
+        <button
+          onClick={() => setShowInviteModal(true)}
+          className="group px-6 py-3 rounded-xl bg-neon text-black font-black text-[10px] uppercase tracking-widest shadow-neon-soft transition-all hover:scale-105 active:scale-95 flex items-center gap-3"
+        >
+          <span className="material-symbols-outlined text-lg group-hover:rotate-12 transition-transform">person_add</span>
+          Invitar Miembro
+        </button>
+      </header>
+
+      {/* Filtros Tácticos */}
+      <div className="flex flex-col xl:flex-row justify-between gap-6 items-center">
+        <div className="flex bg-white dark:bg-surface-dark p-1 rounded-xl border border-black/[0.04] dark:border-white/[0.04] shadow-soft w-full xl:w-auto overflow-x-auto no-scrollbar">
+          <FilterTab active={statusFilter === 'all'} onClick={() => setStatusFilter('all')}>Todos</FilterTab>
+          <FilterTab active={statusFilter === 'active'} onClick={() => setStatusFilter('active')}>Activos</FilterTab>
+          <FilterTab active={statusFilter === 'blocked'} onClick={() => setStatusFilter('blocked')}>Bloqueados</FilterTab>
+        </div>
+        <div className="relative w-full max-w-md group">
+          <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary opacity-50 group-focus-within:text-neon transition-colors text-lg">search</span>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full h-11 pl-11 pr-5 rounded-xl border border-black/[0.04] dark:border-white/[0.04] bg-white dark:bg-surface-dark outline-none focus:ring-2 focus:ring-neon/10 text-[11px] font-bold placeholder:text-text-secondary/50 shadow-soft transition-all uppercase tracking-widest"
+            placeholder="Buscar por Nombre o Email..."
+          />
+        </div>
+      </div>
+
+      {/* Listado Principal */}
+      <div className="bg-white dark:bg-surface-dark rounded-2xl subtle-border shadow-soft overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-black/[0.01] dark:bg-white/[0.01] border-b border-black/[0.02] dark:border-white/[0.02]">
+                <th className="px-8 py-5 text-[9px] font-bold uppercase text-text-secondary tracking-widest">Identidad</th>
+                <th className="px-8 py-5 text-[9px] font-bold uppercase text-text-secondary tracking-widest">Registro</th>
+                <th className="px-8 py-5 text-[9px] font-bold uppercase text-text-secondary tracking-widest text-center">Frecuencia</th>
+                <th className="px-8 py-5 text-[9px] font-bold uppercase text-text-secondary tracking-widest text-center">LTV (Gasto)</th>
+                <th className="px-8 py-5 text-[9px] font-bold uppercase text-text-secondary tracking-widest text-center">Estatus</th>
+                <th className="px-8 py-5 text-[9px] font-bold uppercase text-text-secondary tracking-widest text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-black/[0.02] dark:divide-white/[0.02]">
+              {filteredClients.map(client => (
+                <tr
+                  key={client.id}
+                  onClick={() => setSelectedClientId(client.id)}
+                  className="hover:bg-black/[0.01] dark:hover:bg-white/[0.01] transition-colors cursor-pointer group"
+                >
+                  <td className="px-8 py-5">
+                    <div className="flex items-center gap-4">
+                      <div className="size-10 rounded-xl bg-neon/10 text-neon flex items-center justify-center font-black text-sm border border-neon/5 italic uppercase">
+                        {client.name.charAt(0)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-[12px] font-bold dark:text-white uppercase italic tracking-tight">{client.name}</p>
+                          {client.is_vip && <span className="text-[8px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-md font-bold uppercase tracking-widest">VIP</span>}
+                        </div>
+                        <p className="text-[10px] text-text-secondary font-semibold opacity-40 uppercase tracking-tighter">{client.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-8 py-5 text-[11px] font-bold dark:text-white/60">{client.join_date}</td>
+                  <td className="px-8 py-5 text-center text-[11px] font-bold dark:text-white">{client.orders_count} ord.</td>
+                  <td className="px-8 py-5 text-center text-[11px] font-black text-neon">${client.total_spent.toFixed(2)}</td>
+                  <td className="px-8 py-5 text-center">
+                    <span className={`px-2 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-widest border ${client.status === 'active' ? 'bg-neon/5 text-neon border-neon/10' : 'bg-primary/5 text-primary border-primary/10'}`}>
+                      {client.status === 'active' ? 'Activo' : 'Bloqueado'}
+                    </span>
+                  </td>
+                  <td className="px-8 py-5 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openWalletModal(client); }}
+                        className="size-8 rounded-lg bg-accent/10 text-accent hover:bg-accent hover:text-black transition-all flex items-center justify-center"
+                        title="Gestionar Saldo"
+                      >
+                        <span className="material-symbols-outlined text-sm">account_balance_wallet</span>
+                      </button>
+                      <button className="text-text-secondary hover:text-neon transition-colors">
+                        <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Expediente del Cliente (Drawer Lateral) */}
+      <div className={`fixed inset-y-0 right-0 z-[150] w-full max-w-[550px] bg-white dark:bg-surface-dark border-l border-black/[0.04] dark:border-white/[0.04] shadow-2xl transition-transform duration-500 ease-out flex flex-col ${selectedClientId ? 'translate-x-0' : 'translate-x-full'}`}>
+        {selectedClient && (
+          <>
+            <div className="p-8 flex justify-between items-start border-b border-black/[0.02] dark:border-white/[0.02]">
+              <div className="flex gap-5 items-center">
+                <div className="size-16 rounded-2xl bg-neon/10 text-neon flex items-center justify-center font-black text-2xl italic border border-neon/5 shadow-neon-soft">
+                  {selectedClient.name.charAt(0)}
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black italic-black dark:text-white uppercase tracking-tighter leading-none">{selectedClient.name}</h3>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase border ${selectedClient.status === 'active' ? 'bg-neon/5 text-neon border-neon/10' : 'bg-primary/5 text-primary border-primary/10'}`}>{selectedClient.status}</span>
+                    <span className="text-[10px] text-text-secondary font-bold uppercase opacity-40">ID: {selectedClient.id}</span>
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setSelectedClientId(null)} className="size-10 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] flex items-center justify-center text-text-secondary hover:text-primary transition-colors">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-8 space-y-10 no-scrollbar pb-40">
+              {/* Resumen Operativo */}
+              <div className="grid grid-cols-2 gap-4">
+                <MetricBlock label="Total Gastado" value={`$${selectedClient.total_spent.toFixed(2)}`} icon="payments" color="text-neon" />
+                <MetricBlock label="Puntos de Inteligencia" value={selectedClient.points_balance.toString()} icon="loyalty" color="text-accent" />
+                <MetricBlock label="Última Incursión" value={selectedClient.last_visit} icon="schedule" />
+                <MetricBlock label="Ticket Promedio" value={`$${(selectedClient.total_spent / selectedClient.orders_count).toFixed(2)}`} icon="calculate" />
+              </div>
+
+              {/* Acciones de Fidelidad */}
+              <div className="bg-black/[0.01] dark:bg-white/[0.01] p-6 rounded-3xl border border-black/[0.03] dark:border-white/[0.03] space-y-6">
+                <div className="flex justify-between items-center border-b border-black/[0.02] dark:border-white/[0.02] pb-4">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest dark:text-white italic">Protocolo de Fidelización</h4>
+                  <button className="text-[9px] font-bold text-accent uppercase flex items-center gap-1"><span className="material-symbols-outlined text-sm">history</span> Ver Transacciones</button>
+                </div>
+                <div className="flex gap-3">
+                  <button className="flex-1 py-3 rounded-xl bg-white dark:bg-white/5 border border-black/[0.05] dark:border-white/[0.05] text-[10px] font-bold uppercase text-text-main dark:text-white hover:border-neon transition-all">Sumar Puntos</button>
+                  <button className="flex-1 py-3 rounded-xl bg-white dark:bg-white/5 border border-black/[0.05] dark:border-white/[0.05] text-[10px] font-bold uppercase text-text-main dark:text-white hover:border-accent transition-all">Otorgar Regalo</button>
+                </div>
+              </div>
+
+              {/* Historial de Actividad (Mock) */}
+              <div className="space-y-6">
+                <h4 className="text-[10px] font-black uppercase tracking-widest dark:text-white italic border-b border-black/[0.02] pb-4">Timeline Inmutable</h4>
+                <div className="space-y-6 relative before:absolute before:inset-y-0 before:left-3 before:w-px before:bg-black/[0.05] dark:before:bg-white/[0.05]">
+                  <ActivityItem label="Pedido Entregado" time="Hace 15 min" detail="Pedido #592 — $12.50 via MP" />
+                  <ActivityItem label="Puntos Otorgados" time="Hace 15 min" detail="+125 pts acreditados automáticamente" />
+                  <ActivityItem label="Inicio de Sesión" time="Hace 1 hora" detail="Escaneo de Mesa 01 — Terminal Alpha" />
+                  {selectedClient.notes.map(note => (
+                    <ActivityItem key={note.id} label="Nota Interna" time={note.timestamp} detail={`"${note.content}" — ${note.staff_name}`} isNote />
+                  ))}
+                </div>
+              </div>
+
+              {/* Notas del Staff */}
+              <div className="space-y-4">
+                <label className="text-[10px] font-black uppercase text-text-secondary ml-1 opacity-60">Observaciones del Comando (Interno)</label>
+                <textarea className="w-full h-32 p-5 rounded-2xl bg-black/[0.02] dark:bg-white/[0.05] border border-black/[0.05] dark:border-white/[0.05] text-[11px] font-bold outline-none focus:ring-2 focus:ring-neon/10 transition-all" placeholder="Añadir contexto sobre este cliente..."></textarea>
+              </div>
+            </div>
+
+            {/* Acciones Críticas (Fijo al final) */}
+            <div className="absolute bottom-0 left-0 right-0 p-8 bg-white dark:bg-surface-dark border-t border-black/[0.05] flex gap-4 backdrop-blur-md">
+              <button
+                onClick={() => toggleBlockStatus(selectedClient.id)}
+                className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${selectedClient.status === 'active' ? 'bg-primary/10 text-primary hover:bg-primary hover:text-white' : 'bg-neon/10 text-neon hover:bg-neon hover:text-black'}`}
+              >
+                {selectedClient.status === 'active' ? 'Bloquear Objetivo' : 'Desbloquear Objetivo'}
+              </button>
+              <button className="flex-1 py-4 rounded-2xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.05] text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-primary">Eliminar Registro</button>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Backdrop for Drawer */}
+      {selectedClientId && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[140]" onClick={() => setSelectedClientId(null)}></div>
+      )}
+
+      {/* MODAL: INVITAR MIEMBRO */}
+      {showInviteModal && (
+        <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/95 backdrop-blur-sm" onClick={() => setShowInviteModal(false)}></div>
+          <div className="relative bg-[#0D0F0D] border border-white/10 w-full max-w-md p-8 rounded-[2rem] shadow-2xl animate-in zoom-in-95">
+            <div className="flex justify-between items-start mb-6">
+              <div className="space-y-1">
+                <h3 className="text-2xl font-black uppercase text-white italic-black tracking-tighter">INVITAR <span className="text-neon">MIEMBRO</span></h3>
+                <p className="text-[9px] font-bold text-text-secondary uppercase tracking-widest opacity-60">Reclutamiento de Clientes</p>
+              </div>
+              <button onClick={() => setShowInviteModal(false)} className="size-8 rounded-full bg-white/5 flex items-center justify-center text-white/30 hover:text-white">
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            <div className="flex bg-white/5 p-1 rounded-xl mb-8">
+              <button
+                onClick={() => setInviteTab('email')}
+                className={`flex-1 py-3 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${inviteTab === 'email' ? 'bg-neon text-black shadow-neon-soft' : 'text-white/40 hover:text-white'}`}
+              >
+                Protocolo Email
+              </button>
+              <button
+                onClick={() => setInviteTab('link')}
+                className={`flex-1 py-3 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${inviteTab === 'link' ? 'bg-neon text-black shadow-neon-soft' : 'text-white/40 hover:text-white'}`}
+              >
+                Enlace Público
+              </button>
+            </div>
+
+            {inviteTab === 'email' && (
+              <div className="space-y-6">
+                {inviteSentSuccess ? (
+                  <div className="py-10 flex flex-col items-center justify-center text-center animate-in fade-in">
+                    <div className="size-16 rounded-full bg-neon/10 border border-neon/30 text-neon flex items-center justify-center mb-4">
+                      <span className="material-symbols-outlined text-3xl">mark_email_read</span>
+                    </div>
+                    <h4 className="text-lg font-black text-white uppercase italic">Invitación Enviada</h4>
+                    <p className="text-[9px] font-bold text-text-secondary uppercase mt-2 max-w-[200px]">El usuario recibirá instrucciones de acceso en breve.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest ml-1">Email del Destinatario</label>
+                      <input
+                        autoFocus
+                        value={inviteEmail}
+                        onChange={e => setInviteEmail(e.target.value)}
+                        className="w-full h-12 px-5 rounded-2xl bg-white/[0.03] border border-white/10 text-[11px] font-bold text-white uppercase outline-none focus:ring-1 focus:ring-neon/30 placeholder:text-white/10 transition-all"
+                        placeholder="CLIENTE@EMAIL.COM"
+                      />
+                    </div>
+                    <button
+                      onClick={handleSendInvite}
+                      disabled={!inviteEmail || isSendingInvite}
+                      className="w-full py-4 bg-white text-black rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
+                    >
+                      {isSendingInvite ? (
+                        <>
+                          <div className="size-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
+                          <span>Enviando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Enviar Invitación</span>
+                          <span className="material-symbols-outlined text-sm">send</span>
+                        </>
+                      )}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+
+            {inviteTab === 'link' && (
+              <div className="space-y-6 animate-in slide-in-from-right-2">
+                <div className="p-6 bg-white/[0.03] border border-dashed border-white/10 rounded-2xl text-center space-y-4">
+                  <div className="size-12 mx-auto bg-white/5 rounded-xl flex items-center justify-center text-white/20">
+                    <span className="material-symbols-outlined text-2xl">qr_code_2</span>
+                  </div>
+                  <p className="text-[9px] font-bold text-text-secondary uppercase leading-relaxed max-w-[240px] mx-auto">Comparte este enlace único para que los clientes se registren directamente en este nodo.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest ml-1">Enlace de Reclutamiento</label>
+                  <div className="flex gap-2">
+                    <div className="flex-1 h-12 px-5 rounded-2xl bg-black/40 border border-white/10 flex items-center text-[10px] font-mono text-neon truncate">
+                      {inviteLink}
+                    </div>
+                    <button
+                      onClick={handleCopyLink}
+                      className={`size-12 rounded-2xl flex items-center justify-center border transition-all ${isLinkCopied ? 'bg-neon border-neon text-black' : 'bg-white/5 border-white/10 text-white hover:bg-white/10'}`}
+                    >
+                      <span className="material-symbols-outlined text-lg">{isLinkCopied ? 'check' : 'content_copy'}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: WALLET / SALDO */}
+      {showWalletModal && walletClient && (
+        <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/95 backdrop-blur-sm" onClick={() => setShowWalletModal(false)}></div>
+          <div className="relative bg-[#0D0F0D] border border-white/10 w-full max-w-lg p-8 rounded-[2rem] shadow-2xl animate-in zoom-in-95">
+            <div className="flex justify-between items-start mb-6">
+              <div className="space-y-1">
+                <h3 className="text-2xl font-black uppercase text-white italic-black tracking-tighter">GESTIÓN DE <span className="text-accent">SALDO</span></h3>
+                <p className="text-[9px] font-bold text-text-secondary uppercase tracking-widest opacity-60">{walletClient.name} — {walletClient.email}</p>
+              </div>
+              <button onClick={() => setShowWalletModal(false)} className="size-8 rounded-full bg-white/5 flex items-center justify-center text-white/30 hover:text-white">
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            {/* Current Balance */}
+            <div className="bg-accent/10 border border-accent/20 rounded-2xl p-6 mb-6 text-center">
+              <p className="text-[9px] font-black uppercase text-accent/60 tracking-widest mb-1">Saldo Actual</p>
+              <p className="text-4xl font-black italic text-accent">${walletBalance.toFixed(2)}</p>
+            </div>
+
+            {/* Add Balance Form */}
+            <div className="space-y-4 mb-6">
+              <div className="space-y-2">
+                <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest ml-1">Monto a Cargar ($)</label>
+                <input
+                  type="number"
+                  value={walletAmount}
+                  onChange={e => setWalletAmount(e.target.value)}
+                  min="0.01"
+                  step="0.01"
+                  className="w-full h-14 px-6 rounded-2xl bg-white/[0.03] border border-white/10 text-xl font-black text-accent text-center outline-none focus:ring-1 focus:ring-accent/30 placeholder:text-white/10 transition-all"
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest ml-1">Motivo / Referencia (Opcional)</label>
+                <input
+                  type="text"
+                  value={walletDescription}
+                  onChange={e => setWalletDescription(e.target.value)}
+                  className="w-full h-12 px-5 rounded-2xl bg-white/[0.03] border border-white/10 text-[11px] font-bold text-white uppercase outline-none focus:ring-1 focus:ring-accent/30 placeholder:text-white/10 transition-all"
+                  placeholder="Ej: Carga efectivo caja 1"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleAddBalance}
+              disabled={isLoadingWallet || !walletAmount || parseFloat(walletAmount) <= 0}
+              className="w-full py-4 bg-accent text-black rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3 mb-6"
+            >
+              {isLoadingWallet ? (
+                <>
+                  <div className="size-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
+                  <span>Procesando...</span>
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-lg">add_circle</span>
+                  <span>Confirmar Carga de ${walletAmount || '0.00'}</span>
+                </>
+              )}
+            </button>
+
+            {/* Recent Transactions */}
+            {walletTransactions.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-[9px] font-black uppercase text-text-secondary tracking-widest">Últimas Transacciones</p>
+                <div className="max-h-40 overflow-y-auto space-y-2 no-scrollbar">
+                  {walletTransactions.map((tx: any) => (
+                    <div key={tx.id} className="flex justify-between items-center p-3 bg-white/[0.02] rounded-xl border border-white/5">
+                      <div>
+                        <p className="text-[10px] font-bold text-white uppercase">{tx.description || tx.type}</p>
+                        <p className="text-[8px] text-white/30">{new Date(tx.created_at).toLocaleString()}</p>
+                      </div>
+                      <span className={`text-sm font-black ${tx.amount >= 0 ? 'text-neon' : 'text-primary'}`}>
+                        {tx.amount >= 0 ? '+' : ''}{tx.amount.toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const FilterTab: React.FC<{ active: boolean, onClick: () => void, children: React.ReactNode }> = ({ active, onClick, children }) => (
+  <button
+    onClick={onClick}
+    className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${active ? 'bg-primary dark:bg-neon/10 text-white dark:text-neon border border-primary dark:border-neon/20 shadow-soft' : 'text-text-secondary hover:text-primary'}`}
+  >
+    {children}
+  </button>
+);
+
+const MetricBlock: React.FC<{ label: string, value: string, icon: string, color?: string }> = ({ label, value, icon, color }) => (
+  <div className="p-5 rounded-3xl bg-black/[0.01] dark:bg-white/[0.01] border border-black/[0.03] dark:border-white/[0.03]">
+    <div className="flex items-center gap-2 opacity-40 mb-2">
+      <span className="material-symbols-outlined text-[14px]">{icon}</span>
+      <span className="text-[8px] font-black uppercase tracking-widest">{label}</span>
+    </div>
+    <p className={`text-lg font-black italic tracking-tighter ${color || 'dark:text-white'}`}>{value}</p>
+  </div>
+);
+
+const ActivityItem: React.FC<{ label: string, time: string, detail: string, isNote?: boolean }> = ({ label, time, detail, isNote }) => (
+  <div className="relative pl-10 group">
+    <div className={`absolute left-0 top-0 size-6 rounded-full flex items-center justify-center border border-white dark:border-surface-dark z-10 ${isNote ? 'bg-accent/20 text-accent' : 'bg-black/5 text-text-secondary'}`}>
+      <span className="material-symbols-outlined text-[10px]">{isNote ? 'edit_note' : 'fiber_manual_record'}</span>
+    </div>
+    <div className="flex justify-between items-baseline mb-1">
+      <p className={`text-[10px] font-black uppercase tracking-tighter italic ${isNote ? 'text-accent' : 'dark:text-white'}`}>{label}</p>
+      <p className="text-[8px] font-bold text-text-secondary uppercase opacity-40">{time}</p>
+    </div>
+    <p className="text-[10px] text-text-secondary font-medium opacity-60 leading-tight uppercase tracking-tight">{detail}</p>
+  </div>
+);
+
+export default Clients;

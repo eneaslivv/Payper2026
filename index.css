@@ -1,0 +1,117 @@
+/* Custom styles - Tailwind is loaded via CDN in index.html */
+
+/* Custom Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
+
+/* Custom Utilities */
+.italic-black {
+  font-style: italic;
+  font-weight: 900;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.shadow-neon-soft {
+  box-shadow: 0 0 30px rgba(74, 222, 128, 0.15);
+}
+
+.shadow-accent-glow {
+  box-shadow: 0 0 30px rgba(180, 150, 92, 0.3);
+}
+
+.shadow-accent-soft {
+  box-shadow: 0 0 40px rgba(180, 150, 92, 0.1);
+}
+
+.subtle-border {
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.hover-red-soft {
+  background-color: rgba(239, 68, 68, 0.2);
+}
+
+/* Animation Keyframes */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-from-bottom {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-from-right {
+  from {
+    transform: translateX(10px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes zoom-in {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Animation Classes */
+.animate-in {
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  animation-fill-mode: both;
+}
+
+.fade-in {
+  animation-name: fade-in;
+}
+
+.slide-in-from-bottom-2 {
+  animation-name: slide-in-from-bottom;
+}
+
+.slide-in-from-right-4 {
+  animation-name: slide-in-from-right;
+}
+
+.zoom-in-95 {
+  animation-name: zoom-in;
+}
+
+.duration-500 {
+  animation-duration: 500ms;
+}
+
+.duration-700 {
+  animation-duration: 700ms;
+}
