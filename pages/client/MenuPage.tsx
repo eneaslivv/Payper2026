@@ -12,6 +12,12 @@ const MenuPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Get theme from store or use defaults
+  const theme = store?.menu_theme || {};
+  const accentColor = theme.accentColor || '#36e27b';
+  const fontClass = theme.fontStyle === 'serif' ? 'font-serif' : theme.fontStyle === 'mono' ? 'font-mono' : 'font-sans';
+  const borderRadius = theme.borderRadius === 'none' ? 'rounded-none' : theme.borderRadius === 'md' ? 'rounded-lg' : theme.borderRadius === 'full' ? 'rounded-[2rem]' : 'rounded-xl';
+
   // Computar Categorías desde los productos
   const categories = useMemo(() => {
     const cats = Array.from(new Set(products.map(p => p.category)));
@@ -35,17 +41,20 @@ const MenuPage: React.FC = () => {
 
   if (!store) return null; // Should be handled by Layout
 
+  // Dynamic style for accent color
+  const accentStyle = { '--accent-color': accentColor } as React.CSSProperties;
+
   return (
-    <div className="flex flex-col pb-48 min-h-screen bg-black font-display">
+    <div className={`flex flex-col pb-48 min-h-screen bg-black ${fontClass}`} style={accentStyle}>
       {/* HEADER OPTIMIZADO PARA IPHONE/PWA */}
       <header className="sticky top-0 z-50 bg-black/95 backdrop-blur-3xl border-b border-white/5 pt-[calc(1.2rem+env(safe-area-inset-top))] px-6 pb-6">
         <div className="relative z-10 flex items-center justify-between">
           <div className="flex flex-col">
             <h1 className="text-[28px] font-black leading-[0.85] tracking-tighter uppercase text-white italic">
-              {store.name} <br /> <span className="text-primary/90 text-[24px]">Menu</span>
+              {store.name} <br /> <span style={{ color: accentColor }} className="text-[24px]">Menu</span>
             </h1>
             <div className="mt-3 flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_#36e27b] animate-pulse"></div>
+              <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: accentColor, boxShadow: `0 0 8px ${accentColor}` }}></div>
               <span className="text-[7px] font-black uppercase text-white/40 tracking-[0.2em]">SISTEMA: ONLINE</span>
             </div>
           </div>
@@ -117,8 +126,8 @@ const MenuPage: React.FC = () => {
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
                 className={`shrink-0 h-9 px-6 rounded-xl text-[8px] font-black uppercase tracking-[0.2em] transition-all duration-500 border ${selectedCategory === cat
-                    ? 'bg-primary border-primary text-black shadow-[0_8px_20px_rgba(54,226,123,0.2)]'
-                    : 'bg-transparent border-white/5 text-white/20 hover:text-white/40'
+                  ? 'bg-primary border-primary text-black shadow-[0_8px_20px_rgba(54,226,123,0.2)]'
+                  : 'bg-transparent border-white/5 text-white/20 hover:text-white/40'
                   }`}
               >
                 {cat}
@@ -191,8 +200,8 @@ const MinimalCard: React.FC<{ item: MenuItem, onClick: () => void }> = ({ item, 
   <div
     onClick={item.isOutOfStock ? undefined : onClick}
     className={`group relative flex items-center gap-5 p-4 rounded-[1.8rem] border transition-all duration-700 overflow-hidden ${item.isOutOfStock
-        ? 'bg-black opacity-20 cursor-not-allowed grayscale'
-        : 'bg-[#080808] hover:bg-white/[0.01] border-white/[0.04] active:scale-[0.98] shadow-2xl'
+      ? 'bg-black opacity-20 cursor-not-allowed grayscale'
+      : 'bg-[#080808] hover:bg-white/[0.01] border-white/[0.04] active:scale-[0.98] shadow-2xl'
       }`}
   >
     <div

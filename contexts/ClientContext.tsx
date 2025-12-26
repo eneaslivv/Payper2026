@@ -4,12 +4,33 @@ import { supabase } from '../lib/supabase';
 import { CartItem, MenuItem, UserProfile, OrderStatus } from '../components/client/types';
 import { INITIAL_USER } from '../components/client/constants';
 
+interface MenuTheme {
+    accentColor?: string;
+    borderRadius?: 'none' | 'md' | 'xl' | 'full';
+    fontStyle?: 'modern' | 'serif' | 'mono';
+    cardStyle?: 'glass' | 'solid' | 'minimal' | 'border';
+    layout?: 'grid' | 'list';
+    headerImage?: string;
+    showImages?: boolean;
+    showPrices?: boolean;
+}
+
+interface MenuLogic {
+    autoConfirm?: boolean;
+    taxInclusive?: boolean;
+    allowTableOrder?: boolean;
+    allowTakeaway?: boolean;
+    requireAuth?: boolean; // If true, require login before checkout
+}
+
 interface Store {
     id: string;
     name: string;
     slug: string;
     logo_url?: string;
-    theme_color?: string; // Hex
+    theme_color?: string;
+    menu_theme?: MenuTheme;
+    menu_logic?: MenuLogic;
 }
 
 interface ClientContextType {

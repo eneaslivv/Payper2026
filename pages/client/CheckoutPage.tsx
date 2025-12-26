@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useClient } from '../../contexts/ClientContext'; // Import context
 import { supabase } from '../../lib/supabase';
@@ -23,10 +23,22 @@ const CheckoutPage: React.FC = () => {
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [tempValue, setTempValue] = useState('');
 
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!user) {
+      navigate(`/m/${slug}/auth`);
+    }
+  }, [user, navigate, slug]);
+
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const discount = isRedeemingPoints ? 2.00 : 0;
   const tax = subtotal * 0.08;
   const total = subtotal + tax - discount;
+
+  // Don't render if not logged in
+  if (!user) {
+    return null;
+  }
 
   const handlePlaceOrder = async () => {
     if (!store?.id) return;
