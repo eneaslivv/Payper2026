@@ -91,8 +91,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     .from('inventory_items')
                     .select('*')
                     .eq('store_id', store.id)
-                    .eq('is_menu_visible', true)
-                    .eq('is_active', true);
+                    .eq('is_menu_visible', true);
 
                 if (error) throw error;
 
