@@ -433,6 +433,43 @@ const MainRouter: React.FC = () => {
     );
   }
 
+  // PUBLIC ROUTES - These must work regardless of auth status!
+  // Check BEFORE any auth logic so logged-in users can also access client menu
+  const isClientMenu = window.location.hash.includes('#/m/');
+  const isOrderRoute = window.location.hash.includes('#/orden/');
+
+  if (isClientMenu || isOrderRoute) {
+    return (
+      <Router>
+        <Routes>
+          {/* Client Menu Module */}
+          <Route path="/m/:slug" element={
+            <ClientProvider>
+              <ClientLayout />
+            </ClientProvider>
+          }>
+            <Route index element={<ClientMenuPage />} />
+            <Route path="product/:id" element={<ClientProductPage />} />
+            <Route path="cart" element={<ClientCartPage />} />
+            <Route path="checkout" element={<ClientCheckoutPage />} />
+            <Route path="tracking/:orderId" element={<ClientTrackingPage />} />
+            <Route path="auth" element={<div className="h-screen flex items-center justify-center text-white bg-black">Auth Page (WIP)</div>} />
+            <Route path="profile" element={<div className="h-screen flex items-center justify-center text-white bg-black">Profile Page (WIP)</div>} />
+            <Route path="loyalty" element={<div className="h-screen flex items-center justify-center text-white bg-black">Loyalty Page (WIP)</div>} />
+          </Route>
+
+          {/* Order Confirmation Routes */}
+          <Route path="/orden/:orderId/confirmado" element={<OrderConfirmationPage />} />
+          <Route path="/orden/:orderId/error" element={<OrderConfirmationPage />} />
+          <Route path="/orden/:orderId/pendiente" element={<OrderConfirmationPage />} />
+
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    );
+  }
+
   // IF we are in recovery mode OR no user, show Login
   if (!user || isRecovery) {
     // Permitir acceso a JoinTeam sin login
