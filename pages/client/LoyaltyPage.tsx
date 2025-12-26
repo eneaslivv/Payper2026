@@ -5,12 +5,16 @@ import { Voucher } from '../../components/client/types';
 import LoyaltyLockedView from '../../components/client/LoyaltyLockedView';
 
 const LoyaltyPage: React.FC = () => {
-  const { user, setUser } = useClient();
+  const { user, setUser, store } = useClient();
   const [activeTab, setActiveTab] = useState<'rewards' | 'vouchers' | 'benefits'>('rewards');
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [showQR, setShowQR] = useState<{ isOpen: boolean; data: string; title: string }>({ isOpen: false, data: '', title: '' });
   const [progressWidth, setProgressWidth] = useState(0);
+
+  // Get accent color from store theme
+  const accentColor = store?.menu_theme?.accentColor || '#4ADE80';
+  const storeName = store?.name || 'Brew Club';
 
   if (!user) {
     return (
@@ -78,16 +82,20 @@ const LoyaltyPage: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen pb-32 bg-background-light dark:bg-background-dark font-display overflow-x-hidden">
-      <header className="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-xl px-6 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-6 flex justify-between items-center border-b border-gray-200 dark:border-white/5">
+      <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-xl px-6 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-6 flex justify-between items-center border-b border-white/5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary ring-1 ring-primary/20">
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center ring-1"
+            style={{ backgroundColor: `${accentColor}20`, color: accentColor, ringColor: `${accentColor}33` }}
+          >
             <span className="material-symbols-outlined fill-icon">loyalty</span>
           </div>
-          <h1 className="text-xl font-black tracking-tight uppercase italic">Brew Club</h1>
+          <h1 className="text-xl font-black tracking-tight uppercase italic text-white">{storeName} Club</h1>
         </div>
         <button
           onClick={() => setShowQR({ isOpen: true, data: user.id, title: 'Miembro del Club' })}
-          className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-primary active:scale-90 transition-transform border border-white/5 shadow-xl"
+          className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center active:scale-90 transition-transform border border-white/5 shadow-xl"
+          style={{ color: accentColor }}
         >
           <span className="material-symbols-outlined">qr_code</span>
         </button>
@@ -147,8 +155,8 @@ const LoyaltyPage: React.FC = () => {
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`flex-1 py-4 px-2 rounded-[2rem] text-[9px] font-black uppercase tracking-widest transition-all duration-500 ${activeTab === tab
-                  ? 'bg-primary text-black shadow-[0_10px_20px_rgba(54,226,123,0.3)]'
-                  : 'text-slate-500 hover:text-slate-300'
+                ? 'bg-primary text-black shadow-[0_10px_20px_rgba(54,226,123,0.3)]'
+                : 'text-slate-500 hover:text-slate-300'
                 }`}
             >
               {tab === 'rewards' ? 'Canjes' : tab === 'vouchers' ? 'Mis Vales' : 'Beneficios'}
@@ -178,8 +186,8 @@ const LoyaltyPage: React.FC = () => {
                     disabled={!canAfford}
                     onClick={() => handleRedeem(reward.cost, reward.name)}
                     className={`h-14 w-14 rounded-2xl flex items-center justify-center transition-all duration-500 ${canAfford
-                        ? 'bg-primary text-black shadow-[0_10px_25px_rgba(54,226,123,0.25)]'
-                        : 'bg-slate-100 dark:bg-white/5 text-slate-400 opacity-50'
+                      ? 'bg-primary text-black shadow-[0_10px_25px_rgba(54,226,123,0.25)]'
+                      : 'bg-slate-100 dark:bg-white/5 text-slate-400 opacity-50'
                       }`}
                   >
                     <span className="material-symbols-outlined font-black text-2xl">redeem</span>

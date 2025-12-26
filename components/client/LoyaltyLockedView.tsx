@@ -1,6 +1,7 @@
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useClient } from '../../contexts/ClientContext';
 
 interface LoyaltyLockedViewProps {
   title: string;
@@ -9,6 +10,11 @@ interface LoyaltyLockedViewProps {
 
 const LoyaltyLockedView: React.FC<LoyaltyLockedViewProps> = ({ title, icon }) => {
   const navigate = useNavigate();
+  const { slug } = useParams();
+  const { store } = useClient();
+
+  // Get accent color from store theme
+  const accentColor = store?.menu_theme?.accentColor || '#4ADE80';
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] p-8 text-center animate-in fade-in duration-700">
@@ -16,8 +22,11 @@ const LoyaltyLockedView: React.FC<LoyaltyLockedViewProps> = ({ title, icon }) =>
         <div className="w-24 h-24 rounded-[2rem] bg-white/5 flex items-center justify-center text-slate-700">
           <span className="material-symbols-outlined text-5xl">{icon}</span>
         </div>
-        <div className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-background-dark border-4 border-background-dark flex items-center justify-center">
-          <div className="w-full h-full rounded-full bg-primary/20 flex items-center justify-center text-primary">
+        <div className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-black border-4 border-black flex items-center justify-center">
+          <div
+            className="w-full h-full rounded-full flex items-center justify-center"
+            style={{ backgroundColor: `${accentColor}33`, color: accentColor }}
+          >
             <span className="material-symbols-outlined text-xl font-black">lock</span>
           </div>
         </div>
@@ -28,9 +37,10 @@ const LoyaltyLockedView: React.FC<LoyaltyLockedViewProps> = ({ title, icon }) =>
         Inicia sesión para realizar pedidos desde tu mesa y acumular puntos con cada compra.
       </p>
 
-      <button 
-        onClick={() => navigate('/auth')}
-        className="px-10 h-14 rounded-full bg-primary text-black font-black uppercase tracking-widest shadow-lg shadow-primary/20 active:scale-95 transition-all"
+      <button
+        onClick={() => navigate(`/m/${slug}/auth`)}
+        className="px-10 h-14 rounded-full text-black font-black uppercase tracking-widest active:scale-95 transition-all"
+        style={{ backgroundColor: accentColor, boxShadow: `0 10px 25px ${accentColor}33` }}
       >
         Iniciar Sesión
       </button>

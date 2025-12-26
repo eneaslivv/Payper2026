@@ -1,17 +1,17 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Outlet, useLocation, useParams } from 'react-router-dom';
 import { ClientProvider, useClient } from '../../contexts/ClientContext';
 import BottomNav from './BottomNav';
 import ActiveOrderWidget from './ActiveOrderWidget';
 
 const ClientLayoutContent: React.FC = () => {
-    const { store, loadingStore, error, hasActiveOrder, user, isHubOpen, setIsHubOpen } = useClient();
+    const { store, loadingStore, error, hasActiveOrder, isHubOpen, setIsHubOpen } = useClient();
     const location = useLocation();
-    const { slug } = useParams<{ slug: string }>();
 
-    // Hide nav logic from original App.tsx - Updated for new routes
-    // Routes are now /m/:slug/...
-    // We check if the last part of path matches hidden routes
+    // Get accent color from store theme
+    const accentColor = store?.menu_theme?.accentColor || '#4ADE80';
+
+    // Hide nav logic - Updated for new routes
     const isHiddenRoute = () => {
         const path = location.pathname;
         if (path.includes('/checkout')) return true;
@@ -24,8 +24,16 @@ const ClientLayoutContent: React.FC = () => {
 
     if (loadingStore) return (
         <div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-black gap-4">
-            <div className="w-12 h-12 border-4 border-[#36e27b]/20 border-t-[#36e27b] rounded-full animate-spin"></div>
-            <p className="text-[#36e27b] font-mono text-xs uppercase tracking-widest animate-pulse">Cargando Experiencia</p>
+            <div
+                className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin"
+                style={{ borderColor: `${accentColor}33`, borderTopColor: accentColor }}
+            />
+            <p
+                className="font-mono text-xs uppercase tracking-widest animate-pulse"
+                style={{ color: accentColor }}
+            >
+                Cargando Sistema...
+            </p>
         </div>
     );
 
@@ -37,7 +45,10 @@ const ClientLayoutContent: React.FC = () => {
     );
 
     return (
-        <div className="relative h-[100dvh] w-full max-w-md mx-auto bg-black shadow-2xl overflow-hidden flex flex-col font-display selection:bg-[#36e27b] selection:text-black">
+        <div
+            className="relative h-[100dvh] w-full max-w-md mx-auto bg-black shadow-2xl overflow-hidden flex flex-col font-display"
+            style={{ '--accent-color': accentColor } as React.CSSProperties}
+        >
             {/* Main Content Area */}
             <div className="flex-1 overflow-y-auto no-scrollbar pb-24 relative z-10">
                 <Outlet />
@@ -54,7 +65,7 @@ const ClientLayoutContent: React.FC = () => {
                 />
             )}
 
-            {!isHiddenRoute() && <BottomNav activePath={location.pathname} />}
+            {!isHiddenRoute() && <BottomNav activePath={location.pathname} accentColor={accentColor} />}
         </div>
     );
 }
