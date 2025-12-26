@@ -306,30 +306,70 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                   <table className="w-full text-left">
                      <thead>
                         <tr className="border-b border-white/5 bg-white/[0.02]">
-                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">ID / Slug</th>
-                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Nombre</th>
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Local</th>
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Email Dueño</th>
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Creado</th>
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Estado</th>
                            <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Plan</th>
                            <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 text-right">Acciones</th>
                         </tr>
                      </thead>
                      <tbody className="divide-y divide-white/5">
                         {stores.map(store => (
-                           <tr key={store.id} className="hover:bg-white/[0.01] transition-colors group">
-                              <td className="p-4 font-mono text-[10px] text-zinc-600">{store.slug}</td>
+                           <tr key={store.id} className="hover:bg-white/[0.02] transition-colors group">
                               <td className="p-4">
-                                 <div className="font-bold text-white text-sm">{store.name}</div>
-                                 <div className="text-[10px] text-zinc-600">{store.id}</div>
+                                 <div className="flex items-center gap-3">
+                                    <div className="size-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center font-black italic text-sm">
+                                       {store.name?.charAt(0)?.toUpperCase() || '?'}
+                                    </div>
+                                    <div>
+                                       <div className="font-bold text-white text-sm">{store.name}</div>
+                                       <div className="text-[9px] text-zinc-600 font-mono">{store.slug}</div>
+                                    </div>
+                                 </div>
                               </td>
                               <td className="p-4">
-                                 <span className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-wider border ${store.plan === 'PRO' ? 'text-accent border-accent/30' :
-                                    store.plan === 'VIP' ? 'text-purple-400 border-purple-400/30' :
-                                       'text-zinc-500 border-zinc-500/30'
+                                 <div className="text-xs text-white/70 font-medium">{store.owner_email || '—'}</div>
+                              </td>
+                              <td className="p-4">
+                                 <div className="text-[10px] text-zinc-500">
+                                    {store.created_at ? new Date(store.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                                 </div>
+                              </td>
+                              <td className="p-4">
+                                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${store.onboarding_status === 'COMPLETED'
+                                       ? 'bg-neon/10 text-neon border border-neon/20'
+                                       : store.onboarding_status === 'PENDING'
+                                          ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                                          : 'bg-white/5 text-zinc-500 border border-white/10'
                                     }`}>
-                                    {store.plan}
+                                    <div className={`size-1.5 rounded-full ${store.onboarding_status === 'COMPLETED' ? 'bg-neon animate-pulse' :
+                                          store.onboarding_status === 'PENDING' ? 'bg-amber-500' : 'bg-zinc-500'
+                                       }`}></div>
+                                    {store.onboarding_status === 'COMPLETED' ? 'Activo' :
+                                       store.onboarding_status === 'PENDING' ? 'Pendiente' : 'Setup'}
                                  </span>
                               </td>
+                              <td className="p-4">
+                                 <button
+                                    onClick={() => { setPlanModalStore(store); setShowPlanModal(true); }}
+                                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all hover:scale-105 ${store.plan === 'PRO' ? 'text-accent border-accent/30 hover:bg-accent/10' :
+                                          store.plan === 'VIP' ? 'text-purple-400 border-purple-400/30 hover:bg-purple-400/10' :
+                                             'text-zinc-500 border-zinc-500/30 hover:bg-white/5'
+                                       }`}
+                                 >
+                                    {store.plan || 'FREE'}
+                                 </button>
+                              </td>
                               <td className="p-4 text-right">
-                                 <div className="flex items-center justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                 <div className="flex items-center justify-end gap-1.5">
+                                    <button
+                                       onClick={() => setSelectedStore(store)}
+                                       title="Configurar Local"
+                                       className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white transition-all"
+                                    >
+                                       <span className="material-symbols-outlined text-sm">settings</span>
+                                    </button>
                                     <button
                                        onClick={() => handleGenerateAccessLink(store.owner_email || '', store.id, store.name)}
                                        title="Generar Link de Acceso"
@@ -346,6 +386,7 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                                     </button>
                                     <button
                                        onClick={() => handleDeleteStore(store.id)}
+                                       title="Desactivar Local"
                                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 text-zinc-400 hover:bg-red-500/20 hover:text-red-500 transition-all"
                                     >
                                        <span className="material-symbols-outlined text-sm">delete</span>
