@@ -948,6 +948,12 @@ const InventoryManagement: React.FC = () => {
 
   // Calculate recipes at risk separately (after getRecipeAvailability is defined)
   const recipesAtRisk = useMemo(() => {
+    // Don't calculate if productRecipes hasn't loaded yet (prevents race condition)
+    if (!productRecipes || productRecipes.length === 0) {
+      console.log('⏳ Waiting for productRecipes to load...');
+      return 0;
+    }
+
     // Detect sellable items by checking if they have recipes (since item_type may not exist)
     const atRisk = items.filter(item => {
       // Check if this item has any recipes associated with it
@@ -958,7 +964,7 @@ const InventoryManagement: React.FC = () => {
       return availability.status === 'Critical';
     }).length;
 
-    console.log('⚠️ Recipes at risk:', atRisk);
+    console.log('⚠️ Recipes at risk:', atRisk, '(productRecipes loaded:', productRecipes.length, ')');
     return atRisk;
   }, [items, productRecipes]);
 
