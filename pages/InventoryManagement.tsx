@@ -390,7 +390,9 @@ const InventoryManagement: React.FC = () => {
         category_ids: i.category_id ? [i.category_id] : [],
         presentations: [],
         closed_packages: [],
-        open_packages: []
+        // Use open_packages directly from inventory_items table (JSONB column)
+        open_packages: i.open_packages || [],
+        open_count: i.open_count || 0
       }));
 
       // Transform Products
@@ -416,21 +418,27 @@ const InventoryManagement: React.FC = () => {
       }));
 
 
-      // Map real open_packages to items
+      // Map real open_packages to items (merge from separate table OR use JSONB column)
       const finalItems = [...transformedInsumos, ...transformedProducts].map(item => {
-        // Find all open packages for this item
+        // Find all open packages from separate table for this item
         const itemPackages = (openPackages || []).filter((pkg: any) => pkg.inventory_item_id === item.id);
 
-        return {
-          ...item,
-          open_count: itemPackages.length,
-          open_packages: itemPackages.map((pkg: any) => ({
-            id: pkg.id,
-            remaining: pkg.remaining,
-            package_capacity: pkg.package_capacity,
-            opened_at: pkg.opened_at
-          }))
-        };
+        // If separate table has data, use it. Otherwise, keep the JSONB column data.
+        if (itemPackages.length > 0) {
+          return {
+            ...item,
+            open_count: itemPackages.length,
+            open_packages: itemPackages.map((pkg: any) => ({
+              id: pkg.id,
+              remaining: pkg.remaining,
+              package_capacity: pkg.package_capacity,
+              opened_at: pkg.opened_at
+            }))
+          };
+        }
+
+        // Keep existing data from JSONB column (already set in transform)
+        return item;
       });
 
       setItems(finalItems);
