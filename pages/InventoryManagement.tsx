@@ -1401,7 +1401,7 @@ const InventoryManagement: React.FC = () => {
                         </td>
                         <td className="px-6 py-4">
                           {/* CELDA 2: Paquetes Abiertos con Información Detallada */}
-                          {item.item_type === 'ingredient' && (item.open_packages?.length > 0 || item.open_count > 0) ? (
+                          {(item.open_packages?.length > 0 || item.open_count > 0) ? (
                             <div className="space-y-2">
                               {item.open_packages?.slice(0, 3).map((pkg, idx) => {
                                 // Support both new format (package_capacity, remaining) and legacy (remaining_quantity)
