@@ -1,4 +1,5 @@
 
+// Triggering Vercel Redeploy: 2025-12-30T01:45:00
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
