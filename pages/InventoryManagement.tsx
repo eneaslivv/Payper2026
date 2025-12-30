@@ -948,11 +948,18 @@ const InventoryManagement: React.FC = () => {
 
   // Calculate recipes at risk separately (after getRecipeAvailability is defined)
   const recipesAtRisk = useMemo(() => {
-    return items.filter(item => {
-      if (item.item_type !== 'sellable') return false;
+    // Detect sellable items by checking if they have recipes (since item_type may not exist)
+    const atRisk = items.filter(item => {
+      // Check if this item has any recipes associated with it
+      const hasRecipe = productRecipes.some(pr => pr.product_id === item.id);
+      if (!hasRecipe) return false;
+
       const availability = getRecipeAvailability(item);
       return availability.status === 'Critical';
     }).length;
+
+    console.log('⚠️ Recipes at risk:', atRisk);
+    return atRisk;
   }, [items, productRecipes]);
 
   const handleUpdateItem = async () => {
