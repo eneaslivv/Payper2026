@@ -227,8 +227,13 @@ export interface ProductPresentation {
 }
 
 export interface OpenPackage {
+  id?: string;
   presentation_id: string;
-  remaining_quantity: number;
+  package_capacity: number; // Total capacity in base units (e.g., 1000 for 1L)
+  remaining: number; // Remaining quantity in base units
+  location?: string; // Bar/station name (for future multi-bar support)
+  opened_at?: string; // ISO timestamp
+  remaining_quantity: number; // Legacy field, kept for backwards compatibility
 }
 
 export interface ClosedPackageCount {
