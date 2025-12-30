@@ -278,6 +278,11 @@ const InventoryManagement: React.FC = () => {
             console.log(`[Inventory] Using cached data (${(age / 1000).toFixed(0)}s old)`);
             setCategories(cached.categories || []);
             setItems(cached.items || []);
+            // Also restore productRecipes from cache
+            if (cached.productRecipes && cached.productRecipes.length > 0) {
+              setProductRecipes(cached.productRecipes);
+              console.log(`[Inventory] Restored ${cached.productRecipes.length} recipes from cache`);
+            }
             setLoading(false);
             return; // EXIT EARLY
           }
@@ -431,11 +436,12 @@ const InventoryManagement: React.FC = () => {
       setItems(finalItems);
 
 
-      // 4. Save to Cache
+      // 4. Save to Cache (including productRecipes)
       localStorage.setItem(CACHE_KEY, JSON.stringify({
         timestamp: Date.now(),
         items: finalItems,
-        categories: mappedCategories
+        categories: mappedCategories,
+        productRecipes: recipesData || []
       }));
 
       console.log('[Inventory] Data refreshed and cached.');
