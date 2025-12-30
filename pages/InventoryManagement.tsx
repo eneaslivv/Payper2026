@@ -352,7 +352,8 @@ const InventoryManagement: React.FC = () => {
         fetchWithTimeout(`${baseUrl}/products?select=*,product_variants(*)&store_id=eq.${storeId}`),
         fetchWithTimeout(`${baseUrl}/categories?store_id=eq.${storeId}`),
         fetchWithTimeout(`${baseUrl}/open_packages?store_id=eq.${storeId}`),
-        fetchWithTimeout(`${baseUrl}/product_recipes?select=*,products!inner(store_id)&products.store_id=eq.${storeId}`)
+        // Load all product_recipes - will be filtered by product_id in frontend
+        fetchWithTimeout(`${baseUrl}/product_recipes?select=*`)
       ]);
 
       // Store recipes - debug log
