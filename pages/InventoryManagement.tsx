@@ -1066,7 +1066,7 @@ const InventoryManagement: React.FC = () => {
             COFFESQUAD INVENTORY SYSTEM
           </div>
           <h1 className="text-2xl font-black italic-black tracking-tighter text-text-main dark:text-white uppercase leading-none">
-            Control <span className="text-white/80">Operativo</span>
+            Control <span className="text-white/80">Operativo</span> <span className="text-[10px] text-neon ml-2">v0.1.0-FIX</span>
           </h1>
         </div>
         <div className="flex gap-2">
