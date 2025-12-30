@@ -1404,12 +1404,16 @@ const InventoryManagement: React.FC = () => {
                           {item.item_type === 'ingredient' && (item.open_packages?.length > 0 || item.open_count > 0) ? (
                             <div className="space-y-2">
                               {item.open_packages?.slice(0, 3).map((pkg, idx) => {
-                                const percentage = pkg.package_capacity ? Math.round((pkg.remaining / pkg.package_capacity) * 100) : 0;
+                                // Support both new format (package_capacity, remaining) and legacy (remaining_quantity)
+                                const capacity = pkg.package_capacity || 1000; // Default 1L if not specified
+                                const remaining = pkg.remaining ?? pkg.remaining_quantity ?? 0;
+                                const percentage = capacity ? Math.round((remaining / capacity) * 100) : 0;
                                 const barColor = percentage > 50 ? '#FFFFFF' : percentage > 20 ? '#A1A1A1' : '#404040';
                                 const glowColor = percentage > 50 ? 'shadow-[0_0_4px_rgba(255,255,255,0.3)]' : 'shadow-none';
 
                                 // Determine package size category for visual differentiation
-                                const isLarge = pkg.package_capacity >= 1000; // >= 1L
+                                const isLarge = capacity >= 1000; // >= 1L
+                                const hasCapacityInfo = pkg.package_capacity !== undefined;
                                 const barHeight = isLarge ? 'h-2' : 'h-1.5';
 
                                 return (
@@ -1419,7 +1423,11 @@ const InventoryManagement: React.FC = () => {
                                       <div className="flex items-center gap-1.5">
                                         {isLarge && <span className="material-symbols-outlined text-white/30 text-[10px]">inventory_2</span>}
                                         <span className="text-[9px] font-bold text-white/70">
-                                          {pkg.remaining}{item.unit_type} de {pkg.package_capacity}{item.unit_type}
+                                          {hasCapacityInfo ? (
+                                            <>{remaining}{item.unit_type} de {capacity}{item.unit_type}</>
+                                          ) : (
+                                            <>{remaining}{item.unit_type} abierto</>
+                                          )}
                                         </span>
                                       </div>
                                       <span className="text-[8px] font-black font-mono text-white/40">
