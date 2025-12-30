@@ -11,7 +11,7 @@ interface LoyaltyLockedViewProps {
 const LoyaltyLockedView: React.FC<LoyaltyLockedViewProps> = ({ title, icon }) => {
   const navigate = useNavigate();
   const { slug } = useParams();
-  const { store } = useClient();
+  const { store, setShowAuthModal } = useClient();
 
   // Get accent color from store theme
   const accentColor = store?.menu_theme?.accentColor || '#4ADE80';
@@ -38,7 +38,7 @@ const LoyaltyLockedView: React.FC<LoyaltyLockedViewProps> = ({ title, icon }) =>
       </p>
 
       <button
-        onClick={() => navigate(`/m/${slug}/auth`)}
+        onClick={() => setShowAuthModal(true)}
         className="px-10 h-14 rounded-full text-black font-black uppercase tracking-widest active:scale-95 transition-all"
         style={{ backgroundColor: accentColor, boxShadow: `0 10px 25px ${accentColor}33` }}
       >

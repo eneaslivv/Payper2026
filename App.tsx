@@ -29,6 +29,9 @@ import ClientTrackingPage from './pages/client/TrackingPage';
 import ClientAuthPage from './pages/client/AuthPage';
 import ClientProfilePage from './pages/client/ProfilePage';
 import ClientLoyaltyPage from './pages/client/LoyaltyPage';
+import ClientOrderStatusPage from './pages/client/OrderStatusPage';
+import ClientWalletPage from './pages/client/WalletPage';
+import ScanOrderModal from './components/ScanOrderModal';
 import { MenuPage } from './pages/MenuPage';
 import { OrderConfirmationPage } from './pages/OrderConfirmationPage';
 import AIChat from './components/AIChat';
@@ -157,7 +160,7 @@ const SaaSLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 // --- LAYOUT DEL OPERADOR (Local) ---
 const OperativeLayout: React.FC<{ children: React.ReactNode, activeNode: CafeNode, activeTenant: Tenant }> = ({ children, activeNode, activeTenant }) => {
-  const { user, signOut, hasPermission } = useAuth();
+  const { user, profile, signOut, hasPermission } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const { addToast, unreadCount } = useToast();
@@ -169,9 +172,10 @@ const OperativeLayout: React.FC<{ children: React.ReactNode, activeNode: CafeNod
 
   // Bar Mode State
   const [isBarMode, setIsBarMode] = useState(false);
+  const [showScanModal, setShowScanModal] = useState(false);
 
   // Store Branding State
-  const [storeBranding, setStoreBranding] = useState({ name: 'COFFEESQUAD', logo_url: '' });
+  const [storeBranding, setStoreBranding] = useState({ name: 'PAYPER', logo_url: '' });
 
   useEffect(() => {
     // Initial fetch
@@ -194,7 +198,7 @@ const OperativeLayout: React.FC<{ children: React.ReactNode, activeNode: CafeNod
     const { data: storeData } = await supabase.from('stores').select('name, logo_url').eq('id', profileData.store_id).single();
     if (storeData) {
       setStoreBranding({
-        name: storeData.name || 'COFFEESQUAD',
+        name: storeData.name || 'PAYPER',
         logo_url: storeData.logo_url || ''
       });
     }
@@ -220,6 +224,15 @@ const OperativeLayout: React.FC<{ children: React.ReactNode, activeNode: CafeNod
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName)) {
         return;
       }
+
+      // Ctrl + K to open scanner
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setShowScanModal(true);
+        return;
+      }
+
+
 
       switch (e.key.toUpperCase()) {
         case 'N':
@@ -247,12 +260,22 @@ const OperativeLayout: React.FC<{ children: React.ReactNode, activeNode: CafeNod
       }
     };
 
+    const handleCustomOpen = () => {
+      setShowScanModal(true);
+    };
+
     window.addEventListener('keydown', handleGlobalShortcuts);
-    return () => window.removeEventListener('keydown', handleGlobalShortcuts);
+    window.addEventListener('open-scan-modal', handleCustomOpen);
+
+    return () => {
+      window.removeEventListener('keydown', handleGlobalShortcuts);
+      window.removeEventListener('open-scan-modal', handleCustomOpen);
+    };
   }, [navigate, isBarMode, addToast]);
 
   return (
     <div className={`flex h-screen w-full bg-[#0D0F0D] overflow-hidden ${isBarMode ? 'text-lg' : ''}`}>
+      <ScanOrderModal isOpen={showScanModal} onClose={() => setShowScanModal(false)} />
       <AIChat />
       <OfflineIndicator />
 
@@ -264,7 +287,7 @@ const OperativeLayout: React.FC<{ children: React.ReactNode, activeNode: CafeNod
               {storeBranding.logo_url ? (
                 <img src={storeBranding.logo_url} alt="Logo" className="w-full h-full object-cover" />
               ) : (
-                <span className="material-symbols-outlined text-lg">military_tech</span>
+                <img src="/src/assets/payper-logo.png" alt="Payper" className="w-full h-full object-contain p-0.5" />
               )}
             </div>
             <div className="flex flex-col">
@@ -280,31 +303,31 @@ const OperativeLayout: React.FC<{ children: React.ReactNode, activeNode: CafeNod
           )}
 
           <SidebarGroup label="OPERACIONES">
-            {hasPermission('orders') && (
+            {(hasPermission('orders') || !profile?.role_id) && (
               <SidebarItem to="/orders" icon="list_alt" label="Despacho [G]" active={location.pathname === '/orders'} onClick={() => setIsSidebarOpen(false)} />
             )}
-            {hasPermission('tables') && (
+            {(hasPermission('tables') || !profile?.role_id) && (
               <SidebarItem to="/tables" icon="deck" label="Mesas y Salón" active={location.pathname === '/tables'} onClick={() => setIsSidebarOpen(false)} />
             )}
           </SidebarGroup>
 
           <SidebarGroup label="LOGÍSTICA">
-            {hasPermission('inventory') && (
+            {(hasPermission('inventory') || !profile?.role_id) && (
               <SidebarItem to="/inventory" icon="package_2" label="Inventario" active={location.pathname === '/inventory'} onClick={() => setIsSidebarOpen(false)} />
             )}
-            {hasPermission('design') && (
+            {(hasPermission('design') || !profile?.role_id) && (
               <SidebarItem to="/design" icon="architecture" label="Diseño Menú" active={location.pathname === '/design'} onClick={() => setIsSidebarOpen(false)} />
             )}
           </SidebarGroup>
 
           <SidebarGroup label="NEGOCIO">
-            {hasPermission('clients') && (
+            {(hasPermission('clients') || !profile?.role_id) && (
               <SidebarItem to="/clients" icon="group" label="Clientes" active={location.pathname === '/clients'} onClick={() => setIsSidebarOpen(false)} />
             )}
-            {hasPermission('loyalty') && (
+            {(hasPermission('loyalty') || !profile?.role_id) && (
               <SidebarItem to="/loyalty" icon="military_tech" label="Fidelidad" active={location.pathname === '/loyalty'} onClick={() => setIsSidebarOpen(false)} />
             )}
-            {hasPermission('finance') && (
+            {(hasPermission('finance') || !profile?.role_id) && (
               <SidebarItem to="/finance" icon="bar_chart_4_bars" label="Finanzas" active={location.pathname === '/finance'} onClick={() => setIsSidebarOpen(false)} />
             )}
           </SidebarGroup>
@@ -345,7 +368,7 @@ const OperativeLayout: React.FC<{ children: React.ReactNode, activeNode: CafeNod
             <div className="size-6 rounded-lg bg-neon/20 flex items-center justify-center text-neon shrink-0"><span className="material-symbols-outlined text-sm">person</span></div>
             <div className="flex-1 text-left overflow-hidden">
               <p className="text-[9px] font-black text-white truncate uppercase italic leading-none mb-0.5">{user?.email || 'Operador'}</p>
-              <p className="text-[6px] text-[#71766F] font-bold uppercase tracking-widest opacity-40 truncate leading-none">Operador</p>
+              <p className="text-[6px] text-[#71766F] font-bold uppercase tracking-widest opacity-40 truncate leading-none">{profile?.role || 'Operador'}</p>
             </div>
             <span className={`material-symbols-outlined text-sm text-[#71766F] transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`}>expand_less</span>
           </button>
@@ -417,21 +440,14 @@ const MainRouter: React.FC = () => {
   }, [isLoading, user, profile, isAdmin]);
 
   // GLOBAL LOADING BARRIER
-  // This must be the VERY FIRST return. No router, no layout, nothing.
+  // Minimalist loader
   if (isLoading) {
     return (
-      <div className="flex flex-col h-screen w-full items-center justify-center bg-black gap-6">
-        <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined animate-spin text-4xl text-neon">settings</span>
-          <h1 className="text-white font-black italic text-xl uppercase tracking-widest animate-pulse">Cargando SQUAD...</h1>
+      <div className="flex flex-col h-screen w-full items-center justify-center bg-black">
+        <div className="flex items-center gap-2 animate-pulse opacity-50">
+          <div className="size-2 bg-neon rounded-full" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">Cargando...</span>
         </div>
-        {/* Failsafe button if loading gets stuck > 8s (handled by AuthContext, but good to have manual override) */}
-        <button
-          onClick={() => { localStorage.clear(); window.location.reload(); }}
-          className="text-[9px] font-black text-white/20 hover:text-white uppercase tracking-[0.3em] transition-all border border-white/5 px-4 py-2 rounded-lg"
-        >
-          Problemas al cargar? <span className="text-neon underline">LIMPIAR Y REINTENTAR</span>
-        </button>
       </div>
     );
   }
@@ -439,7 +455,7 @@ const MainRouter: React.FC = () => {
   // PUBLIC ROUTES - These must work regardless of auth status!
   // Check BEFORE any auth logic so logged-in users can also access client menu
   const isClientMenu = window.location.hash.includes('#/m/');
-  const isOrderRoute = window.location.hash.includes('#/orden/');
+  const isOrderRoute = window.location.hash.includes('#/orden/') || window.location.hash.includes('/order/');
 
   if (isClientMenu || isOrderRoute) {
     return (
@@ -456,9 +472,11 @@ const MainRouter: React.FC = () => {
             <Route path="cart" element={<ClientCartPage />} />
             <Route path="checkout" element={<ClientCheckoutPage />} />
             <Route path="tracking/:orderId" element={<ClientTrackingPage />} />
+            <Route path="order/:orderId" element={<ClientOrderStatusPage />} />
             <Route path="auth" element={<ClientAuthPage />} />
             <Route path="profile" element={<ClientProfilePage />} />
             <Route path="loyalty" element={<ClientLoyaltyPage />} />
+            <Route path="wallet" element={<ClientWalletPage />} />
           </Route>
 
           {/* Order Confirmation Routes */}
@@ -475,12 +493,13 @@ const MainRouter: React.FC = () => {
 
   // IF we are in recovery mode OR no user, show Login
   if (!user || isRecovery) {
-    // Permitir acceso a JoinTeam sin login
-    if (window.location.hash.includes('#/join')) {
+    // Permitir acceso a JoinTeam y SetupOwner sin login
+    if (window.location.hash.includes('#/join') || window.location.hash.includes('#/setup-owner')) {
       return (
         <Router>
           <Routes>
             <Route path="/join" element={<JoinTeam />} />
+            <Route path="/setup-owner" element={<SetupOwner />} />
             <Route path="*" element={<Login />} />
           </Routes>
         </Router>
@@ -490,7 +509,7 @@ const MainRouter: React.FC = () => {
     // PUBLIC ROUTES (Client Menu, Direct Store Link, Order Confirmation)
     // We check if the URL matches any of our public patterns to render the Router
     const isClientMenu = window.location.hash.includes('#/m/');
-    const isOrderRoute = window.location.hash.includes('#/orden/');
+    const isOrderRoute = window.location.hash.includes('#/orden/') || window.location.hash.includes('/order/');
     // Check for direct store slug (e.g. #/my-cafe) while avoiding conflicts with system routes
     const isPotentialStoreRoute = window.location.hash.match(/^#\/[^/]+$/) &&
       !['#/login', '#/join', '#/setup-owner', '#/dashboard', '#/admin'].includes(window.location.hash);
@@ -510,9 +529,11 @@ const MainRouter: React.FC = () => {
               <Route path="cart" element={<ClientCartPage />} />
               <Route path="checkout" element={<ClientCheckoutPage />} />
               <Route path="tracking/:orderId" element={<ClientTrackingPage />} />
-              <Route path="auth" element={<div className="h-screen flex items-center justify-center text-white bg-black">Auth Page (WIP)</div>} />
-              <Route path="profile" element={<div className="h-screen flex items-center justify-center text-white bg-black">Profile Page (WIP)</div>} />
-              <Route path="loyalty" element={<div className="h-screen flex items-center justify-center text-white bg-black">Loyalty Page (WIP)</div>} />
+              <Route path="auth" element={<ClientAuthPage />} />
+              <Route path="profile" element={<ClientProfilePage />} />
+              <Route path="loyalty" element={<ClientLoyaltyPage />} />
+              <Route path="wallet" element={<ClientWalletPage />} />
+              <Route path="order/:orderId" element={<ClientOrderStatusPage />} />
             </Route>
 
             {/* New Payment & Direct Link Routes */}
@@ -530,7 +551,22 @@ const MainRouter: React.FC = () => {
 
   // PROFILE INTEGRITY CHECK
   // If we have a user but no profile (and we are not loading), it means fetchProfile failed.
-  if (user && !profile) {
+  // CRITICAL: We EXEMPT client-facing routes (menu, orders) from this check so customers can still use the menu!
+  // NOTE: isClientMenu and isOrderRoute are already defined earlier in this function scope.
+  const isPotentialStoreRoute = window.location.hash.match(/^#\/[^/]+$/) &&
+    !['#/login', '#/join', '#/setup-owner', '#/dashboard', '#/admin'].includes(window.location.hash);
+
+  // 🚨 GOD MODE: Never block the super admin
+  const isGodModeUser = user?.email === 'livvadm@gmail.com' || user?.email === 'livveneas@gmail.com';
+
+  // RECALCULATE client route check here to be absolutely sure
+  const isClientRoute = window.location.hash.includes('#/m/') || window.location.hash.includes('/order/') || window.location.hash.includes('/orden/');
+
+  // Also exempt checkout return URLs (Mercado Pago redirects often land here with specific params)
+  const isCheckoutReturn = window.location.hash.includes('collection_id') || window.location.hash.includes('preference_id');
+
+  // Skip profile check if: god mode, client route, or potential store route
+  if (user && !profile && !isClientRoute && !isPotentialStoreRoute && !isGodModeUser && !isCheckoutReturn) {
     return (
       <div className="flex flex-col h-screen w-full items-center justify-center bg-black gap-4 p-4 text-center">
         <span className="material-symbols-outlined text-4xl text-red-500 animate-pulse">error</span>
@@ -544,7 +580,17 @@ const MainRouter: React.FC = () => {
           <p>Status: Missing Row in public.profiles</p>
         </div>
 
-        <div className="flex gap-4 mt-6">
+        <div className="flex gap-4 mt-6 flex-wrap justify-center">
+          <button
+            onClick={() => {
+              // Try to go to a client menu - check if user has a store from metadata
+              const storeSlug = user?.user_metadata?.store_slug || 'ciro';
+              window.location.hash = `/m/${storeSlug}`;
+            }}
+            className="px-6 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold uppercase tracking-widest rounded transition-all"
+          >
+            Ir al Menú
+          </button>
           <button
             onClick={() => {
               localStorage.clear();
@@ -566,8 +612,8 @@ const MainRouter: React.FC = () => {
     );
   }
 
-  // Pending Approval or Inactive Check (Skip for super_admin for emergency access)
-  if (profile && !profile.is_active && !isAdmin) {
+  // Pending Approval or Inactive Check (Skip for super_admin AND GOD MODE user)
+  if (profile && !profile.is_active && !isAdmin && !isGodModeUser) {
     return (
       <div className="flex flex-col h-screen w-full items-center justify-center bg-black text-white p-6 text-center space-y-4">
         <span className="material-symbols-outlined text-6xl text-red-500">gpp_bad</span>
@@ -583,19 +629,16 @@ const MainRouter: React.FC = () => {
     return (
       <Router>
         <SaaSLayout>
-          <RoleGuard allowedRoles={['super_admin']} fallbackPath="/">
-            <Routes>
-              <Route path="/" element={<SaaSAdmin initialTab="dashboard" />} />
-              <Route path="/tenants" element={<SaaSAdmin initialTab="tenants" />} />
-              <Route path="/users" element={<SaaSAdmin initialTab="users" />} />
-              <Route path="/plans" element={<SaaSAdmin initialTab="plans" />} />
-              <Route path="/metrics" element={<SaaSAdmin initialTab="metrics" />} />
-              <Route path="/audit" element={<SaaSAdmin initialTab="audit" />} />
-              <Route path="/join" element={<JoinTeam />} />
-              <Route path="/setup-owner" element={<SetupOwner />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </RoleGuard>
+          <Routes>
+            <Route path="/" element={<SaaSAdmin initialTab="tenants" />} />
+            <Route path="/tenants" element={<SaaSAdmin initialTab="tenants" />} />
+            <Route path="/users" element={<SaaSAdmin initialTab="users" />} />
+            <Route path="/plans" element={<SaaSAdmin initialTab="plans" />} />
+            <Route path="/metrics" element={<SaaSAdmin initialTab="metrics" />} />
+            <Route path="/audit" element={<SaaSAdmin initialTab="audit" />} />
+            <Route path="/join" element={<JoinTeam />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
         </SaaSLayout>
       </Router>
     );
@@ -607,6 +650,23 @@ const MainRouter: React.FC = () => {
       <OfflineProvider>
         <OperativeLayout activeNode={activeNode} activeTenant={activeTenant}>
           <Routes>
+            {/* Public Menu Routes (Accessible when logged in) */}
+            <Route path="/m/:slug" element={
+              <ClientProvider>
+                <ClientLayout />
+              </ClientProvider>
+            }>
+              <Route index element={<ClientMenuPage />} />
+              <Route path="product/:id" element={<ClientProductPage />} />
+              <Route path="cart" element={<ClientCartPage />} />
+              <Route path="checkout" element={<ClientCheckoutPage />} />
+              <Route path="tracking/:orderId" element={<ClientTrackingPage />} />
+              <Route path="auth" element={<ClientAuthPage />} />
+              <Route path="profile" element={<ClientProfilePage />} />
+              <Route path="loyalty" element={<ClientLoyaltyPage />} />
+              <Route path="wallet" element={<ClientWalletPage />} />
+            </Route>
+
             <Route path="/" element={<Dashboard />} />
             <Route path="/inventory" element={
               <PermissionGuard section="inventory" fallback={<Navigate to="/" replace />}>
@@ -624,9 +684,7 @@ const MainRouter: React.FC = () => {
               </PermissionGuard>
             } />
             <Route path="/settings" element={
-              <PermissionGuard section="staff" fallback={<Navigate to="/" replace />}>
-                <StoreSettings />
-              </PermissionGuard>
+              <StoreSettings />
             } />
             <Route path="/design" element={
               <PermissionGuard section="design" fallback={<Navigate to="/" replace />}>
@@ -675,6 +733,28 @@ const MainRouter: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  // PWA & Store Logic
+  useEffect(() => {
+    // 1. Save last visited store logic
+    const hash = window.location.hash;
+    if (hash.includes('/m/')) {
+      const match = hash.match(/\/m\/([^/]+)/);
+      if (match && match[1]) {
+        localStorage.setItem('last_store_slug', match[1]);
+      }
+    }
+
+    // 2. PWA Launch Redirect (iOS/Android Standalone FIX)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+    if (isStandalone && (hash === '#/' || hash === '' || hash === '#/login')) {
+      const storedSlug = localStorage.getItem('last_store_slug');
+      if (storedSlug) {
+        console.log('[PWA] Redirecting to last store:', storedSlug);
+        window.location.hash = `/m/${storedSlug}`;
+      }
+    }
+  }, []);
+
   return (
     <ToastProvider>
       <AuthProvider>

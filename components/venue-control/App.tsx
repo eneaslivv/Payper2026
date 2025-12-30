@@ -9,7 +9,7 @@ import QRDetail from './components/QRDetail';
 import QRGenerator from './components/QRGenerator';
 import { AppMode, Table, Bar, QR, TableStatus, Position, OrderStatus, Zone, NotificationType, VenueNotification } from './types';
 import { INITIAL_ZONES } from './constants';
-import { ZoomIn, ZoomOut, Zap, MousePointer2, Plus, Beer, Circle, QrCode, Check, Trash2, Edit3, X as XIcon, Users, Layers, Bell, Timer, Clock, Hand, Receipt, AlertCircle, ChevronRight } from 'lucide-react';
+import { ZoomIn, ZoomOut, Zap, MousePointer2, Plus, Beer, Circle, QrCode, Check, Trash2, Edit3, X as XIcon, Users, Layers, Bell, Timer, Clock, Hand, Receipt, AlertCircle, ChevronRight, ClipboardList } from 'lucide-react';
 import { useToast } from '../../components/ToastSystem';
 
 const App: React.FC = () => {
@@ -354,35 +354,48 @@ const App: React.FC = () => {
               }}
             ></div>
 
-            <TableMap
-              tables={tables.filter(t => t.zoneId === activeZoneId)}
-              bars={bars.filter(b => b.zoneId === activeZoneId)}
-              qrs={qrs.filter(q => q.zoneId === activeZoneId)}
-              mode={mode}
-              activeZoneId={activeZoneId}
-              selectedTableId={selectedTableId}
-              selectedBarId={selectedBarId}
-              selectedQrId={selectedQrId}
-              onSelectTable={handleSelectTable}
-              onSelectBar={handleSelectBar}
-              onSelectQr={handleSelectQr}
-              onUpdatePosition={updatePosition}
-              onDeleteNode={deleteNode}
-              zoom={zoom}
-              setZoom={setZoom}
-              onBackgroundClick={clearSelections}
-            />
+            {mode === AppMode.DISPATCH ? (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="flex flex-col items-center gap-4 opacity-30">
+                  <ClipboardList size={64} className="text-amber-400" />
+                  <h2 className="text-2xl font-black text-amber-400 tracking-widest uppercase">Vista de Despacho</h2>
+                  <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Próximamente: Kanban de Pedidos</p>
+                </div>
+              </div>
+            ) : (
+              <TableMap
+                tables={tables.filter(t => t.zoneId === activeZoneId)}
+                bars={bars.filter(b => b.zoneId === activeZoneId)}
+                qrs={qrs.filter(q => q.zoneId === activeZoneId)}
+                mode={mode}
+                activeZoneId={activeZoneId}
+                selectedTableId={selectedTableId}
+                selectedBarId={selectedBarId}
+                selectedQrId={selectedQrId}
+                onSelectTable={handleSelectTable}
+                onSelectBar={handleSelectBar}
+                onSelectQr={handleSelectQr}
+                onUpdatePosition={updatePosition}
+                onDeleteNode={deleteNode}
+                zoom={zoom}
+                setZoom={setZoom}
+                onBackgroundClick={clearSelections}
+              />
+            )}
 
             {/* MODE INDICATOR */}
             <div className="absolute bottom-6 left-6 pointer-events-none z-10 transition-all duration-500 ease-out transform translate-y-0 opacity-100">
               <div className={`px-4 py-2 rounded-full border backdrop-blur-md flex items-center gap-3 shadow-2xl
                      ${mode === AppMode.VIEW
                   ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                  : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                  : mode === AppMode.DISPATCH
+                    ? 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                    : 'bg-white/5 border-white/10 text-white'
                 }`}>
-                <div className={`w-2 h-2 rounded-full animate-pulse ${mode === AppMode.VIEW ? 'bg-emerald-400' : 'bg-amber-400'}`}></div>
+                <div className={`w-2 h-2 rounded-full animate-pulse 
+                  ${mode === AppMode.VIEW ? 'bg-emerald-400' : mode === AppMode.DISPATCH ? 'bg-amber-400' : 'bg-white'}`}></div>
                 <span className="text-[10px] font-black uppercase tracking-widest">
-                  {mode === AppMode.VIEW ? 'Modo Operativo' : 'Modo Edición'}
+                  {mode === AppMode.VIEW ? 'Modo Operativo' : mode === AppMode.DISPATCH ? 'Modo Despacho' : 'Modo Edición'}
                 </span>
               </div>
             </div>

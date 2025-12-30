@@ -8,6 +8,8 @@ import {
   Check,
   X,
   Search,
+  ClipboardList,
+  Bell,
 } from 'lucide-react';
 import { AppMode, Zone } from '../types';
 
@@ -53,54 +55,42 @@ const Layout: React.FC<LayoutProps> = ({
     <div className="flex flex-col h-full w-full bg-black text-white font-sans overflow-hidden selection:bg-[#36e27b] selection:text-black">
 
       {/* --- COMANDO HEADER --- */}
-      <header className="h-[72px] min-h-[72px] flex items-center justify-between px-8 bg-black z-50 border-b border-zinc-900">
+      <header className="h-[80px] min-h-[80px] flex items-center justify-between px-10 bg-black z-50">
 
         {/* LEFT: LOGO & ZONES */}
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-10">
           {/* LOGO */}
-          <div className="flex flex-col select-none">
-            <h1 className="text-2xl font-black italic tracking-tighter text-white leading-none">COMANDO</h1>
-            <span className="text-[10px] font-bold text-zinc-600 tracking-[0.3em] uppercase">Orchestrator V1.2.5</span>
+          <div className="flex flex-col select-none group cursor-pointer">
+            <h1 className="text-3xl font-black italic tracking-tighter text-white leading-none group-hover:text-[#36e27b] transition-colors">COMMAND</h1>
+            <span className="text-[9px] font-bold text-zinc-600 tracking-[0.4em] uppercase group-hover:text-zinc-500 transition-colors">Orchestrator V1.5</span>
           </div>
 
-          {/* SEPARATOR */}
-          <div className="h-8 w-px bg-zinc-800"></div>
-
           {/* ZONES PILL CONTAINER */}
-          <div className="flex items-center bg-zinc-900/30 border border-zinc-800 rounded-full p-1 gap-1">
+          <div className="flex items-center bg-[#0a0a0a] border border-white/5 rounded-full p-1 gap-1 h-[42px] select-none">
             {zones.map(zone => (
-              <div key={zone.id} className="relative">
+              <div key={zone.id} className="relative h-full flex items-center">
                 {/* EDIT MODE INPUT */}
                 {isEditingZone && activeZoneId === zone.id ? (
-                  <div className="flex items-center px-2">
+                  <div className="flex items-center px-3 bg-zinc-900 rounded-full h-8">
                     <input
                       autoFocus
-                      className="bg-transparent text-xs font-bold text-white outline-none w-24 uppercase"
+                      className="bg-transparent text-[10px] font-black text-white outline-none w-24 uppercase tracking-widest"
                       value={zoneInputName}
                       onChange={(e) => setZoneInputName(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && onUpdateZone()}
                     />
-                    <button onClick={onUpdateZone} className="text-[#36e27b] hover:text-white ml-2"><Check size={14} /></button>
-                    <button onClick={() => setIsEditingZone(false)} className="text-red-500 hover:text-red-400 ml-1"><X size={14} /></button>
+                    <button onClick={onUpdateZone} className="text-[#36e27b] hover:text-white ml-2"><Check size={12} /></button>
                   </div>
                 ) : (
                   // TAB BUTTON
                   <button
                     onClick={() => setActiveZoneId(zone.id)}
-                    className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase transition-all flex items-center gap-2
+                    className={`h-[34px] px-6 rounded-full text-[10px] font-black tracking-[0.2em] uppercase transition-all flex items-center justify-center whitespace-nowrap
                              ${activeZoneId === zone.id
-                        ? 'bg-[#36e27b] text-black shadow-[0_0_15px_-5px_#36e27b]'
-                        : 'text-zinc-500 hover:text-white'}`}
+                        ? 'bg-[#36e27b] text-black shadow-[0_0_15px_-3px_rgba(54,226,123,0.5)]'
+                        : 'text-zinc-500 hover:text-white/80'}`}
                   >
                     {zone.name}
-
-                    {/* edit/delete icons on hover only if EDIT mode */}
-                    {mode === AppMode.EDIT && activeZoneId === zone.id && (
-                      <div className="flex items-center gap-1 ml-1 opacity-50 hover:opacity-100">
-                        <Edit3 size={10} onClick={(e) => { e.stopPropagation(); setZoneInputName(zone.name); setIsEditingZone(true); }} className="cursor-pointer hover:text-black/70" />
-                        <Trash2 size={10} onClick={(e) => { e.stopPropagation(); onDeleteZone(zone.id); }} className="cursor-pointer hover:text-red-600" />
-                      </div>
-                    )}
                   </button>
                 )}
               </div>
@@ -108,67 +98,81 @@ const Layout: React.FC<LayoutProps> = ({
 
             {/* ADD BUTTON */}
             {mode === AppMode.EDIT && (
-              isAddingZone ? (
-                <div className="flex items-center px-2 border-l border-zinc-700 ml-1">
-                  <input
-                    autoFocus
-                    className="bg-transparent text-xs font-bold text-white outline-none w-24 uppercase"
-                    value={zoneInputName}
-                    onChange={(e) => setZoneInputName(e.target.value)}
-                    placeholder="NUEVA..."
-                    onKeyDown={(e) => e.key === 'Enter' && onAddZone()}
-                  />
-                  <button onClick={onAddZone} className="text-[#36e27b] hover:text-white ml-1"><Check size={14} /></button>
-                  <button onClick={() => setIsAddingZone(false)} className="text-red-500 ml-1"><X size={14} /></button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => { setZoneInputName(''); setIsAddingZone(true); }}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-600 hover:text-[#36e27b] hover:bg-zinc-800 transition-all font-bold"
-                >
-                  <Plus size={14} />
-                </button>
-              )
+              <button
+                onClick={() => { setZoneInputName(''); setIsAddingZone(true); }}
+                className="w-[34px] h-[34px] rounded-full flex items-center justify-center bg-zinc-900 hover:bg-zinc-800 text-zinc-500 hover:text-white border border-white/5 transition-all ml-1 shadow-lg"
+              >
+                <Plus size={14} strokeWidth={3} />
+              </button>
             )}
           </div>
         </div>
 
         {/* RIGHT: CONTROLS */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-6">
 
-          {/* OPERAR / GESTION SWITCH */}
-          <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-2xl p-1">
+          {/* MODE SWITCHER (PILL) */}
+          <div className="flex items-center bg-[#111] border border-zinc-900 rounded-full p-1.5 h-[46px]">
+            {/* OPERATIVO */}
             <button
               onClick={() => setMode(AppMode.VIEW)}
-              className={`px-5 py-2 rounded-xl text-[10px] font-black tracking-widest uppercase flex items-center gap-2 transition-all
+              className={`h-[34px] px-6 rounded-full text-[10px] font-black tracking-widest uppercase flex items-center gap-2 transition-all
                      ${mode === AppMode.VIEW
-                  ? 'bg-[#1a1a1a] text-[#36e27b] border border-zinc-800 shadow-lg'
+                  ? 'bg-zinc-800 text-[#36e27b] border border-zinc-700 shadow-lg'
                   : 'text-zinc-600 hover:text-zinc-400'}`}
             >
-              <Zap size={12} className={mode === AppMode.VIEW ? "text-[#36e27b]" : ""} />
-              <span>Operar</span>
+              <Zap size={12} className={mode === AppMode.VIEW ? "text-[#36e27b]" : "opacity-0 w-0"} />
+              <span>Operativo</span>
             </button>
-            <div className="w-px h-4 bg-zinc-800 mx-1"></div>
+
+            <div className="w-px h-3 bg-zinc-800 mx-1"></div>
+
+            {/* DESPACHO */}
+            <button
+              onClick={() => setMode(AppMode.DISPATCH)}
+              className={`h-[34px] px-6 rounded-full text-[10px] font-black tracking-widest uppercase flex items-center gap-2 transition-all
+                     ${mode === AppMode.DISPATCH
+                  ? 'bg-zinc-800 text-amber-400 border border-zinc-700 shadow-lg'
+                  : 'text-zinc-600 hover:text-zinc-400'}`}
+            >
+              <ClipboardList size={12} className={mode === AppMode.DISPATCH ? "text-amber-400" : "opacity-0 w-0"} />
+              <span>Despacho</span>
+            </button>
+
+            <div className="w-px h-3 bg-zinc-800 mx-1"></div>
+
+            {/* GESTIÓN */}
             <button
               onClick={() => setMode(AppMode.EDIT)}
-              className={`px-5 py-2 rounded-xl text-[10px] font-black tracking-widest uppercase flex items-center gap-2 transition-all
+              className={`h-[34px] px-6 rounded-full text-[10px] font-black tracking-widest uppercase flex items-center gap-2 transition-all
                      ${mode === AppMode.EDIT
-                  ? 'bg-[#1a1a1a] text-white border border-zinc-800 shadow-lg'
+                  ? 'bg-zinc-800 text-white border border-zinc-700 shadow-lg'
                   : 'text-zinc-600 hover:text-zinc-400'}`}
             >
-              <Settings size={12} />
-              <span>Gestion</span>
+              <Settings size={12} className={mode === AppMode.EDIT ? "text-white" : "opacity-0 w-0"} />
+              <span>Gestión</span>
             </button>
           </div>
 
-          {/* SEARCH / UTILS */}
-          <div className="flex items-center gap-2">
-            <button className="w-10 h-10 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-500 hover:text-[#36e27b] transition-colors">
-              <Search size={16} />
-            </button>
+          {/* UTILS */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center bg-[#111] border border-zinc-900 rounded-full h-[46px] px-2">
+              <button className="w-9 h-9 rounded-full flex items-center justify-center text-zinc-500 hover:text-white transition-colors">
+                <Search size={16} />
+              </button>
+              <div className="w-px h-3 bg-zinc-800"></div>
+              <button className="w-9 h-9 rounded-full flex items-center justify-center text-zinc-500 hover:text-white transition-colors">
+                <Bell size={16} />
+              </button>
+            </div>
+
             {mode === AppMode.EDIT && (
-              <button onClick={onAddNode} className="w-10 h-10 rounded-2xl bg-[#36e27b] text-black border border-[#36e27b] flex items-center justify-center hover:bg-[#2ecc71] transition-colors shadow-[0_0_15px_-5px_#36e27b]">
-                <Plus size={20} strokeWidth={3} />
+              <button
+                onClick={onAddNode}
+                className="h-[46px] px-6 rounded-full bg-[#36e27b] text-black font-black text-[10px] tracking-widest uppercase hover:bg-[#2ecc71] transition-all shadow-[0_0_20px_-5px_#36e27b] flex items-center gap-2"
+              >
+                <Plus size={14} strokeWidth={4} />
+                <span>Nuevo</span>
               </button>
             )}
           </div>
@@ -177,8 +181,10 @@ const Layout: React.FC<LayoutProps> = ({
 
       </header>
 
-      {/* --- CONTENT AREA --- */}
-      <main className="flex-1 flex flex-col w-full relative overflow-hidden bg-black rounded-tl-3xl border-t border-l border-zinc-900 shadow-[inset_10px_10px_20px_-10px_rgba(0,0,0,1)] z-0">
+      {/* --- CONTENT AREA (ROUNDED CARD) --- */}
+      <main className="flex-1 flex flex-col w-full relative overflow-hidden bg-[#050505] rounded-[40px] border border-zinc-900/50 shadow-[0_-10px_40px_-15px_rgba(0,0,0,1)] mx-6 mb-6 z-0">
+        {/* INNER BORDER GLOW OPTIONAL */}
+        <div className="absolute inset-0 rounded-[40px] border border-white/5 pointer-events-none z-50"></div>
         {children}
       </main>
 

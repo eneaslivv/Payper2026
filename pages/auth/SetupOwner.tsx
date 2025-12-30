@@ -17,8 +17,16 @@ const SetupOwner: React.FC = () => {
     const [setupComplete, setSetupComplete] = useState(false);
 
     useEffect(() => {
+        // Read store info from URL params as fallback
+        const urlStoreName = searchParams.get('storeName');
+        const urlOwnerName = searchParams.get('ownerName');
+        if (urlStoreName) setStoreName(decodeURIComponent(urlStoreName));
+        if (urlOwnerName) setOwnerName(decodeURIComponent(urlOwnerName));
+
         checkSession();
-    }, []);
+    }, [searchParams]);
+
+    const [isWrongUser, setIsWrongUser] = useState(false);
 
     const checkSession = async () => {
         try {
@@ -26,18 +34,34 @@ const SetupOwner: React.FC = () => {
             const { data: { session } } = await supabase.auth.getSession();
 
             if (session?.user) {
-                // User has a session from the recovery link
                 const metadata = session.user.user_metadata;
-                setOwnerName(metadata?.full_name || '');
 
-                // Fetch store name if we have store_id in metadata
-                if (metadata?.store_id) {
-                    const { data: store } = await supabase
-                        .from('stores')
-                        .select('name')
-                        .eq('id', metadata.store_id)
-                        .single();
-                    setStoreName(store?.name || 'tu local');
+                // CRITICAL SECURITY CHECK: Block SuperAdmin/existing staff from this page
+                const userRole = metadata?.role;
+                if (userRole === 'super_admin' || userRole === 'staff') {
+                    console.warn('[SetupOwner] BLOCKED: User already has role:', userRole);
+                    setIsWrongUser(true);
+                    setLoading(false);
+                    return; // Don't proceed - wrong user type
+                }
+
+                // Only proceed if user is a new store_owner
+                if (userRole === 'store_owner') {
+                    setOwnerName(metadata?.full_name || '');
+
+                    if (metadata?.store_id) {
+                        const { data: store } = await supabase
+                            .from('stores')
+                            .select('name')
+                            .eq('id', metadata.store_id)
+                            .single();
+                        setStoreName(store?.name || 'tu local');
+                    }
+                } else {
+                    // Unknown role or no role - redirect to login
+                    addToast('Sesión no válida', 'error', 'Por favor usa el link de invitación');
+                    navigate('/login');
+                    return;
                 }
             } else {
                 // No session - check if there's an access_token in the URL (from Supabase email link)
@@ -54,6 +78,15 @@ const SetupOwner: React.FC = () => {
 
                     if (data.user) {
                         const metadata = data.user.user_metadata;
+
+                        // Security check for token-based session too
+                        const userRole = metadata?.role;
+                        if (userRole === 'super_admin' || userRole === 'staff') {
+                            setIsWrongUser(true);
+                            setLoading(false);
+                            return;
+                        }
+
                         setOwnerName(metadata?.full_name || '');
 
                         if (metadata?.store_id) {
@@ -77,6 +110,13 @@ const SetupOwner: React.FC = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleLogoutAndRedirect = async () => {
+        await supabase.auth.signOut();
+        addToast('Sesión cerrada', 'success', 'Ahora podés usar el link de invitación');
+        // Reload page to clear session
+        window.location.reload();
     };
 
     const handleSetPassword = async () => {
@@ -106,6 +146,47 @@ const SetupOwner: React.FC = () => {
             setIsSaving(false);
         }
     };
+
+    // SECURITY: Block wrong user types
+    if (isWrongUser) {
+        return (
+            <div className="min-h-screen bg-black flex items-center justify-center p-6">
+                <div className="relative bg-[#0D0F0D] border border-red-500/30 rounded-[3rem] p-12 w-full max-w-lg shadow-2xl">
+                    <div className="text-center space-y-6">
+                        <div className="size-20 bg-red-500/10 border border-red-500/30 rounded-2xl flex items-center justify-center mx-auto">
+                            <span className="material-symbols-outlined text-4xl text-red-500">shield_lock</span>
+                        </div>
+                        <div className="space-y-2">
+                            <h1 className="text-2xl font-black text-white uppercase tracking-tight">
+                                Sesión Incorrecta
+                            </h1>
+                            <p className="text-white/40 text-sm leading-relaxed">
+                                Ya tenés una sesión activa como <span className="text-red-400 font-bold">SuperAdmin</span> o <span className="text-red-400 font-bold">Staff</span>.
+                            </p>
+                            <p className="text-white/30 text-xs mt-4">
+                                Para configurar un nuevo local, cerrá esta sesión y abrí el link de invitación en una pestaña privada.
+                            </p>
+                        </div>
+                        <div className="space-y-3 pt-4">
+                            <button
+                                onClick={handleLogoutAndRedirect}
+                                className="w-full py-4 bg-red-500/20 border border-red-500/30 text-red-400 rounded-2xl font-bold text-[11px] uppercase tracking-widest hover:bg-red-500/30 transition-all flex items-center justify-center gap-2"
+                            >
+                                <span className="material-symbols-outlined text-lg">logout</span>
+                                Cerrar Sesión Actual
+                            </button>
+                            <button
+                                onClick={() => navigate('/')}
+                                className="w-full py-3 text-white/30 font-bold text-[10px] uppercase tracking-widest hover:text-white/50 transition-all"
+                            >
+                                Volver al Dashboard
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (loading) {
         return (
@@ -153,7 +234,7 @@ const SetupOwner: React.FC = () => {
                             Se te ha asignado la gestión de
                         </p>
                         <p className="text-xl font-black text-neon uppercase italic">
-                            {storeName || 'Tu Local'}
+                            {storeName || searchParams.get('storeName') || 'Tu Local'}
                         </p>
                     </div>
                 </div>
@@ -169,7 +250,7 @@ const SetupOwner: React.FC = () => {
 
                     <div className="space-y-3">
                         <label className="text-[10px] font-black text-white/40 uppercase tracking-widest ml-2">
-                            Define tu Contraseña Maestra
+                            Crea tu Contraseña de Acceso
                         </label>
                         <input
                             type="password"

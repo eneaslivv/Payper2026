@@ -12,6 +12,10 @@ const CheckoutPage: React.FC = () => {
   const { cart, isRedeemingPoints, clearCart, setHasActiveOrder, store, user } = useClient();
   const initialTable = '05'; // Mock table for now
 
+  // Theme support
+  const accentColor = store?.menu_theme?.accentColor || '#36e27b';
+  const walletBalance = user?.balance || 0;
+
   const [deliveryMode, setDeliveryMode] = useState<'local' | 'takeout'>(initialTable ? 'local' : 'takeout');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('wallet');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -35,6 +39,9 @@ const CheckoutPage: React.FC = () => {
   const tax = subtotal * 0.08;
   const total = subtotal + tax - discount;
 
+  // Calculate after total is defined
+  const hasEnoughBalance = walletBalance >= total;
+
   // Don't render if not logged in
   if (!user) {
     return null;
@@ -46,37 +53,183 @@ const CheckoutPage: React.FC = () => {
 
     try {
       // 1. Construct Order Payload
-      const orderPayload = {
+      const orderPayload: any = {
         store_id: store.id,
-        client_id: user?.id || null, // Guest if null
-        table_number: deliveryMode === 'local' ? currentTable : null,
-        bar_seat: deliveryMode === 'takeout' ? currentBar : null, // Assuming mapping
+        client_id: user?.id || null,
+        table_number: deliveryMode === 'local' ? currentTable : currentBar,
         delivery_mode: deliveryMode,
+        channel: 'qr',
         payment_method: paymentMethod,
-        items: cart, // JSONB
+        payment_provider: paymentMethod === 'mercadopago' ? 'mercadopago' : 'wallet',
+        items: cart.map(item => ({
+          ...item,
+          variant_id: item.variant_id,
+          addon_ids: item.addon_ids
+        })),
         total_amount: total,
-        status: 'received',
-        is_paid: false // For now
+        status: 'pending',
+        delivery_status: 'pending',
+        payment_status: 'pending',
+        is_paid: false
       };
 
-      // 2. Insert into Supabase
-      const { data, error } = await supabase
-        .from('orders')
-        .insert(orderPayload)
-        .select()
-        .single();
+      // 2. WALLET FLOW (no changes)
+      if (paymentMethod === 'wallet') {
+        if (!hasEnoughBalance) {
+          addToast('Saldo insuficiente en tu wallet', 'error');
+          setIsProcessingPayment(false);
+          return;
+        }
 
-      if (error) throw error;
+        const { data: walletResult, error: walletError } = await (supabase.rpc as any)('pay_with_wallet', {
+          p_client_id: user?.id,
+          p_amount: total
+        });
 
-      // 3. Success Flow
-      setHasActiveOrder(true);
-      clearCart();
-      navigate(`/m/${slug}/tracking/${data.id}`);
+        if (walletError || !walletResult?.success) {
+          addToast(walletResult?.error || 'Error al procesar pago con wallet', 'error');
+          setIsProcessingPayment(false);
+          return;
+        }
+
+        orderPayload.is_paid = true;
+        orderPayload.payment_status = 'approved';
+
+        const { data, error } = await supabase
+          .from('orders')
+          .insert(orderPayload)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // Insert order items
+        await insertOrderItems(data.id);
+
+        setHasActiveOrder(true);
+        clearCart();
+        navigate(`/m/${slug}/order/${data.id}`, { replace: true });
+        return;
+      }
+
+      // 3. MERCADO PAGO FLOW (⭐ NEW)
+      if (paymentMethod === 'mercadopago') {
+        // 3.1 Create order in pending state
+        const { data: order, error: orderError } = await supabase
+          .from('orders')
+          .insert(orderPayload)
+          .select()
+          .single();
+
+        if (orderError) throw orderError;
+
+        // 3.2 Insert order items
+        await insertOrderItems(order.id);
+
+        // 3.3 Invoke create-checkout Edge Function
+        const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout', {
+          body: {
+            store_id: store.id,
+            order_id: order.id,
+            items: cart.map(item => ({
+              title: item.name,
+              unit_price: item.price,
+              quantity: item.quantity
+            })),
+            back_urls: {
+              success: `${window.location.origin}/m/${slug}/order/${order.id}`,
+              failure: `${window.location.origin}/m/${slug}/checkout`,
+              pending: `${window.location.origin}/m/${slug}/order/${order.id}`
+            },
+            external_reference: order.id
+          }
+        });
+
+        if (checkoutError) {
+          console.error('Checkout Error:', checkoutError);
+
+          // Try to extract error message from the response body if it's a 400
+          try {
+            const body = await (checkoutError as any).context?.json();
+            if (body?.error) {
+              console.error('Detailed Edge Function Error:', body.error);
+              addToast(body.error, 'error');
+            } else {
+              addToast('Error al conectar con Mercado Pago', 'error');
+            }
+          } catch (e) {
+            addToast('Error al conectar con Mercado Pago', 'error');
+          }
+
+          setIsProcessingPayment(false);
+          return;
+        }
+
+        if (checkoutData?.error) {
+          console.error('MP Application Error:', checkoutData.error);
+          addToast(checkoutData.error || 'Error de Mercado Pago', 'error');
+          setIsProcessingPayment(false);
+          return;
+        }
+
+        // 3.4 Redirect to Mercado Pago
+        if (checkoutData?.checkout_url) {
+          clearCart();
+          window.location.href = checkoutData.checkout_url;
+          return;
+        }
+
+        throw new Error('No se recibió URL de checkout');
+      }
 
     } catch (err) {
       console.error('Order Error:', err);
-      // alert('Error al procesar orden');
+      addToast('Error al procesar la orden', 'error');
       setIsProcessingPayment(false);
+    }
+  };
+
+  // Helper function to insert order items
+  const insertOrderItems = async (orderId: string) => {
+    for (const item of cart) {
+      const { data: orderItemData, error: itemsError } = await supabase
+        .from('order_items')
+        .insert({
+          order_id: orderId,
+          store_id: store!.id,
+          tenant_id: store!.id,
+          product_id: item.id,
+          variant_id: item.variant_id || null,
+          quantity: item.quantity,
+          unit_price: item.price,
+          total_price: item.price * item.quantity,
+          notes: item.notes || ''
+        })
+        .select()
+        .single();
+
+      if (itemsError) {
+        console.error('Error inserting item:', itemsError);
+        continue;
+      }
+
+      if (item.addon_ids && item.addon_ids.length > 0 && orderItemData?.id) {
+        const addonInserts = item.addon_ids.map(addonId => {
+          const addonMeta = item.addons?.find(a => a.id === addonId);
+          return {
+            order_item_id: orderItemData.id,
+            addon_id: addonId,
+            tenant_id: store!.id,
+            price: addonMeta?.price || 0
+          };
+        });
+
+        const { error: addonsError } = await (supabase
+          .from('order_item_addons' as any) as any)
+          .insert(addonInserts);
+
+        if (addonsError) console.error('Error inserting addons:', addonsError);
+      }
     }
   };
 
@@ -114,7 +267,10 @@ const CheckoutPage: React.FC = () => {
 
             <div className="relative flex items-center">
               {isEditingLocation ? (
-                <div className="flex items-center gap-2 bg-white/5 p-1.5 pl-4 rounded-full border border-primary/40 animate-in zoom-in-95 duration-300">
+                <div
+                  className="flex items-center gap-2 bg-white/5 p-1.5 pl-4 rounded-full border animate-in zoom-in-95 duration-300"
+                  style={{ borderColor: `${accentColor}66` }}
+                >
                   <input
                     autoFocus
                     type="number"
@@ -122,22 +278,28 @@ const CheckoutPage: React.FC = () => {
                     onChange={(e) => setTempValue(e.target.value)}
                     onBlur={saveLocation}
                     onKeyDown={(e) => e.key === 'Enter' && saveLocation()}
-                    className="bg-transparent border-none p-0 w-12 text-primary font-black italic text-xs focus:ring-0 text-center"
+                    className="bg-transparent border-none p-0 w-12 font-black italic text-xs focus:ring-0 text-center"
+                    style={{ color: accentColor }}
                   />
-                  <button onClick={saveLocation} className="w-8 h-8 rounded-full bg-primary text-black flex items-center justify-center shadow-[0_0_15px_rgba(54,226,123,0.4)]">
+                  <button
+                    onClick={saveLocation}
+                    className="w-8 h-8 rounded-full flex items-center justify-center shadow-2xl"
+                    style={{ backgroundColor: accentColor, color: '#000', boxShadow: `0 0 15px ${accentColor}66` }}
+                  >
                     <span className="material-symbols-outlined text-sm font-black">check</span>
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={toggleLocationEdit}
-                  className="flex items-center gap-3 bg-primary/10 px-5 py-2.5 rounded-full border border-primary/20 active:scale-95 transition-all group/loc"
+                  className="flex items-center gap-3 px-5 py-2.5 rounded-full border active:scale-95 transition-all group/loc"
+                  style={{ backgroundColor: `${accentColor}1A`, borderColor: `${accentColor}33` }}
                 >
-                  <span className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_#36e27b]"></span>
-                  <span className="text-[10px] font-black text-primary uppercase tracking-widest italic leading-none">
+                  <span className="w-2 h-2 rounded-full animate-pulse shadow-lg" style={{ backgroundColor: accentColor, boxShadow: `0 0 8px ${accentColor}` }}></span>
+                  <span className="text-[10px] font-black uppercase tracking-widest italic leading-none" style={{ color: accentColor }}>
                     {deliveryMode === 'local' ? `MESA ${currentTable}` : `BARRA ${currentBar}`}
                   </span>
-                  <span className="material-symbols-outlined text-[14px] text-primary/30 group-hover/loc:text-primary transition-colors">edit</span>
+                  <span className="material-symbols-outlined text-[14px] opacity-30 group-hover/loc:opacity-100 transition-opacity" style={{ color: accentColor }}>edit</span>
                 </button>
               )}
             </div>
@@ -147,26 +309,36 @@ const CheckoutPage: React.FC = () => {
             <button
               onClick={() => { setDeliveryMode('local'); setIsEditingLocation(false); }}
               className={`relative flex flex-col items-center justify-center h-48 rounded-[2.5rem] border-2 transition-all duration-700 overflow-hidden active:scale-95 ${deliveryMode === 'local'
-                ? 'border-primary bg-primary/[0.04] shadow-[0_20px_50px_rgba(54,226,123,0.15)]'
+                ? 'shadow-2xl'
                 : 'border-white/5 bg-white/[0.01] opacity-30 grayscale'
                 }`}
+              style={deliveryMode === 'local' ? {
+                borderColor: accentColor,
+                backgroundColor: `${accentColor}0A`,
+                boxShadow: `0 20px 50px ${accentColor}26`
+              } : {}}
             >
-              <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 blur-3xl rounded-full -mr-12 -mt-12"></div>
-              <span className={`material-symbols-outlined text-[44px] mb-4 transition-all duration-700 ${deliveryMode === 'local' ? 'text-primary fill-icon scale-110' : 'text-slate-700 scale-90'}`}>local_cafe</span>
-              <span className={`text-[11px] font-black uppercase tracking-[0.2em] italic ${deliveryMode === 'local' ? 'text-primary' : 'text-slate-600'}`}>Consumo Local</span>
-              {deliveryMode === 'local' && <div className="absolute bottom-4 w-6 h-1 bg-primary rounded-full shadow-[0_0_10px_#36e27b]"></div>}
+              <div className="absolute top-0 right-0 w-24 h-24 blur-3xl rounded-full -mr-12 -mt-12" style={{ backgroundColor: `${accentColor}0D` }}></div>
+              <span className={`material-symbols-outlined text-[44px] mb-4 transition-all duration-700 ${deliveryMode === 'local' ? 'fill-icon scale-110' : 'text-slate-700 scale-90'}`} style={deliveryMode === 'local' ? { color: accentColor } : {}}>local_cafe</span>
+              <span className={`text-[11px] font-black uppercase tracking-[0.2em] italic ${deliveryMode === 'local' ? '' : 'text-slate-600'}`} style={deliveryMode === 'local' ? { color: accentColor } : {}}>Consumo Local</span>
+              {deliveryMode === 'local' && <div className="absolute bottom-4 w-6 h-1 rounded-full shadow-lg" style={{ backgroundColor: accentColor, boxShadow: `0 0 10px ${accentColor}` }}></div>}
             </button>
 
             <button
               onClick={() => { setDeliveryMode('takeout'); setIsEditingLocation(false); }}
               className={`relative flex flex-col items-center justify-center h-48 rounded-[2.5rem] border-2 transition-all duration-700 overflow-hidden active:scale-95 ${deliveryMode === 'takeout'
-                ? 'border-primary bg-primary/[0.04] shadow-[0_20px_50px_rgba(54,226,123,0.15)]'
+                ? 'shadow-2xl'
                 : 'border-white/5 bg-white/[0.01] opacity-30 grayscale'
                 }`}
+              style={deliveryMode === 'takeout' ? {
+                borderColor: accentColor,
+                backgroundColor: `${accentColor}0A`,
+                boxShadow: `0 20px 50px ${accentColor}26`
+              } : {}}
             >
-              <span className={`material-symbols-outlined text-[44px] mb-4 transition-all duration-700 ${deliveryMode === 'takeout' ? 'text-primary fill-icon scale-110' : 'text-slate-700 scale-90'}`}>shopping_bag</span>
-              <span className={`text-[11px] font-black uppercase tracking-[0.2em] italic ${deliveryMode === 'takeout' ? 'text-primary' : 'text-slate-600'}`}>Para llevar</span>
-              {deliveryMode === 'takeout' && <div className="absolute bottom-4 w-6 h-1 bg-primary rounded-full shadow-[0_0_10px_#36e27b]"></div>}
+              <span className={`material-symbols-outlined text-[44px] mb-4 transition-all duration-700 ${deliveryMode === 'takeout' ? 'fill-icon scale-110' : 'text-slate-700 scale-90'}`} style={deliveryMode === 'takeout' ? { color: accentColor } : {}}>shopping_bag</span>
+              <span className={`text-[11px] font-black uppercase tracking-[0.2em] italic ${deliveryMode === 'takeout' ? '' : 'text-slate-600'}`} style={deliveryMode === 'takeout' ? { color: accentColor } : {}}>Para llevar</span>
+              {deliveryMode === 'takeout' && <div className="absolute bottom-4 w-6 h-1 rounded-full shadow-lg" style={{ backgroundColor: accentColor, boxShadow: `0 0 10px ${accentColor}` }}></div>}
             </button>
           </div>
         </section>
@@ -177,19 +349,31 @@ const CheckoutPage: React.FC = () => {
           <div className="flex flex-col gap-4">
             <div
               onClick={() => setPaymentMethod('wallet')}
-              className={`group flex cursor-pointer items-center justify-between rounded-[2.8rem] bg-white/[0.02] p-6 active:scale-[0.98] transition-all duration-500 border-2 ${paymentMethod === 'wallet' ? 'border-primary shadow-2xl bg-primary/[0.03]' : 'border-white/5 opacity-50'
+              className={`group flex cursor-pointer items-center justify-between rounded-[2.8rem] bg-white/[0.02] p-6 active:scale-[0.98] transition-all duration-500 border-2 ${paymentMethod === 'wallet' ? 'shadow-2xl' : 'border-white/5 opacity-50'
                 }`}
+              style={paymentMethod === 'wallet' ? {
+                borderColor: accentColor,
+                backgroundColor: `${accentColor}08`
+              } : {}}
             >
               <div className="flex items-center gap-6">
-                <div className={`flex size-16 items-center justify-center rounded-[1.4rem] ${paymentMethod === 'wallet' ? 'bg-primary text-black shadow-xl' : 'bg-white/5 text-slate-700'}`}>
+                <div
+                  className={`flex size-16 items-center justify-center rounded-[1.4rem] shadow-xl`}
+                  style={paymentMethod === 'wallet' ? { backgroundColor: accentColor, color: '#000' } : { backgroundColor: 'rgba(255,255,255,0.05)', color: '#475569' }}
+                >
                   <span className="material-symbols-outlined text-3xl font-black">account_balance_wallet</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-black text-[15px] uppercase tracking-tight italic text-white">Brew Wallet</span>
-                  <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest mt-1">Saldo Personal</span>
+                  <span className="font-black text-[15px] uppercase tracking-tight italic text-white">Mi Saldo</span>
+                  <span className="text-[12px] font-black uppercase tracking-widest mt-1" style={{ color: hasEnoughBalance ? accentColor : '#ef4444' }}>
+                    ${walletBalance.toFixed(2)} disponible
+                  </span>
                 </div>
               </div>
-              <div className={`flex h-10 w-10 items-center justify-center rounded-full transition-all duration-700 ${paymentMethod === 'wallet' ? 'bg-primary text-black scale-100' : 'bg-white/5 text-transparent scale-50'}`}>
+              <div
+                className={`flex h-10 w-10 items-center justify-center rounded-full transition-all duration-700 ${paymentMethod === 'wallet' ? 'scale-100' : 'bg-white/5 text-transparent scale-50'}`}
+                style={paymentMethod === 'wallet' ? { backgroundColor: accentColor, color: '#000' } : {}}
+              >
                 <span className="material-symbols-outlined text-xl font-black">check</span>
               </div>
             </div>
@@ -237,8 +421,11 @@ const CheckoutPage: React.FC = () => {
           <button
             onClick={handlePlaceOrder}
             disabled={isProcessingPayment}
-            className={`group relative flex h-24 w-full items-center justify-between pl-12 pr-5 transition-all duration-500 active:scale-[0.97] shadow-[0_25px_60px_rgba(0,0,0,0.6)] overflow-hidden disabled:opacity-50 rounded-full border border-white/20 ${paymentMethod === 'mercadopago' ? 'bg-[#009ee3] text-white' : 'bg-primary text-black'
-              }`}
+            className={`group relative flex h-24 w-full items-center justify-between pl-12 pr-5 transition-all duration-500 active:scale-[0.97] shadow-2xl overflow-hidden disabled:opacity-50 rounded-full border border-white/20`}
+            style={{
+              backgroundColor: paymentMethod === 'mercadopago' ? '#009ee3' : accentColor,
+              color: paymentMethod === 'mercadopago' ? '#fff' : '#000'
+            }}
           >
             <div className="relative z-10 flex flex-col items-start leading-none text-left">
               <span className="text-[14px] font-black uppercase tracking-tight">
@@ -248,10 +435,16 @@ const CheckoutPage: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-6 relative z-10">
-              <div className={`h-12 w-[1px] ${paymentMethod === 'mercadopago' ? 'bg-white/20' : 'bg-black/10'}`}></div>
+              <div className="h-12 w-[1px] bg-black/10" style={{ backgroundColor: paymentMethod === 'mercadopago' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)' }}></div>
               <div className="flex items-center gap-4">
                 <span className="text-[28px] font-black italic tracking-tighter tabular-nums leading-none">${total.toFixed(2)}</span>
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-all group-hover:scale-105 shadow-2xl ${paymentMethod === 'mercadopago' ? 'bg-white text-[#009ee3]' : 'bg-black text-primary'}`}>
+                <div
+                  className="w-16 h-16 rounded-full flex items-center justify-center transition-all group-hover:scale-105 shadow-2xl"
+                  style={{
+                    backgroundColor: paymentMethod === 'mercadopago' ? '#fff' : '#000',
+                    color: paymentMethod === 'mercadopago' ? '#009ee3' : accentColor
+                  }}
+                >
                   {isProcessingPayment ? (
                     <span className="material-symbols-outlined animate-spin text-2xl font-black">refresh</span>
                   ) : (

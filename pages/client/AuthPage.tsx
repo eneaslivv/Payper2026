@@ -1,40 +1,83 @@
 
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
 import { useClient } from '../../contexts/ClientContext';
 import { INITIAL_USER } from '../../components/client/constants';
 
 type AuthMode = 'login' | 'register' | 'forgot' | 'reset';
 
 const AuthPage: React.FC = () => {
-  const { setUser } = useClient();
+  const { setUser, store } = useClient();
+  const accentColor = store?.menu_theme?.accentColor || '#36e27b';
   const { slug } = useParams();
   const navigate = useNavigate();
   const [mode, setMode] = useState<AuthMode>('login');
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMsg('');
     setSuccessMsg('');
 
-    setTimeout(() => {
+    try {
       if (mode === 'login') {
-        setUser({ ...INITIAL_USER, onboardingCompleted: true });
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
+        // The ClientContext listener will handle the actual data fetching
         navigate(`/m/${slug}`);
       } else if (mode === 'register') {
-        setUser({ ...INITIAL_USER, onboardingCompleted: false });
-        navigate(`/m/${slug}`);
+        if (!store?.id) throw new Error('Tienda no identificada');
+
+        const name = email.split('@')[0]; // Derive name from email for now
+
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: name,
+              role: 'client', // Critical for RLS policies
+              store_id: store.id // Critical for Multitenancy
+            }
+          }
+        });
+
+        if (authError) {
+          console.error("Auth signup error:", authError);
+          throw new Error(authError.message || 'Error al crear cuenta');
+        }
+
+        if (authData.user) {
+          // 🚀 Trigger 'handle_new_user' in DB will create the client record automatically
+          // based on the metadata we just sent. No manual insert needed.
+
+          setSuccessMsg('¡Cuenta creada! Revisa tu correo si es necesario.');
+          navigate(`/m/${slug}`);
+        }
       } else if (mode === 'forgot') {
-        setMode('reset');
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin + window.location.pathname + '#/reset-password',
+        });
+        if (error) throw error;
+        setMode('forgot'); // Stay in forgot but show success
         setSuccessMsg('¡Enlace enviado! Revisa tu correo.');
-      } else if (mode === 'reset') {
-        setMode('login');
-        setSuccessMsg('Contraseña actualizada con éxito.');
       }
+    } catch (err: any) {
+      console.error("Auth error:", err);
+      setErrorMsg(err.message || 'Error en la autenticación');
+    } finally {
       setIsLoading(false);
-    }, 1200);
+    }
   };
 
   const getTitle = () => {
@@ -71,24 +114,24 @@ const AuthPage: React.FC = () => {
               <path d="M90 125C90 125 100 130 110 130C120 130 130 125 130 125" stroke="white" strokeWidth="0.5" strokeOpacity="0.2" />
 
               {/* Liquid Level Indicator */}
-              <path d="M95 138C95 138 102 142 110 142C118 142 125 138 125 138" stroke="#36e27b" strokeWidth="1.5" strokeOpacity="0.6" className="animate-pulse" />
+              <path d="M95 138C95 138 102 142 110 142C118 142 125 138 125 138" stroke={accentColor} strokeWidth="1.5" strokeOpacity="0.6" className="animate-pulse" />
             </g>
 
             {/* Pouring Animation Lines */}
             <g className="opacity-40">
-              <line x1="110" y1="40" x2="110" y2="65" stroke="#36e27b" strokeWidth="0.5" strokeDasharray="3 3" className="animate-data-stream-vertical" />
+              <line x1="110" y1="40" x2="110" y2="65" stroke={accentColor} strokeWidth="0.5" strokeDasharray="3 3" className="animate-data-stream-vertical" />
             </g>
 
             {/* Floating Technical Tag */}
             <g className="animate-card-sync">
-              <rect x="145" y="85" width="45" height="18" rx="4" fill="black" fillOpacity="0.6" stroke="#36e27b" strokeWidth="0.5" />
-              <text x="151" y="97" fill="#36e27b" fontSize="5" fontWeight="900" letterSpacing="0.1em" fontFamily="monospace">BREW-CONF</text>
+              <rect x="145" y="85" width="45" height="18" rx="4" fill="black" fillOpacity="0.6" stroke={accentColor} strokeWidth="0.5" />
+              <text x="151" y="97" fill={accentColor} fontSize="5" fontWeight="900" letterSpacing="0.1em" fontFamily="monospace">BREW-CONF</text>
             </g>
 
             <defs>
               <radialGradient id="baseGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(110 145) rotate(90) scale(20 40)">
-                <stop stopColor="#36e27b" stopOpacity="0.3" />
-                <stop offset="1" stopColor="#36e27b" stopOpacity="0" />
+                <stop stopColor={accentColor} stopOpacity="0.3" />
+                <stop offset="1" stopColor={accentColor} stopOpacity="0" />
               </radialGradient>
             </defs>
           </svg>
@@ -98,12 +141,12 @@ const AuthPage: React.FC = () => {
         <div className="absolute bottom-4 flex gap-8 opacity-30">
           <div className="flex flex-col items-center gap-1.5">
             <span className="text-[6px] font-black uppercase tracking-[0.4em] text-white/50">LINK_SECURE</span>
-            <div className="w-1 h-1 rounded-full bg-primary animate-ping"></div>
+            <div className="w-1 h-1 rounded-full animate-ping" style={{ backgroundColor: accentColor }}></div>
           </div>
           <div className="flex flex-col items-center gap-1.5">
             <span className="text-[6px] font-black uppercase tracking-[0.4em] text-white/50">SYSTEM_FLOW</span>
-            <div className="w-3 h-0.5 bg-primary/20 rounded-full overflow-hidden">
-              <div className="h-full bg-primary w-full animate-data-stream"></div>
+            <div className="w-3 h-0.5 rounded-full overflow-hidden" style={{ backgroundColor: `${accentColor}33` }}>
+              <div className="h-full w-full animate-data-stream" style={{ backgroundColor: accentColor }}></div>
             </div>
           </div>
         </div>
@@ -118,6 +161,19 @@ const AuthPage: React.FC = () => {
           <p className="text-white/30 text-[9px] font-black uppercase tracking-[0.5em] italic">
             Acceso Seguro de Miembros
           </p>
+          {errorMsg && (
+            <p className="mt-4 text-red-500 text-[10px] font-bold uppercase tracking-widest bg-red-500/10 p-3 rounded-xl border border-red-500/20">
+              {errorMsg}
+            </p>
+          )}
+          {successMsg && (
+            <p
+              className="mt-4 text-[10px] font-bold uppercase tracking-widest p-3 rounded-xl border"
+              style={{ color: accentColor, backgroundColor: `${accentColor}1A`, borderColor: `${accentColor}33` }}
+            >
+              {successMsg}
+            </p>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6 w-full max-w-[320px] mx-auto">
@@ -125,9 +181,12 @@ const AuthPage: React.FC = () => {
             <div className="flex flex-col gap-2.5">
               <label className="text-white/20 text-[8px] font-black uppercase tracking-[0.5em] ml-6">Identificador</label>
               <input
-                className="w-full rounded-[1.6rem] border border-white/5 bg-white/[0.03] h-16 px-8 text-[14px] font-bold transition-all focus:border-primary/30 focus:bg-white/[0.06] text-white placeholder:text-white/10 shadow-inner"
+                className="w-full rounded-[1.6rem] border border-white/5 bg-white/[0.03] h-16 px-8 text-[14px] font-bold transition-all outline-none text-white placeholder:text-white/10 shadow-inner"
+                style={{ '--focus-border': accentColor } as any}
                 placeholder="usuario@morningbrew.co"
                 type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
                 required
               />
             </div>
@@ -136,12 +195,26 @@ const AuthPage: React.FC = () => {
           {(mode === 'login' || mode === 'register' || mode === 'reset') && (
             <div className="flex flex-col gap-2.5">
               <label className="text-white/20 text-[8px] font-black uppercase tracking-[0.5em] ml-6">Token Secreto</label>
-              <input
-                className="w-full rounded-[1.6rem] border border-white/5 bg-white/[0.03] h-16 px-8 text-[14px] font-bold transition-all focus:border-primary/30 focus:bg-white/[0.06] text-white placeholder:text-white/10 shadow-inner"
-                placeholder="••••••••"
-                type="password"
-                required
-              />
+              <div className="relative">
+                <input
+                  className="w-full rounded-[1.6rem] border border-white/5 bg-white/[0.03] h-16 pl-8 pr-12 text-[14px] font-bold transition-all outline-none text-white placeholder:text-white/10 shadow-inner"
+                  style={{ '--focus-border': accentColor } as any}
+                  placeholder="••••••••"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors outline-none flex items-center justify-center"
+                >
+                  <span className="material-symbols-outlined text-xl">
+                    {showPassword ? 'visibility' : 'visibility_off'}
+                  </span>
+                </button>
+              </div>
             </div>
           )}
 
@@ -149,7 +222,8 @@ const AuthPage: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="group relative flex w-full items-center justify-between rounded-full h-20 bg-primary text-black pl-10 pr-4 shadow-[0_20px_50px_rgba(54,226,123,0.25)] active:scale-[0.97] transition-all duration-500 disabled:opacity-50 overflow-hidden mt-4 border border-white/20"
+            className="group relative flex w-full items-center justify-between rounded-full h-20 text-black pl-10 pr-4 shadow-2xl active:scale-[0.97] transition-all duration-500 disabled:opacity-50 overflow-hidden mt-4 border border-white/20"
+            style={{ backgroundColor: accentColor, boxShadow: `0 20px 50px ${accentColor}40` }}
           >
             <div className="flex flex-col items-start leading-none text-left relative z-10">
               <span className="text-[13px] font-black uppercase tracking-tight">Autorizar</span>
@@ -158,7 +232,10 @@ const AuthPage: React.FC = () => {
 
             <div className="flex items-center gap-5 relative z-10">
               <div className="w-[1px] h-10 bg-black/10"></div>
-              <div className="w-14 h-14 rounded-full flex items-center justify-center bg-black text-primary transition-all group-hover:scale-105 shadow-xl">
+              <div
+                className="w-14 h-14 rounded-full flex items-center justify-center bg-black transition-all group-hover:scale-105 shadow-xl"
+                style={{ color: accentColor }}
+              >
                 {isLoading ? (
                   <span className="material-symbols-outlined animate-spin text-xl">refresh</span>
                 ) : (
@@ -174,7 +251,8 @@ const AuthPage: React.FC = () => {
         <div className="mt-auto pt-8 flex flex-col items-center gap-2">
           <button
             onClick={() => setMode(mode === 'register' ? 'login' : 'register')}
-            className="text-[9px] font-black text-white/20 hover:text-primary uppercase tracking-[0.5em] transition-all active:scale-95 py-3 px-6 italic"
+            className="text-[9px] font-black text-white/20 uppercase tracking-[0.5em] transition-all active:scale-95 py-3 px-6 italic"
+            style={{ '--hover-color': accentColor } as any}
           >
             {mode === 'register' ? '¿Ya eres miembro?' : 'Solicitar Membresía'}
           </button>

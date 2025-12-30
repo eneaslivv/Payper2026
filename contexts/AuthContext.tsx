@@ -83,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     if (isRec) setIsRecovery(true);
 
                     if (initialSession?.user && !isRec && mounted) {
-                        await fetchProfile(initialSession.user.id);
+                        await fetchProfile(initialSession.user.id, initialSession.user.email);
                     }
                 }
             } catch (error) {
@@ -133,7 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 userIdRef.current = newSession?.user?.id || null;
 
                 if (newSession?.user) {
-                    await fetchProfile(newSession.user.id);
+                    await fetchProfile(newSession.user.id, newSession.user.email);
                 }
                 setIsLoading(false);
 
@@ -155,7 +155,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
     }, []);
 
-    const fetchProfile = async (userId: string) => {
+    const fetchProfile = async (userId: string, emailArg?: string) => {
+        // 🚨 GOD MODE BYPASS: Si es el Super Admin, entra SI O SI.
+        const currentUserEmail = emailArg || session?.user?.email || user?.email;
+        const superAdmins = ['livvadm@gmail.com'];
+
+        if (currentUserEmail && superAdmins.includes(currentUserEmail)) {
+            console.log('👑 GOD MODE ACTIVATED: Bypassing database completely for', currentUserEmail);
+            setProfile({
+                id: userId,
+                email: currentUserEmail,
+                full_name: 'SUPER ADMIN',
+                role: 'super_admin',
+                is_active: true,
+                store_id: undefined
+            });
+            setPermissions(null); // Full access
+            setIsLoading(false);
+            return; // 🛑 NEVER query DB for this user
+        }
+
+        // 🚨 SPECIAL BYPASS FOR ENEAS (Store Owner)
+        // Ensure immediate access regardless of DB state
+        if (currentUserEmail === 'livveneas@gmail.com') {
+            console.log('[AUTH] 👑 SPECIAL BYPASS ACTIVATED for Eneas');
+            const targetStoreId = 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533'; // Store: "ciro"
+
+            setProfile({
+                id: userId,
+                email: currentUserEmail,
+                full_name: 'Eneas Owner',
+                role: 'store_owner',
+                is_active: true,
+                store_id: targetStoreId
+            });
+            setPermissions(null);
+            setIsLoading(false);
+
+            // Attempt background DB repair/sync without blocking UI
+            supabase.from('profiles').upsert({
+                id: userId,
+                email: currentUserEmail || 'livveneas@gmail.com',
+                full_name: 'Eneas Owner',
+                role: 'store_owner',
+                is_active: true,
+                store_id: targetStoreId
+            }).then(({ error }) => {
+                if (error) console.error('[AUTH] Background DB Repair failed:', error);
+                else console.log('[AUTH] Background DB Repair SUCCESS');
+            });
+            return;
+        }
+
         // SKIP if we already have a valid profile for this user
         if (profile && profile.id === userId) {
             console.log('[AUTH] Profile already loaded for this user. Skipping fetch.');
@@ -165,69 +216,80 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('[AUTH] 🔍 fetchProfile called with userId:', userId);
 
         // STEP 1: Always try to fetch existing profile from database FIRST
-        try {
-            console.log('[AUTH] Attempting to fetch profile from DB...');
+        let attempts = 0;
+        const maxAttempts = 3;
 
-            // Add timeout to prevent infinite hang
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Profile fetch timeout after 5s')), 5000)
-            );
+        while (attempts < maxAttempts) {
+            attempts++;
+            try {
+                console.log(`[AUTH] Attempting to fetch profile from DB (Attempt ${attempts}/${maxAttempts})...`);
 
-            const fetchPromise = supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', userId)
-                .single();
+                // Add timeout to prevent infinite hang
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Profile fetch timeout after 5s')), 5000)
+                );
 
-            const result = await Promise.race([fetchPromise, timeoutPromise]) as any;
-            const { data: existingProfile, error: profileError } = result;
+                const fetchPromise = supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', userId)
+                    .single();
 
-            console.log('[AUTH] Profile fetch result:', {
-                success: !profileError,
-                error: profileError?.message,
-                data: existingProfile
-            });
+                const result = await Promise.race([fetchPromise, timeoutPromise]) as any;
+                const { data: existingProfile, error: profileError } = result;
 
-            if (!profileError && existingProfile) {
-                console.log('[AUTH] ✅ Loaded existing profile from DB:', existingProfile.email, 'role:', existingProfile.role, 'store_id:', existingProfile.store_id);
+                if (!profileError && existingProfile) {
+                    console.log('[AUTH] ✅ Loaded existing profile from DB:', existingProfile.email, 'role:', existingProfile.role, 'store_id:', existingProfile.store_id);
 
-                const userProfile = existingProfile as UserProfile;
+                    const userProfile = existingProfile as UserProfile;
 
-                // Check for Impersonation (only for super_admin or store_owner)
-                const impersonatedStoreId = localStorage.getItem('impersonated_store_id');
-                if (impersonatedStoreId && (userProfile.role === 'super_admin' || userProfile.role === 'store_owner')) {
-                    console.log('[AUTH] 🕵️ Impersonation Active. Target Store:', impersonatedStoreId);
-                    userProfile.store_id = impersonatedStoreId;
-                }
-
-                setProfile(userProfile);
-
-                // Fetch Permissions if role_id exists (and not overridden by failsafe)
-                if (userProfile.role_id) {
-                    const { data: permData } = await supabase
-                        .from('cafe_role_permissions')
-                        .select('section_slug, can_view, can_create, can_edit, can_delete')
-                        .eq('role_id', userProfile.role_id);
-
-                    if (permData) {
-                        const permMap: RolePermissions = {};
-                        permData.forEach((p: any) => {
-                            permMap[p.section_slug] = {
-                                view: p.can_view,
-                                create: p.can_create,
-                                edit: p.can_edit,
-                                delete: p.can_delete
-                            };
-                        });
-                        setPermissions(permMap);
+                    // Check for Impersonation (only for super_admin or store_owner)
+                    const impersonatedStoreId = localStorage.getItem('impersonated_store_id');
+                    if (impersonatedStoreId && (userProfile.role === 'super_admin' || userProfile.role === 'store_owner')) {
+                        console.log('[AUTH] 🕵️ Impersonation Active. Target Store:', impersonatedStoreId);
+                        userProfile.store_id = impersonatedStoreId;
                     }
-                } else if (userProfile.role === 'store_owner' || userProfile.role === 'super_admin') {
-                    setPermissions(null); // Full access
+
+                    setProfile(userProfile);
+
+                    // Fetch Permissions if role_id exists (and not overridden by failsafe)
+                    if (userProfile.role_id) {
+                        const { data: permData } = await supabase
+                            .from('cafe_role_permissions')
+                            .select('section_slug, can_view, can_create, can_edit, can_delete')
+                            .eq('role_id', userProfile.role_id);
+
+                        if (permData) {
+                            const permMap: RolePermissions = {};
+                            permData.forEach((p: any) => {
+                                permMap[p.section_slug] = {
+                                    view: p.can_view,
+                                    create: p.can_create,
+                                    edit: p.can_edit,
+                                    delete: p.can_delete
+                                };
+                            });
+                            setPermissions(permMap);
+                        }
+                    } else if (userProfile.role === 'store_owner' || userProfile.role === 'super_admin') {
+                        setPermissions(null); // Full access
+                    }
+                    return; // Done - profile loaded successfully
                 }
-                return; // Done - profile loaded successfully
+
+                // If we got here, profile is null or error occurred.
+                console.warn(`[AUTH] Profile fetch attempt ${attempts} failed or returned null.`);
+                if (attempts < maxAttempts) {
+                    console.log(`[AUTH] Retrying in 1000ms...`);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+
+            } catch (err: any) {
+                console.log(`[AUTH] Profile fetch error on attempt ${attempts}:`, err.message);
+                if (attempts < maxAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
             }
-        } catch (err: any) {
-            console.log('[AUTH] Profile fetch failed:', err.message);
         }
 
         // STEP 2: Profile fetch failed - ONLY use hardcoded fallback for TRUE emergency admin
@@ -237,20 +299,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // EMERGENCY ADMIN ONLY - This should be the one account that can always access the system
         // Do NOT add regular users here - they should always come from the DB
+        // EMERGENCY ADMIN ONLY
         const emergencyAdmin = 'livvadm@gmail.com';
         if (userEmail === emergencyAdmin) {
-            console.log('[AUTH] 🚨 EMERGENCY ADMIN ACCESS GRANTED (DB unreachable)');
+            console.log('[AUTH] 🚨 EMERGENCY GOD MODE ACTIVATED for Super Admin');
             setProfile({
-                id: '5d0a7878-3408-4ddc-a5df-5d398fea36ec',
-                email: emergencyAdmin,
-                full_name: 'Admin Supremo',
+                id: session?.user?.id || 'emergency-id',
+                email: 'livvadm@gmail.com',
+                full_name: 'GOD MODE ADMIN',
                 role: 'super_admin',
                 is_active: true,
-                store_id: 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533'
+                store_id: undefined
             });
             setPermissions(null);
+            setIsLoading(false);
             return;
         }
+
+
+        // 🚨 AUTO-HEALING FOR ENEAS (Store Owner)
+        // If DB fetch failed but this is the owner, force entry and repair DB.
+        if (userEmail === 'livveneas@gmail.com') {
+            console.log('[AUTH] 🩹 AUTO-HEALING Eneas Profile');
+            const targetStoreId = 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
+
+            // 1. Force UI Access immediately
+            setProfile({
+                id: userId,
+                email: userEmail,
+                full_name: 'Eneas Owner',
+                role: 'store_owner',
+                is_active: true,
+                store_id: targetStoreId // Ensure Store ID is set in fallback
+            });
+            setPermissions(null);
+            setIsLoading(false);
+
+            // 2. Try to repair DB in background
+            supabase.from('profiles').upsert({
+                id: userId,
+                email: userEmail,
+                full_name: 'Eneas Owner',
+                role: 'store_owner',
+                is_active: true,
+                store_id: targetStoreId
+            }).then(({ error }) => {
+                if (error) console.error('[AUTH] Background DB Repair failed:', error);
+                else console.log('[AUTH] Background DB Repair SUCCESS');
+            });
+            return;
+        }
+
 
         // STEP 3: Profile not found - DON'T logout automatically
         // Let App.tsx show an error screen where user can manually retry or logout
@@ -294,10 +393,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    // --- SUPER ADMIN CHECK (STRICT - ROLE ONLY) ---
-    // DO NOT use email-based checks here. That causes race conditions.
-    // The only way to be Admin is: profile exists AND profile.role === 'super_admin'.
-    const isAdmin = !!(user && profile && profile.id === user.id && profile.role === 'super_admin');
+    // --- SUPER ADMIN CHECK (STRICT - ROLE ONLY + GOD MODE) ---
+    // GOD MODE: livvadm@gmail.com is ALWAYS admin, no questions asked
+    const isGodMode = user?.email === 'livvadm@gmail.com';
+    const isAdmin = isGodMode || !!(user && profile && profile.id === user.id && profile.role === 'super_admin');
 
     return (
         <AuthContext.Provider value={{

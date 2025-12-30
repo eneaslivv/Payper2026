@@ -123,41 +123,44 @@ const OrderCreation: React.FC = () => {
         note: null
       }));
 
-      // Call Supabase RPC function
-      const { data, error } = await supabase.rpc('create_order_with_stock_deduction', {
-        p_store_id: profile.store_id,
-        p_customer_name: selectedClient ? selectedClient.name : 'Cliente General',
-        p_total_amount: total,
-        p_status: 'pending',
-        p_order_items: orderItems
-      });
+      // 1. Insert Order
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          store_id: profile.store_id,
+          customer_name: selectedClient ? selectedClient.name : 'Cliente General',
+          total_amount: total,
+          status: 'pending',
+          is_paid: true, // Manual salon orders are usually paid or marked as such
+          channel: 'table',
+          table_number: selectedTable?.name.replace('Mesa ', '') || null
+        })
+        .select()
+        .single();
 
-      if (error) {
-        console.error('Order creation error:', error);
-        // Fallback to offline mode if RPC not available
-        const orderId = crypto.randomUUID();
-        const now = new Date();
-        const newOrder: Order = {
-          id: orderId,
-          customer: selectedClient ? selectedClient.name : 'Cliente General',
-          time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          items: cart,
-          status: 'Pendiente',
-          type: selectedTable ? 'Mesa' : 'Takeaway',
-          paid: true,
-          amount: total,
-          table: selectedTable?.name.replace('Mesa ', '')
-        };
-        await createOrder(newOrder);
-        addToast('Pedido guardado offline', 'info', 'Se sincronizará cuando haya conexión');
-      } else {
-        const result = data as { success?: boolean; error?: string; order_id?: string } | null;
-        if (result?.success) {
-          addToast(`PEDIDO CONFIRMADO`, 'success', `Stock actualizado automáticamente`);
-        } else {
-          throw new Error(result?.error || 'Error desconocido');
-        }
+      if (orderError) throw orderError;
+
+      // 2. Insert Items
+      if (cart.length > 0 && orderData.id) {
+        const orderItemsToInsert = cart.map(item => ({
+          order_id: orderData.id,
+          store_id: profile.store_id,
+          tenant_id: profile.store_id,
+          product_id: item.productId,
+          quantity: item.quantity,
+          unit_price: item.price_unit,
+          total_price: item.price_unit * item.quantity,
+          notes: ''
+        }));
+
+        const { error: itemsError } = await supabase
+          .from('order_items')
+          .insert(orderItemsToInsert);
+
+        if (itemsError) throw itemsError;
       }
+
+      addToast(`PEDIDO CONFIRMADO`, 'success', `Orden #${orderData.order_number || ''} creada`);
 
       setLastOrderTotal(total);
       setShowSuccess(true);

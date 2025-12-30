@@ -82,11 +82,11 @@ const LoyaltyPage: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen pb-32 bg-background-light dark:bg-background-dark font-display overflow-x-hidden">
-      <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-xl px-6 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-6 flex justify-between items-center border-b border-white/5">
+      <header className="sticky top-0 z-50 px-6 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-6 flex justify-between items-center border-b border-white/5 bg-black/80 backdrop-blur-xl">
         <div className="flex items-center gap-3">
           <div
             className="w-10 h-10 rounded-full flex items-center justify-center ring-1"
-            style={{ backgroundColor: `${accentColor}20`, color: accentColor, ringColor: `${accentColor}33` }}
+            style={{ backgroundColor: `${accentColor}20`, color: accentColor, borderColor: `${accentColor}33` }}
           >
             <span className="material-symbols-outlined fill-icon">loyalty</span>
           </div>
@@ -103,11 +103,11 @@ const LoyaltyPage: React.FC = () => {
 
       <main className="p-4 flex flex-col gap-8">
         <div className="relative h-72 w-full rounded-[2.5rem] bg-gradient-to-br from-[#1c3024] via-[#0e1a12] to-[#0a110b] shadow-2xl p-8 flex flex-col justify-between overflow-hidden border border-white/10 group">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[100px] rounded-full group-hover:bg-primary/20 transition-all duration-1000 ease-in-out opacity-40"></div>
+          <div className="absolute top-0 right-0 w-64 h-64 blur-[100px] rounded-full group-hover:opacity-60 transition-all duration-1000 ease-in-out opacity-40" style={{ backgroundColor: `${accentColor}33` }}></div>
 
           <div className="relative z-10 flex justify-between items-start">
             <div className="flex flex-col gap-1">
-              <span className="text-[10px] uppercase tracking-[0.3em] font-black text-primary/60 italic">Nivel de Membresía</span>
+              <span className="text-[10px] uppercase tracking-[0.3em] font-black italic" style={{ color: `${accentColor}99` }}>Nivel de Membresía</span>
               <h2 className="text-white text-[32px] font-black tracking-tighter uppercase italic leading-none">{user.name}</h2>
             </div>
             <div className="flex flex-col items-end gap-1">
@@ -123,16 +123,17 @@ const LoyaltyPage: React.FC = () => {
               <div className="flex flex-col">
                 <span className="text-5xl font-black text-white tracking-tighter flex items-end gap-2 leading-none">
                   {user.points.toLocaleString()}
-                  <span className="text-primary text-[10px] font-black tracking-[0.3em] uppercase mb-1.5 italic">Granos</span>
+                  <span className="text-[10px] font-black tracking-[0.3em] uppercase mb-1.5 italic" style={{ color: accentColor }}>Granos</span>
                 </span>
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-2 flex items-center gap-2">
                   <span>Faltan {nextTier.threshold - user.points > 0 ? nextTier.threshold - user.points : 0} para {nextTier.level}</span>
-                  <span className="material-symbols-outlined text-[12px] animate-bounce-x">trending_flat</span>
+                  <span className="material-symbols-outlined text-[12px] animate-bounce-x" style={{ color: accentColor }}>trending_flat</span>
                 </p>
               </div>
               <button
                 onClick={() => setShowQR({ isOpen: true, data: user.id, title: 'ID de Miembro' })}
-                className="w-16 h-16 rounded-[1.5rem] bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover:scale-110 transition-all duration-500 shadow-xl backdrop-blur-sm"
+                className="w-16 h-16 rounded-[1.5rem] border flex items-center justify-center group-hover:scale-110 transition-all duration-500 shadow-xl backdrop-blur-sm"
+                style={{ backgroundColor: `${accentColor}1A`, borderColor: `${accentColor}33`, color: accentColor }}
               >
                 <span className="material-symbols-outlined text-4xl fill-icon">qr_code</span>
               </button>
@@ -155,9 +156,10 @@ const LoyaltyPage: React.FC = () => {
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`flex-1 py-4 px-2 rounded-[2rem] text-[9px] font-black uppercase tracking-widest transition-all duration-500 ${activeTab === tab
-                ? 'bg-primary text-black shadow-[0_10px_20px_rgba(54,226,123,0.3)]'
+                ? 'text-black shadow-lg'
                 : 'text-slate-500 hover:text-slate-300'
                 }`}
+              style={activeTab === tab ? { backgroundColor: accentColor, boxShadow: `0 10px 20px -5px ${accentColor}4D` } : {}}
             >
               {tab === 'rewards' ? 'Canjes' : tab === 'vouchers' ? 'Mis Vales' : 'Beneficios'}
             </button>
@@ -177,7 +179,7 @@ const LoyaltyPage: React.FC = () => {
                     <h4 className="font-black text-lg leading-tight tracking-tight uppercase italic">{reward.name}</h4>
                     <p className="text-[11px] text-slate-500 line-clamp-1 mt-1 font-medium">{reward.desc}</p>
                     <div className="mt-3 flex items-center gap-2">
-                      <div className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${canAfford ? 'bg-primary/10 text-primary' : 'bg-white/5 text-slate-600'}`}>
+                      <div className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${canAfford ? '' : 'bg-white/5 text-slate-600'}`} style={canAfford ? { backgroundColor: `${accentColor}1A`, color: accentColor } : {}}>
                         {reward.cost} Granos
                       </div>
                     </div>
@@ -186,9 +188,10 @@ const LoyaltyPage: React.FC = () => {
                     disabled={!canAfford}
                     onClick={() => handleRedeem(reward.cost, reward.name)}
                     className={`h-14 w-14 rounded-2xl flex items-center justify-center transition-all duration-500 ${canAfford
-                      ? 'bg-primary text-black shadow-[0_10px_25px_rgba(54,226,123,0.25)]'
+                      ? 'text-black'
                       : 'bg-slate-100 dark:bg-white/5 text-slate-400 opacity-50'
                       }`}
+                    style={canAfford ? { backgroundColor: accentColor, boxShadow: `0 10px 25px -5px ${accentColor}40` } : {}}
                   >
                     <span className="material-symbols-outlined font-black text-2xl">redeem</span>
                   </button>
@@ -207,8 +210,8 @@ const LoyaltyPage: React.FC = () => {
               </div>
             ) : (
               user.vouchers.map(v => (
-                <div key={v.id} className="flex items-center gap-5 bg-surface-dark p-5 rounded-[2.5rem] border border-white/5 shadow-xl group hover:border-primary/20 transition-all">
-                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 ${v.type === 'gift' ? 'bg-orange-500/10 text-orange-500' : 'bg-primary/10 text-primary'}`}>
+                <div key={v.id} className="flex items-center gap-5 bg-surface-dark p-5 rounded-[2.5rem] border border-white/5 shadow-xl group transition-all" style={{ hoverBorderColor: accentColor }}>
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0" style={v.type === 'gift' ? { backgroundColor: 'rgba(249, 115, 22, 0.1)', color: '#f97316' } : { backgroundColor: `${accentColor}1A`, color: accentColor }}>
                     <span className="material-symbols-outlined text-3xl font-black">{v.type === 'gift' ? 'redeem' : 'confirmation_number'}</span>
                   </div>
                   <div className="flex-1">
@@ -217,7 +220,8 @@ const LoyaltyPage: React.FC = () => {
                   </div>
                   <button
                     onClick={() => setShowQR({ isOpen: true, data: v.id, title: v.name })}
-                    className="bg-white/5 h-14 w-14 rounded-2xl flex items-center justify-center text-slate-400 hover:text-primary transition-all active:scale-90"
+                    className="bg-white/5 h-14 w-14 rounded-2xl flex items-center justify-center text-slate-400 transition-all active:scale-90"
+                    style={{ hoverColor: accentColor }}
                   >
                     <span className="material-symbols-outlined text-3xl font-black">qr_code_2</span>
                   </button>
@@ -230,14 +234,14 @@ const LoyaltyPage: React.FC = () => {
         {activeTab === 'benefits' && (
           <div className="flex flex-col gap-6">
             {tiers.map((t, i) => (
-              <div key={t.level} className={`p-8 rounded-[3rem] border flex flex-col gap-4 relative overflow-hidden transition-all duration-500 ${i <= currentTierIndex ? 'bg-surface-dark border-primary/20' : 'bg-white/5 border-white/5 opacity-40'}`}>
+              <div key={t.level} className={`p-8 rounded-[3rem] border flex flex-col gap-4 relative overflow-hidden transition-all duration-500 ${i <= currentTierIndex ? 'bg-surface-dark' : 'bg-white/5 border-white/5 opacity-40'}`} style={i <= currentTierIndex ? { borderColor: `${accentColor}33` } : {}}>
                 <div className="flex justify-between items-center">
                   <div className="flex flex-col">
-                    <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${i <= currentTierIndex ? 'text-primary' : 'text-slate-600'}`}>Nivel {i + 1}</span>
+                    <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${i <= currentTierIndex ? '' : 'text-slate-600'}`} style={i <= currentTierIndex ? { color: accentColor } : {}}>Nivel {i + 1}</span>
                     <h4 className="text-2xl font-black uppercase italic tracking-tighter mt-1">{t.level}</h4>
                   </div>
                   {i <= currentTierIndex ? (
-                    <span className="material-symbols-outlined text-primary fill-icon text-3xl">verified</span>
+                    <span className="material-symbols-outlined fill-icon text-3xl" style={{ color: accentColor }}>verified</span>
                   ) : (
                     <span className="material-symbols-outlined text-slate-700 text-3xl">lock</span>
                   )}

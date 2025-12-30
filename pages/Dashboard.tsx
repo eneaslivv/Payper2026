@@ -31,7 +31,7 @@ const Dashboard: React.FC = () => {
     alert('Enviando...');
     const result = await sendEmailNotification({
       to: profile.email,
-      subject: 'Prueba de Sistema CoffeeSquad',
+      subject: 'Prueba de Sistema Payper',
       html: `
         <div style="font-family: sans-serif; color: #333;">
           <h1 style="color: #00ff9d;">Sistema Operativo</h1>

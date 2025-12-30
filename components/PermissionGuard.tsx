@@ -23,8 +23,14 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
     children,
     fallback = null
 }) => {
-    const { hasPermission } = useAuth();
+    const { hasPermission, profile } = useAuth();
     const sectionSlug = slug || section;
+
+    // FAILSAFE: Owners and Super Admins ALWAYS have full access
+    // This bypasses any potential "permissions" state lag or misconfiguration
+    if (profile?.role === 'store_owner' || profile?.role === 'super_admin') {
+        return <>{children}</>;
+    }
 
     if (!sectionSlug || hasPermission(sectionSlug, action)) {
         return <>{children}</>;

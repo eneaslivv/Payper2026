@@ -11,16 +11,16 @@ serve(async (req) => {
         return new Response('ok', { headers: corsHeaders });
     }
 
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     try {
-        const { items, back_urls, external_reference, store_id } = await req.json();
+        const { items, back_urls, external_reference, store_id, order_id } = await req.json();
 
         if (!items || !store_id) {
             throw new Error("Missing items or store_id");
         }
-
-        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-        const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
         // 1. Get Store's Access Token
         const { data: store, error: storeError } = await supabase
@@ -33,6 +33,10 @@ serve(async (req) => {
             throw new Error("Store not connected to Mercado Pago");
         }
 
+        // Calculate total amount
+        const totalAmount = items.reduce((sum: number, item: any) =>
+            sum + (Number(item.unit_price) * Number(item.quantity)), 0);
+
         // 2. Create Preference
         const preferenceData = {
             items: items.map((item: any) => ({
@@ -43,7 +47,7 @@ serve(async (req) => {
             })),
             back_urls: back_urls,
             auto_return: 'approved',
-            external_reference: external_reference,
+            external_reference: external_reference || order_id,
             notification_url: `${supabaseUrl}/functions/v1/mp-webhook?store_id=${store_id}`,
             statement_descriptor: "PAYPER",
         };
@@ -61,6 +65,30 @@ serve(async (req) => {
 
         if (!mpResponse.ok) {
             throw new Error(`MP Preference Error: ${mpData.message || 'Unknown error'}`);
+        }
+
+        // 3. Guardar payment_intent para trazabilidad
+        if (order_id) {
+            await supabase
+                .from('payment_intents')
+                .insert({
+                    store_id: store_id,
+                    order_id: order_id,
+                    mp_preference_id: mpData.id,
+                    external_reference: external_reference || order_id,
+                    amount: totalAmount,
+                    currency: 'ARS',
+                    status: 'pending',
+                    init_point: mpData.init_point,
+                    expires_at: mpData.expires_date_from,
+                    metadata: { items: items }
+                });
+
+            // Actualizar orden con payment_status
+            await supabase
+                .from('orders')
+                .update({ payment_status: 'pending', payment_provider: 'mercadopago' })
+                .eq('id', order_id);
         }
 
         return new Response(

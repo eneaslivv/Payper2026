@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useClient } from '../../contexts/ClientContext';
 
 interface BottomNavProps {
   activePath: string;
@@ -10,6 +11,7 @@ interface BottomNavProps {
 const BottomNav: React.FC<BottomNavProps> = ({ activePath, accentColor }) => {
   const navigate = useNavigate();
   const { slug } = useParams();
+  const { setShowAuthModal, user } = useClient();
 
   const navItems = [
     { label: 'Menú', icon: 'restaurant_menu', path: `/m/${slug}` },
@@ -25,7 +27,13 @@ const BottomNav: React.FC<BottomNavProps> = ({ activePath, accentColor }) => {
           return (
             <button
               key={item.path}
-              onClick={() => navigate(item.path)}
+              onClick={() => {
+                if (item.label !== 'Menú' && !user) {
+                  setShowAuthModal(true);
+                } else {
+                  navigate(item.path);
+                }
+              }}
               className="relative flex flex-col items-center justify-center gap-1 group transition-all duration-300"
               style={{ color: isActive ? accentColor : '#64748b', transform: isActive ? 'scale(1.1)' : 'scale(1)' }}
             >

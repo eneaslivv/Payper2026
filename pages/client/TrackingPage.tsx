@@ -6,7 +6,10 @@ import { supabase } from '../../lib/supabase';
 const TrackingPage: React.FC = () => {
   const { slug, orderId } = useParams<{ slug: string; orderId: string }>();
   const navigate = useNavigate();
-  const { cart, setHasActiveOrder, orderStatus, setOrderStatus } = useClient();
+  const { cart, setHasActiveOrder, orderStatus, setOrderStatus, store } = useClient();
+
+  // Theme support
+  const accentColor = store?.menu_theme?.accentColor || '#36e27b';
 
   // UI State for Timer (Estimated)
   const [seconds, setSeconds] = useState(0);
@@ -31,6 +34,8 @@ const TrackingPage: React.FC = () => {
     return () => clearInterval(timer);
   }, [minutes]);
 
+  const [orderNumber, setOrderNumber] = useState<number | null>(null);
+
   // Realtime Order Tracking
   useEffect(() => {
     if (!orderId) return;
@@ -38,12 +43,13 @@ const TrackingPage: React.FC = () => {
     const fetchOrder = async () => {
       const { data } = await supabase
         .from('orders')
-        .select('status')
+        .select('status, order_number')
         .eq('id', orderId)
         .single();
 
       if (data) {
         setOrderStatus(data.status as any);
+        setOrderNumber(data.order_number);
       }
     };
 
@@ -99,14 +105,20 @@ const TrackingPage: React.FC = () => {
         <button onClick={handleReturn} className="flex items-center justify-center w-12 h-12 rounded-full bg-white/5 hover:bg-white/10 transition-colors active:scale-90 shadow-xl border border-white/5">
           <span className="material-symbols-outlined text-xl text-slate-400">arrow_back</span>
         </button>
-        <h2 className="text-[11px] font-black tracking-[0.4em] uppercase italic text-white/50">Orden #4829</h2>
+        <h2 className="text-[11px] font-black tracking-[0.4em] uppercase italic text-white/50">Orden #{orderNumber || '...'}</h2>
         <div className="w-12"></div>
       </header>
 
       <main className="flex-1 flex flex-col items-center w-full p-4 overflow-y-auto no-scrollbar">
         <div className="px-6 pt-10 pb-10 text-center w-full">
-          <div className="inline-flex items-center gap-2 px-6 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-[0.25em] mb-8">
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_10px_#36e27b]"></span>
+          <div
+            className="inline-flex items-center gap-2 px-6 py-2 rounded-full border text-[10px] font-black uppercase tracking-[0.25em] mb-8"
+            style={{ backgroundColor: `${accentColor}1A`, borderColor: `${accentColor}33`, color: accentColor }}
+          >
+            <span
+              className="w-2 h-2 rounded-full animate-pulse"
+              style={{ backgroundColor: accentColor, boxShadow: `0 0 10px ${accentColor}` }}
+            ></span>
             {getStatusDisplay()}
           </div>
           <h1 className="text-[36px] font-black tracking-tighter text-white uppercase italic leading-[0.9] mb-4">
@@ -121,7 +133,7 @@ const TrackingPage: React.FC = () => {
           </div>
           <div className="text-4xl font-black text-slate-800 animate-pulse">:</div>
           <div className="flex flex-col items-center">
-            <span className="text-5xl font-black text-primary italic tabular-nums">{String(seconds).padStart(2, '0')}</span>
+            <span className="text-5xl font-black italic tabular-nums" style={{ color: accentColor }}>{String(seconds).padStart(2, '0')}</span>
             <span className="text-[9px] font-black text-slate-700 uppercase tracking-[0.4em] mt-3">Segundos</span>
           </div>
         </div>
@@ -130,11 +142,13 @@ const TrackingPage: React.FC = () => {
           <div className="bg-white/[0.02] rounded-[3.5rem] p-10 shadow-2xl flex flex-col items-center gap-10 border border-white/5 relative overflow-hidden">
             <div className="relative p-6 bg-white rounded-[3rem] shadow-[0_30px_80px_rgba(0,0,0,0.8)]">
               <div className="w-36 h-36 bg-white">
-                <img
-                  src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=order_4829&color=000"
-                  alt="Código QR"
-                  className="w-full h-full object-contain opacity-90"
-                />
+                {orderNumber && (
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${orderNumber}&color=000`}
+                    alt="Código QR"
+                    className="w-full h-full object-contain opacity-90"
+                  />
+                )}
               </div>
             </div>
 
@@ -145,7 +159,7 @@ const TrackingPage: React.FC = () => {
 
             <div className="w-full bg-white/[0.03] border border-white/5 rounded-[2rem] p-6 flex flex-col items-center gap-2">
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-xl fill-icon">stars</span>
+                <span className="material-symbols-outlined text-xl fill-icon" style={{ color: accentColor }}>stars</span>
                 <span className="text-[13px] font-black text-white italic uppercase tracking-tight">+{pointsEarned} Granos sumados</span>
               </div>
               <div className="flex items-center gap-1.5 opacity-50">
@@ -168,7 +182,8 @@ const TrackingPage: React.FC = () => {
 
         <button
           onClick={handleReturn}
-          className="group relative flex-[2.5] h-20 rounded-full bg-primary border border-white/20 text-black flex items-center justify-between pl-8 pr-3 shadow-[0_20px_50px_rgba(54,226,123,0.3)] active:scale-[0.97] transition-all overflow-hidden"
+          className="group relative flex-[2.5] h-20 rounded-full border border-white/20 text-black flex items-center justify-between pl-8 pr-3 shadow-2xl active:scale-[0.97] transition-all overflow-hidden"
+          style={{ backgroundColor: accentColor, boxShadow: `0 20px 50px ${accentColor}4D` }}
         >
           <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
@@ -179,7 +194,10 @@ const TrackingPage: React.FC = () => {
 
           <div className="flex items-center gap-4 relative z-10">
             <div className="h-10 w-[1px] bg-black/10"></div>
-            <div className="w-14 h-14 rounded-full bg-black text-primary flex items-center justify-center shadow-xl group-hover:scale-105 transition-transform">
+            <div
+              className="w-14 h-14 rounded-full bg-black flex items-center justify-center shadow-xl group-hover:scale-105 transition-transform"
+              style={{ color: accentColor }}
+            >
               <span className="material-symbols-outlined font-black text-[28px]">arrow_forward</span>
             </div>
           </div>

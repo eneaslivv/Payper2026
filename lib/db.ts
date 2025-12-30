@@ -11,7 +11,7 @@ export interface DBOrder extends Order {
 
 export interface SyncEvent {
   id: string;
-  type: 'CREATE_ORDER' | 'UPDATE_STATUS' | 'CANCEL_ORDER';
+  type: 'CREATE_ORDER' | 'UPDATE_STATUS' | 'CANCEL_ORDER' | 'CONFIRM_DELIVERY';
   payload: any;
   timestamp: number;
 }
@@ -70,6 +70,17 @@ export const dbOps = {
       const store = transaction.objectStore('orders');
       const request = store.put(order);
       request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  },
+
+  async getOrder(id: string): Promise<DBOrder | undefined> {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('orders', 'readonly');
+      const store = transaction.objectStore('orders');
+      const request = store.get(id);
+      request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
   },

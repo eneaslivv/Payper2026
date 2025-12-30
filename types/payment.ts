@@ -52,11 +52,16 @@ export interface InventoryItem {
     store_id: string;
 }
 
+// Estado de pago (separado de status de orden)
+export type PaymentStatus = 'init' | 'pending' | 'approved' | 'rejected' | 'refunded' | 'cancelled';
+
 // Orden
 export interface Order {
     id: string;
     store_id: string;
     status: OrderStatus;
+    payment_status: PaymentStatus; // NUEVO: estado de pago separado
+    payment_provider: string | null; // NUEVO: 'mercadopago', 'cash', etc.
     channel: OrderChannel;
     total_amount: number;
     subtotal: number;

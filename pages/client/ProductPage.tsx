@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useClient } from '../../contexts/ClientContext';
 import { MenuItem } from '../../components/client/types';
@@ -6,37 +6,65 @@ import { MenuItem } from '../../components/client/types';
 const ProductPage: React.FC = () => {
   const { id, slug } = useParams<{ id: string; slug: string }>();
   const navigate = useNavigate();
-  const { addToCart, user, products } = useClient();
+  const { addToCart, user, products, store } = useClient();
 
   const item = products.find(i => i.id === id);
 
+  // --- STATE ---
   const [quantity, setQuantity] = useState(1);
-  const [size, setSize] = useState('Chico');
-  const [customs, setCustoms] = useState<string[]>(['Extra Shot']);
   const [notes, setNotes] = useState('');
+
+  // Dynamic Variants/Addons from DB
+  const [variantId, setVariantId] = useState<string | null>(null);
+  const [addonIds, setAddonIds] = useState<string[]>([]);
+
+  // Effect to set initial selection from variants if available
+  useEffect(() => {
+    if (item?.variants && item.variants.length > 0) {
+      setVariantId(item.variants[0].id);
+    }
+  }, [item]);
+
+  // Theme support
+  const accentColor = store?.menu_theme?.accentColor || '#36e27b';
 
   if (!item) return <div className="h-screen flex items-center justify-center bg-black text-white">Product not found</div>;
 
-  const basePrice = item.price;
-  const sizeSurcharge = size === 'Grande' ? 0.50 : size === 'Venti' ? 1.00 : 0;
-  const customsSurcharge = (customs.includes('Oat Milk') ? 0.80 : 0) + (customs.includes('Extra Shot') ? 1.00 : 0);
-  const totalPrice = (basePrice + sizeSurcharge + customsSurcharge) * quantity;
+  // --- CALCULATIONS ---
+  const currentVariant = item.variants?.find(v => v.id === variantId);
 
-  const toggleCustom = (val: string) => {
-    setCustoms(prev => prev.includes(val) ? prev.filter(c => c !== val) : [...prev, val]);
+  const variantPriceAdj = currentVariant?.price_adjustment !== undefined ? Number(currentVariant.price_adjustment) : 0;
+  const itemPrice = item.price !== undefined ? Number(item.price) : 0;
+  const basePrice = itemPrice + variantPriceAdj;
+
+  const selectedAddonsCost = item.addons
+    ? item.addons
+      .filter(a => addonIds.includes(a.id))
+      .reduce((sum, a) => sum + (Number(a.price) || 0), 0)
+    : 0;
+
+  const totalPrice = (basePrice + selectedAddonsCost) * quantity;
+
+  // --- HANDLERS ---
+  const toggleCustom = (id: string) => {
+    setAddonIds(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
   };
 
   const handleAdd = () => {
-    addToCart(item, quantity, customs, size, notes);
-    // If user is logged in, maybe go to cart? Or just back to menu?
-    // Original logic: if (user) navigate('/') - confusing.
-    // Let's navigate back to menu.
-    navigate(`/m/${slug}`);
+    // Construct a cart item with the calculated price
+    const cartItem = {
+      ...item,
+      price: basePrice + selectedAddonsCost,
+    };
+
+    // We pass IDs to context for the order
+    addToCart(cartItem, quantity, addonIds, variantId || undefined, notes);
+    navigate(`/m/${slug}/cart`);
   };
 
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden pb-48 bg-black font-display">
-      {/* HEADER SUPERPUESTO CON MAYOR PADDING TOP */}
+      {/* HEADER SUPERPUESTO */}
       <div className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between p-6 bg-gradient-to-b from-black/95 to-transparent pt-[calc(1.2rem+env(safe-area-inset-top))]">
         <button onClick={() => navigate(-1)} className="flex h-12 w-12 items-center justify-center rounded-2xl bg-black/60 backdrop-blur-xl text-white border border-white/10 hover:bg-black/80 transition-all active:scale-90 shadow-2xl">
           <span className="material-symbols-outlined">arrow_back</span>
@@ -54,58 +82,83 @@ const ProductPage: React.FC = () => {
         <div className="mb-10">
           <div className="flex items-start justify-between gap-4">
             <h1 className="text-[32px] font-black leading-[0.95] tracking-tighter text-white uppercase italic">{item.name}</h1>
-            <span className="text-2xl font-black text-primary tracking-tighter italic shrink-0">${basePrice.toFixed(2)}</span>
+            <span className="text-2xl font-black tracking-tighter italic shrink-0" style={{ color: accentColor }}>${totalPrice.toFixed(2)}</span>
           </div>
           <p className="mt-4 text-[12px] leading-relaxed text-white/30 font-medium tracking-tight">{item.description}</p>
         </div>
 
-        {/* SELECT SIZE */}
-        <div className="mb-10">
-          <h3 className="mb-5 text-[8px] font-black uppercase tracking-[0.4em] text-white/20 italic">Selección de Tamaño</h3>
-          <div className="flex gap-3">
-            {['Chico', 'Grande', 'Venti'].map(s => (
-              <label
-                key={s}
-                onClick={() => setSize(s)}
-                className={`group relative flex flex-1 cursor-pointer flex-col items-center justify-center rounded-2xl border transition-all duration-500 p-5 ${size === s ? 'border-primary bg-primary/5 shadow-xl' : 'border-white/5 bg-white/[0.01]'
-                  }`}
-              >
-                <span className={`material-symbols-outlined mb-2 transition-colors ${size === s ? 'text-primary' : 'text-white/10'}`} style={{ fontSize: '30px' }}>local_cafe</span>
-                <span className={`text-[8px] font-black uppercase tracking-[0.2em] transition-colors ${size === s ? 'text-primary' : 'text-white/20'}`}>{s}</span>
-              </label>
-            ))}
-          </div>
-        </div>
+        {/* DYNAMIC SIZES / VARIANTS */}
+        {item.variants && item.variants.length > 0 && (
+          <div className="mb-10">
+            <h3 className="mb-5 text-[8px] font-black uppercase tracking-[0.4em] text-white/20 italic">Selección de Tamaño</h3>
+            <div className="flex gap-3 flex-wrap">
+              {item.variants.map((v) => (
+                <label
+                  key={v.id}
+                  onClick={() => setVariantId(v.id)}
+                  className={`group relative flex flex-1 min-w-[30%] cursor-pointer flex-col p-4 rounded-2xl border transition-all duration-500 ${variantId === v.id ? 'shadow-xl' : 'border-white/5 bg-white/[0.01]'
+                    }`}
+                  style={variantId === v.id ? { borderColor: accentColor, backgroundColor: `${accentColor}0D` } : {}}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`material-symbols-outlined transition-colors ${variantId === v.id ? '' : 'text-white/10'}`} style={{ fontSize: '24px', color: variantId === v.id ? accentColor : undefined }}>local_cafe</span>
+                    <span className="text-[10px] font-black" style={{ color: variantId === v.id ? accentColor : 'white' }}>
+                      {v.price_adjustment >= 0 ? '+' : ''}${v.price_adjustment}
+                    </span>
+                  </div>
+                  <span className={`text-[9px] font-black uppercase tracking-[0.2em] transition-colors ${variantId === v.id ? '' : 'text-white/20'}`} style={{ color: variantId === v.id ? accentColor : undefined }}>{v.name}</span>
 
-        {/* CUSTOMIZATIONS */}
-        <div className="mb-10">
-          <h3 className="mb-5 text-[8px] font-black uppercase tracking-[0.4em] text-white/20 italic">Configuración</h3>
-          <div className="grid grid-cols-1 gap-3">
-            {[
-              { id: 'Oat Milk', label: 'Oat Milk', price: '+$0.80', icon: 'opacity' },
-              { id: 'Extra Shot', label: 'Extra Shot', price: '+$1.00', icon: 'bolt' }
-            ].map(c => (
-              <label
-                key={c.id}
-                className={`flex cursor-pointer items-center justify-between rounded-2xl p-5 transition-all duration-500 border ${customs.includes(c.id) ? 'bg-primary/[0.04] border-primary/20' : 'bg-white/[0.01] border-white/5'}`}
-                onClick={() => toggleCustom(c.id)}
-              >
-                <div className="flex items-center gap-5">
-                  <div className={`flex h-12 w-12 items-center justify-center rounded-xl transition-all ${customs.includes(c.id) ? 'bg-primary text-black' : 'bg-white/5 text-white/20'}`}>
-                    <span className="material-symbols-outlined text-xl font-black">{c.icon}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className={`font-black text-xs uppercase tracking-tight italic ${customs.includes(c.id) ? 'text-white' : 'text-white/40'}`}>{c.label}</span>
-                    <span className="text-[8px] font-bold text-white/20 uppercase tracking-widest mt-1">{c.price}</span>
-                  </div>
-                </div>
-                <div className={`relative inline-flex h-6 w-10 items-center rounded-full transition-all duration-500 ${customs.includes(c.id) ? 'bg-primary' : 'bg-white/10'}`}>
-                  <div className={`h-4 w-4 rounded-full bg-black shadow-lg transition-transform duration-500 ${customs.includes(c.id) ? 'translate-x-5' : 'translate-x-1'}`}></div>
-                </div>
-              </label>
-            ))}
+                  {/* Stock Microcopy for Variants */}
+                  {v.recipe_overrides && v.recipe_overrides.length > 0 && (
+                    <div className="mt-2 space-y-0.5">
+                      {v.recipe_overrides.map((ov, i) => (
+                        <div key={i} className="text-[7px] font-bold text-white/20 uppercase tracking-tighter">
+                          {ov.quantity_delta > 0 ? '+' : ''}{ov.quantity_delta} impacto stock
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </label>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* DYNAMIC ADDONS */}
+        {item.addons && item.addons.length > 0 && (
+          <div className="mb-10">
+            <h3 className="mb-5 text-[8px] font-black uppercase tracking-[0.4em] text-white/20 italic">Personalización</h3>
+            <div className="grid grid-cols-1 gap-3">
+              {item.addons.map((addon) => (
+                <label
+                  key={addon.id}
+                  className={`flex cursor-pointer items-center justify-between rounded-2xl p-5 transition-all duration-500 border ${addonIds.includes(addon.id) ? '' : 'bg-white/[0.01] border-white/5'}`}
+                  style={addonIds.includes(addon.id) ? { backgroundColor: `${accentColor}0A`, borderColor: `${accentColor}33` } : {}}
+                  onClick={() => toggleCustom(addon.id)}
+                >
+                  <div className="flex items-center gap-5">
+                    <div
+                      className={`flex h-12 w-12 items-center justify-center rounded-xl transition-all ${addonIds.includes(addon.id) ? 'text-black' : 'bg-white/5 text-white/20'}`}
+                      style={addonIds.includes(addon.id) ? { backgroundColor: accentColor } : {}}
+                    >
+                      <span className="material-symbols-outlined">{addon.name.toLowerCase().includes('leche') || addon.name.toLowerCase().includes('milk') ? 'opacity' : 'add_circle'}</span>
+                    </div>
+                    <div>
+                      <span className="font-bold text-sm text-white uppercase tracking-tight block">{addon.name}</span>
+                      {/* Stock Microcopy for Addons */}
+                      {addon.quantity_consumed && addon.quantity_consumed > 0 && (
+                        <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest block">
+                          +{addon.quantity_consumed} por unidad
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span className="font-black text-sm" style={{ color: accentColor }}>+${addon.price}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* SPECIAL NOTES */}
         <div className="mb-14">
@@ -114,7 +167,8 @@ const ProductPage: React.FC = () => {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="PREFERENCIAS..."
-            className="w-full rounded-2xl border border-white/5 bg-white/[0.02] p-6 text-xs font-bold text-white placeholder:text-white/10 placeholder:text-[8px] placeholder:tracking-[0.3em] focus:border-primary/20 transition-all resize-none h-32 italic"
+            className="w-full rounded-2xl border border-white/5 bg-white/[0.02] p-6 text-xs font-bold text-white placeholder:text-white/10 placeholder:text-[8px] placeholder:tracking-[0.3em] transition-all resize-none h-32 italic outline-none"
+            style={{ '--focus-border': accentColor } as any}
           />
         </div>
       </div>
@@ -132,7 +186,8 @@ const ProductPage: React.FC = () => {
             <span className="w-8 text-center text-xl font-black italic tabular-nums text-white">{quantity}</span>
             <button
               onClick={() => setQuantity(q => q + 1)}
-              className="flex size-12 items-center justify-center rounded-full text-primary active:scale-90 transition-all"
+              className="flex size-12 items-center justify-center rounded-full active:scale-90 transition-all"
+              style={{ color: accentColor }}
             >
               <span className="material-symbols-outlined text-lg">add</span>
             </button>
@@ -140,7 +195,8 @@ const ProductPage: React.FC = () => {
 
           <button
             onClick={handleAdd}
-            className="group relative flex h-20 flex-1 items-center justify-between rounded-full bg-primary pl-8 pr-3 text-black shadow-[0_20px_40px_rgba(54,226,123,0.25)] active:scale-[0.97] transition-all duration-500 overflow-hidden border border-white/20"
+            className="group relative flex h-20 flex-1 items-center justify-between rounded-full pl-8 pr-3 text-black active:scale-[0.97] transition-all duration-500 overflow-hidden border border-white/20"
+            style={{ backgroundColor: accentColor, boxShadow: `0 20px 40px ${accentColor}40` }}
           >
             <div className="flex flex-col items-start leading-[1] text-left shrink-0">
               <span className="font-black uppercase text-[11px] tracking-tight">Añadir</span>
@@ -149,7 +205,10 @@ const ProductPage: React.FC = () => {
             <div className="flex items-center gap-4 relative z-10 ml-2">
               <div className="flex items-center gap-3">
                 <span className="font-black text-[22px] italic tabular-nums tracking-tighter leading-none">${totalPrice.toFixed(2)}</span>
-                <div className="w-14 h-14 rounded-full flex items-center justify-center bg-black text-primary transition-all group-hover:scale-105 shadow-xl shrink-0">
+                <div
+                  className="w-14 h-14 rounded-full flex items-center justify-center bg-black transition-all group-hover:scale-105 shadow-xl shrink-0"
+                  style={{ color: accentColor }}
+                >
                   <span className="material-symbols-outlined font-black text-[28px]">add</span>
                 </div>
               </div>

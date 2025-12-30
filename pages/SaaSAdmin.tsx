@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Store } from '../types';
 import { useMercadoPagoConnect } from '../hooks/useMercadoPagoConnect';
 import { PaymentSettings } from '../components/PaymentSettings';
+import { getAppUrl } from '../lib/urlUtils';
 
 type SaasTab = 'dashboard' | 'tenants' | 'users' | 'plans' | 'audit' | 'metrics';
 
@@ -132,7 +133,7 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
             addToast('Link Generado', 'success', 'Copiá el acceso generado arriba');
          } else {
             const { error: authError } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-               redirectTo: window.location.origin + '/login',
+               redirectTo: getAppUrl() + '/login',
             });
             if (authError) throw authError;
             addToast('Email Enviado', 'success', 'Se envió un link de recuperación a ' + email);
@@ -235,24 +236,34 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
 
          if (storeError) throw storeError;
 
-         // INVOKE EDGE FUNCTION
-         const { data: fnData, error: fnError } = await supabase.functions.invoke('invite-owner', {
-            body: {
-               email: cleanEmail,
-               storeId: store.id,
-               ownerName: newStore.ownerName.trim(),
-               storeName: store.name
-            }
-         });
+         // ALWAYS generate a manual fallback link first (includes store name for display)
+         const fallbackLink = `${getAppUrl()}/#/setup-owner?store=${store.id}&email=${encodeURIComponent(cleanEmail)}&storeName=${encodeURIComponent(store.name)}&ownerName=${encodeURIComponent(newStore.ownerName.trim() || '')}`;
 
-         if (fnData?.link) {
-            setGeneratedLink(fnData.link);
-            addToast('Nodo Lanzado', 'success', 'Copiá el Link de Acceso Maestro');
-         } else {
-            addToast('Nodo Creado', 'success', 'El local se creó, pero el link falló. Generalo manualmente.');
+         // Try Edge Function for a proper magic link, but don't fail if it doesn't work
+         try {
+            const { data: fnData, error: fnError } = await supabase.functions.invoke('invite-owner', {
+               body: {
+                  email: cleanEmail,
+                  storeId: store.id,
+                  ownerName: newStore.ownerName.trim(),
+                  storeName: store.name,
+                  siteUrl: getAppUrl()
+               }
+            });
+
+            if (fnData?.link) {
+               setGeneratedLink(fnData.link);
+               addToast('Nodo Lanzado', 'success', 'Link mágico generado - Copialo!');
+            } else {
+               setGeneratedLink(fallbackLink);
+               addToast('Nodo Creado', 'success', 'Link de acceso generado.');
+            }
+         } catch (fnErr) {
+            console.error('[Edge Function Error]:', fnErr);
+            setGeneratedLink(fallbackLink);
+            addToast('Nodo Creado', 'success', 'Link manual generado (Edge Function no disponible).');
          }
 
-         setShowNewStoreModal(false);
          setNewStore({ name: '', ownerEmail: '', ownerName: '', plan: 'FREE', address: '', taxInfo: '' });
          fetchData();
 
@@ -327,6 +338,60 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
          </div>
 
          {/* MAIN CONTENT */}
+         {activeTab === 'dashboard' && (
+            <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+               <div className="flex items-center justify-between">
+                  <div>
+                     <h2 className="text-3xl font-black italic text-white uppercase tracking-tighter">Command Center</h2>
+                     <p className="text-sm text-zinc-500 font-medium mt-1">Visión global del ecosistema Payper.</p>
+                  </div>
+                  <button onClick={() => fetchData()} className="p-2 hover:bg-white/5 rounded-full text-zinc-500 hover:text-white transition-colors">
+                     <span className="material-symbols-outlined">refresh</span>
+                  </button>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Col 1: Quick Actions */}
+                  <div className="p-6 rounded-3xl bg-[#0A0C0A] border border-white/5 space-y-4">
+                     <h3 className="text-xs font-black text-white/40 uppercase tracking-widest">Acciones Rápidas</h3>
+                     <div className="grid grid-cols-2 gap-3">
+                        <button onClick={() => setShowNewStoreModal(true)} className="p-4 rounded-xl bg-accent/10 border border-accent/20 hover:bg-accent/20 transition-all text-left group">
+                           <span className="material-symbols-outlined text-2xl text-accent mb-2 group-hover:scale-110 transition-transform">add_business</span>
+                           <div className="text-xs font-black text-white uppercase">Nuevo Local</div>
+                        </button>
+                        <button onClick={() => { document.getElementById('roles-tab')?.click() }} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-left group">
+                           <span className="material-symbols-outlined text-2xl text-purple-400 mb-2 group-hover:scale-110 transition-transform">group_add</span>
+                           <div className="text-xs font-black text-white uppercase">Gestionar Usuarios</div>
+                        </button>
+                     </div>
+                  </div>
+
+                  {/* Col 2: Recent Activity / Status */}
+                  <div className="p-6 rounded-3xl bg-[#0A0C0A] border border-white/5 space-y-4">
+                     <h3 className="text-xs font-black text-white/40 uppercase tracking-widest">Actividad Reciente</h3>
+                     <div className="space-y-3">
+                        {(globalUsers.length > 0 ? globalUsers : []).slice(0, 3).map(u => (
+                           <div key={u.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02]">
+                              <div className="size-8 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-bold">
+                                 {u.email?.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                 <div className="text-xs font-bold text-white">Usuario Registrado</div>
+                                 <div className="text-[10px] text-zinc-500">{u.email}</div>
+                              </div>
+                              <div className="ml-auto text-[10px] text-zinc-600">
+                                 {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'Hoy'}
+                              </div>
+                           </div>
+                        ))}
+                        {globalUsers.length === 0 && (
+                           <div className="text-center text-zinc-600 text-[10px] py-4">Sin actividad reciente</div>
+                        )}
+                     </div>
+                  </div>
+               </div>
+            </div>
+         )}
          {activeTab === 'tenants' && (
             <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
                <div className="flex items-center justify-between">

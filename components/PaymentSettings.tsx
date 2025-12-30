@@ -65,6 +65,16 @@ export const PaymentSettings: React.FC<{ selectedStore: ExtendedStore }> = ({ se
                                             <h3 className="text-2xl font-black text-white italic uppercase tracking-tight">Mercado Pago</h3>
                                             <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-black text-emerald-500 uppercase tracking-widest">Activo</span>
                                         </div>
+                                        {/* CUENTA CONECTADA - NUEVO */}
+                                        {status.mp_nickname && (
+                                            <div className="flex items-center gap-2 bg-zinc-800/50 px-3 py-2 rounded-lg w-fit">
+                                                <span className="material-symbols-outlined text-sm text-[#009EE3]">account_circle</span>
+                                                <span className="text-xs font-bold text-white">{status.mp_nickname}</span>
+                                                {status.mp_email && (
+                                                    <span className="text-[10px] text-zinc-400">({status.mp_email})</span>
+                                                )}
+                                            </div>
+                                        )}
                                         <p className="text-[10px] text-zinc-400 font-medium max-w-sm leading-relaxed">
                                             Pasarela principal para pagos QR en mesa y ventas online.
                                             Sincronización automática con el centro de finanzas.

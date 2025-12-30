@@ -1,15 +1,19 @@
 import React from 'react';
-import { Outlet, useLocation, useParams } from 'react-router-dom';
+import { Outlet, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { ClientProvider, useClient } from '../../contexts/ClientContext';
 import BottomNav from './BottomNav';
 import ActiveOrderWidget from './ActiveOrderWidget';
 
+import { AuthPromptModal } from '../AuthPromptModal';
+
 const ClientLayoutContent: React.FC = () => {
-    const { store, loadingStore, error, hasActiveOrder, isHubOpen, setIsHubOpen } = useClient();
+    const { store, loadingStore, error, hasActiveOrder, isHubOpen, setIsHubOpen, showAuthModal, setShowAuthModal, activeOrderId, orderStatus, activeOrders } = useClient();
+    const navigate = useNavigate();
     const location = useLocation();
 
     // Get accent color from store theme
     const accentColor = store?.menu_theme?.accentColor || '#4ADE80';
+    const theme = store?.menu_theme || { accentColor };
 
     // Hide nav logic - Updated for new routes
     const isHiddenRoute = () => {
@@ -23,17 +27,11 @@ const ClientLayoutContent: React.FC = () => {
     };
 
     if (loadingStore) return (
-        <div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-black gap-4">
-            <div
-                className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin"
-                style={{ borderColor: `${accentColor}33`, borderTopColor: accentColor }}
-            />
-            <p
-                className="font-mono text-xs uppercase tracking-widest animate-pulse"
-                style={{ color: accentColor }}
-            >
-                Cargando Sistema...
-            </p>
+        <div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-black">
+            <div className="flex items-center gap-2 animate-pulse opacity-50">
+                <div className="size-2 rounded-full" style={{ backgroundColor: accentColor }} />
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50" style={{ color: accentColor }}>Cargando...</span>
+            </div>
         </div>
     );
 
@@ -55,17 +53,30 @@ const ClientLayoutContent: React.FC = () => {
             </div>
 
             {/* Overlays */}
-            {hasActiveOrder && !location.pathname.includes('/tracking') && (
+            {hasActiveOrder && !location.pathname.includes('/tracking') && !location.pathname.includes('/order/') && !location.pathname.includes('/auth') && (
                 <ActiveOrderWidget
                     hasActiveOrder={hasActiveOrder}
-                    status={'received'}
+                    status={orderStatus || 'received'}
                     isHubOpen={isHubOpen}
                     setIsHubOpen={setIsHubOpen}
                     tableNumber="05"
+                    accentColor={accentColor}
+                    activeOrderId={activeOrderId}
+                    activeOrders={activeOrders}
                 />
             )}
 
             {!isHiddenRoute() && <BottomNav activePath={location.pathname} accentColor={accentColor} />}
+
+            <AuthPromptModal
+                isOpen={showAuthModal}
+                onClose={() => setShowAuthModal(false)}
+                onRegister={() => {
+                    setShowAuthModal(false);
+                    navigate(`/m/${store.slug}/auth`);
+                }}
+                theme={theme as any}
+            />
         </div>
     );
 }

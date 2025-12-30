@@ -25,7 +25,7 @@ serve(async (req) => {
         const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
         if (authError || !user) throw new Error('Not authenticated')
 
-        const { email, role } = await req.json()
+        const { email, role, siteUrl } = await req.json()
 
         if (!email || !role) {
             throw new Error('Email and Role are required')
@@ -66,7 +66,8 @@ serve(async (req) => {
         // 4. Generate Link (Simulation)
         // In production, you would send an email here using Resend, SendGrid, etc.
         // For now, return the link to the client for testing.
-        const origin = req.headers.get('origin') || 'http://localhost:5173';
+        // Use provided siteUrl or fallback to origin/localhost
+        const origin = siteUrl || req.headers.get('origin') || 'http://localhost:5173';
         const link = `${origin}/join?token=${invitation.token}`;
 
         return new Response(

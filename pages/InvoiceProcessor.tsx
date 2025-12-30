@@ -123,16 +123,16 @@ const InvoiceProcessor: React.FC<InvoiceProcessorProps> = ({ isOpen = true, onCl
                 const ext = file.name.split('.').pop();
                 const fileName = `${storeId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-                // 1. Subir imagen a Storage (Bucket 'invoices')
+                // 1. Subir imagen a Storage (Bucket 'invoices-files')
                 const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from('invoices')
+                    .from('invoices-files')
                     .upload(fileName, file);
 
                 if (uploadError) throw uploadError;
 
                 // Get public URL for downstream processing (IA)
                 const { data: { publicUrl } } = supabase.storage
-                    .from('invoices')
+                    .from('invoices-files')
                     .getPublicUrl(uploadData.path);
 
                 // 2. Crear registro en BD (Esto activará el RLS que acabamos de crear)
@@ -400,7 +400,7 @@ const InvoiceProcessor: React.FC<InvoiceProcessorProps> = ({ isOpen = true, onCl
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[5060] flex items-center justify-center p-4 animate-in fade-in duration-300">
             <div className="bg-[#0D0F0D] border border-white/10 rounded-3xl w-full max-w-6xl h-[85vh] flex flex-col animate-in zoom-in-95 duration-300 shadow-2xl overflow-hidden">
 
                 {/* HEADER */}

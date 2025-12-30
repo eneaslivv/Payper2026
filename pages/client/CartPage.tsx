@@ -5,7 +5,10 @@ import { useClient } from '../../contexts/ClientContext'; // Import context
 const CartPage: React.FC = () => {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
-  const { cart, removeFromCart, updateQuantity, isRedeemingPoints, setIsRedeemingPoints } = useClient();
+  const { cart, removeFromCart, updateQuantity, isRedeemingPoints, setIsRedeemingPoints, store, user } = useClient();
+
+  // Theme support
+  const accentColor = store?.menu_theme?.accentColor || '#36e27b';
 
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const discount = isRedeemingPoints ? 2.00 : 0;
@@ -28,7 +31,13 @@ const CartPage: React.FC = () => {
               <span className="material-symbols-outlined text-slate-800 text-5xl">shopping_cart</span>
             </div>
             <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-2">Tu bolsa está vacía</h3>
-            <button onClick={() => navigate(`/m/${slug}`)} className="mt-8 text-primary text-[10px] font-black uppercase tracking-[0.3em] border border-primary/20 px-12 py-5 rounded-full active:scale-95 transition-all">Explorar Menú</button>
+            <button
+              onClick={() => navigate(`/m/${slug}`)}
+              className="mt-8 text-[10px] font-black uppercase tracking-[0.3em] border px-12 py-5 rounded-full active:scale-95 transition-all"
+              style={{ color: accentColor, borderColor: `${accentColor}33` }}
+            >
+              Explorar Menú
+            </button>
           </div>
         ) : (
           <>
@@ -51,7 +60,13 @@ const CartPage: React.FC = () => {
                         <div className="flex items-center gap-4 bg-white/[0.05] rounded-full p-1 border border-white/5">
                           <button onClick={() => updateQuantity(item.id, -1, item.size || 'Chico')} className="size-10 flex items-center justify-center rounded-full text-slate-500 hover:text-white transition-colors"><span className="material-symbols-outlined text-sm">remove</span></button>
                           <span className="text-white text-xs font-black w-4 text-center tabular-nums">{item.quantity}</span>
-                          <button onClick={() => updateQuantity(item.id, 1, item.size || 'Chico')} className="size-10 flex items-center justify-center rounded-full text-primary hover:text-white transition-colors"><span className="material-symbols-outlined text-sm">add</span></button>
+                          <button
+                            onClick={() => updateQuantity(item.id, 1, item.size || 'Chico')}
+                            className="size-10 flex items-center justify-center rounded-full hover:text-white transition-colors"
+                            style={{ color: accentColor }}
+                          >
+                            <span className="material-symbols-outlined text-sm">add</span>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -60,21 +75,30 @@ const CartPage: React.FC = () => {
               ))}
             </div>
 
-            <div className="mt-4">
-              <div className="flex items-center justify-between gap-6 rounded-[2.5rem] border border-primary/20 bg-primary/5 p-8 shadow-2xl">
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-primary fill-icon" style={{ fontSize: '24px' }}>stars</span>
-                    <p className="text-white text-[15px] font-black uppercase italic tracking-tight">Redimir 50 Granos</p>
+            {/* Solo mostrar si el usuario tiene 50+ puntos de fidelidad */}
+            {user && user.points >= 50 && (
+              <div className="mt-4">
+                <div
+                  className="flex items-center justify-between gap-6 rounded-[2.5rem] border p-8 shadow-2xl"
+                  style={{ borderColor: `${accentColor}33`, backgroundColor: `${accentColor}0D` }}
+                >
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined fill-icon" style={{ fontSize: '24px', color: accentColor }}>stars</span>
+                      <p className="text-white text-[15px] font-black uppercase italic tracking-tight">Usar Puntos</p>
+                    </div>
+                    <p className="text-slate-600 text-[9px] font-black uppercase tracking-widest">Canjear 50 puntos por $2.00 de descuento</p>
                   </div>
-                  <p className="text-slate-600 text-[9px] font-black uppercase tracking-widest">Ahorra $2.00 en esta compra</p>
+                  <label
+                    className={`relative flex h-9 w-16 shrink-0 cursor-pointer items-center rounded-full p-1.5 transition-all duration-500 ${isRedeemingPoints ? 'shadow-2xl' : 'bg-white/10'}`}
+                    style={isRedeemingPoints ? { backgroundColor: accentColor, boxShadow: `0 0 20px ${accentColor}4D` } : {}}
+                  >
+                    <input type="checkbox" className="sr-only" checked={isRedeemingPoints} onChange={() => setIsRedeemingPoints(!isRedeemingPoints)} />
+                    <div className={`h-6 w-6 rounded-full bg-white shadow-xl transition-transform duration-500 ${isRedeemingPoints ? 'translate-x-7' : 'translate-x-0'}`}></div>
+                  </label>
                 </div>
-                <label className={`relative flex h-9 w-16 shrink-0 cursor-pointer items-center rounded-full p-1.5 transition-all duration-500 ${isRedeemingPoints ? 'bg-primary shadow-[0_0_20px_rgba(54,226,123,0.3)]' : 'bg-white/10'}`}>
-                  <input type="checkbox" className="sr-only" checked={isRedeemingPoints} onChange={() => setIsRedeemingPoints(!isRedeemingPoints)} />
-                  <div className={`h-6 w-6 rounded-full bg-white shadow-xl transition-transform duration-500 ${isRedeemingPoints ? 'translate-x-7' : 'translate-x-0'}`}></div>
-                </label>
               </div>
-            </div>
+            )}
           </>
         )}
       </main>
@@ -92,8 +116,8 @@ const CartPage: React.FC = () => {
                 <div className="flex flex-col">
                   <span className="text-white text-xl font-black uppercase italic leading-none tracking-tighter">Total</span>
                   <div className="mt-3 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[16px] text-primary fill-icon">stars</span>
-                    <span className={`text-[9px] font-black uppercase tracking-widest ${pointsToEarn > 0 ? 'text-primary' : 'text-slate-700'}`}>
+                    <span className="material-symbols-outlined text-[16px] fill-icon" style={{ color: accentColor }}>stars</span>
+                    <span className={`text-[9px] font-black uppercase tracking-widest ${pointsToEarn > 0 ? '' : 'text-slate-700'}`} style={pointsToEarn > 0 ? { color: accentColor } : {}}>
                       {pointsToEarn > 0 ? `Ganarás ${pointsToEarn} granos` : 'Sin puntos adicionales'}
                     </span>
                   </div>
@@ -104,7 +128,8 @@ const CartPage: React.FC = () => {
 
             <button
               onClick={() => navigate(`/m/${slug}/checkout`)}
-              className="group relative w-full bg-primary active:scale-[0.97] transition-all duration-500 text-black font-black h-24 rounded-full flex items-center justify-between pl-12 pr-5 shadow-[0_20px_50px_rgba(54,226,123,0.35)] overflow-hidden border border-white/20"
+              className="group relative w-full active:scale-[0.97] transition-all duration-500 text-black font-black h-24 rounded-full flex items-center justify-between pl-12 pr-5 shadow-2xl overflow-hidden border border-white/20"
+              style={{ backgroundColor: accentColor, boxShadow: `0 20px 50px ${accentColor}59` }}
             >
               <div className="flex flex-col items-start leading-none relative z-10">
                 <span className="text-[14px] font-black uppercase tracking-tight">Proceder al</span>
@@ -113,7 +138,10 @@ const CartPage: React.FC = () => {
 
               <div className="flex items-center gap-6 relative z-10">
                 <div className="h-12 w-[1px] bg-black/10"></div>
-                <div className="w-16 h-16 rounded-full flex items-center justify-center bg-black text-primary transition-all group-hover:scale-105 shadow-2xl">
+                <div
+                  className="w-16 h-16 rounded-full flex items-center justify-center bg-black transition-all group-hover:scale-105 shadow-2xl"
+                  style={{ color: accentColor }}
+                >
                   <span className="material-symbols-outlined font-black text-[32px]">arrow_forward</span>
                 </div>
               </div>

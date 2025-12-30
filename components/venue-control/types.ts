@@ -1,7 +1,8 @@
 
 export enum AppMode {
-  VIEW = 'VIEW', // Modo Operativo (Pedidos en tiempo real + Mapa)
-  EDIT = 'EDIT'  // Modo Gestión (Layout + Configuración)
+  VIEW = 'VIEW',     // Modo Operativo (Pedidos en tiempo real + Mapa)
+  DISPATCH = 'DISPATCH', // Modo Despacho (Kanban / Lista de pedidos)
+  EDIT = 'EDIT'      // Modo Gestión (Layout + Configuración)
 }
 
 export enum TableStatus {

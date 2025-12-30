@@ -19,6 +19,7 @@ const Login: React.FC<LoginProps> = () => {
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [recoverEmail, setRecoverEmail] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
 
   useEffect(() => {
@@ -85,7 +86,7 @@ const Login: React.FC<LoginProps> = () => {
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(targetEmail.trim(), {
-        redirectTo: window.location.origin + window.location.pathname,
+        redirectTo: window.location.origin + '/#/reset-password',
       });
       if (error) throw error;
       setView('success');
@@ -166,7 +167,25 @@ const Login: React.FC<LoginProps> = () => {
               </div>
               <div className="space-y-2">
                 <label className="text-[9px] font-black uppercase text-white/30 ml-2">Definir Contraseña</label>
-                <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-5 text-white text-[13px] font-bold outline-none focus:border-neon transition-all shadow-inner" placeholder="Mínimo 6 caracteres" required />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl pl-5 pr-12 text-white text-[13px] font-bold outline-none focus:border-neon transition-all shadow-inner"
+                    placeholder="Mínimo 6 caracteres"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors outline-none flex items-center justify-center p-1"
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      {showPassword ? 'visibility' : 'visibility_off'}
+                    </span>
+                  </button>
+                </div>
               </div>
               <button type="submit" disabled={isLoading} className="w-full h-14 bg-neon text-black rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-neon-glow hover:scale-[1.02] active:scale-95 transition-all">
                 {isLoading ? 'CONFIGURANDO...' : 'FINALIZAR Y ENTRAR AL DASHBOARD'}
@@ -184,7 +203,24 @@ const Login: React.FC<LoginProps> = () => {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-black uppercase text-white/30 ml-2">Código Secreto</label>
-                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-5 text-white text-[11px] font-bold outline-none focus:border-neon transition-all" placeholder="••••••••" />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full h-12 bg-white/5 border border-white/10 rounded-xl pl-5 pr-12 text-white text-[11px] font-bold outline-none focus:border-neon transition-all"
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors outline-none flex items-center justify-center p-1"
+                    >
+                      <span className="material-symbols-outlined text-lg">
+                        {showPassword ? 'visibility' : 'visibility_off'}
+                      </span>
+                    </button>
+                  </div>
                 </div>
               </div>
               <div className="flex justify-end pt-1">

@@ -8,15 +8,97 @@ import {
 } from '../types';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import InvoiceProcessor from './InvoiceProcessor';
+import { useOffline } from '../contexts/OfflineContext';
 
 type DrawerTab = 'details' | 'recipe' | 'history';
-type InventoryFilter = 'all' | 'ingredient' | 'sellable';
+type InventoryFilter = 'all' | 'ingredient' | 'sellable' | 'recipes';
 type WizardMethod = 'selector' | 'manual' | 'bulk' | 'invoice';
 type ManualType = 'ingredient' | 'recipe';
+// Added Type for Stock Movement
+interface StockMovement {
+  id: number;
+  qty_delta: number;
+  unit_type: string;
+  reason: string;
+  created_at: string;
+  order_id?: string;
+}
+
+// Auxiliary Components (Hoisted)
+function TabBtn({ active, onClick, children }: { active: boolean, onClick: () => void, children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-6 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${active ? 'bg-neon text-black shadow-lg shadow-neon/10' : 'text-white/40 hover:text-neon hover:bg-white/5'}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function DrawerTabBtn({ active, onClick, label, icon }: { active: boolean, onClick: () => void, label: string, icon: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-1 flex flex-col items-center py-4 border-b-2 gap-1.5 transition-all duration-500 ${active ? 'border-neon text-neon bg-white/5' : 'border-transparent text-white/20 hover:text-white/40'}`}
+    >
+      <span className="material-symbols-outlined text-[18px]">{icon}</span>
+      <span className="text-[10px] font-black uppercase tracking-[0.2em]">{label}</span>
+    </button>
+  );
+}
+
+function KpiCard({ label, value, icon, color }: { label: string, value: string, icon: string, color: string }) {
+  return (
+    <div className="bg-[#141714] border border-white/[0.04] p-5 rounded-2xl flex items-center justify-between group hover:border-white/10 transition-all">
+      <div className="space-y-1">
+        <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.1em]">{label}</p>
+        <p className="text-2xl font-black italic-black text-white tracking-tighter">{value}</p>
+      </div>
+      <div className={`size-12 rounded-2xl flex items-center justify-center ${color} shadow-inner`}>
+        <span className="material-symbols-outlined text-2xl">{icon}</span>
+      </div>
+    </div>
+  );
+}
+
+function MetricBlock({ label, value, icon, color = "text-neon" }: { label: string, value: string, icon: string, color?: string }) {
+  return (
+    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2 group hover:bg-white/[0.04] transition-all">
+      <div className="flex items-center gap-2">
+        <span className="material-symbols-outlined text-xs text-white/20">{icon}</span>
+        <label className="text-[8px] font-black uppercase text-white/30 tracking-widest">{label}</label>
+      </div>
+      <p className={`text-xl font-black italic-black ${color} tracking-tighter`}>{value}</p>
+    </div>
+  );
+}
+
+function InputBlock({ label, children }: { label: string, children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2">{label}</label>
+      {children}
+    </div>
+  );
+}
 
 const InventoryManagement: React.FC = () => {
   const { profile } = useAuth();
+  const { pendingDeliveryOrders, orders: offlineOrders } = useOffline();
   const { addToast } = useToast();
+  // Use valid tenant ID from DB query if profile is missing it
+  const storeId = profile?.store_id || 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+
+  // ARS Currency Formatter
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(value);
+  };
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -24,7 +106,12 @@ const InventoryManagement: React.FC = () => {
   const [drawerTab, setDrawerTab] = useState<DrawerTab>('details');
   const [filter, setFilter] = useState<InventoryFilter>('all');
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string | 'special-open' | null>(null);
+
   const [searchTerm, setSearchTerm] = useState('');
+
+  // History State
+  const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
+  const [loadingMovements, setLoadingMovements] = useState(false);
 
   // Recipe Builder State
   const [isAddingRecipeItem, setIsAddingRecipeItem] = useState(false);
@@ -32,6 +119,37 @@ const InventoryManagement: React.FC = () => {
   const [ingredientSearch, setIngredientSearch] = useState('');
   const [selectedIngredientToAdd, setSelectedIngredientToAdd] = useState<InventoryItem | null>(null);
   const [addQuantity, setAddQuantity] = useState<string>('');
+
+  // Recipes Tab State
+  interface ProductRecipeDB {
+    product_id: string;
+    inventory_item_id: string;
+    quantity_required: number;
+  }
+  const [productRecipes, setProductRecipes] = useState<ProductRecipeDB[]>([]);
+  const [showRecipeModal, setShowRecipeModal] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [customRecipeName, setCustomRecipeName] = useState('');
+  const [showIngredientSelector, setShowIngredientSelector] = useState(false);
+
+  // Custom Price & Margin State
+  const [customPrice, setCustomPrice] = useState<string>(''); // Allow empty string for clean input
+
+  // Update custom price default when not set
+  useEffect(() => {
+    if (!showRecipeModal) {
+      setCustomPrice('');
+      return;
+    }
+  }, [showRecipeModal]);
+
+  // UI State for Recipe Ingredients with flexible units
+  interface RecipeIngredientUI {
+    id: string;
+    qty: number; // Display numeric value
+    unit: 'kg' | 'g' | 'l' | 'ml' | 'un'; // Usage unit
+  }
+  const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredientUI[]>([]);
 
   // AI & Wizard State
   const [showInsumoWizard, setShowInsumoWizard] = useState(false);
@@ -60,17 +178,93 @@ const InventoryManagement: React.FC = () => {
   // Invoice Processor Modal
   const [showInvoiceProcessor, setShowInvoiceProcessor] = useState(false);
 
+  // Open Package Modal
+  const [showOpenPackageModal, setShowOpenPackageModal] = useState(false);
+  const [newPackageCapacity, setNewPackageCapacity] = useState<number>(1000);
+
+
+
   useEffect(() => {
     // Ejecutar inmediatamente - fetchData tiene fallback de store_id
     fetchData();
   }, []);
+
+  // REALTIME: Suscripción para actualización automática de inventario
+  useEffect(() => {
+    const storeId = profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
+    if (!storeId) return;
+    console.log('[Realtime] Suscribiendo a cambios de inventario para store_id:', storeId);
+
+    const channel = supabase
+      .channel('inventory-realtime-v2')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'inventory_items'
+        },
+        (payload) => {
+          console.log('[Realtime] ✅ UPDATE en inventory_items recibido:', payload);
+          // Solo procesar si pertenece a esta tienda
+          if (payload.new && (payload.new as any).store_id === storeId) {
+            const newStock = parseFloat((payload.new as any).current_stock);
+            const itemId = (payload.new as any).id;
+
+            // Actualizar el estado directamente
+            setItems(prev => {
+              const updated = prev.map(item =>
+                item.id === itemId
+                  ? { ...item, current_stock: newStock, cost: (payload.new as any).cost || item.cost }
+                  : item
+              );
+              // Invalidar cache para forzar refresh en próxima carga
+              localStorage.removeItem(`inventory_cache_v2_${storeId}`);
+              return updated;
+            });
+
+            addToast('📦 Stock actualizado: ' + (payload.new as any).name, 'success');
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'stock_movements'
+        },
+        (payload) => {
+          console.log('[Realtime] Nuevo movimiento de stock:', payload);
+          // Refrescar historial si el drawer está abierto
+          if (drawerTab === 'history' && selectedItem) {
+            fetchStockHistory(selectedItem.id);
+          }
+          // Forzar refetch del inventario para sincronizar
+          fetchData(true);
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Realtime] Estado de conexión:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('[Realtime] ✅ Conectado exitosamente al canal de inventario');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('[Realtime] ❌ Error en el canal');
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile?.store_id]);
 
   const fetchData = async (forceRefresh = false) => {
     const storeId = profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
     if (!storeId) return;
 
     // CACHE STRATEGY
-    const CACHE_KEY = `inventory_cache_${storeId}`;
+    // CACHE STRATEGY
+    const CACHE_KEY = `inventory_cache_v2_${storeId}`; // Force refresh
     const CACHE_DURATION = 5 * 60 * 1000; // 5 mins
 
     // 1. Check Cache
@@ -98,17 +292,35 @@ const InventoryManagement: React.FC = () => {
 
     try {
       const baseUrl = import.meta.env.VITE_SUPABASE_URL + '/rest/v1';
-      const storageKey = 'sb-yjxjyxhksedwfeueduwl-auth-token';
-      const storedData = localStorage.getItem(storageKey);
-      let token = '';
 
-      if (storedData) {
+      // Use supabase client to get valid session token reliably
+      let { data: { session } } = await supabase.auth.getSession();
+      let token = session?.access_token;
+
+      console.log('[Inventory] Supabase Session Token:', token ? 'Found' : 'Missing');
+
+      // FALLBACK: Try manual localStorage read if Supabase client is empty (sometimes happens on hard refresh)
+      if (!token) {
+        console.log('[Inventory] Session missing, trying manual localStorage read...');
         try {
-          const parsed = JSON.parse(storedData);
-          token = parsed.access_token || '';
+          // Try standard Supabase key patterns
+          const projectId = 'yjxjyxhksedwfeueduwl';
+          const key = `sb-${projectId}-auth-token`;
+          const stored = localStorage.getItem(key);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            token = parsed.access_token;
+            console.log('[Inventory] Recovered token from localStorage manually.');
+          }
         } catch (e) {
-          // ignore
+          console.warn('[Inventory] Manual token recovery failed:', e);
         }
+      }
+
+      if (!token) {
+        console.error('[Inventory] NO TOKEN FOUND. Request will be anonymous (and likely blocked by RLS).');
+        // Optional: Force a sign-in redirect or warning?
+        // addToast('Error de Sesión: Recarga la página', 'error');
       }
 
       const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -117,6 +329,8 @@ const InventoryManagement: React.FC = () => {
         'Authorization': `Bearer ${token || apiKey}`,
         'Content-Type': 'application/json'
       };
+
+      console.log('[Inventory] Final headers Authorization:', headers.Authorization?.slice(0, 20) + '...');
 
       const fetchWithTimeout = async (url: string) => {
         const controller = new AbortController();
@@ -132,12 +346,18 @@ const InventoryManagement: React.FC = () => {
         }
       };
 
-      // 2. Fetch Fresh Data
-      const [insumos, prods, cats] = await Promise.all([
+      // 2. Fetch Fresh Data (including recipes)
+      const [insumos, prods, cats, openPackages, recipesData] = await Promise.all([
         fetchWithTimeout(`${baseUrl}/inventory_items?store_id=eq.${storeId}`),
-        fetchWithTimeout(`${baseUrl}/products?store_id=eq.${storeId}`),
-        fetchWithTimeout(`${baseUrl}/categories?store_id=eq.${storeId}`)
+        fetchWithTimeout(`${baseUrl}/products?select=*,product_variants(*)&store_id=eq.${storeId}`),
+        fetchWithTimeout(`${baseUrl}/categories?store_id=eq.${storeId}`),
+        fetchWithTimeout(`${baseUrl}/open_packages?store_id=eq.${storeId}`),
+        fetchWithTimeout(`${baseUrl}/product_recipes?select=*,products!inner(store_id)&products.store_id=eq.${storeId}`)
       ]);
+
+      // Store recipes - debug log
+      console.log('[Inventory] product_recipes loaded:', recipesData?.length || 0, 'recipes');
+      setProductRecipes(recipesData || []);
 
       // 3. Transform & Set State
       const mappedCategories = (cats || []).map((c: any) => ({
@@ -185,11 +405,30 @@ const InventoryManagement: React.FC = () => {
         description: p.description || '',
         presentations: [],
         closed_packages: [],
-        open_packages: []
+        open_packages: [],
+        variants: p.product_variants || [] // Map variants from join
       }));
 
-      const finalItems = [...transformedInsumos, ...transformedProducts];
+
+      // Map real open_packages to items
+      const finalItems = [...transformedInsumos, ...transformedProducts].map(item => {
+        // Find all open packages for this item
+        const itemPackages = (openPackages || []).filter((pkg: any) => pkg.inventory_item_id === item.id);
+
+        return {
+          ...item,
+          open_count: itemPackages.length,
+          open_packages: itemPackages.map((pkg: any) => ({
+            id: pkg.id,
+            remaining: pkg.remaining,
+            package_capacity: pkg.package_capacity,
+            opened_at: pkg.opened_at
+          }))
+        };
+      });
+
       setItems(finalItems);
+
 
       // 4. Save to Cache
       localStorage.setItem(CACHE_KEY, JSON.stringify({
@@ -415,7 +654,9 @@ const InventoryManagement: React.FC = () => {
             current_stock: newItemForm.current_stock,
             min_stock_alert: newItemForm.min_stock,
             store_id: storeId,
-            category_id: newItemForm.category_id || null
+            category_id: newItemForm.category_id || null,
+            item_type: newItemForm.price > 0 ? 'sellable' : 'ingredient',
+            price: newItemForm.price || 0
           })
         }
       );
@@ -428,7 +669,7 @@ const InventoryManagement: React.FC = () => {
       addToast('✅ Ítem creado correctamente', 'success');
       setShowInsumoWizard(false);
       setNewItemForm({ name: '', category_id: '', unit_type: 'unit', cost: 0, current_stock: 0, min_stock: 0, price: 0 });
-      fetchData();
+      fetchData(true); // Force refresh to bypass cache
 
     } catch (err: any) {
       console.error('Create item error:', err);
@@ -474,6 +715,15 @@ const InventoryManagement: React.FC = () => {
     } finally {
       setAiGenerating(false);
     }
+  };
+
+  // Recipe Builder Helpers (Restored)
+  const updateIngredientQty = (id: string, qty: number) => {
+    setRecipeIngredients(prev => prev.map(item => item.id === id ? { ...item, qty } : item));
+  };
+
+  const removeIngredient = (id: string) => {
+    setRecipeIngredients(prev => prev.filter(item => item.id !== id));
   };
 
   const handleConfirmAddIngredient = async () => {
@@ -536,10 +786,47 @@ const InventoryManagement: React.FC = () => {
     }
   };
 
+
+  const effectiveItems = useMemo(() => {
+    // If no pending deliveries, return raw items
+    if (pendingDeliveryOrders.length === 0) return items;
+
+    // Calculate deductions
+    const deductions: Record<string, number> = {};
+
+    pendingDeliveryOrders.forEach(orderId => {
+      const order = offlineOrders.find(o => o.id === orderId);
+      if (!order) return;
+
+      order.items.forEach(item => {
+        // Only deduct if we have a recipe for this product (productId is the product)
+        if (!item.productId) return;
+
+        const recipes = productRecipes.filter(r => r.product_id === item.productId);
+        recipes.forEach(r => {
+          if (!deductions[r.inventory_item_id]) deductions[r.inventory_item_id] = 0;
+          deductions[r.inventory_item_id] += (r.quantity_required * item.quantity);
+        });
+      });
+    });
+
+    // Apply deductions
+    return items.map(item => {
+      const deduction = deductions[item.id] || 0;
+      if (deduction > 0) {
+        return {
+          ...item,
+          current_stock: Math.max(0, item.current_stock - deduction)
+        };
+      }
+      return item;
+    });
+  }, [items, pendingDeliveryOrders, offlineOrders, productRecipes]);
+
   const filteredItems = useMemo(() => {
-    return items.filter(item => {
-      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.sku.toLowerCase().includes(searchTerm.toLowerCase());
+    return effectiveItems.filter(item => {
+      const matchesSearch = (item.name || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
+        (item.sku || '').toLowerCase().includes((searchTerm || '').toLowerCase());
 
       const matchesFilter = filter === 'all' ||
         (filter === 'ingredient' && item.item_type === 'ingredient') ||
@@ -552,7 +839,7 @@ const InventoryManagement: React.FC = () => {
 
       return matchesSearch && matchesFilter && matchesCategory;
     });
-  }, [items, searchTerm, filter, activeCategoryFilter]);
+  }, [effectiveItems, searchTerm, filter, activeCategoryFilter]);
 
   const kpis = useMemo(() => {
     const list = items.filter(i => i.item_type === 'ingredient');
@@ -564,28 +851,218 @@ const InventoryManagement: React.FC = () => {
     };
   }, [items]);
 
+  const handleUpdateItem = async () => {
+    if (!selectedItem) return;
+    setIsProcessing(true);
+
+    try {
+      const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const storageKey = 'sb-yjxjyxhksedwfeueduwl-auth-token';
+      const storedData = localStorage.getItem(storageKey);
+      let token = '';
+      if (storedData) token = JSON.parse(storedData).access_token;
+
+      const headers = {
+        'Content-Type': 'application/json',
+        'apikey': apiKey,
+        'Authorization': `Bearer ${token || apiKey}`,
+        'Prefer': 'return=minimal'
+      };
+
+      const table = selectedItem.item_type === 'sellable' ? 'products' : 'inventory_items';
+
+      // Prepare payload - update category_id
+      const payload: any = {
+        category_id: selectedItem.category_ids?.[0] || null
+      };
+
+      // Only update specific fields if they changed? For now update what we edit in drawer
+      // We are only editing category in the drawer explicitly for now, and description via AI
+      if (selectedItem.description) payload.description = selectedItem.description;
+
+      const response = await fetch(`https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/${table}?id=eq.${selectedItem.id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) throw new Error('Error updating item');
+
+      // Update local items state
+      setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, ...selectedItem } : i));
+
+      addToast('Ítem actualizado correctamente', 'success');
+      setSelectedItem(null); // Close drawer on success
+    } catch (err: any) {
+      console.error(err);
+      addToast('Error al actualizar: ' + err.message, 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Fetch Movements when Tab Changes
+  useEffect(() => {
+    if (drawerTab === 'history' && selectedItem) {
+      fetchStockHistory(selectedItem.id);
+    }
+  }, [drawerTab, selectedItem]);
+
+  const fetchStockHistory = async (itemId: string) => {
+    setLoadingMovements(true);
+    const { data } = await (supabase.from as any)('stock_movements')
+      .select('*')
+      .eq('inventory_item_id', itemId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (data) {
+      setStockMovements(data);
+    }
+    setLoadingMovements(false);
+  };
+
+  // --- RECIPE AVAILABILITY LOGIC ---
+  const getRecipeAvailability = (item: InventoryItem) => {
+    // 1. Get Variants
+    const variants = item.variants && item.variants.length > 0 ? item.variants : [];
+
+    // 2. Get Base Recipe
+    const baseRecipe = productRecipes.filter(r => r.product_id === item.id);
+
+    // If no recipe and no variants, it's unavailable (or simple product without tracking)
+    if (baseRecipe.length === 0 && variants.length === 0) {
+      return { status: 'Unavailable', variantsStatus: [] };
+    }
+
+    const variantsStatus = [];
+
+    // If we have distinct variants defined
+    if (variants.length > 0) {
+      for (const variant of variants) {
+        let isResolvable = true;
+        let hasCritical = false;
+        const ingredientsStatus = [];
+
+        // Merge Base Recipe + Overrides (Simulated)
+        // Assuming Recipe Overrides structure: { ingredient_id, quantity_delta }
+        // For now, we assume variants use the BASE recipe as specific overrides are complex to map without explicit instruction.
+        // OR if the user said "variant represents a resolution of ingredients", maybe the variant IS the recipe?
+        // User said: "reutilizar logic existing... recipe_overrides"
+
+        // Using Base Recipe for all variants for now, but checking STOCK
+        for (const r of baseRecipe) {
+          const ingredient = items.find(i => i.id === r.inventory_item_id);
+          if (!ingredient) continue;
+
+          // Check override
+          let qtyRequired = r.quantity_required;
+          if (variant.recipe_overrides) {
+            // Assuming recipe_overrides is array of { ingredient_id, quantity_delta }
+            // Use 'any' cast if TS complains about strict shape due to JSONB
+            const override = (variant.recipe_overrides as any[]).find((o: any) => o.ingredient_id === r.inventory_item_id);
+            if (override) qtyRequired += override.quantity_delta;
+          }
+
+          const hasStock = ingredient.current_stock >= qtyRequired;
+          const isCritical = ingredient.current_stock <= ingredient.min_stock;
+
+          if (!hasStock) isResolvable = false;
+          if (isCritical) hasCritical = true;
+
+          ingredientsStatus.push({
+            name: ingredient.name,
+            hasStock,
+            isCritical
+          });
+        }
+
+        variantsStatus.push({
+          name: variant.name,
+          isResolvable,
+          hasCritical,
+          ingredients: ingredientsStatus
+        });
+      }
+    } else {
+      // Single "Default" Variant Use Case
+      let isResolvable = true;
+      let hasCritical = false;
+      const ingredientsStatus = [];
+
+      for (const r of baseRecipe) {
+        const ingredient = items.find(i => i.id === r.inventory_item_id);
+        const hasStock = ingredient ? ingredient.current_stock >= r.quantity_required : false;
+        const isCritical = ingredient ? ingredient.current_stock <= ingredient.min_stock : false;
+
+        if (!hasStock) isResolvable = false;
+        if (isCritical) hasCritical = true;
+
+        ingredientsStatus.push({
+          name: ingredient?.name || 'Unknown',
+          hasStock,
+          isCritical
+        });
+      }
+      variantsStatus.push({
+        name: 'Receta Base',
+        isResolvable,
+        hasCritical,
+        ingredients: ingredientsStatus
+      });
+    }
+
+    // Determine Overall Status
+    // Available if AT LEAST ONE variant is resolvable
+    const anyResolvable = variantsStatus.some(v => v.isResolvable);
+    // Critical if any resolvable variant has critical ingredients OR if general stock is low? 
+    // User said: "Available · 1 ingrediente crítico" if any variant uses ingredients with low stock.
+    const anyCritical = variantsStatus.some(v => v.hasCritical);
+
+    let status = 'No disponible';
+    if (anyResolvable) {
+      status = anyCritical ? 'Critical' : 'Available';
+    }
+
+    return { status, variantsStatus, criticalCount: variantsStatus.filter(v => v.hasCritical).length };
+  };
+
   return (
-    <div className="p-4 md:p-6 space-y-5 max-w-[1400px] mx-auto animate-in fade-in duration-500 pb-32 relative">
+    <div className="p-4 md:p-6 space-y-5 max-w-[1400px] mx-auto pb-32">
       {/* HEADER COMPACTO */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3">
+
         <div className="space-y-0.5">
-          <div className="flex items-center gap-1.5 text-neon/60 font-bold text-[8px] uppercase tracking-[0.2em]">
-            <span className="size-1 rounded-full bg-neon shadow-[0_0_5px_#4ADE80]"></span>
+          <div className="flex items-center gap-1.5 text-white/40 font-bold text-[8px] uppercase tracking-[0.2em]">
+            <span className="size-1 rounded-full bg-neon shadow-[0_0_5px_rgba(255,255,255,0.5)]"></span>
             COFFESQUAD INVENTORY SYSTEM
           </div>
           <h1 className="text-2xl font-black italic-black tracking-tighter text-text-main dark:text-white uppercase leading-none">
-            Control <span className="text-neon/80">Operativo</span>
+            Control <span className="text-white/80">Operativo</span>
           </h1>
         </div>
         <div className="flex gap-2">
           <button
+            onClick={() => {
+              // Clear cache and force refresh
+              const storeId = profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
+              localStorage.removeItem(`inventory_cache_v2_${storeId}`);
+              fetchData(true);
+              addToast('Inventario actualizado', 'success');
+            }}
+            className="px-4 py-1.5 rounded-lg bg-white/5 text-white/60 font-bold text-[9px] uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all hover:text-neon hover:border-white/30 hover:bg-white/5"
+          >
+            <span className="material-symbols-outlined text-base">refresh</span>
+            REFRESCAR
+          </button>
+          <button
             onClick={() => setShowInvoiceProcessor(true)}
-            className="px-4 py-1.5 rounded-lg bg-white/5 text-white/60 font-bold text-[9px] uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all hover:text-neon hover:border-neon/30 hover:bg-neon/5"
+            className="px-4 py-1.5 rounded-lg bg-white/5 text-white/60 font-bold text-[9px] uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all hover:text-neon hover:border-white/30 hover:bg-white/5"
           >
             <span className="material-symbols-outlined text-base">document_scanner</span>
             ESCANEAR FACTURA
           </button>
-          <button onClick={() => { setShowInsumoWizard(true); setWizardMethod('selector'); }} className="px-4 py-1.5 rounded-lg bg-primary dark:bg-neon/10 text-white dark:text-neon font-bold text-[9px] uppercase tracking-widest border border-primary dark:border-neon/20 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-neon/5">
+          <button onClick={() => { setShowInsumoWizard(true); setWizardMethod('selector'); }} className="px-4 py-1.5 rounded-lg bg-neon text-black font-bold text-[9px] uppercase tracking-widest border border-neon flex items-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)]">
             <span className="material-symbols-outlined text-base">add_circle</span>
             NUEVO REGISTRO
           </button>
@@ -594,9 +1071,9 @@ const InventoryManagement: React.FC = () => {
 
       {/* KPI CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <KpiCard label="Valorización Total" value={`$${kpis.totalValue}`} icon="payments" color="text-neon bg-neon/5" />
-        <KpiCard label="Alerta de Stock" value={`${kpis.lowStock}`} icon="warning" color={kpis.lowStock > 0 ? "text-primary bg-primary/5" : "text-neon bg-neon/5"} />
-        <KpiCard label="Índice de Ítems" value={`${items.length}`} icon="inventory" color="text-white bg-white/5" />
+        <KpiCard label="Valorización Total" value={`$${kpis.totalValue}`} icon="payments" color="text-neon bg-white/5" />
+        <KpiCard label="Alerta de Stock" value={`${kpis.lowStock}`} icon="warning" color={kpis.lowStock > 0 ? "text-neon bg-white/10" : "text-white/40 bg-white/5"} />
+        <KpiCard label="Índice de Ítems" value={`${items.length}`} icon="inventory" color="text-neon bg-white/5" />
       </div>
 
       <div className="flex flex-col gap-3">
@@ -605,6 +1082,7 @@ const InventoryManagement: React.FC = () => {
           <TabBtn active={filter === 'all'} onClick={() => setFilter('all')}>VISTA GLOBAL</TabBtn>
           <TabBtn active={filter === 'ingredient'} onClick={() => setFilter('ingredient')}>INSUMOS</TabBtn>
           <TabBtn active={filter === 'sellable'} onClick={() => setFilter('sellable')}>PRODUCTOS</TabBtn>
+          <TabBtn active={filter === 'recipes'} onClick={() => setFilter('recipes')}>RECETAS</TabBtn>
         </div>
 
         {/* Category Filters */}
@@ -612,7 +1090,7 @@ const InventoryManagement: React.FC = () => {
           <button
             onClick={() => setActiveCategoryFilter(null)}
             className={`px-4 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest whitespace-nowrap transition-all border ${activeCategoryFilter === null
-              ? 'border-neon/60 text-neon bg-neon/5'
+              ? 'border-white/60 text-neon bg-white/5'
               : 'border-white/10 text-white/50 hover:text-white/70 hover:border-white/20'
               }`}
           >
@@ -623,7 +1101,7 @@ const InventoryManagement: React.FC = () => {
               key={cat.id}
               onClick={() => setActiveCategoryFilter(cat.id)}
               className={`px-4 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest whitespace-nowrap transition-all border ${activeCategoryFilter === cat.id
-                ? 'border-neon/60 text-neon bg-neon/5'
+                ? 'border-white/60 text-neon bg-white/5'
                 : 'border-white/10 text-white/50 hover:text-white/70 hover:border-white/20'
                 }`}
             >
@@ -633,7 +1111,7 @@ const InventoryManagement: React.FC = () => {
           <button
             onClick={() => setActiveCategoryFilter('special-open')}
             className={`px-4 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest whitespace-nowrap flex items-center gap-1.5 transition-all border ${activeCategoryFilter === 'special-open'
-              ? 'border-neon/60 text-neon bg-neon/5'
+              ? 'border-white/60 text-neon bg-white/5'
               : 'border-white/10 text-white/50 hover:text-white/70 hover:border-white/20'
               }`}
           >
@@ -642,7 +1120,7 @@ const InventoryManagement: React.FC = () => {
           </button>
           <button
             onClick={() => setShowCategoryModal(true)}
-            className="ml-auto px-2 py-2 rounded-lg text-white/30 hover:text-neon border border-transparent hover:border-neon/20 transition-all"
+            className="ml-auto px-2 py-2 rounded-lg text-white/30 hover:text-neon border border-transparent hover:border-white/20 transition-all"
             title="Crear nueva categoría"
           >
             <span className="material-symbols-outlined text-base">add_circle</span>
@@ -650,157 +1128,380 @@ const InventoryManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* BUSCADOR */}
-      <div className="relative group">
-        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-neon transition-colors">search</span>
-        <input
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Rastrear ítem por SKU o nombre..."
-          className="w-full bg-[#141714] border border-white/[0.04] rounded-2xl h-12 pl-12 pr-4 text-[10px] font-bold text-white uppercase tracking-widest outline-none focus:border-neon/30 transition-all placeholder:text-white/10"
-        />
-      </div>
-
-      {/* TABLA PRINCIPAL */}
-      <div className="bg-[#141714] rounded-2xl border border-white/[0.04] shadow-2xl overflow-hidden min-h-[400px]">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center p-20 space-y-4">
-            <div className="size-10 border-t-2 border-neon rounded-full animate-spin"></div>
-            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Cargando Matrix...</p>
-          </div>
-        ) : items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-20 text-center animate-in fade-in zoom-in duration-700">
-            <div className="size-24 rounded-full bg-neon/5 border border-neon/10 flex items-center justify-center text-neon/40 mb-8">
-              <span className="material-symbols-outlined text-5xl">inventory_2</span>
+      {/* RECIPES VIEW - Shown when filter === 'recipes' */}
+      {filter === 'recipes' ? (
+        <div className="space-y-4">
+          {/* Header */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-lg font-black text-white uppercase tracking-tight">Libro de Recetas</h2>
+              <p className="text-[10px] text-white/40 uppercase tracking-widest">Define los ingredientes de cada producto compuesto</p>
             </div>
-            <h3 className="text-2xl font-black text-white uppercase italic-black tracking-tighter mb-4">
-              Nodo <span className="text-neon">sin Datos</span>
-            </h3>
-            <p className="text-[#71766F] text-[11px] font-bold uppercase tracking-[0.2em] max-w-sm mb-10 leading-relaxed opacity-60">
-              Inicia la carga de suministros o productos para activar el panel de control.
-            </p>
             <button
-              onClick={() => { setShowInsumoWizard(true); setWizardMethod('selector'); }}
-              className="px-10 py-4 bg-neon text-black rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-neon/20 hover:scale-[1.05] active:scale-95 transition-all"
+              onClick={() => {
+                setEditingProductId(null);
+                setRecipeIngredients([]);
+                setShowRecipeModal(true);
+              }}
+              className="px-4 py-2 rounded-lg bg-white/10 text-white font-bold text-[10px] uppercase tracking-widest border border-white/20 flex items-center gap-2 hover:bg-white/20 transition-all shadow-[0_0_20px_rgba(255,255,255,0.05)]"
             >
-              Cargar Primer Ítem
+              <span className="material-symbols-outlined text-base">add</span>
+              NUEVA RECETA
             </button>
           </div>
-        ) : (
-          <div className="overflow-x-auto no-scrollbar">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-white/[0.01] border-b border-white/[0.03]">
-                  <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest">Identidad Operativa</th>
-                  <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest">Stock Neto</th>
-                  <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest text-center">Clase</th>
-                  <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest text-center">Menú</th>
-                  <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest text-center">Costo Est.</th>
-                  <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest text-right">Audit</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.02]">
-                {filteredItems.map(item => (
-                  <tr
-                    key={item.id}
-                    className="hover:bg-white/[0.01] transition-colors cursor-pointer group"
-                  >
-                    <td className="px-6 py-4" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); }}>
-                      <div className="flex items-center gap-4">
-                        <div className="size-10 rounded-xl overflow-hidden bg-black/40 border border-white/5 relative">
-                          <img src={item.image_url} className="size-full object-cover group-hover:scale-110 transition-transform duration-500" />
+
+          {/* Recipe List */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {(() => {
+              // Group recipes by product_id
+              const groupedRecipes = productRecipes.reduce((acc, recipe) => {
+                if (!acc[recipe.product_id]) acc[recipe.product_id] = [];
+                acc[recipe.product_id].push(recipe);
+                return acc;
+              }, {} as Record<string, typeof productRecipes>);
+
+              const productIds = Object.keys(groupedRecipes);
+
+              if (productIds.length === 0) {
+                return (
+                  <div className="col-span-2 flex flex-col items-center justify-center p-20 text-center bg-[#141714] rounded-2xl border border-white/[0.04]">
+                    <span className="material-symbols-outlined text-5xl text-white/10 mb-4">menu_book</span>
+                    <h3 className="text-lg font-black text-white/40 uppercase mb-2">Sin Recetas</h3>
+                    <p className="text-[10px] text-white/20 uppercase tracking-widest mb-6">Crea tu primera receta para productos compuestos</p>
+                    <button
+                      onClick={() => setShowRecipeModal(true)}
+                      className="px-6 py-3 bg-neon text-black rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-200 transition-all shadow-[0_0_25px_rgba(255,255,255,0.1)]"
+                    >
+                      Crear Receta
+                    </button>
+                  </div>
+                );
+              }
+
+              return productIds.map(productId => {
+                const product = items.find(i => i.id === productId);
+                const recipeItems = groupedRecipes[productId];
+                const totalCost = recipeItems.reduce((sum, r) => {
+                  const ingredient = items.find(i => i.id === r.inventory_item_id);
+                  return sum + (ingredient?.cost || 0) * r.quantity_required;
+                }, 0);
+
+                return (
+                  <div key={productId} className="bg-[#141714] rounded-2xl border border-white/[0.04] overflow-hidden">
+                    {/* Product Header */}
+                    <div className="p-4 border-b border-white/[0.04] flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="size-12 rounded-xl bg-white/5 flex items-center justify-center">
+                          <span className="material-symbols-outlined text-white/60">restaurant</span>
                         </div>
                         <div>
-                          <p className="text-[11px] font-black dark:text-white uppercase italic tracking-tight leading-none mb-1">{item.name}</p>
-                          <p className="text-[7px] text-text-secondary font-bold uppercase opacity-30 tracking-widest group-hover:text-neon/50">SKU: {item.sku}</p>
+                          <h3 className="text-sm font-black text-white uppercase">{product?.name || 'Producto'}</h3>
+                          <p className="text-[9px] text-white/40">{recipeItems.length} ingredientes</p>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); }}>
-                      <div className="flex flex-col">
-                        <span className={`font-black italic text-[14px] ${item.item_type === 'ingredient' && item.current_stock <= item.min_stock ? 'text-primary' : 'text-white'}`}>
-                          {item.item_type === 'sellable' ? '--' : item.current_stock.toLocaleString()}
-                          <span className="text-[8px] uppercase opacity-30 ml-1">{item.unit_type}</span>
-                        </span>
-                        {item.item_type === 'ingredient' && (
-                          <span className="text-[7px] font-bold text-neon/60 uppercase tracking-wider flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[9px]">inventory_2</span>
-                            {item.open_count || 0} ABIERTOS
-                          </span>
-                        )}
-                        {item.item_type === 'ingredient' && item.current_stock <= item.min_stock && (
-                          <span className="text-[6px] font-black text-primary uppercase tracking-widest">CRÍTICO: BAJO MÍNIMO</span>
-                        )}
+                      <div className="text-right">
+                        <p className="text-[8px] text-white/30 uppercase">Costo</p>
+                        <p className="text-sm font-black text-neon">${totalCost.toFixed(2)}</p>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-center" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); }}>
-                      <span className={`px-2 py-0.5 rounded-full text-[7px] font-black uppercase border-shimmer ${item.item_type === 'ingredient' ? 'bg-neon/5 text-neon border-neon/20' : 'bg-white/5 text-white/50 border-white/10'}`}>
-                        {item.item_type === 'ingredient' ? 'INSUMO' : 'PRODUCTO'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      {/* Minimal Cute Switch */}
+                    </div>
+
+                    {/* Ingredients */}
+                    <div className="p-4 space-y-2">
+                      {recipeItems.map((r, idx) => {
+                        const ingredient = items.find(i => i.id === r.inventory_item_id);
+                        return (
+                          <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-white/[0.02]">
+                            <span className="text-[10px] font-bold text-white/70">{ingredient?.name || 'Insumo'}</span>
+                            <span className="text-[10px] font-black text-neon">{r.quantity_required} {ingredient?.unit_type}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="px-4 pb-4 flex gap-2">
                       <button
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          const newValue = !item.is_menu_visible;
-                          // Optimistic update
-                          setItems(prev => prev.map(i => i.id === item.id ? { ...i, is_menu_visible: newValue } : i));
-
-                          try {
-                            const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-                            const storageKey = 'sb-yjxjyxhksedwfeueduwl-auth-token';
-                            const storedData = localStorage.getItem(storageKey);
-                            let token = '';
-                            if (storedData) token = JSON.parse(storedData).access_token;
-
-                            await fetch(`https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/inventory_items?id=eq.${item.id}`, {
-                              method: 'PATCH',
-                              headers: {
-                                'Content-Type': 'application/json',
-                                'apikey': apiKey,
-                                'Authorization': `Bearer ${token || apiKey}`,
-                                'Prefer': 'return=minimal'
-                              },
-                              body: JSON.stringify({ is_menu_visible: newValue })
-                            });
-                            addToast(newValue ? 'Item visible en menú' : 'Item oculto del menú', 'success');
-                          } catch (err) {
-                            console.error(err);
-                            addToast('Error al actualizar', 'error');
-                            // Revert
-                            setItems(prev => prev.map(i => i.id === item.id ? { ...i, is_menu_visible: !newValue } : i));
-                          }
+                        onClick={() => {
+                          setEditingProductId(productId);
+                          setRecipeIngredients(recipeItems.map(r => ({ id: r.inventory_item_id, qty: r.quantity_required })));
+                          setShowRecipeModal(true);
                         }}
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-neon focus-visible:ring-offset-2 focus-visible:ring-offset-black ${item.is_menu_visible ? 'bg-neon' : 'bg-white/10'}`}
+                        className="flex-1 py-2 rounded-lg bg-white/5 text-white/50 text-[9px] font-bold uppercase hover:text-neon hover:bg-white/5 transition-all"
                       >
-                        <span className="sr-only">Toggle Menu Visibility</span>
-                        <span
-                          className={`${item.is_menu_visible ? 'translate-x-5 shadow-[0_0_10px_#4ADE80]' : 'translate-x-1 bg-white/40'} inline-block h-3 w-3 transform rounded-full bg-white transition duration-300 ease-in-out`}
-                        />
+                        Editar
                       </button>
-                    </td>
-                    <td className="px-6 py-4 text-center font-mono text-[10px] text-white/60" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); }}>
-                      ${item.cost.toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button className="size-8 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-neon hover:text-black transition-all group-hover:border-neon/30">
-                        <span className="material-symbols-outlined text-lg">bolt</span>
+                      <button
+                        onClick={async () => {
+                          if (!confirm('¿Eliminar esta receta?')) return;
+                          const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+                          const storageKey = 'sb-yjxjyxhksedwfeueduwl-auth-token';
+                          const storedData = localStorage.getItem(storageKey);
+                          let token = '';
+                          if (storedData) token = JSON.parse(storedData).access_token;
+
+                          await fetch(`https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/product_recipes?product_id=eq.${productId}`, {
+                            method: 'DELETE',
+                            headers: { 'apikey': apiKey, 'Authorization': `Bearer ${token || apiKey}` }
+                          });
+                          setProductRecipes(prev => prev.filter(r => r.product_id !== productId));
+                          addToast('Receta eliminada', 'success');
+                        }}
+                        className="py-2 px-3 rounded-lg bg-red-500/10 text-red-400/70 text-[9px] font-bold uppercase hover:bg-red-500/20 transition-all"
+                      >
+                        <span className="material-symbols-outlined text-sm">delete</span>
                       </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+                );
+              });
+            })()}
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <>
+          {/* BUSCADOR */}
+          <div className="relative group">
+            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-neon transition-colors">search</span>
+            <input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Rastrear ítem por SKU o nombre..."
+              className="w-full bg-[#141714] border border-white/[0.04] rounded-2xl h-12 pl-12 pr-4 text-[10px] font-bold text-white uppercase tracking-widest outline-none focus:border-white/30 transition-all placeholder:text-white/10"
+            />
+          </div>
+
+          {/* TABLA PRINCIPAL */}
+          <div className="bg-[#141714] rounded-2xl border border-white/[0.04] shadow-2xl overflow-hidden min-h-[400px]">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center p-20 space-y-4">
+                <div className="size-10 border-t-2 border-neon rounded-full animate-spin"></div>
+                <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Cargando Matrix...</p>
+              </div>
+            ) : items.length === 0 ? (
+              <div className="flex flex-col items-center justify-center p-20 text-center animate-in fade-in zoom-in duration-700">
+                <div className="size-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 mb-8">
+                  <span className="material-symbols-outlined text-5xl">inventory_2</span>
+                </div>
+                <h3 className="text-2xl font-black text-white uppercase italic-black tracking-tighter mb-4">
+                  Nodo <span className="text-neon">sin Datos</span>
+                </h3>
+                <p className="text-[#71766F] text-[11px] font-bold uppercase tracking-[0.2em] max-w-sm mb-10 leading-relaxed opacity-60">
+                  Inicia la carga de suministros o productos para activar el panel de control.
+                </p>
+                <button
+                  onClick={() => { setShowInsumoWizard(true); setWizardMethod('selector'); }}
+                  className="px-10 py-4 bg-neon text-black rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(255,255,255,0.1)] hover:scale-[1.05] active:scale-95 transition-all"
+                >
+                  Cargar Primer Ítem
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto no-scrollbar">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-white/[0.01] border-b border-white/[0.03]">
+                      <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest">Identidad Operativa</th>
+                      <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest">Stock Sellado</th>
+                      <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest">Abiertos</th>
+                      <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest text-center">Clase</th>
+                      <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest text-center">Menú</th>
+                      <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest text-center">Costo Est.</th>
+                      <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest text-right">Audit</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.02]">
+                    {filteredItems.map(item => (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-white/[0.01] transition-colors cursor-pointer group"
+                      >
+                        <td className="px-6 py-4" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); }}>
+                          <div className="flex items-center gap-4">
+                            <div className="size-10 rounded-xl overflow-hidden bg-black/40 border border-white/5 relative">
+                              <img src={item.image_url} className="size-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                            </div>
+                            <div>
+                              <p className="text-[11px] font-black dark:text-white uppercase italic tracking-tight leading-none mb-1">{item.name}</p>
+                              {(() => {
+                                const cat = categories.find(c => c.id === item.category_ids?.[0]);
+                                return cat ? (
+                                  <p className="text-[7px] text-white/60 font-bold uppercase tracking-widest">{cat.name}</p>
+                                ) : (
+                                  <p className="text-[7px] text-text-secondary font-bold uppercase opacity-30 tracking-widest group-hover:text-white/50">SKU: {item.sku}</p>
+                                );
+                              })()}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); }}>
+                          {/* CELDA 1: Stock Sellado */}
+                          <div className="flex flex-col">
+                            {item.item_type === 'sellable' ? (
+                              (() => {
+                                const { status, variantsStatus } = getRecipeAvailability(item);
+                                // If no recipe involved, maybe show -- 
+                                const hasRecipe = productRecipes.some(pr => pr.product_id === item.id);
+                                if (!hasRecipe) return <span className="text-[14px] font-black text-white/20">--</span>;
+
+                                if (status === 'Available') {
+                                  return <span className="text-[10px] font-black text-neon uppercase bg-neon/10 px-2 py-0.5 rounded w-fit">Disponible</span>;
+                                } else if (status === 'Critical') {
+                                  return (
+                                    <div className="flex flex-col">
+                                      <span className="text-[10px] font-black text-yellow-400 uppercase bg-yellow-400/10 px-2 py-0.5 rounded w-fit">Disponible</span>
+                                      <span className="text-[7px] text-yellow-500/80 mt-0.5 font-bold uppercase tracking-wide">⚠️ Ingred. Críticos</span>
+                                    </div>
+                                  );
+                                } else {
+                                  return <span className="text-[10px] font-black text-red-500 uppercase bg-red-500/10 px-2 py-0.5 rounded w-fit">No Disponible</span>;
+                                }
+                              })()
+                            ) : (
+                              <>
+                                <span className="font-black italic text-[14px] text-neon">
+                                  {Math.max(0, item.current_stock - (item.open_count || 0)).toLocaleString()}
+                                  <span className="text-[8px] uppercase opacity-30 ml-1">{item.unit_type}</span>
+                                </span>
+                                {item.current_stock <= item.min_stock && (
+                                  <span className="text-[6px] font-black text-white/40 uppercase tracking-widest">CRÍTICO</span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {/* CELDA 2: Paquetes Abiertos con Barras de Progreso */}
+                          {item.item_type === 'ingredient' && (item.open_packages?.length > 0 || item.open_count > 0) ? (
+                            <div className="space-y-2">
+                              {item.open_packages?.slice(0, 3).map((pkg, idx) => {
+                                const percentage = pkg.package_capacity ? Math.round((pkg.remaining / pkg.package_capacity) * 100) : 0;
+                                const barColor = percentage > 50 ? '#FFFFFF' : percentage > 20 ? '#A1A1A1' : '#404040';
+                                const glowColor = percentage > 50 ? 'shadow-[0_0_4px_rgba(255,255,255,0.3)]' : 'shadow-none';
+
+                                return (
+                                  <div key={pkg.id || idx} className="flex items-center gap-2">
+                                    <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden relative">
+                                      <div
+                                        className={`h-full transition-all duration-300 ${glowColor}`}
+                                        style={{
+                                          width: `${percentage}%`,
+                                          backgroundColor: barColor
+                                        }}
+                                      />
+                                    </div>
+                                    <span
+                                      className="text-[8px] font-black font-mono min-w-[28px] text-right text-white/40"
+                                    >
+                                      {percentage}%
+                                    </span>
+                                  </div>
+                                );
+                              }) || (
+                                  // Fallback: si no hay open_packages pero sí open_count
+                                  <div className="flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-white/20 text-[12px]">inventory_2</span>
+                                    <span className="text-[10px] font-black text-white/60">{item.open_count}</span>
+                                    <span className="text-[7px] text-white/20 uppercase tracking-widest">abiertos</span>
+                                  </div>
+                                )}
+                              {item.open_packages?.length > 3 && (
+                                <span className="text-[7px] text-white/20 pl-1">+{item.open_packages.length - 3} más</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-[8px] text-white/10 tracking-widest">---</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-center" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); }}>
+                          {(() => {
+                            // Check both item.recipe AND productRecipes state
+                            const hasRecipe = (item.recipe && item.recipe.length > 0) || productRecipes.some(pr => pr.product_id === item.id);
+                            if (item.item_type === 'ingredient') {
+                              return (
+                                <span className="px-2 py-0.5 rounded-full text-[7px] font-black uppercase bg-neon/10 text-neon border border-neon/30 group-hover:border-neon/50 transition-all">
+                                  INSUMO
+                                </span>
+                              );
+                            } else if (hasRecipe) {
+                              return (
+                                <span className="px-2 py-0.5 rounded-full text-[7px] font-black uppercase bg-violet-500/10 text-violet-400 border border-violet-500/30 group-hover:border-violet-500/50 transition-all">
+                                  RECETA
+                                </span>
+                              );
+                            } else {
+                              return (
+                                <span className="px-2 py-0.5 rounded-full text-[7px] font-black uppercase bg-orange-500/10 text-orange-400 border border-orange-500/30 group-hover:border-orange-500/50 transition-all">
+                                  PRODUCTO
+                                </span>
+                              );
+                            }
+                          })()}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          {/* Minimal Cute Switch */}
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              const newValue = !item.is_menu_visible;
+                              // Optimistic update
+                              setItems(prev => prev.map(i => i.id === item.id ? { ...i, is_menu_visible: newValue } : i));
+
+                              try {
+                                const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+                                const storageKey = 'sb-yjxjyxhksedwfeueduwl-auth-token';
+                                const storedData = localStorage.getItem(storageKey);
+                                let token = '';
+                                if (storedData) token = JSON.parse(storedData).access_token;
+
+                                await fetch(`https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/inventory_items?id=eq.${item.id}`, {
+                                  method: 'PATCH',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                    'apikey': apiKey,
+                                    'Authorization': `Bearer ${token || apiKey}`,
+                                    'Prefer': 'return=minimal'
+                                  },
+                                  body: JSON.stringify({ is_menu_visible: newValue })
+                                });
+                                addToast(newValue ? 'Item visible en menú' : 'Item oculto del menú', 'success');
+                              } catch (err) {
+                                console.error(err);
+                                addToast('Error al actualizar', 'error');
+                                // Revert
+                                setItems(prev => prev.map(i => i.id === item.id ? { ...i, is_menu_visible: !newValue } : i));
+                              }
+                            }}
+                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black ${item.is_menu_visible ? 'bg-neon' : 'bg-white/10'}`}
+                          >
+                            <span className="sr-only">Toggle Menu Visibility</span>
+                            <span
+                              className={`${item.is_menu_visible ? 'translate-x-5 shadow-[0_0_10px_rgba(255,255,255,0.2)]' : 'translate-x-1 bg-white/40'} inline-block h-3 w-3 transform rounded-full bg-black transition duration-300 ease-in-out`}
+                            />
+                          </button>
+                        </td>
+                        <td className="px-6 py-4 text-center font-mono text-[10px] text-white/60" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); }}>
+                          ${item.cost.toFixed(2)}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button className="size-8 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-neon hover:text-black transition-all group-hover:border-white/30">
+                            <span className="material-symbols-outlined text-lg">bolt</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {/* DRAWER LATERAL PREMIUM */}
-      <div className={`fixed inset-y-0 right-0 z-[200] h-screen w-full max-w-[420px] bg-[#0D0F0D] border-l border-white/10 shadow-3xl transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col ${selectedItem ? 'translate-x-0' : 'translate-x-full opacity-0'}`}>
+      <div className={`fixed inset-y-0 right-0 z-[5000] h-screen w-full max-w-[420px] bg-[#0D0F0D] border-l border-white/10 shadow-3xl transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col ${selectedItem ? 'translate-x-0' : 'translate-x-full opacity-0'}`}>
         {selectedItem && (
           <>
-            <div className="p-6 flex justify-between items-center border-b border-white/5 bg-gradient-to-r from-neon/5 to-transparent">
+            <div className="p-6 flex justify-between items-center border-b border-white/5 bg-gradient-to-r from-white/5 to-transparent">
               <div className="flex items-center gap-4">
                 <div className="size-14 rounded-2xl bg-black border border-white/10 overflow-hidden shadow-2xl relative">
                   <img src={selectedItem.image_url} className="size-full object-cover" />
@@ -810,27 +1511,81 @@ const InventoryManagement: React.FC = () => {
                   <h3 className="text-xl font-black italic-black text-white uppercase tracking-tighter leading-none mb-1">{selectedItem.name}</h3>
                   <div className="flex items-center gap-2">
                     <span className="size-1.5 rounded-full bg-neon animate-pulse"></span>
-                    <p className="text-[8px] font-black text-neon uppercase tracking-[0.2em]">SISTEMA DE ASIGNACIÓN BOM</p>
+                    <p className="text-[8px] font-black text-white uppercase tracking-[0.2em]">SISTEMA DE ASIGNACIÓN BOM</p>
                   </div>
                 </div>
               </div>
-              <button onClick={() => setSelectedItem(null)} className="size-10 rounded-2xl bg-white/5 flex items-center justify-center text-text-secondary hover:text-white transition-all hover:bg-white/10">
+              <button onClick={() => setSelectedItem(null)} className="size-10 rounded-2xl bg-white/5 flex items-center justify-center text-text-secondary hover:text-neon transition-all hover:bg-white/10">
                 <span className="material-symbols-outlined text-xl">close</span>
               </button>
             </div>
 
             <div className="flex border-b border-white/5 bg-black/40 px-2">
               <DrawerTabBtn active={drawerTab === 'details'} onClick={() => setDrawerTab('details')} label="FICHA" icon="analytics" />
-              <DrawerTabBtn active={drawerTab === 'recipe'} onClick={() => setDrawerTab('recipe')} label="RECETA" icon="biotech" />
+              {selectedItem.item_type === 'sellable' && (
+                <DrawerTabBtn active={drawerTab === 'recipe'} onClick={() => setDrawerTab('recipe')} label="RECETA" icon="biotech" />
+              )}
               <DrawerTabBtn active={drawerTab === 'history'} onClick={() => setDrawerTab('history')} label="LOGS" icon="database" />
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar pb-32">
+              {/* LOGIC: CALCULATE YIELD FOR SELLABLE ITEMS */}
+              {(() => {
+                if (selectedItem.item_type !== 'sellable' || !selectedItem.recipe?.length) return null;
+
+                // Calculate max yield
+                const yieldlimit = selectedItem.recipe.reduce((min, r) => {
+                  const ing = items.find(i => i.id === r.ingredientId);
+                  if (!ing || !ing.current_stock) return 0;
+                  const possible = Math.floor(ing.current_stock / r.quantity);
+                  return Math.min(min, possible);
+                }, Infinity);
+
+                const finalYield = yieldlimit === Infinity ? 0 : yieldlimit;
+
+                return (
+                  <div className="mx-6 mt-2 mb-0 p-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between animate-in slide-in-from-top-2">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-white/60">inventory</span>
+                      <div>
+                        <p className="text-[9px] font-black text-white/80 uppercase tracking-widest">Stock Estimado</p>
+                        <p className="text-[9px] text-white/40">Basado en tus insumos actuales</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-2xl font-black text-white italic-black">{finalYield}</span>
+                      <span className="text-[9px] font-bold text-white/40 ml-1">UNID.</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {drawerTab === 'details' && (
                 <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
-                  <div className="grid grid-cols-2 gap-4">
-                    <MetricBlock label="VALOR ACTUAL" value={`$${selectedItem.cost.toFixed(2)}`} icon="payments" color="text-neon" />
-                    <MetricBlock label="GANANCIA" value={selectedItem.price ? `$${(selectedItem.price - selectedItem.cost).toFixed(2)}` : '--'} icon="trending_up" color="text-green-400" />
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-[9px] font-black uppercase text-white/40 tracking-[0.2em]">Categoría del Menú</label>
+                      <select
+                        value={selectedItem.category_ids?.[0] || ''}
+                        onChange={(e) => {
+                          const newCatId = e.target.value;
+                          setSelectedItem(prev => prev ? { ...prev, category_ids: newCatId ? [newCatId] : [] } : null);
+                        }}
+                        className="w-full bg-black border border-white/10 rounded-xl h-12 px-4 text-sm font-bold text-white outline-none focus:border-white/50 appearance-none cursor-pointer"
+                      >
+                        <option value="">SIN CATEGORÍA (GENERAL)</option>
+                        {categories
+                          .sort((a, b) => (a.position || 0) - (b.position || 0))
+                          .map(cat => (
+                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                          ))}
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <MetricBlock label="VALOR ACTUAL" value={`$${selectedItem.cost.toFixed(2)}`} icon="payments" color="text-white/60" />
+                      <MetricBlock label="GANANCIA" value={selectedItem.price ? `$${(selectedItem.price - selectedItem.cost).toFixed(2)}` : '--'} icon="trending_up" color="text-white/40" />
+                    </div>
                   </div>
 
                   <div className="space-y-3">
@@ -839,14 +1594,14 @@ const InventoryManagement: React.FC = () => {
                       <button
                         onClick={generateAIGourmetDescription}
                         disabled={aiGenerating}
-                        className="text-[8px] font-black text-neon uppercase flex items-center gap-1 hover:brightness-125 disabled:opacity-30"
+                        className="text-[8px] font-black text-white uppercase flex items-center gap-1 hover:brightness-125 disabled:opacity-30"
                       >
                         <span className="material-symbols-outlined text-xs">{aiGenerating ? 'sync' : 'auto_awesome'}</span>
                         {aiGenerating ? 'GENERANDO...' : 'RE-GENERAR'}
                       </button>
                     </div>
                     <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 relative overflow-hidden group">
-                      <div className="absolute top-0 left-0 w-1 h-full bg-neon/20 group-hover:bg-neon transition-all"></div>
+                      <div className="absolute top-0 left-0 w-1 h-full bg-white/20 group-hover:bg-neon transition-all"></div>
                       <p className="text-[11px] text-white/70 leading-relaxed font-medium">
                         {selectedItem.description || "Sin descripción generada. Haz click arriba para que la IA cree una descripción tentadora para este producto."}
                       </p>
@@ -856,13 +1611,13 @@ const InventoryManagement: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-[8px] font-black uppercase text-white/40 tracking-[0.2em]">Precio Venta</label>
-                      <div className="h-12 bg-black border border-white/10 rounded-2xl flex items-center justify-center font-black text-lg text-white">
+                      <div className="h-12 bg-black border border-white/10 rounded-2xl flex items-center justify-center font-black text-lg text-neon">
                         ${selectedItem.price?.toFixed(2) || '0.00'}
                       </div>
                     </div>
                     <div className="space-y-2">
                       <label className="text-[8px] font-black uppercase text-white/40 tracking-[0.2em]">Margen Neto</label>
-                      <div className="h-12 bg-black border border-white/10 rounded-2xl flex items-center justify-center font-black text-lg text-green-500">
+                      <div className="h-12 bg-black border border-white/10 rounded-2xl flex items-center justify-center font-black text-lg text-neon">
                         {selectedItem.price ? `${(((selectedItem.price - selectedItem.cost) / selectedItem.cost) * 100).toFixed(0)}%` : '0%'}
                       </div>
                     </div>
@@ -872,17 +1627,43 @@ const InventoryManagement: React.FC = () => {
 
               {drawerTab === 'recipe' && (
                 <div className="space-y-6 animate-in slide-in-from-right-8 duration-500">
-                  <div className="flex justify-between items-center bg-neon/5 p-4 rounded-2xl border border-neon/10">
+                  <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10">
                     <div>
                       <h4 className="text-[10px] font-black uppercase text-white italic leading-none">Protocolo de Insumos</h4>
-                      <p className="text-[8px] font-bold text-neon uppercase tracking-widest mt-1">COSTO TEÓRICO: ${selectedItem.cost.toFixed(2)}</p>
+                      <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest mt-1">COSTO TEÓRICO: ${selectedItem.cost.toFixed(2)}</p>
                     </div>
                     {!isAddingRecipeItem && (
-                      <button onClick={() => setIsAddingRecipeItem(true)} className="flex items-center gap-1 bg-neon text-black px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-neon/20">
+                      <button onClick={() => setIsAddingRecipeItem(true)} className="flex items-center gap-1 bg-neon text-black px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]">
                         <span className="material-symbols-outlined text-base">link</span>
-                        VINCULAR
+                        VINCULAR INSUMO
                       </button>
                     )}
+                  </div>
+
+                  {/* UX MICROCOPY FOR RECIPES */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+                      <div className="flex items-start gap-2">
+                        <span className="material-symbols-outlined text-neon text-sm mt-0.5">auto_mode</span>
+                        <div>
+                          <p className="text-[8px] font-black text-white uppercase">Deducción Automática</p>
+                          <p className="text-[8px] text-white/50 leading-tight mt-1">
+                            Al vender este producto, los insumos se descontarán del stock en tiempo real.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+                      <div className="flex items-start gap-2">
+                        <span className="material-symbols-outlined text-orange-400 text-sm mt-0.5">scale</span>
+                        <div>
+                          <p className="text-[8px] font-black text-orange-400 uppercase">Consumo Exacto</p>
+                          <p className="text-[8px] text-white/50 leading-tight mt-1">
+                            Define la cantidad exacta (gr, ml, un) que consume cada venta.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   {isAddingRecipeItem && (
@@ -898,7 +1679,7 @@ const InventoryManagement: React.FC = () => {
                               value={ingredientSearch}
                               onChange={(e) => setIngredientSearch(e.target.value)}
                               placeholder="ESCRIBE PARA FILTRAR..."
-                              className="w-full bg-black border border-white/10 rounded-xl h-11 pl-10 pr-4 text-[10px] font-bold text-white uppercase outline-none focus:border-neon/50 transition-all placeholder:text-white/10"
+                              className="w-full bg-black border border-white/10 rounded-xl h-11 pl-10 pr-4 text-[10px] font-bold text-white uppercase outline-none focus:border-white/50 transition-all placeholder:text-white/10"
                             />
                             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/20 text-lg">search</span>
                           </div>
@@ -912,7 +1693,7 @@ const InventoryManagement: React.FC = () => {
                                 <img src={ing.image_url} className="size-8 rounded-lg object-cover opacity-50 group-hover:opacity-100 transition-opacity" />
                                 <div className="flex-1">
                                   <p className="text-[10px] font-bold text-white uppercase group-hover:text-neon">{ing.name}</p>
-                                  <p className="text-[7px] font-bold text-white/30 uppercase">COSTO: ${ing.cost.toFixed(2)} / {ing.unit_type}</p>
+                                  <p className="text-[7px] font-bold text-white/30 uppercase">COSTO: {formatCurrency(ing.cost)} / {ing.unit_type}</p>
                                 </div>
                                 <span className="material-symbols-outlined text-white/10 group-hover:text-neon">add_circle</span>
                               </button>
@@ -926,7 +1707,7 @@ const InventoryManagement: React.FC = () => {
                               <img src={selectedIngredientToAdd.image_url} className="size-10 rounded-xl object-cover bg-black" />
                               <div>
                                 <p className="text-[11px] font-black text-white uppercase italic">{selectedIngredientToAdd.name}</p>
-                                <p className="text-[7px] font-bold text-neon/60 uppercase">DATO: $ {selectedIngredientToAdd.cost.toFixed(2)} por {selectedIngredientToAdd.unit_type}</p>
+                                <p className="text-[7px] font-bold text-white/60 uppercase">DATO: {formatCurrency(selectedIngredientToAdd.cost)} por {selectedIngredientToAdd.unit_type}</p>
                               </div>
                             </div>
                             <button onClick={() => setSelectedIngredientToAdd(null)} className="text-[8px] font-black text-white/20 hover:text-white uppercase tracking-widest border-b border-white/10 pb-0.5 transition-all">Cambiar</button>
@@ -939,20 +1720,20 @@ const InventoryManagement: React.FC = () => {
                                 type="number"
                                 value={addQuantity}
                                 onChange={e => setAddQuantity(e.target.value)}
-                                className="w-full bg-black border border-white/10 rounded-xl h-12 px-4 text-xl font-black text-white outline-none focus:border-neon/50 text-center"
+                                className="w-full bg-black border border-white/10 rounded-xl h-12 px-4 text-xl font-black text-white outline-none focus:border-white/50 text-center"
                               />
                             </div>
                             <div className="space-y-2">
                               <label className="text-[8px] font-black text-white/30 uppercase tracking-widest">Impacto Costo</label>
                               <div className="h-12 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center font-black text-neon text-xl font-mono">
-                                ${((parseFloat(addQuantity) || 0) * selectedIngredientToAdd.cost).toFixed(2)}
+                                {formatCurrency((parseFloat(addQuantity) || 0) * selectedIngredientToAdd.cost)}
                               </div>
                             </div>
                           </div>
 
                           <div className="flex gap-3 pt-2">
                             <button onClick={() => setIsAddingRecipeItem(false)} className="flex-1 py-4 bg-white/5 text-white/40 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-white/10 transition-all">DESARTICULAR</button>
-                            <button onClick={handleConfirmAddIngredient} className="flex-[2] py-4 bg-neon text-black rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-neon/10 hover:brightness-110 active:scale-95 transition-all">CONFIRMAR VÍNCULO</button>
+                            <button onClick={handleConfirmAddIngredient} className="flex-[2] py-4 bg-neon text-black rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:bg-gray-100 active:scale-95 transition-all">CONFIRMAR VÍNCULO</button>
                           </div>
                         </div>
                       )}
@@ -969,11 +1750,11 @@ const InventoryManagement: React.FC = () => {
                             <img src={insumo.image_url} className="size-10 rounded-xl object-cover grayscale group-hover:grayscale-0 transition-all" />
                             <div>
                               <p className="text-[11px] font-black text-white uppercase italic tracking-tight">{insumo.name}</p>
-                              <p className="text-[8px] font-bold text-neon/80 uppercase mt-0.5">{comp.quantity} {insumo.unit_type} • x ${insumo.cost.toFixed(2)}</p>
+                              <p className="text-[8px] font-bold text-white/80 uppercase mt-0.5">{comp.quantity} {insumo.unit_type} • x {formatCurrency(insumo.cost)}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-5">
-                            <p className="text-[12px] font-black text-white font-mono">$ {(comp.quantity * insumo.cost).toFixed(2)}</p>
+                            <p className="text-[12px] font-black text-white font-mono">{formatCurrency(comp.quantity * insumo.cost)}</p>
                             <button className="size-8 rounded-xl bg-white/5 flex items-center justify-center text-white/20 hover:text-primary transition-all">
                               <span className="material-symbols-outlined text-lg">delete</span>
                             </button>
@@ -990,321 +1771,924 @@ const InventoryManagement: React.FC = () => {
                   </div>
                 </div>
               )}
+              {/* HISTORY TAB UI */}
+              {drawerTab === 'history' && (
+                <div className="space-y-6 animate-in slide-in-from-right-8 duration-500">
+                  <div className="bg-[#141714] border border-white/10 rounded-2xl overflow-hidden">
+                    <div className="p-4 border-b border-white/5 bg-white/[0.02]">
+                      <h4 className="text-[10px] font-black uppercase text-white tracking-widest">Trazabilidad de Stock</h4>
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto">
+                      {loadingMovements ? (
+                        <div className="p-8 text-center text-white/30 text-xs">Cargando movimientos...</div>
+                      ) : stockMovements.length === 0 ? (
+                        <div className="p-8 flex flex-col items-center justify-center text-center">
+                          <span className="material-symbols-outlined text-white/10 text-3xl mb-2">history_toggle_off</span>
+                          <p className="text-[10px] text-white/30 uppercase tracking-widest">Sin movimientos registrados</p>
+                        </div>
+                      ) : (
+                        <table className="w-full text-left border-collapse">
+                          <tbody className="divide-y divide-white/5">
+                            {stockMovements.map((mov) => (
+                              <tr key={mov.id} className="hover:bg-white/[0.02] transition-colors">
+                                <td className="p-3">
+                                  <div className="flex flex-col">
+                                    <span className={`text-[10px] font-black uppercase tracking-wider ${mov.qty_delta < 0 ? 'text-red-400' : 'text-neon'}`}>
+                                      {mov.reason === 'order_paid' ? 'VENTA' : mov.reason}
+                                    </span>
+                                    <span className="text-[9px] text-white/30 font-mono mt-0.5">
+                                      {new Date(mov.created_at).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="p-3 text-right">
+                                  <span className={`text-[11px] font-bold font-mono ${mov.qty_delta < 0 ? 'text-neon' : 'text-neon'}`}>
+                                    {mov.qty_delta > 0 ? '+' : ''}{Number(mov.qty_delta).toFixed(3)} <span className="text-[8px] text-white/40">{mov.unit_type}</span>
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Placeholder for Data */}
+
             </div>
 
             <div className="p-6 bg-black/80 border-t border-white/10 flex gap-3 backdrop-blur-xl">
-              <button className="flex-[3] py-4 rounded-2xl bg-white text-black font-black text-[10px] uppercase tracking-widest shadow-2xl hover:scale-[1.02] transition-all">ACTUALIZAR ÍTEM</button>
+              <button
+                onClick={handleUpdateItem}
+                disabled={isProcessing}
+                className="flex-[3] py-4 rounded-2xl bg-neon text-black font-black text-[10px] uppercase tracking-widest shadow-2xl hover:scale-[1.02] transition-all disabled:opacity-50"
+              >
+                {isProcessing ? 'GUARDANDO...' : 'ACTUALIZAR ÍTEM'}
+              </button>
               <button className="flex-1 py-4 rounded-2xl border border-white/10 bg-white/5 text-white/20 font-black text-[9px] uppercase tracking-widest hover:text-primary hover:border-primary/30 transition-all">BAJA</button>
             </div>
           </>
-        )}
-      </div>
+        )
+        }
+      </div >
 
       {/* MODAL CARGA SUMINISTRO */}
-      {showInsumoWizard && (
-        <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setShowInsumoWizard(false)}></div>
-          <div className="relative bg-[#0D0F0D] rounded-3xl shadow-2xl w-full max-w-md border border-white/10 animate-in zoom-in-95 duration-300 overflow-hidden">
+      {
+        showInsumoWizard && (
+          <div className="fixed inset-0 z-[5050] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setShowInsumoWizard(false)}></div>
+            <div className="relative bg-[#0D0F0D] rounded-3xl shadow-2xl w-full max-w-md border border-white/10 animate-in zoom-in-95 duration-300 overflow-hidden">
 
-            {/* Header */}
-            <div className="p-6 border-b border-white/[0.04] flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-black uppercase tracking-tighter">
-                  <span className="text-white">CARGA</span>{' '}
-                  <span className="text-neon">SUMINISTRO</span>
-                </h2>
-                <p className="text-white/30 text-[9px] uppercase tracking-[0.15em] mt-0.5">
-                  Formulario de registro manual
-                </p>
-              </div>
-              <button
-                onClick={() => setShowInsumoWizard(false)}
-                className="size-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all"
-              >
-                <span className="material-symbols-outlined text-lg">close</span>
-              </button>
-            </div>
-
-            {/* Form */}
-            <div className="p-6 space-y-5">
-              {/* Nombre del Ítem + Categoría */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Header */}
+              <div className="p-6 border-b border-white/[0.04] flex items-center justify-between">
                 <div>
-                  <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block mb-2">
-                    Nombre del Ítem
-                  </label>
-                  <input
-                    type="text"
-                    value={newItemForm.name}
-                    onChange={(e) => setNewItemForm({ ...newItemForm, name: e.target.value })}
-                    placeholder="Ej: CAFÉ GRANO COLOMBIA"
-                    className="w-full bg-black border border-neon/50 rounded-xl h-12 px-4 text-sm font-bold text-white outline-none focus:border-neon placeholder:text-white/20"
-                  />
+                  <h2 className="text-2xl font-black uppercase tracking-tighter">
+                    <span className="text-neon">CARGA</span>{' '}
+                    <span className="text-neon">SUMINISTRO</span>
+                  </h2>
+                  <p className="text-white/30 text-[9px] uppercase tracking-[0.15em] mt-0.5">
+                    Formulario de registro manual
+                  </p>
                 </div>
-                <div>
-                  <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block mb-2">
-                    Categoría
-                  </label>
-                  <select
-                    value={newItemForm.category_id}
-                    onChange={(e) => setNewItemForm({ ...newItemForm, category_id: e.target.value })}
-                    className="w-full bg-black border border-white/10 rounded-xl h-12 px-4 text-sm font-bold text-white/60 outline-none focus:border-neon/50 appearance-none cursor-pointer"
-                  >
-                    <option value="">Seleccionar Categoría</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Unidad + Costo Unit. + Stock Inicial */}
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block mb-2">
-                    Unidad
-                  </label>
-                  <select
-                    value={newItemForm.unit_type}
-                    onChange={(e) => setNewItemForm({ ...newItemForm, unit_type: e.target.value as UnitType })}
-                    className="w-full bg-black border border-white/10 rounded-xl h-12 px-3 text-sm font-bold text-white outline-none focus:border-neon/50 appearance-none cursor-pointer"
-                  >
-                    <option value="unit">UNIDAD</option>
-                    <option value="gram">GRAMOS</option>
-                    <option value="kg">KG</option>
-                    <option value="ml">ML</option>
-                    <option value="liter">LITROS</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block mb-2">
-                    Costo Unit.
-                  </label>
-                  <input
-                    type="number"
-                    value={newItemForm.cost || ''}
-                    onChange={(e) => setNewItemForm({ ...newItemForm, cost: parseFloat(e.target.value) || 0 })}
-                    placeholder="0"
-                    className="w-full bg-black border border-white/10 rounded-xl h-12 px-4 text-sm font-bold text-white outline-none focus:border-neon/50 placeholder:text-white/20"
-                  />
-                </div>
-                <div>
-                  <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block mb-2">
-                    Stock Inicial
-                  </label>
-                  <input
-                    type="number"
-                    value={newItemForm.current_stock || ''}
-                    onChange={(e) => setNewItemForm({ ...newItemForm, current_stock: parseFloat(e.target.value) || 0 })}
-                    placeholder="0"
-                    className="w-full bg-black border border-white/10 rounded-xl h-12 px-4 text-sm font-bold text-white outline-none focus:border-neon/50 placeholder:text-white/20"
-                  />
-                </div>
-              </div>
-
-              {/* Proveedor + Alerta Mínimo */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block mb-2">
-                    Proveedor
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Opcional"
-                    className="w-full bg-black border border-white/10 rounded-xl h-12 px-4 text-sm font-bold text-white/40 outline-none focus:border-neon/50 placeholder:text-white/20"
-                  />
-                </div>
-                <div>
-                  <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block mb-2">
-                    Alerta Mínimo
-                  </label>
-                  <input
-                    type="number"
-                    value={newItemForm.min_stock || ''}
-                    onChange={(e) => setNewItemForm({ ...newItemForm, min_stock: parseFloat(e.target.value) || 0 })}
-                    placeholder="0"
-                    className="w-full bg-black border border-white/10 rounded-xl h-12 px-4 text-sm font-bold text-white outline-none focus:border-neon/50 placeholder:text-white/20"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Footer Actions */}
-            <div className="p-6 border-t border-white/[0.04] flex gap-4">
-              <button
-                onClick={() => setShowInsumoWizard(false)}
-                className="flex-1 py-4 rounded-xl bg-transparent text-white/40 font-black text-[10px] uppercase tracking-widest hover:text-white transition-all"
-              >
-                Volver
-              </button>
-              <button
-                onClick={handleCreateManualItem}
-                disabled={!newItemForm.name}
-                className="flex-[2] py-4 rounded-xl bg-white text-black font-black text-[11px] uppercase tracking-widest hover:bg-white/90 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                Guardar Ítem
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL GESTIÓN DE CATEGORÍAS */}
-      {showCategoryModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-[#141714] border border-white/10 rounded-3xl p-6 w-full max-w-lg animate-in zoom-in-95 duration-300 shadow-2xl max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-black text-white uppercase tracking-tight">
-                Gestionar <span className="text-neon">Categorías</span>
-              </h3>
-              <button
-                onClick={() => { setShowCategoryModal(false); setNewCategoryName(''); }}
-                className="size-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all"
-              >
-                <span className="material-symbols-outlined text-lg">close</span>
-              </button>
-            </div>
-
-            {/* Lista de categorías existentes */}
-            <div className="flex-1 overflow-y-auto mb-4 space-y-2 min-h-[200px]">
-              {categories.length === 0 ? (
-                <div className="text-center py-8 text-white/20 text-xs">
-                  No hay categorías creadas
-                </div>
-              ) : (
-                categories
-                  .sort((a, b) => (a.position || 0) - (b.position || 0))
-                  .map((cat, idx) => (
-                    <div
-                      key={cat.id}
-                      className="flex items-center gap-3 p-3 bg-black/30 rounded-xl border border-white/5 group hover:border-white/10 transition-all"
-                    >
-                      {/* Drag handle */}
-                      <div className="flex flex-col gap-0.5 cursor-grab text-white/20 hover:text-white/40">
-                        <button
-                          onClick={() => handleMoveCategory(cat.id, 'up')}
-                          disabled={idx === 0}
-                          className="p-1 hover:bg-white/10 rounded disabled:opacity-20 disabled:cursor-not-allowed"
-                        >
-                          <span className="material-symbols-outlined text-sm">keyboard_arrow_up</span>
-                        </button>
-                        <button
-                          onClick={() => handleMoveCategory(cat.id, 'down')}
-                          disabled={idx === categories.length - 1}
-                          className="p-1 hover:bg-white/10 rounded disabled:opacity-20 disabled:cursor-not-allowed"
-                        >
-                          <span className="material-symbols-outlined text-sm">keyboard_arrow_down</span>
-                        </button>
-                      </div>
-
-                      {/* Category info */}
-                      <div className="flex-1">
-                        <p className="text-white font-bold text-sm">{cat.name}</p>
-                        <p className="text-white/30 text-[9px] uppercase tracking-wider">
-                          Posición: {idx + 1}
-                        </p>
-                      </div>
-
-                      {/* Delete button */}
-                      <button
-                        onClick={() => handleDeleteCategory(cat.id)}
-                        className="size-8 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
-                        title="Eliminar categoría"
-                      >
-                        <span className="material-symbols-outlined text-base">delete</span>
-                      </button>
-                    </div>
-                  ))
-              )}
-            </div>
-
-            {/* Crear nueva categoría */}
-            <div className="border-t border-white/10 pt-4">
-              <label className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-2 block">
-                Nueva Categoría
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  placeholder="Nombre de la categoría..."
-                  className="flex-1 bg-black border border-white/10 rounded-xl h-12 px-4 text-sm font-bold text-white outline-none focus:border-neon/50 transition-all placeholder:text-white/20"
-                  onKeyDown={(e) => e.key === 'Enter' && handleCreateCategory()}
-                />
                 <button
-                  onClick={handleCreateCategory}
-                  disabled={creatingCategory || !newCategoryName.trim()}
-                  className="px-6 h-12 rounded-xl bg-neon text-black font-black text-[10px] uppercase tracking-widest shadow-lg shadow-neon/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100"
+                  onClick={() => setShowInsumoWizard(false)}
+                  className="size-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-neon transition-all"
                 >
-                  {creatingCategory ? (
-                    <span className="material-symbols-outlined text-base animate-spin">sync</span>
-                  ) : (
-                    <span className="material-symbols-outlined text-base">add</span>
-                  )}
+                  <span className="material-symbols-outlined text-lg">close</span>
+                </button>
+              </div>
+
+              {/* Form */}
+              <div className="p-6 space-y-5">
+                {/* TIPO DE ITEM - SELECTOR PRINCIPAL */}
+                <div className="space-y-3">
+                  <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block">
+                    Tipo de Ítem
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setNewItemForm({ ...newItemForm, price: 0 })} // INSUMO: no tiene precio de venta
+                      className={`p-4 rounded-2xl border-2 transition-all ${newItemForm.price === 0
+                        ? 'border-neon bg-white/10 text-neon'
+                        : 'border-white/10 bg-white/5 text-white/40 hover:border-white/20'
+                        }`}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <span className="material-symbols-outlined text-2xl">inventory</span>
+                        <div className="text-center">
+                          <p className="text-[10px] font-black uppercase">INSUMO</p>
+                          <p className="text-[7px] text-white/50 mt-0.5">Materia prima</p>
+                        </div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setNewItemForm({ ...newItemForm, price: 1 })} // PRODUCTO: tiene precio > 0
+                      className={`p-4 rounded-2xl border-2 transition-all ${newItemForm.price > 0
+                        ? 'border-neon bg-white/10 text-neon'
+                        : 'border-white/10 bg-white/5 text-white/40 hover:border-white/20'
+                        }`}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <span className="material-symbols-outlined text-2xl">shopping_cart</span>
+                        <div className="text-center">
+                          <p className="text-[10px] font-black uppercase">PRODUCTO</p>
+                          <p className="text-[7px] text-white/50 mt-0.5">Para vender</p>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                  <p className="text-[8px] text-white/30 text-center">
+                    {newItemForm.price === 0
+                      ? '📦 Los insumos tienen stock físico y se consumen en recetas'
+                      : '🛒 Los productos se venden a clientes y tienen receta configurada'
+                    }
+                  </p>
+                </div>
+
+                {/* Nombre del Ítem + Categoría */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block mb-2">
+                      Nombre del Ítem
+                    </label>
+                    <input
+                      type="text"
+                      value={newItemForm.name}
+                      onChange={(e) => setNewItemForm({ ...newItemForm, name: e.target.value })}
+                      placeholder="Ej: CAFÉ GRANO COLOMBIA"
+                      className="w-full bg-black border border-white/50 rounded-xl h-12 px-4 text-sm font-bold text-white outline-none focus:border-neon placeholder:text-white/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block mb-2">
+                      Categoría
+                    </label>
+                    <select
+                      value={newItemForm.category_id}
+                      onChange={(e) => setNewItemForm({ ...newItemForm, category_id: e.target.value })}
+                      className="w-full bg-black border border-white/10 rounded-xl h-12 px-4 text-sm font-bold text-white/60 outline-none focus:border-white/50 appearance-none cursor-pointer"
+                    >
+                      <option value="">Seleccionar Categoría</option>
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Unidad + Costo Unit. + Stock Inicial */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block mb-2">
+                      Unidad
+                    </label>
+                    <select
+                      value={newItemForm.unit_type}
+                      onChange={(e) => setNewItemForm({ ...newItemForm, unit_type: e.target.value as UnitType })}
+                      className="w-full bg-black border border-white/10 rounded-xl h-12 px-3 text-sm font-bold text-white outline-none focus:border-white/50 appearance-none cursor-pointer"
+                    >
+                      <option value="unit">UNIDAD</option>
+                      <option value="gram">GRAMOS</option>
+                      <option value="kg">KG</option>
+                      <option value="ml">ML</option>
+                      <option value="liter">LITROS</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block mb-2">
+                      Costo Unit.
+                    </label>
+                    <input
+                      type="number"
+                      value={newItemForm.cost || ''}
+                      onChange={(e) => setNewItemForm({ ...newItemForm, cost: parseFloat(e.target.value) || 0 })}
+                      placeholder="0"
+                      className="w-full bg-black border border-white/10 rounded-xl h-12 px-4 text-sm font-bold text-white outline-none focus:border-white/50 placeholder:text-white/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block mb-2">
+                      Stock Inicial
+                    </label>
+                    <input
+                      type="number"
+                      value={newItemForm.current_stock || ''}
+                      onChange={(e) => setNewItemForm({ ...newItemForm, current_stock: parseFloat(e.target.value) || 0 })}
+                      placeholder="0"
+                      className="w-full bg-black border border-white/10 rounded-xl h-12 px-4 text-sm font-bold text-white outline-none focus:border-white/50 placeholder:text-white/20"
+                    />
+                  </div>
+                </div>
+
+                {/* Proveedor + Alerta Mínimo */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block mb-2">
+                      Proveedor
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Opcional"
+                      className="w-full bg-black border border-white/10 rounded-xl h-12 px-4 text-sm font-bold text-white/40 outline-none focus:border-white/50 placeholder:text-white/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block mb-2">
+                      Alerta Mínimo
+                    </label>
+                    <input
+                      type="number"
+                      value={newItemForm.min_stock || ''}
+                      onChange={(e) => setNewItemForm({ ...newItemForm, min_stock: parseFloat(e.target.value) || 0 })}
+                      placeholder="0"
+                      className="w-full bg-black border border-white/10 rounded-xl h-12 px-4 text-sm font-bold text-white outline-none focus:border-white/50 placeholder:text-white/20"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="p-6 border-t border-white/[0.04] flex gap-4">
+                <button
+                  onClick={() => setShowInsumoWizard(false)}
+                  className="flex-1 py-4 rounded-xl bg-transparent text-white/40 font-black text-[10px] uppercase tracking-widest hover:text-neon transition-all"
+                >
+                  Volver
+                </button>
+                <button
+                  onClick={handleCreateManualItem}
+                  disabled={!newItemForm.name}
+                  className="flex-[2] py-4 rounded-xl bg-neon text-black font-black text-[11px] uppercase tracking-widest hover:bg-white/90 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  Guardar Ítem
                 </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
+
+      {/* MODAL GESTIÓN DE CATEGORÍAS */}
+      {
+        showCategoryModal && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
+            <div className="bg-[#141714] border border-white/10 rounded-3xl p-6 w-full max-w-lg animate-in zoom-in-95 duration-300 shadow-2xl max-h-[80vh] flex flex-col">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-black text-white uppercase tracking-tight">
+                  Gestionar <span className="text-neon">Categorías</span>
+                </h3>
+                <button
+                  onClick={() => { setShowCategoryModal(false); setNewCategoryName(''); }}
+                  className="size-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-neon transition-all"
+                >
+                  <span className="material-symbols-outlined text-lg">close</span>
+                </button>
+              </div>
+
+              {/* Lista de categorías existentes */}
+              <div className="flex-1 overflow-y-auto mb-4 space-y-2 min-h-[200px]">
+                {categories.length === 0 ? (
+                  <div className="text-center py-8 text-white/20 text-xs">
+                    No hay categorías creadas
+                  </div>
+                ) : (
+                  categories
+                    .sort((a, b) => (a.position || 0) - (b.position || 0))
+                    .map((cat, idx) => (
+                      <div
+                        key={cat.id}
+                        className="flex items-center gap-3 p-3 bg-black/30 rounded-xl border border-white/5 group hover:border-white/10 transition-all"
+                      >
+                        {/* Drag handle */}
+                        <div className="flex flex-col gap-0.5 cursor-grab text-white/20 hover:text-white/40">
+                          <button
+                            onClick={() => handleMoveCategory(cat.id, 'up')}
+                            disabled={idx === 0}
+                            className="p-1 hover:bg-white/10 rounded disabled:opacity-20 disabled:cursor-not-allowed"
+                          >
+                            <span className="material-symbols-outlined text-sm">keyboard_arrow_up</span>
+                          </button>
+                          <button
+                            onClick={() => handleMoveCategory(cat.id, 'down')}
+                            disabled={idx === categories.length - 1}
+                            className="p-1 hover:bg-white/10 rounded disabled:opacity-20 disabled:cursor-not-allowed"
+                          >
+                            <span className="material-symbols-outlined text-sm">keyboard_arrow_down</span>
+                          </button>
+                        </div>
+
+                        {/* Category info */}
+                        <div className="flex-1">
+                          <p className="text-white font-bold text-sm">{cat.name}</p>
+                          <p className="text-white/30 text-[9px] uppercase tracking-wider">
+                            Posición: {idx + 1}
+                          </p>
+                        </div>
+
+                        {/* Delete button */}
+                        <button
+                          onClick={() => handleDeleteCategory(cat.id)}
+                          className="size-8 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                          title="Eliminar categoría"
+                        >
+                          <span className="material-symbols-outlined text-base">delete</span>
+                        </button>
+                      </div>
+                    ))
+                )}
+              </div>
+
+              {/* Crear nueva categoría */}
+              <div className="border-t border-white/10 pt-4">
+                <label className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-2 block">
+                  Nueva Categoría
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    placeholder="Nombre de la categoría..."
+                    className="flex-1 bg-black border border-white/10 rounded-xl h-12 px-4 text-sm font-bold text-white outline-none focus:border-white/50 transition-all placeholder:text-white/20"
+                    onKeyDown={(e) => e.key === 'Enter' && handleCreateCategory()}
+                  />
+                  <button
+                    onClick={handleCreateCategory}
+                    disabled={creatingCategory || !newCategoryName.trim()}
+                    className="px-6 h-12 rounded-xl bg-neon text-black font-black text-[10px] uppercase tracking-widest shadow-lg shadow-neon/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100"
+                  >
+                    {creatingCategory ? (
+                      <span className="material-symbols-outlined text-base animate-spin">sync</span>
+                    ) : (
+                      <span className="material-symbols-outlined text-base">add</span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
       {/* INVOICE PROCESSOR MODAL */}
       <InvoiceProcessor
         isOpen={showInvoiceProcessor}
         onClose={() => setShowInvoiceProcessor(false)}
       />
-    </div>
+
+      {/* RECIPE MODAL - ULTRA MINIMALIST & PREMIUM */}
+      {showRecipeModal && (
+        <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-[#050605]/80 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-[#0A0C0A] rounded-[2rem] border border-white/5 w-full max-w-lg shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] relative overflow-hidden group">
+            {/* Subtle glow effects */}
+            <div className="absolute top-0 right-0 size-64 bg-white/5 blur-[80px] rounded-full pointer-events-none opacity-50"></div>
+
+            <div className="relative p-6 space-y-6">
+              {/* Header Compacto */}
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <div className="size-8 rounded-full bg-white/10 flex items-center justify-center border border-white/20 shadow-neon-soft">
+                    <span className="material-symbols-outlined text-neon text-sm">science</span>
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-black text-white italic uppercase tracking-tighter leading-none">
+                      {editingProductId ? 'Editar Fórmula' : 'Nueva Receta'}
+                    </h2>
+                    <p className="text-[9px] font-bold text-white/30 uppercase tracking-[0.2em] mt-0.5">
+                      ```
+                      Composición Maestra
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setShowRecipeModal(false); setEditingProductId(null); setRecipeIngredients([]); setCustomRecipeName(''); }}
+                  className="size-8 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:text-neon hover:bg-white/10 transition-all"
+                >
+                  <span className="material-symbols-outlined text-lg">close</span>
+                </button>
+              </div>
+
+              {/* Product Selector with Custom Name Input */}
+              <div className="relative group/select transition-all">
+                <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent group-focus-within/select:via-white/50"></div>
+                <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-1.5 block ml-1">Producto Final</label>
+                <div className="relative">
+                  <input
+                    list="products-list"
+                    type="text"
+                    placeholder="Buscar o escribir nombre nuevo..."
+                    value={customRecipeName}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setCustomRecipeName(val);
+
+                      // Check if it matches an existing product
+                      const matched = items.find(i => i.name.toLowerCase() === val.toLowerCase() && i.item_type === 'sellable');
+                      if (matched) {
+                        setEditingProductId(matched.id);
+                        // Load existing recipe
+                        const existing = productRecipes.filter(r => r.product_id === matched.id);
+                        if (existing.length > 0) {
+                          const mappedIngredients: RecipeIngredientUI[] = existing.map(r => {
+                            const invItem = items.find(i => i.id === r.inventory_item_id);
+                            let unit: any = invItem?.unit_type || 'un';
+                            let qty = r.quantity_required;
+                            if (unit === 'kg') { if (qty < 1) { unit = 'g'; qty *= 1000; } }
+                            else if (unit === 'l') { if (qty < 1) { unit = 'ml'; qty *= 1000; } }
+                            return { id: r.inventory_item_id, qty: Number(qty.toFixed(4)), unit };
+                          });
+                          setRecipeIngredients(mappedIngredients);
+                          // Set price if editing
+                          if (matched.base_price || matched.price) {
+                            setCustomPrice((matched.base_price || matched.price || 0).toString());
+                          }
+                        } else {
+                          // Is existing product but has no recipe, clear ingredients if not already editing
+                          if (editingProductId !== matched.id) setRecipeIngredients([]);
+                          // Also load price
+                          if (matched.base_price || matched.price) {
+                            setCustomPrice((matched.base_price || matched.price || 0).toString());
+                          }
+                        }
+                      } else {
+                        setEditingProductId(null); // New product mode
+                        // Keep ingredients if we are just typing a new name
+                      }
+                    }}
+                    className="w-full bg-[#111311] border border-white/5 rounded-xl h-12 pl-4 pr-10 text-sm font-bold text-white outline-none placeholder:text-white/20 focus:border-white/30 focus:bg-white/[0.03] transition-all"
+                  />
+                  <datalist id="products-list">
+                    {items.filter(i => i.item_type === 'sellable').map(product => (
+                      <option key={product.id} value={product.name} />
+                    ))}
+                  </datalist>
+
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/20">
+                    {editingProductId ? (
+                      <span className="material-symbols-outlined text-green-500 text-sm" title="Producto Existente">check_circle</span>
+                    ) : customRecipeName ? (
+                      <span className="material-symbols-outlined text-blue-500 text-sm animate-pulse" title="Se creará nuevo producto">add_circle</span>
+                    ) : (
+                      <span className="material-symbols-outlined text-sm">search</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Ingredients List - Open & Clean */}
+              <div className="space-y-4 pt-2">
+                <div className="flex justify-between items-end border-b border-white/5 pb-2">
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Composición</label>
+                  {recipeIngredients.length > 0 && (
+                    <span className="text-[10px] text-white/40 font-mono">{recipeIngredients.length} componentes</span>
+                  )}
+                </div>
+
+                <div className="space-y-0.5 min-h-[100px]">
+                  {recipeIngredients.length === 0 ? (
+                    <div className="py-12 flex flex-col items-center justify-center text-center gap-4 opacity-40">
+                      <div className="size-16 rounded-full bg-white/5 flex items-center justify-center">
+                        <span className="material-symbols-outlined text-3xl text-white/20">soup_kitchen</span>
+                      </div>
+                      <p className="text-xs text-white/30 font-bold uppercase tracking-widest max-w-[200px]">
+                        Agrega los insumos base para esta receta
+                      </p>
+                    </div>
+                  ) : (
+                    recipeIngredients.map((r) => {
+                      const ing = items.find(i => i.id === r.id);
+                      if (!ing) return null;
+
+                      const u = (r.unit || 'unit').toLowerCase();
+                      const isMass = ['kg', 'g', 'gram', 'gramo'].includes(u);
+                      const isVolume = ['l', 'ml', 'litro', 'cc'].includes(u);
+
+                      return (
+                        <div key={r.id} className="flex items-center justify-between py-3 px-2 group hover:bg-white/[0.02] rounded-lg transition-colors">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-light text-neon">{ing.name}</span>
+                            <span className="text-[10px] text-white/20 uppercase tracking-wider">{ing.unit_type}</span>
+                          </div>
+
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2 relative group/input">
+                              <input
+                                type="number"
+                                value={r.qty}
+                                onChange={(e) => updateIngredientQty(r.id, parseFloat(e.target.value) || 0)}
+                                className="w-20 bg-transparent text-right text-lg font-bold text-white outline-none placeholder:text-white/20 focus:text-neon transition-colors border-b border-transparent focus:border-white/50 px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                placeholder="0"
+                              />
+                              <button
+                                onClick={() => {
+                                  const currentUnit = r.unit;
+                                  let nextUnit: any = currentUnit;
+                                  // Cycle logic
+                                  if (currentUnit === 'kg') nextUnit = 'g';
+                                  else if (currentUnit === 'g') nextUnit = 'kg';
+                                  else if (currentUnit === 'l') nextUnit = 'ml';
+                                  else if (currentUnit === 'ml') nextUnit = 'l';
+                                  else if (currentUnit === 'un') nextUnit = 'un';
+
+                                  // Update ONLY the unit, keep the quantity number as is
+                                  setRecipeIngredients(prev => prev.map(item => item.id === r.id ? { ...item, unit: nextUnit } : item));
+                                }}
+                                className="h-6 px-1.5 flex items-center justify-center rounded bg-white/5 hover:bg-white/10 text-[10px] font-bold text-white/50 hover:text-neon transition-colors cursor-pointer border border-white/5 uppercase"
+                                title="Cambiar unidad"
+                              >
+                                {r.unit}
+                              </button>
+                            </div>
+
+                            {/* Price Display */}
+                            <div className="w-24 text-right">
+                              <span className="text-xs font-mono text-white/50">
+                                {(() => {
+                                  let q = r.qty;
+                                  if (['g', 'ml', 'gram'].includes((r.unit || '').toLowerCase())) q /= 1000;
+                                  return formatCurrency((ing?.cost || 0) * q);
+                                })()}
+                              </span>
+                            </div>
+
+                            {/* Delete */}
+                            <button
+                              onClick={() => removeIngredient(r.id)}
+                              className="size-8 flex items-center justify-center rounded-full hover:bg-red-500/10 text-white/10 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
+                            >
+                              <span className="material-symbols-outlined text-base">close</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+
+                  {/* Add Button - Custom Searchable Dropdown */}
+                  <div className="pt-4 relative z-50">
+                    {!showIngredientSelector ? (
+                      <div
+                        onClick={() => {
+                          setShowIngredientSelector(true);
+                          setTimeout(() => document.getElementById('ing-search-input')?.focus(), 100);
+                        }}
+                        className="flex items-center justify-center gap-3 w-full py-4 border border-dashed border-white/10 rounded-xl hover:border-white/30 hover:bg-white/[0.02] transition-all cursor-pointer group"
+                      >
+                        <span className="material-symbols-outlined text-white/30 group-hover:text-neon transition-colors">add_circle</span>
+                        <span className="text-xs font-bold text-white/30 uppercase tracking-widest group-hover:text-neon transition-colors">Añadir Insumo</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-2 animate-in fade-in zoom-in duration-200">
+                        <div className="relative">
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 material-symbols-outlined text-sm">search</span>
+                          <input
+                            id="ing-search-input"
+                            autoFocus
+                            className="w-full bg-[#0a0a0a] border border-white/20 rounded-lg py-3 pl-10 pr-10 text-sm text-neon placeholder:text-white/20 outline-none shadow-[0_0_15px_rgba(255,255,255,0.05)] font-light focus:border-white/40 transition-all"
+                            placeholder="Buscar ingrediente..."
+                            value={ingredientSearch}
+                            onChange={(e) => setIngredientSearch(e.target.value)}
+                            onBlur={() => {
+                              setTimeout(() => {
+                                setShowIngredientSelector(false);
+                                setIngredientSearch('');
+                              }, 200);
+                            }}
+                          />
+                          <button
+                            onClick={() => setShowIngredientSelector(false)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-neon"
+                          >
+                            <span className="material-symbols-outlined text-sm">close</span>
+                          </button>
+                        </div>
+
+                        {/* Popover Results */}
+                        <div className="absolute top-14 left-0 w-full bg-[#111] border border-white/10 rounded-lg shadow-2xl max-h-60 overflow-y-auto no-scrollbar z-[100]">
+                          {items.filter(i =>
+                            i.item_type === 'ingredient' &&
+                            !recipeIngredients.find(r => r.id === i.id) &&
+                            i.name.toLowerCase().includes(ingredientSearch.toLowerCase())
+                          ).length === 0 ? (
+                            <div className="p-4 text-center text-xs text-white/30">No se encontraron ingredientes</div>
+                          ) : (
+                            items.filter(i =>
+                              i.item_type === 'ingredient' &&
+                              !recipeIngredients.find(r => r.id === i.id) &&
+                              i.name.toLowerCase().includes(ingredientSearch.toLowerCase())
+                            ).map(ing => (
+                              <div
+                                key={ing.id}
+                                onMouseDown={(e) => {
+                                  e.preventDefault(); // Prevent blur
+                                  const item = ing;
+                                  let defaultUnit: any = item?.unit_type || 'un';
+                                  let defaultQty = 1;
+
+                                  // RESTORED AUTOMATIC CONVERSION LOGIC
+                                  if (item?.unit_type === 'kg') { defaultUnit = 'g'; defaultQty = 100; }
+                                  else if (item?.unit_type === 'l') { defaultUnit = 'ml'; defaultQty = 100; }
+
+                                  setRecipeIngredients(prev => [...prev, { id: item.id, qty: defaultQty, unit: defaultUnit }]);
+                                  setShowIngredientSelector(false);
+                                  setIngredientSearch('');
+                                }}
+                                className="px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/5 cursor-pointer flex justify-between items-center group/opt"
+                              >
+                                <span className="text-sm text-gray-300 group-hover/opt:text-neon transition-colors">{ing.name}</span>
+                                <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded text-white/30">{ing.unit_type}</span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+
+              {/* Footer Costs & Price - Ultra Minimalist Text-Based */}
+              <div className="pt-8 mt-6 grid grid-cols-1 md:grid-cols-3 gap-12 border-t border-white/[0.04]">
+
+                {/* Costo Total */}
+                <div className="flex flex-col gap-2">
+                  <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Costo Total</span>
+                  <div className="flex items-baseline">
+                    <span className="text-3xl font-light text-white tracking-tighter">
+                      {(() => {
+                        const totalCost = recipeIngredients.reduce((sum, r) => {
+                          const ing = items.find(i => i.id === r.id);
+                          let qty = r.qty;
+                          const isG = ['g', 'ml', 'gram'].includes((r.unit || '').toLowerCase());
+                          if (isG) qty /= 1000;
+                          return sum + (ing?.cost || 0) * qty;
+                        }, 0);
+                        return formatCurrency(totalCost);
+                      })()}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Precio Venta - Ghost Input - Fixed */}
+                <div className="flex flex-col gap-2">
+                  <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Precio Venta</span>
+                  <div className="relative group/price">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-xl text-white/30 font-light">$</span>
+                      <input
+                        type="number"
+                        value={customPrice}
+                        onChange={(e) => setCustomPrice(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full bg-transparent text-3xl font-light text-white outline-none border-none focus:ring-0 p-0 m-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none placeholder:text-white/10"
+                      />
+                    </div>
+                    {/* Animated Underline */}
+                    <div className="absolute bottom-0 left-0 w-full h-px bg-white/10 group-focus-within/price:bg-neon group-focus-within/price:h-[2px] transition-all"></div>
+
+                    {/* Rounding Actions - Below Input */}
+                    <div className="grid grid-cols-2 gap-2 pt-3">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const val = parseFloat(customPrice || '0');
+                          if (!isNaN(val) && val > 0) {
+                            const rounded = Math.floor(val / 100) * 100;
+                            setCustomPrice(rounded.toString());
+                          }
+                        }}
+                        className="flex items-center justify-center p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-neon transition-all border border-white/5 hover:border-white/20 active:scale-95"
+                        title="Redondear Abajo"
+                      >
+                        <span className="material-symbols-outlined text-xl">arrow_downward</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const val = parseFloat(customPrice || '0');
+                          if (!isNaN(val) && val > 0) {
+                            const rounded = Math.ceil(val / 100) * 100;
+                            setCustomPrice(rounded.toString());
+                          }
+                        }}
+                        className="flex items-center justify-center p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-neon transition-all border border-white/5 hover:border-white/20 active:scale-95"
+                        title="Redondear Arriba"
+                      >
+                        <span className="material-symbols-outlined text-xl">arrow_upward</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Margen - Ghost Input - Fixed */}
+                <div className="flex flex-col gap-2">
+                  {(() => {
+                    const totalCost = recipeIngredients.reduce((sum, r) => {
+                      const ing = items.find(i => i.id === r.id);
+                      let qty = r.qty;
+                      if (['g', 'ml', 'gram'].includes((r.unit || '').toLowerCase())) qty /= 1000;
+                      return sum + (ing?.cost || 0) * qty;
+                    }, 0);
+                    const priceVal = parseFloat(customPrice || '0');
+                    const profit = priceVal - totalCost;
+                    const currentMargin = priceVal > 0 ? ((profit / priceVal) * 100) : 0;
+
+                    let marginColor = 'text-white/30';
+                    if (priceVal > 0) {
+                      if (currentMargin < 0) marginColor = 'text-red-500';
+                      else if (currentMargin < 30) marginColor = 'text-yellow-500';
+                      else marginColor = 'text-neon';
+                    }
+
+                    return (
+                      <div className="flex flex-col justify-between h-full group/margin">
+                        <div className="flex justify-between items-baseline">
+                          <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Margen</span>
+                          <span className="text-[10px] text-white/30 font-mono">Ganancia: <span className="text-neon">{formatCurrency(profit)}</span></span>
+                        </div>
+
+                        <div className="relative">
+                          <div className="flex items-baseline justify-end gap-1">
+                            <input
+                              type="number"
+                              className={`w-full bg-transparent text-right text-3xl font-light outline-none border-none focus:ring-0 p-0 m-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${marginColor} placeholder:text-white/10`}
+                              placeholder="0"
+                              value={priceVal > 0 ? currentMargin.toFixed(1) : ''}
+                              onChange={(e) => {
+                                const targetMargin = parseFloat(e.target.value);
+                                if (!isNaN(targetMargin) && targetMargin < 100) {
+                                  if (targetMargin === 0) setCustomPrice(totalCost.toFixed(2));
+                                  else setCustomPrice((totalCost / (1 - (targetMargin / 100))).toFixed(2));
+                                }
+                              }}
+                            />
+                            <span className="text-xl text-white/20 font-light">%</span>
+                          </div>
+                          <div className="absolute bottom-0 right-0 w-full h-px bg-white/10 group-focus-within/margin:bg-white/50 transition-all"></div>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </div>
+
+              </div>
+
+              {/* Actions - Premium Minimal */}
+              <div className="pt-12 flex items-center justify-end gap-6">
+                <button
+                  onClick={() => { setShowRecipeModal(false); setEditingProductId(null); setRecipeIngredients([]); setCustomRecipeName(''); }}
+                  className="text-[10px] font-bold text-white/30 hover:text-white uppercase tracking-widest transition-colors py-2 px-4"
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  onClick={async () => {
+                    try {
+                      let finalProductId = editingProductId;
+                      // Safe store ID retrieval
+                      let currentStoreId = storeId;
+                      if (!currentStoreId) {
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (user?.user_metadata?.store_id) {
+                          currentStoreId = user.user_metadata.store_id;
+                          // Update state if possible, but use local var for now
+                        } else {
+                          // Fallback: try to find a store associated with user profile
+                          const { data: profile } = await supabase.from('profiles').select('store_id').eq('id', user?.id).single();
+                          if (profile?.store_id) currentStoreId = profile.store_id;
+                        }
+                      }
+
+                      if (!currentStoreId) {
+                        addToast('Error Crítico: No se detectó ID de Tienda. Recarga la página.', 'error');
+                        return;
+                      }
+
+                      if (!currentStoreId) {
+                        const { data: userSession } = await supabase.auth.getUser();
+                        if (userSession?.user?.user_metadata?.store_id) {
+                          currentStoreId = userSession.user.user_metadata.store_id;
+                        } else {
+                          const { data: profile } = await supabase.from('profiles').select('store_id').eq('id', userSession?.user?.id).single();
+                          if (profile?.store_id) currentStoreId = profile.store_id;
+                        }
+                      }
+
+                      if (!currentStoreId) {
+                        addToast('Error Crítico: No se detectó ID de Tienda. Recarga la página.', 'error');
+                        return;
+                      }
+
+                      // Fetch Tenant ID logic if needed, or fallback to storeId if schema implies one-to-one
+                      // Critical Fix: Explicitly fetch tenant_id from stores if possible. Using 'as any' to avoid TS errors on dynamic column.
+                      // @ts-ignore
+                      const { data: storeData } = await supabase.from('stores').select('*').eq('id', currentStoreId).single();
+                      const tenantId = (storeData as any)?.tenant_id || (storeData as any)?.organization_id || currentStoreId;
+
+                      // Creation Logic
+                      if (!finalProductId && customRecipeName.trim()) {
+                        const calculatedCost = recipeIngredients.reduce((sum, r) => {
+                          const ing = items.find(i => i.id === r.id);
+                          let qty = r.qty;
+                          if (['g', 'ml', 'gram'].includes((r.unit || '').toLowerCase())) qty /= 1000;
+                          return sum + (ing?.cost || 0) * qty;
+                        }, 0);
+                        const finalPrice = customPrice ? parseFloat(customPrice) : (calculatedCost * 2);
+
+                        // Secure Save via RPC
+                        const sku = `REC-${Math.floor(Math.random() * 10000)}`;
+
+                        // @ts-ignore
+                        const { data: rpcData, error: rpcError } = await supabase.rpc('create_recipe_product', {
+                          p_name: customRecipeName,
+                          p_base_price: finalPrice,
+                          p_store_id: currentStoreId,
+                          p_sku: sku
+                        });
+
+                        console.log('RPC create_recipe_product debug:', { rpcData, rpcError });
+
+                        if (!rpcError && rpcData && (rpcData as any).success) {
+                          finalProductId = (rpcData as any).data.id;
+                          addToast('Producto creado via Backend', 'success');
+                        } else {
+                          const errorDetail = rpcError?.message || (rpcData as any)?.error || 'Unknown';
+                          console.warn('RPC failed, attempting direct insert:', errorDetail);
+
+                          // Fallback: Direct Insert (Legacy)
+                          // @ts-ignore
+                          const { data: newProd, error: prodError } = await supabase.from('products').insert({
+                            name: customRecipeName,
+                            sku: sku,
+                            base_price: finalPrice,
+                            category: 'Recetas',
+                            is_available: true,
+                            active: true,
+                            store_id: currentStoreId,
+                            tax_rate: 0,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                          }).select().single();
+
+                          if (prodError) throw prodError;
+                          if (!newProd) throw new Error('Failed to create product object');
+                          finalProductId = newProd.id;
+                          addToast('Producto creado via Fallback', 'success');
+                        }
+
+                        addToast('Producto creado: ' + customRecipeName, 'success');
+                      }
+
+                      if (!finalProductId) { addToast('Selecciona producto o escribe un nombre', 'error'); return; }
+                      if (recipeIngredients.length === 0) { addToast('Sin ingredientes', 'error'); return; }
+
+                      // Save Recipe Logic
+                      const { error: delError } = await supabase.from('product_recipes').delete().eq('product_id', finalProductId);
+                      if (delError) throw delError;
+
+                      const rows = recipeIngredients.map(r => {
+                        let quantity_required = r.qty;
+                        if (r.unit === 'g' || r.unit === 'ml') quantity_required /= 1000;
+                        return { product_id: finalProductId, inventory_item_id: r.id, quantity_required };
+                      });
+
+                      const { error: insError } = await supabase.from('product_recipes').insert(rows);
+                      if (insError) throw insError;
+
+                      addToast('Receta guardada exitosamente', 'success');
+                      setShowRecipeModal(false);
+                      setEditingProductId(null);
+                      setRecipeIngredients([]);
+                      setCustomRecipeName('');
+                      fetchData(true);
+
+                    } catch (err: any) {
+                      console.error(err);
+                      addToast('Error: ' + (err.message || ''), 'error');
+                    }
+                  }}
+                  className="h-10 px-8 rounded-full bg-neon text-black font-bold text-[10px] uppercase tracking-widest hover:bg-gray-200 transition-all flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.2)]"
+                >
+                  <span>Guardar Receta</span>
+                  <span className="material-symbols-outlined text-base">arrow_forward</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+      }
+    </div >
   );
 };
-
-// Componentes Auxiliares con Estética Reforzada
-const TabBtn: React.FC<{ active: boolean, onClick: () => void, children: React.ReactNode }> = ({ active, onClick, children }) => (
-  <button
-    onClick={onClick}
-    className={`px-6 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${active ? 'bg-neon text-black shadow-lg shadow-neon/20' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
-  >
-    {children}
-  </button>
-);
-
-const DrawerTabBtn: React.FC<{ active: boolean, onClick: () => void, label: string, icon: string }> = ({ active, onClick, label, icon }) => (
-  <button
-    onClick={onClick}
-    className={`flex-1 flex flex-col items-center py-4 border-b-2 gap-1.5 transition-all duration-500 ${active ? 'border-neon text-neon bg-neon/5' : 'border-transparent text-white/20 hover:text-white/40'}`}
-  >
-    <span className="material-symbols-outlined text-[18px]">{icon}</span>
-    <span className="text-[10px] font-black uppercase tracking-[0.2em]">{label}</span>
-  </button>
-);
-
-const KpiCard: React.FC<{ label: string, value: string, icon: string, color: string }> = ({ label, value, icon, color }) => (
-  <div className="bg-[#141714] border border-white/[0.04] p-5 rounded-2xl flex items-center justify-between group hover:border-white/10 transition-all">
-    <div className="space-y-1">
-      <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.1em]">{label}</p>
-      <p className="text-2xl font-black italic-black text-white tracking-tighter">{value}</p>
-    </div>
-    <div className={`size-12 rounded-2xl flex items-center justify-center ${color} shadow-inner`}>
-      <span className="material-symbols-outlined text-2xl">{icon}</span>
-    </div>
-  </div>
-);
-
-const MetricBlock: React.FC<{ label: string, value: string, icon: string, color?: string }> = ({ label, value, icon, color = "text-white" }) => (
-  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2 group hover:bg-white/[0.04] transition-all">
-    <div className="flex items-center gap-2">
-      <span className="material-symbols-outlined text-xs text-white/20">{icon}</span>
-      <label className="text-[8px] font-black uppercase text-white/30 tracking-widest">{label}</label>
-    </div>
-    <p className={`text-xl font-black italic-black ${color} tracking-tighter`}>{value}</p>
-  </div>
-);
-
-const InputBlock: React.FC<{ label: string, children: React.ReactNode }> = ({ label, children }) => (
-  <div className="space-y-2">
-    <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2">{label}</label>
-    {children}
-  </div>
-);
 
 export default InventoryManagement;

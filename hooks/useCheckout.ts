@@ -45,6 +45,7 @@ export function useCheckout(): UseCheckoutReturn {
             const { data, error: fnError } = await supabase.functions.invoke('create-checkout', {
                 body: {
                     store_id: storeId,
+                    order_id: externalReference, // NUEVO: para payment_intent tracking
                     items,
                     back_urls: backUrls,
                     external_reference: externalReference,

@@ -4,6 +4,38 @@ export type UnitType = 'unit' | 'gram' | 'ml' | 'kg' | 'oz' | 'liter';
 export type MovementType = 'purchase' | 'manual_adjustment' | 'recipe_consumption' | 'sale' | 'waste' | 'return';
 
 // --- SAAS & TENANT CONTROL ---
+export interface MenuTheme {
+  // Marca
+  storeName: string;
+  logoUrl?: string;
+  headerImage?: string;
+  headerOverlay?: number;
+  headerAlignment?: 'left' | 'center';
+
+  // Colores
+  accentColor: string;
+  backgroundColor: string;
+  surfaceColor: string;
+  textColor: string;
+
+  // Layout & Forma
+  layoutMode: 'grid' | 'list';
+  columns: 1 | 2;
+  cardStyle: 'glass' | 'solid' | 'minimal' | 'border' | 'floating';
+  borderRadius: 'none' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
+  fontStyle: 'modern' | 'serif' | 'mono' | 'sans';
+
+  // Visibilidad
+  showImages: boolean;
+  showPrices: boolean;
+  showDescription: boolean;
+  showAddButton: boolean;
+  showBadges: boolean;
+
+  // Legacy support (optional)
+  showQuickAdd?: boolean;
+}
+
 export type TenantPlan = 'free' | 'trial' | 'basic' | 'pro' | 'enterprise';
 export type TenantStatus = 'active' | 'suspended' | 'trial_expired';
 
@@ -158,6 +190,7 @@ export interface InventoryItem {
   is_active: boolean;
   min_stock: number;
   current_stock: number;
+  open_count?: number; // Number of opened packages
   category?: string; // Legacy/Display name
   category_ids?: string[]; // Relational IDs
   cost: number;
@@ -175,8 +208,13 @@ export interface InventoryItem {
   is_promo?: boolean;
   sort_order?: number;
   variants?: ProductVariant[];
-  addons?: ProductAddon[];
-  combo_items?: string[];
+  // Consolidated relationships
+  addon_links?: ProductAddon[];
+  combo_links?: { id: string, component_item_id: string, quantity: number }[];
+
+  // Deprecated/Removed
+  // addons prop removed in favor of addon_links
+  // combo_items prop removed in favor of combo_links
 }
 
 export interface ProductPresentation {
@@ -291,6 +329,13 @@ export interface Order {
   source?: string;
   activity?: OrderActivity[];
   table?: string;
+  paymentMethod?: string;
+  order_number?: number;
+  created_at: string;
+  // Payment fields for badges
+  payment_provider?: string;
+  payment_status?: string;
+  is_paid?: boolean;
 }
 
 export type OrderStatus = 'Pendiente' | 'En Preparación' | 'Listo' | 'Entregado' | 'Cancelado' | 'Demorado';
@@ -355,6 +400,7 @@ export interface Client {
   total_spent: number;
   orders_count: number;
   points_balance: number;
+  wallet_balance: number; // NUEVO: saldo de wallet
   status: 'active' | 'blocked';
   is_vip: boolean;
   notes: any[];

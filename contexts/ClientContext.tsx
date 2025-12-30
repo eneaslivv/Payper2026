@@ -5,14 +5,29 @@ import { CartItem, MenuItem, UserProfile, OrderStatus } from '../components/clie
 import { INITIAL_USER } from '../components/client/constants';
 
 interface MenuTheme {
+    // Paleta Cromática
     accentColor?: string;
-    borderRadius?: 'none' | 'md' | 'xl' | 'full';
-    fontStyle?: 'modern' | 'serif' | 'mono';
-    cardStyle?: 'glass' | 'solid' | 'minimal' | 'border';
-    layout?: 'grid' | 'list';
+    backgroundColor?: string;
+    cardColor?: string;
+    textColor?: string;
+    // Marca & Cabecera
+    storeName?: string;
+    logoUrl?: string;
     headerImage?: string;
+    headerOverlay?: number;
+    headerAlignment?: 'left' | 'center';
+    // Disposición & Tarjetas
+    layout?: 'grid' | 'list';
+    columns?: 1 | 2;
+    cardStyle?: 'glass' | 'solid' | 'minimal' | 'border' | 'floating';
+    borderRadius?: 'none' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
+    fontStyle?: 'modern' | 'serif' | 'mono';
+    // Visibilidad de Contenido
     showImages?: boolean;
     showPrices?: boolean;
+    showDescription?: boolean;
+    showQuickAdd?: boolean;
+    showBadges?: boolean;
 }
 
 interface MenuLogic {
@@ -38,6 +53,7 @@ interface ClientContextType {
     loadingStore: boolean;
     error: string | null;
     products: MenuItem[];
+    categories: string[];
     loadingProducts: boolean;
     cart: CartItem[];
     addToCart: (item: MenuItem, quantity: number, customs: string[], size: string, notes: string) => void;
@@ -54,7 +70,13 @@ interface ClientContextType {
     setIsRedeemingPoints: (v: boolean) => void;
     orderStatus: OrderStatus;
     setOrderStatus: (status: OrderStatus) => void;
+    showAuthModal: boolean;
+    setShowAuthModal: (v: boolean) => void;
+    activeOrderId: string | null;
+    setActiveOrderId: (id: string | null) => void;
+    activeOrders: any[];
 }
+
 
 const ClientContext = createContext<ClientContextType | undefined>(undefined);
 
@@ -65,17 +87,178 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const [error, setError] = useState<string | null>(null);
 
     const [products, setProducts] = useState<MenuItem[]>([]);
+    const [categories, setCategories] = useState<string[]>([]);
     const [loadingProducts, setLoadingProducts] = useState(false);
 
     const [cart, setCart] = useState<CartItem[]>([]);
-    const [user, setUser] = useState<UserProfile | null>(null); // Start null, auth page handles login
+    const [user, setUser] = useState<UserProfile | null>(null);
     const [hasActiveOrder, setHasActiveOrder] = useState(false);
     const [isHubOpen, setIsHubOpen] = useState(false);
     const [isRedeemingPoints, setIsRedeemingPoints] = useState(false);
     const [orderStatus, setOrderStatus] = useState<OrderStatus>('received');
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
+    const [activeOrders, setActiveOrders] = useState<any[]>([]);
 
-    // Fetch Store by Slug
-    // ... rest of code
+    // Auth Listener & User Data Fetching
+    useEffect(() => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (session?.user) {
+                fetchUserProfile(session.user.id);
+            } else {
+                setUser(null);
+            }
+        });
+
+        // Initial check
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            if (user) fetchUserProfile(user.id);
+        });
+
+        return () => subscription.unsubscribe();
+    }, [store?.id]);
+
+    const fetchUserProfile = async (userId: string) => {
+        if (!store?.id) return;
+
+        try {
+            // 1. Fetch from 'clients'
+            let clientDataWrapper = await supabase
+                .from('clients')
+                .select('*')
+                .eq('id', userId)
+                .maybeSingle();
+
+            if (!clientDataWrapper.data) {
+                // Check if user has a STAFF profile - if so, don't auto-create client profile
+                const { data: staffProfile } = await supabase
+                    .from('profiles')
+                    .select('id, role')
+                    .eq('id', userId)
+                    .maybeSingle();
+
+                if (staffProfile) {
+                    // User is a staff member, don't create client profile
+                    console.log('[ClientContext] User is staff, skipping client auto-creation');
+                    setUser(null); // Clear user state for client context
+                    return;
+                }
+
+                // Auto-create client for any non-staff user accessing the menu
+                // This is more permissive than before - we create clients for anyone who
+                // is not staff, regardless of their metadata role
+                const { data: userData } = await supabase.auth.getUser();
+                if (!userData.user) throw new Error('Usuario no autenticado');
+
+                console.log('[ClientContext] Auto-creating client record for user:', store.id);
+
+                const newProfile = {
+                    id: userId,
+                    email: userData.user.email || '',
+                    name: userData.user.user_metadata?.full_name || (userData.user.email || '').split('@')[0],
+                    store_id: store.id,
+                    loyalty_points: 0
+                };
+
+                const { error: createError } = await supabase
+                    .from('clients')
+                    .insert(newProfile);
+
+                if (createError && createError.code !== '23505') {
+                    console.error("[ClientContext] Error creating client:", createError);
+                }
+
+                // Final attempt to fetch
+                clientDataWrapper = await supabase
+                    .from('clients')
+                    .select('*')
+                    .eq('id', userId)
+                    .single();
+            }
+
+            const clientData = clientDataWrapper.data || {
+                id: userId,
+                name: user?.user_metadata?.full_name || 'Cliente Nuevo',
+                email: user?.email || '',
+                phone: user?.user_metadata?.phone || '',
+                loyalty_points: 0,
+                wallet_balance: 0, // Agregamos wallet_balance al default
+                store_id: store.id,
+                created_at: new Date().toISOString()
+            };
+
+            // 2. Wallet balance now comes directly from clients.wallet_balance
+            // (No need to query wallets table - admin loads to clients.wallet_balance)
+
+            // 3. Fetch Vouchers
+            const { data: vouchersData } = await supabase
+                .from('loyalty_vouchers')
+                .select('*')
+                .eq('client_id', userId);
+
+            // 4. Fetch Order History with Items
+            const { data: ordersData } = await supabase
+                .from('orders')
+                .select('*, order_items(*)')
+                .eq('store_id', store.id)
+                .eq('client_id', userId) // Use ID for reliable matching
+                .order('created_at', { ascending: false });
+
+            // 4.5 Check for Active OrderS (Plural)
+            const activeOrdersFound = ordersData?.filter(o =>
+                o.status === 'received' ||
+                o.status === 'pending' ||
+                o.status === 'preparing' ||
+                o.status === 'ready'
+            ) || [];
+
+            setActiveOrders(activeOrdersFound);
+
+            if (activeOrdersFound.length > 0) {
+                console.log('[ClientContext] Found active orders:', activeOrdersFound.length);
+                setHasActiveOrder(true);
+                // Default to first one or keep existing selection if valid
+                const currentStillActive = activeOrdersFound.find(o => o.id === activeOrderId);
+                const primaryOrder = currentStillActive || activeOrdersFound[0];
+
+                setOrderStatus(primaryOrder.status as OrderStatus);
+                setActiveOrderId(primaryOrder.id);
+            } else {
+                setHasActiveOrder(false);
+                setActiveOrderId(null);
+            }
+
+            // 5. Map to UserProfile
+            const mappedUser: UserProfile = {
+                id: clientData.id,
+                name: clientData.name || 'Invitado',
+                email: clientData.email || '',
+                phone: clientData.phone || '',
+                points: clientData.loyalty_points || 0,
+                balance: clientData.wallet_balance || 0, // Use clients.wallet_balance directly
+                status: clientData.loyalty_points < 500 ? 'Bronce' : clientData.loyalty_points < 1200 ? 'Plata' : 'Oro',
+                vouchers: (vouchersData || []).map(v => ({
+                    id: v.id,
+                    name: 'Cupón de Regalo', // Should be linked to rewards table
+                    expiry: v.expires_at ? new Date(v.expires_at).toLocaleDateString() : 'Sin expiración',
+                    type: v.status === 'used' ? 'redemption' : 'gift'
+                })),
+                avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${clientData.id}`,
+                onboardingCompleted: true,
+                orderHistory: (ordersData || []).map(o => ({
+                    id: o.id.slice(0, 8).toUpperCase(),
+                    date: new Date(o.created_at).toLocaleDateString(),
+                    items: (o.order_items || []).map((oi: any) => `${oi.quantity}x ${oi.name}`).join(', ') || 'Pedido sin detalles',
+                    total: o.total_amount,
+                    pointsEarned: Math.floor(o.total_amount * 10)
+                }))
+            };
+
+            setUser(mappedUser);
+        } catch (err) {
+            console.error('Error fetching user profile:', err);
+        }
+    };
     useEffect(() => {
         if (!slug) return;
         const fetchStore = async () => {
@@ -90,7 +273,15 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 if (error) throw error;
                 if (!data) throw new Error('Tienda no encontrada');
 
-                setStore(data);
+                if (data && (data as any).menu_theme && typeof (data as any).menu_theme === 'string') {
+                    try {
+                        (data as any).menu_theme = JSON.parse((data as any).menu_theme);
+                    } catch (e) {
+                        console.error('Error parsing menu_theme:', e);
+                    }
+                }
+
+                setStore(data as any);
             } catch (err: any) {
                 console.error('Error fetching store:', err);
                 setError(err.message);
@@ -101,43 +292,90 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         fetchStore();
     }, [slug]);
 
-    // Fetch Products from inventory_items (synced with MenuDesign)
+    // Fetch Categories and Products
     useEffect(() => {
         if (!store?.id) return;
-        const fetchProducts = async () => {
+
+        const fetchData = async () => {
             setLoadingProducts(true);
             try {
-                // Fetch from inventory_items where is_menu_visible = true
-                const { data, error } = await supabase
-                    .from('inventory_items')
+                // 1. Fetch Categories - Simplified query to avoid column errors
+                const { data: catsData, error: catsError } = await (supabase
+                    .from('categories') as any)
+                    .select('id, name')
+                    .eq('store_id', store.id);
+
+                if (catsError) console.error('[ClientContext] Error fetching categories:', catsError);
+
+                const dbCategories = catsData || [];
+                console.log('[ClientContext] Categories fetched:', dbCategories.length, 'items');
+                const categoryMap: Record<string, string> = {};
+                dbCategories.forEach((c: any) => {
+                    categoryMap[c.id] = c.name;
+                });
+
+                // 2. Fetch Products - NOTE: Removed is_menu_visible filter as it may not be set
+                // Products will be filtered client-side if needed
+                const { data, error } = await (supabase.from('inventory_items') as any)
                     .select('*')
                     .eq('store_id', store.id)
-                    .eq('is_menu_visible', true);
+                    .order('name', { ascending: true });
 
                 if (error) throw error;
 
-                // Map inventory_items to MenuItem interface
-                const mappedProducts: MenuItem[] = (data || []).map((item: any) => ({
-                    id: item.id,
-                    name: item.name,
-                    description: item.description || '',
-                    price: item.price || 0,
-                    image: item.image_url || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
-                    category: item.category || 'General',
-                    isPopular: item.is_popular || false,
-                    isOutOfStock: (item.current_stock !== undefined && item.current_stock <= 0) || false,
-                    sizes: item.variants?.map((v: any) => v.name) || [],
-                    customizations: item.addons?.map((a: any) => a.name) || []
-                }));
+                console.log('[ClientContext] Raw inventory_items query result:', data?.length || 0, 'items');
+                console.log('[ClientContext] Store ID used:', store.id);
+
+                // Map inventory_items to MenuItem interface including rich variants/addons
+                const mappedProducts: MenuItem[] = (data || []).map((item: any) => {
+                    // Resolve category name from ID
+                    const catName = item.category_id ? categoryMap[item.category_id] : (item.category || 'General');
+
+                    return {
+                        id: item.id,
+                        name: item.name,
+                        description: item.description || '',
+                        price: item.price || 0,
+                        // Use IDENTICAL fallback image as MenuDesign
+                        image: item.image_url || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
+                        category: catName,
+                        isPopular: item.is_popular || false,
+                        isOutOfStock: (item.current_stock !== undefined && item.current_stock <= 0) || false,
+                        variants: item.variants || [],
+                        addons: item.addons || [],
+                        // Explicitly sync with identical mapping keys as MenuDesign logic
+                        item_type: (item.cost > 0 || item.price > 0) ? 'sellable' : 'ingredient',
+                    };
+                });
 
                 setProducts(mappedProducts);
+
+                // Set categories: Filter empty names and normalize
+                if (dbCategories.length > 0) {
+                    const validCats = dbCategories
+                        .filter((c: any) => c.name && c.name.trim() !== '')
+                        .map((c: any) => ({ id: c.id, name: c.name }));
+                    setCategories([{ id: 'all', name: 'Todos' }, ...validCats]);
+                } else {
+                    // Fallback from products
+                    const uniqueNames = Array.from(new Set(
+                        mappedProducts
+                            .map(p => p.category)
+                            .filter(catName => catName && catName.trim() !== '')
+                    ));
+                    setCategories([
+                        { id: 'all', name: 'Todos' },
+                        ...uniqueNames.map(name => ({ id: name, name }))
+                    ]);
+                }
+
             } catch (err) {
-                console.error('Error fetching menu products:', err);
+                console.error('Error fetching data:', err);
             } finally {
                 setLoadingProducts(false);
             }
         };
-        fetchProducts();
+        fetchData();
     }, [store?.id]);
 
     const addToCart = (item: MenuItem, quantity: number, customs: string[], size: string, notes: string) => {
@@ -165,6 +403,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             loadingStore,
             error,
             products,
+            categories,
             loadingProducts,
             cart,
             addToCart,
@@ -180,7 +419,12 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             isRedeemingPoints,
             setIsRedeemingPoints,
             orderStatus,
-            setOrderStatus
+            setOrderStatus,
+            showAuthModal,
+            setShowAuthModal,
+            activeOrderId,
+            setActiveOrderId,
+            activeOrders
         }}>
             {children}
         </ClientContext.Provider>

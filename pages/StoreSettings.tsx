@@ -551,21 +551,17 @@ const StoreSettings: React.FC = () => {
                                 </div>
 
                                 <div className="flex items-center gap-10 mb-12">
-                                    <div className="relative group shrink-0">
-                                        <div className="size-32 rounded-[2.5rem] bg-black border-2 border-dashed border-white/10 flex items-center justify-center overflow-hidden transition-all group-hover:border-neon/40 shadow-2xl">
-                                            {store.logo_url ? <img src={store.logo_url} className="w-full h-full object-cover" /> : <span className="material-symbols-outlined text-3xl text-white/5">add_photo_alternate</span>}
-                                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all cursor-pointer"><span className="text-[8px] font-black text-white uppercase tracking-widest">Cambiar</span></div>
-                                        </div>
-                                    </div>
+                                    <LogoUploader
+                                        currentUrl={store.logo_url || null}
+                                        storeId={profile?.store_id || ''}
+                                        onUpload={(url) => setStore({ ...store, logo_url: url })}
+                                    />
                                     <div className="space-y-2">
                                         <h4 className="text-2xl font-black text-white italic uppercase tracking-tighter">Identidad del Nodo</h4>
                                         <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest">Personaliza el ADN visual de tu local</p>
-                                        <input
-                                            value={store.logo_url || ''}
-                                            onChange={e => setStore({ ...store, logo_url: e.target.value })}
-                                            className="mt-4 w-full h-10 px-5 rounded-xl bg-white/5 border border-white/10 text-[9px] text-white/40 font-bold focus:border-neon/30 outline-none transition-all placeholder:text-white/5"
-                                            placeholder="URL DEL LOGOTIPO EXTERNO..."
-                                        />
+                                        <p className="text-[9px] text-neon/60 font-bold mt-2 uppercase tracking-widest">
+                                            Hacé click en el logo para subir una imagen
+                                        </p>
                                     </div>
                                 </div>
 
@@ -886,63 +882,9 @@ const StoreSettings: React.FC = () => {
                         </div>
                     )}
 
-                    {activeTab === 'payment' && (
-                        <div className="max-w-4xl space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <Section title="Integración de Cobros" icon="account_balance_wallet">
-                                <div className="space-y-10">
-                                    <div className="flex flex-col md:flex-row gap-10 items-start">
-                                        <div className="size-28 rounded-[2.5rem] bg-[#009EE3] flex items-center justify-center shrink-0 shadow-[0_20px_40px_rgba(0,158,227,0.3)] border-2 border-white/20">
-                                            <span className="text-white font-black text-4xl italic uppercase leading-none tracking-tighter">MP</span>
-                                        </div>
-                                        <div className="flex-1 space-y-3">
-                                            <div className="flex items-center gap-3">
-                                                <h4 className="text-2xl font-black italic text-white uppercase tracking-tighter leading-none">Mercado Pago</h4>
-                                                <span className="px-3 py-1 rounded-lg bg-neon/10 text-neon text-[9px] font-black uppercase tracking-widest border border-neon/20">ACTIVO</span>
-                                            </div>
-                                            <p className="text-[11px] font-medium text-white/50 uppercase tracking-widest leading-relaxed">
-                                                Pasarela principal para pagos QR en mesa y ventas online. Sincronización automática con el centro de finanzas.
-                                            </p>
-                                            <div className="flex items-center gap-3 pt-2">
-                                                <span className="size-2 rounded-full bg-neon animate-pulse shadow-neon-soft"></span>
-                                                <span className="text-[10px] font-black text-neon uppercase tracking-widest italic">Webhooks en Línea (Canal Seguro)</span>
-                                            </div>
-                                        </div>
-                                        <button onClick={() => setMpConnected(!mpConnected)} className="px-10 py-4 rounded-2xl border border-white/10 bg-white/5 text-[11px] font-black uppercase tracking-widest text-white/40 hover:text-red-500 hover:border-red-500/30 transition-all">
-                                            Desconectar
-                                        </button>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-10 border-t border-white/5">
-                                        <div className="space-y-4">
-                                            <label className="text-[10px] font-black uppercase text-white/20 tracking-[0.3em] ml-2">App Access Token</label>
-                                            <div className="relative group">
-                                                <input type="password" value="APP_USR-72819201928374-021018-b2a..." readOnly className="w-full h-14 px-6 rounded-2xl bg-black/60 border border-white/10 text-white text-[11px] font-mono outline-none group-hover:border-white/20 transition-all" />
-                                                <button className="absolute right-5 top-1/2 -translate-y-1/2 text-white/10 hover:text-neon transition-colors"><span className="material-symbols-outlined text-lg">content_copy</span></button>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-4">
-                                            <label className="text-[10px] font-black uppercase text-white/20 tracking-[0.3em] ml-2">Public Client ID</label>
-                                            <div className="relative group">
-                                                <input type="text" value="827364152431" readOnly className="w-full h-14 px-6 rounded-2xl bg-black/60 border border-white/10 text-white text-[11px] font-mono outline-none group-hover:border-white/20 transition-all" />
-                                                <button className="absolute right-5 top-1/2 -translate-y-1/2 text-white/10 hover:text-neon transition-colors"><span className="material-symbols-outlined text-lg">visibility</span></button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="p-8 rounded-[2.5rem] bg-amber-500/5 border border-amber-500/20 flex items-center gap-8 backdrop-blur-md">
-                                        <div className="size-16 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
-                                            <span className="material-symbols-outlined text-3xl">developer_mode</span>
-                                        </div>
-                                        <div>
-                                            <h5 className="text-[11px] font-black uppercase text-amber-500 tracking-widest italic mb-1.5 leading-none">Entorno de Pruebas (SandBox)</h5>
-                                            <p className="text-[10px] font-bold text-white/30 uppercase tracking-tight">Habilita esta opción para realizar testeos de flujos sin afectar la caja real del nodo.</p>
-                                        </div>
-                                        <div className="ml-auto">
-                                            <Toggle active={false} onToggle={() => { }} />
-                                        </div>
-                                    </div>
-                                </div>
-                            </Section>
+                    {activeTab === 'payment' && profile?.store_id && (
+                        <div className="max-w-5xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <PaymentSettingsInline storeId={profile.store_id} />
                         </div>
                     )}
                 </div>
@@ -1041,6 +983,291 @@ const Section: React.FC<{ title: string, icon: string, children: React.ReactNode
         </div>
     </div>
 );
+
+// LogoUploader - Sube archivos a Supabase Storage
+const LogoUploader: React.FC<{
+    currentUrl: string | null;
+    storeId: string;
+    onUpload: (url: string) => void;
+}> = ({ currentUrl, storeId, onUpload }) => {
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !storeId) return;
+
+        // Validar tipo de archivo
+        if (!file.type.startsWith('image/')) {
+            alert('Por favor, seleccioná una imagen (JPG, PNG, etc.)');
+            return;
+        }
+
+        // Validar tamaño (max 2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            alert('La imagen no puede superar 2MB');
+            return;
+        }
+
+        setIsUploading(true);
+        try {
+            // Generar nombre único
+            const ext = file.name.split('.').pop() || 'png';
+            const fileName = `${storeId}/logo-${Date.now()}.${ext}`;
+
+            // Subir a Supabase Storage
+            const { data, error } = await supabase.storage
+                .from('logos')
+                .upload(fileName, file, {
+                    cacheControl: '3600',
+                    upsert: true
+                });
+
+            if (error) throw error;
+
+            // Obtener URL pública
+            const { data: publicData } = supabase.storage
+                .from('logos')
+                .getPublicUrl(fileName);
+
+            if (publicData?.publicUrl) {
+                onUpload(publicData.publicUrl);
+            }
+        } catch (err: any) {
+            console.error('Upload error:', err);
+            alert('Error al subir la imagen: ' + (err.message || 'Error desconocido'));
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    return (
+        <div className="relative group shrink-0">
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+            />
+            <div
+                onClick={() => !isUploading && fileInputRef.current?.click()}
+                className="size-32 rounded-[2.5rem] bg-black border-2 border-dashed border-white/10 flex items-center justify-center overflow-hidden transition-all group-hover:border-neon/40 shadow-2xl cursor-pointer"
+            >
+                {isUploading ? (
+                    <div className="size-8 border-2 border-neon/20 border-t-neon rounded-full animate-spin"></div>
+                ) : currentUrl ? (
+                    <img src={currentUrl} className="w-full h-full object-cover" alt="Logo" />
+                ) : (
+                    <span className="material-symbols-outlined text-3xl text-white/20">add_photo_alternate</span>
+                )}
+                {!isUploading && (
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                        <span className="text-[8px] font-black text-white uppercase tracking-widest">
+                            {currentUrl ? 'Cambiar' : 'Subir'}
+                        </span>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// PaymentSettingsInline - Dinamico desde DB
+const PaymentSettingsInline: React.FC<{ storeId: string }> = ({ storeId }) => {
+    const [status, setStatus] = useState<{
+        is_connected: boolean;
+        mp_user_id: string | null;
+        mp_nickname: string | null;
+        mp_email: string | null;
+        mp_access_token: string | null;
+        mp_public_key: string | null;
+    } | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [sandboxMode, setSandboxMode] = useState(false);
+
+    const MP_APP_ID = "2839669811317212";
+    const REDIRECT_URI = window.location.origin + '/admin/settings';
+
+    useEffect(() => {
+        fetchStatus();
+
+        // Handle OAuth callback - detect 'code' parameter in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const state = urlParams.get('state'); // state contains store_id
+
+        if (code && (state === storeId || !state)) {
+            console.log('[MP OAuth] Code detected, exchanging for token...');
+            handleOAuthCallback(code);
+            // Clean URL after processing
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+    }, [storeId]);
+
+    const handleOAuthCallback = async (code: string) => {
+        setIsLoading(true);
+        try {
+            const { data, error } = await supabase.functions.invoke('mp-connect', {
+                body: {
+                    code,
+                    redirect_uri: REDIRECT_URI,
+                    store_id: storeId
+                }
+            });
+
+            if (error) throw error;
+            if (!data?.success) throw new Error(data?.message || 'Error vinculando cuenta');
+
+            alert('✅ Mercado Pago conectado exitosamente!');
+            await fetchStatus(); // Refresh status
+        } catch (error: any) {
+            console.error('[MP OAuth] Error:', error);
+            alert('Error al conectar: ' + error.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const fetchStatus = async () => {
+        if (!storeId) return;
+        setIsLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('stores')
+                .select('mp_user_id, mp_nickname, mp_email, mp_access_token, mp_public_key')
+                .eq('id', storeId)
+                .single();
+
+            if (error) throw error;
+            const storeData = data as any;
+            setStatus({
+                is_connected: !!storeData?.mp_user_id,
+                mp_user_id: storeData?.mp_user_id,
+                mp_nickname: storeData?.mp_nickname,
+                mp_email: storeData?.mp_email,
+                mp_access_token: storeData?.mp_access_token,
+                mp_public_key: storeData?.mp_public_key
+            });
+        } catch (err) {
+            console.error('Error fetching MP status:', err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const connect = () => {
+        const authUrl = `https://auth.mercadopago.com.ar/authorization?client_id=${MP_APP_ID}&response_type=code&platform_id=mp&state=${storeId}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+        window.location.href = authUrl;
+    };
+
+    const disconnect = async () => {
+        if (!confirm('¿Estás seguro de desvincular Mercado Pago? Dejarás de recibir pagos.')) return;
+        try {
+            await supabase.from('stores').update({
+                mp_access_token: null,
+                mp_refresh_token: null,
+                mp_user_id: null,
+                mp_nickname: null,
+                mp_email: null,
+                mp_public_key: null
+            } as any).eq('id', storeId);
+            await fetchStatus();
+        } catch (error) {
+            console.error('Error disconnecting:', error);
+        }
+    };
+
+    if (isLoading) {
+        return (
+            <div className="p-10 bg-white/[0.02] rounded-[3rem] border border-white/5 flex items-center justify-center min-h-[300px]">
+                <div className="size-8 border-2 border-neon/20 border-t-neon rounded-full animate-spin"></div>
+            </div>
+        );
+    }
+
+    return (
+        <Section title="Integración de Cobros" icon="account_balance_wallet">
+            {status?.is_connected ? (
+                <div className="space-y-10">
+                    <div className="flex flex-col md:flex-row gap-10 items-start">
+                        <div className="size-28 rounded-[2.5rem] bg-[#009EE3] flex items-center justify-center shrink-0 shadow-[0_20px_40px_rgba(0,158,227,0.3)] border-2 border-white/20">
+                            <span className="text-white font-black text-4xl italic uppercase leading-none tracking-tighter">MP</span>
+                        </div>
+                        <div className="flex-1 space-y-3">
+                            <div className="flex items-center gap-3">
+                                <h4 className="text-2xl font-black italic text-white uppercase tracking-tighter leading-none">Mercado Pago</h4>
+                                <span className="px-3 py-1 rounded-lg bg-neon/10 text-neon text-[9px] font-black uppercase tracking-widest border border-neon/20">ACTIVO</span>
+                            </div>
+                            {/* CUENTA CONECTADA */}
+                            <div className="flex items-center gap-2 bg-zinc-800/50 px-4 py-2 rounded-xl w-fit">
+                                <span className="material-symbols-outlined text-lg text-[#009EE3]">account_circle</span>
+                                <span className="text-sm font-bold text-white">{status.mp_nickname || 'Cuenta conectada'}</span>
+                                {status.mp_email && (
+                                    <span className="text-xs text-white/40">({status.mp_email})</span>
+                                )}
+                            </div>
+                            <p className="text-[11px] font-medium text-white/50 uppercase tracking-widest leading-relaxed">
+                                Pasarela principal para pagos QR en mesa y ventas online.
+                            </p>
+                            <div className="flex items-center gap-3 pt-2">
+                                <span className="size-2 rounded-full bg-neon animate-pulse shadow-neon-soft"></span>
+                                <span className="text-[10px] font-black text-neon uppercase tracking-widest italic">Webhooks en Línea</span>
+                            </div>
+                        </div>
+                        <button onClick={disconnect} className="px-10 py-4 rounded-2xl border border-white/10 bg-white/5 text-[11px] font-black uppercase tracking-widest text-white/40 hover:text-red-500 hover:border-red-500/30 transition-all">
+                            Desconectar
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-10 border-t border-white/5">
+                        <div className="space-y-4">
+                            <label className="text-[10px] font-black uppercase text-white/20 tracking-[0.3em] ml-2">App Access Token</label>
+                            <div className="relative group">
+                                <input type="password" value={status.mp_access_token ? '●'.repeat(30) : ''} readOnly className="w-full h-14 px-6 rounded-2xl bg-black/60 border border-white/10 text-white text-[11px] font-mono outline-none group-hover:border-white/20 transition-all" />
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            <label className="text-[10px] font-black uppercase text-white/20 tracking-[0.3em] ml-2">MP User ID</label>
+                            <div className="relative group">
+                                <input type="text" value={status.mp_user_id || ''} readOnly className="w-full h-14 px-6 rounded-2xl bg-black/60 border border-white/10 text-white text-[11px] font-mono outline-none group-hover:border-white/20 transition-all" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-8 rounded-[2.5rem] bg-amber-500/5 border border-amber-500/20 flex items-center gap-8 backdrop-blur-md">
+                        <div className="size-16 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
+                            <span className="material-symbols-outlined text-3xl">developer_mode</span>
+                        </div>
+                        <div>
+                            <h5 className="text-[11px] font-black uppercase text-amber-500 tracking-widest italic mb-1.5 leading-none">Entorno de Pruebas (SandBox)</h5>
+                            <p className="text-[10px] font-bold text-white/30 uppercase tracking-tight">Habilita esta opción para realizar testeos de flujos sin afectar la caja real del nodo.</p>
+                        </div>
+                        <div className="ml-auto">
+                            <Toggle active={sandboxMode} onToggle={() => setSandboxMode(!sandboxMode)} />
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <div className="p-12 rounded-3xl bg-zinc-900/30 border border-zinc-800 flex flex-col items-center text-center gap-6 min-h-[350px] justify-center">
+                    <div className="size-24 rounded-3xl bg-[#009EE3]/10 flex items-center justify-center border border-[#009EE3]/20">
+                        <span className="material-symbols-outlined text-5xl text-[#009EE3]">link_off</span>
+                    </div>
+                    <div className="space-y-3 max-w-md">
+                        <h3 className="text-2xl font-black text-white uppercase italic tracking-tight">No Conectado</h3>
+                        <p className="text-xs text-white/40 leading-relaxed font-medium">
+                            Conecta tu cuenta de Mercado Pago para habilitar pagos QR y online. Los fondos se acreditarán en tu cuenta.
+                        </p>
+                    </div>
+                    <button onClick={connect} className="px-10 py-5 bg-[#009EE3] text-white rounded-xl font-black text-xs uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(0,158,227,0.3)] hover:scale-105 active:scale-95 transition-all flex items-center gap-3 mt-4">
+                        <span className="material-symbols-outlined">account_balance_wallet</span>
+                        Vincular mi Cuenta
+                    </button>
+                </div>
+            )}
+        </Section>
+    );
+};
 
 const LogicRow: React.FC<{ title: string, desc: string, active: boolean, onToggle: () => void }> = ({ title, desc, active, onToggle }) => (
     <div className="flex items-center justify-between p-5 rounded-2xl bg-white/[0.01] border border-white/5 hover:bg-white/[0.02] transition-colors">

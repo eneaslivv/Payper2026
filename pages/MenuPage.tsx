@@ -4,8 +4,11 @@ import { useStore } from '../hooks/useStore';
 import { useProducts } from '../hooks/useProducts';
 import { useCreateOrder } from '../hooks/useCreateOrder';
 import { useCheckout } from '../hooks/useCheckout';
+import { useAuth } from '../contexts/AuthContext'; // Import Auth
 import { PaymentCapabilityBadge } from '../components/PaymentCapabilityBadge';
 import { CheckoutButton } from '../components/CheckoutButton';
+import { MenuRenderer } from '../components/MenuRenderer';
+import { AuthPromptModal } from '../components/AuthPromptModal'; // Import Modal
 import type { Product, CheckoutItem } from '../types/payment';
 
 interface CartItem {
@@ -16,6 +19,7 @@ interface CartItem {
 export function MenuPage() {
     const { storeSlug = '' } = useParams<{ storeSlug: string }>();
     const navigate = useNavigate();
+    const { user } = useAuth(); // Get user status
 
     // Obtener datos de la tienda
     const { store, isLoading: storeLoading, error: storeError, canProcessPayments } = useStore({
@@ -25,12 +29,14 @@ export function MenuPage() {
     // Obtener productos
     const { products, isLoading: productsLoading, error: productsError } = useProducts({
         storeId: store?.id || '',
-        source: 'products', // o 'inventory_items'
+        source: 'inventory_items', // Change from 'products' to 'inventory_items' to match MenuDesign
     });
 
-    // Estado del carrito
+    // Estado del carrito y UI
     const [cart, setCart] = useState<CartItem[]>([]);
     const [tableNumber, setTableNumber] = useState('');
+    const [activeTab, setActiveTab] = useState<'menu' | 'club' | 'profile'>('menu');
+    const [showAuthPrompt, setShowAuthPrompt] = useState(false);
 
     // Hooks de orden y checkout
     const { createOrder, isCreating } = useCreateOrder();
@@ -116,246 +122,200 @@ export function MenuPage() {
         });
     };
 
+    // --- NAVIGATION HANDLER ---
+    const handleNavClick = (tab: 'menu' | 'club' | 'profile') => {
+        if (tab === 'menu') {
+            setActiveTab('menu');
+            return;
+        }
+
+        // Protected Tabs logic
+        if (!user) {
+            // Trigger Auth Prompt for guests
+            setShowAuthPrompt(true);
+            // Optionally set active tab visually if you want, but better to stay on menu until authed?
+            // The image shows "CREA TU PERFIL" modal, implying we intercepted the navigation.
+            return;
+        }
+
+        // Check if CLUB is active (assuming club feature flag or similar? for now just allow)
+        setActiveTab(tab);
+        if (tab === 'profile') {
+            navigate('/profile'); // Or wherever the profile page is
+        }
+    };
+
+    // --- THEME ENGINE ---
+    const theme = useMemo(() => {
+        const defaults = {
+            accentColor: '#4ADE80',
+            backgroundColor: '#0D0F0D',
+            surfaceColor: '#141714',
+            textColor: '#FFFFFF',
+            borderRadius: 'xl',
+            fontStyle: 'sans',
+            cardStyle: 'solid',
+            layoutMode: 'grid',
+            columns: 1,
+            headerImage: '',
+            headerOverlay: 0.5,
+            showImages: true,
+            showPrices: true,
+            showDescription: true,
+            showAddButton: true,
+            showBadges: true,
+            headerAlignment: 'left'
+        };
+        return { ...defaults, ...(store?.menu_theme || {}) };
+    }, [store]);
+
+    const getRadiusClass = (r: string) => {
+        switch (r) {
+            case 'none': return 'rounded-none';
+            case 'sm': return 'rounded-sm';
+            case 'md': return 'rounded-md';
+            case 'full': return 'rounded-[2rem]'; // Special for "full" look in design
+            default: return 'rounded-xl';
+        }
+    };
+
+    const radiusClass = getRadiusClass(theme.borderRadius);
+    const fontClass = theme.fontStyle === 'serif' ? 'font-serif' : theme.fontStyle === 'mono' ? 'font-mono' : 'font-sans';
+
     // Loading state
     if (storeLoading || productsLoading) {
         return (
-            <div style={{ padding: '40px', textAlign: 'center' }}>
-                <div style={{
-                    width: '40px',
-                    height: '40px',
-                    border: '3px solid #e5e7eb',
-                    borderTopColor: '#3b82f6',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite',
-                    margin: '0 auto',
-                }} />
-                <p style={{ marginTop: '16px', color: '#6b7280' }}>Cargando menú...</p>
+            <div className="min-h-screen flex flex-col items-center justify-center bg-[#0D0F0D] text-white">
+                <div className="w-10 h-10 border-4 border-[#4ADE80]/30 border-t-[#4ADE80] rounded-full animate-spin mb-4" />
+                <p className="text-xs font-bold uppercase tracking-widest text-white/50">Cargando Experiencia...</p>
             </div>
         );
     }
 
     // Error state
-    if (storeError || productsError) {
+    if (storeError || productsError || !store) {
         return (
-            <div style={{ padding: '40px', textAlign: 'center', color: '#dc2626' }}>
-                <h2>Error</h2>
-                <p>{storeError || productsError}</p>
-            </div>
-        );
-    }
-
-    // Store not found
-    if (!store) {
-        return (
-            <div style={{ padding: '40px', textAlign: 'center' }}>
-                <h2>Restaurante no encontrado</h2>
-                <p>El link que seguiste no es válido.</p>
+            <div className="min-h-screen flex flex-col items-center justify-center bg-[#0D0F0D] text-red-500 p-8 text-center">
+                <span className="material-symbols-outlined text-4xl mb-4">error</span>
+                <h2 className="text-xl font-bold uppercase mb-2">Error de Carga</h2>
+                <p className="text-sm opacity-70">{storeError || productsError || 'Tienda no encontrada'}</p>
             </div>
         );
     }
 
     return (
-        <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
-            {/* Header */}
-            <header style={{ textAlign: 'center', marginBottom: '32px' }}>
-                {store.logo_url && (
-                    <img
-                        src={store.logo_url}
-                        alt={store.name}
-                        style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover' }}
-                    />
-                )}
-                <h1 style={{ margin: '16px 0 8px' }}>{store.name}</h1>
-                <PaymentCapabilityBadge
-                    canProcessPayments={canProcessPayments}
-                    mpNickname={store.mp_nickname}
-                />
-            </header>
+        <div
+            className={`min-h-screen transition-colors duration-500 pb-20 ${fontClass}`} // Adjusted pb-24 -> pb-20
+            style={{
+                backgroundColor: theme.backgroundColor,
+                color: theme.textColor,
+            }}
+        >
+            {/* MENU RENDERER */}
+            {/* We force 'menu' view locally, as profile/club would be separate pages or overlays */}
+            <MenuRenderer
+                theme={theme}
+                products={products as any[]}
+                storeName={store.name}
+                logoUrl={store.logo_url}
+                mpNickname={store.mp_nickname}
+                canProcessPayments={canProcessPayments}
+                onAddToCart={addToCart}
+            />
 
-            {/* Mesa (opcional) */}
-            <div style={{ marginBottom: '24px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                    Número de mesa (opcional)
-                </label>
-                <input
-                    type="text"
-                    value={tableNumber}
-                    onChange={(e) => setTableNumber(e.target.value)}
-                    placeholder="Ej: 5"
-                    style={{
-                        width: '100%',
-                        padding: '12px',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        fontSize: '16px',
-                    }}
-                />
-            </div>
-
-            {/* Productos */}
-            <section>
-                <h2 style={{ marginBottom: '16px' }}>Menú</h2>
-                <div style={{ display: 'grid', gap: '16px' }}>
-                    {(products as Product[]).map((product) => (
-                        <div
-                            key={product.id}
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                padding: '16px',
-                                border: '1px solid #e5e7eb',
-                                borderRadius: '12px',
-                            }}
-                        >
-                            <div>
-                                <h3 style={{ margin: '0 0 4px' }}>{product.name}</h3>
-                                {product.description && (
-                                    <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>
-                                        {product.description}
-                                    </p>
-                                )}
-                                <p style={{ margin: '8px 0 0', fontWeight: 'bold', color: '#059669' }}>
-                                    ${product.base_price.toLocaleString('es-AR')}
-                                </p>
-                            </div>
-                            <button
-                                onClick={() => addToCart(product)}
-                                style={{
-                                    padding: '8px 16px',
-                                    backgroundColor: '#3b82f6',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    cursor: 'pointer',
-                                }}
-                            >
-                                + Agregar
-                            </button>
-                        </div>
-                    ))}
-                </div>
-            </section>
-
-            {/* Carrito */}
+            {/* CART FLOATING BAR */}
             {cart.length > 0 && (
-                <section style={{
-                    position: 'fixed',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    backgroundColor: 'white',
-                    borderTop: '1px solid #e5e7eb',
-                    padding: '20px',
-                    boxShadow: '0 -4px 6px -1px rgba(0, 0, 0, 0.1)',
-                }}>
-                    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-                        {/* Items del carrito */}
-                        <div style={{ marginBottom: '16px', maxHeight: '200px', overflowY: 'auto' }}>
-                            {cart.map((item) => (
-                                <div
-                                    key={item.product.id}
-                                    style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        padding: '8px 0',
-                                        borderBottom: '1px solid #f3f4f6',
-                                    }}
-                                >
-                                    <span>{item.product.name}</span>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <button
-                                            onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                                            style={{
-                                                width: '28px',
-                                                height: '28px',
-                                                borderRadius: '50%',
-                                                border: '1px solid #e5e7eb',
-                                                backgroundColor: 'white',
-                                                cursor: 'pointer',
-                                            }}
-                                        >
-                                            -
-                                        </button>
-                                        <span style={{ minWidth: '24px', textAlign: 'center' }}>
-                                            {item.quantity}
-                                        </span>
-                                        <button
-                                            onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                                            style={{
-                                                width: '28px',
-                                                height: '28px',
-                                                borderRadius: '50%',
-                                                border: '1px solid #e5e7eb',
-                                                backgroundColor: 'white',
-                                                cursor: 'pointer',
-                                            }}
-                                        >
-                                            +
-                                        </button>
-                                        <span style={{ minWidth: '80px', textAlign: 'right', fontWeight: '500' }}>
-                                            ${(item.product.base_price * item.quantity).toLocaleString('es-AR')}
-                                        </span>
+                <div className="fixed bottom-16 left-0 right-0 p-4 pt-12 z-40 pointer-events-none"> {/* bottom-16 to sit above nav */}
+                    <div className="p-4 bg-gradient-to-t from-black/80 to-transparent absolute inset-0 -z-10" />
+                    <div
+                        className="max-w-2xl mx-auto backdrop-blur-xl border border-white/10 p-4 shadow-2xl animate-in slide-in-from-bottom-5 pointer-events-auto"
+                        style={{
+                            backgroundColor: `${theme.surfaceColor}E6`,
+                            borderRadius: '1.5rem'
+                        }}
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <span className="text-xs font-black uppercase tracking-widest opacity-50">Tu Pedido ({cart.reduce((a, b) => a + b.quantity, 0)})</span>
+                            <span className="text-lg font-black" style={{ color: theme.accentColor }}>${cartTotal.toLocaleString('es-AR')}</span>
+                        </div>
+
+                        <div className="flex gap-2 overflow-x-auto pb-4 mb-2 no-scrollbar">
+                            {cart.map(item => (
+                                <div key={item.product.id} className="shrink-0 flex items-center gap-3 bg-black/20 p-2 pr-4 rounded-full border border-white/5">
+                                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold">
+                                        {item.quantity}x
                                     </div>
+                                    <span className="text-xs font-bold truncate max-w-[100px]">{item.product.name}</span>
+                                    <button onClick={() => removeFromCart(item.product.id)} className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center hover:bg-red-500/20 hover:text-red-500 transition-colors">
+                                        <span className="material-symbols-outlined text-[10px]">close</span>
+                                    </button>
                                 </div>
                             ))}
                         </div>
 
-                        {/* Total y botón de pago */}
-                        <div style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            paddingTop: '16px',
-                            borderTop: '2px solid #e5e7eb',
-                        }}>
-                            <div>
-                                <span style={{ color: '#6b7280' }}>Total:</span>
-                                <span style={{ fontSize: '24px', fontWeight: 'bold', marginLeft: '8px' }}>
-                                    ${cartTotal.toLocaleString('es-AR')}
-                                </span>
-                            </div>
-
-                            {canProcessPayments ? (
-                                <button
-                                    onClick={handleCheckout}
-                                    disabled={isCreating || isProcessing}
-                                    style={{
-                                        padding: '16px 32px',
-                                        backgroundColor: '#009ee3',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '8px',
-                                        fontSize: '16px',
-                                        fontWeight: 'bold',
-                                        cursor: isCreating || isProcessing ? 'not-allowed' : 'pointer',
-                                        opacity: isCreating || isProcessing ? 0.7 : 1,
-                                    }}
-                                >
-                                    {isCreating || isProcessing ? 'Procesando...' : 'Pagar con Mercado Pago'}
-                                </button>
-                            ) : (
-                                <div style={{
-                                    padding: '12px 24px',
-                                    backgroundColor: '#fef3c7',
-                                    color: '#d97706',
-                                    borderRadius: '8px',
-                                    fontSize: '14px',
-                                }}>
-                                    💵 Pago en efectivo únicamente
-                                </div>
-                            )}
-                        </div>
+                        <button
+                            onClick={handleCheckout}
+                            disabled={isProcessing || isCreating}
+                            className="w-full py-4 rounded-xl font-black uppercase tracking-widest text-sm hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                            style={{
+                                backgroundColor: theme.accentColor,
+                                color: '#000000',
+                                boxShadow: `0 8px 20px -5px ${theme.accentColor}40`
+                            }}
+                        >
+                            {isProcessing ? 'Procesando...' : `Confirmar Pedido • $${cartTotal.toLocaleString('es-AR')}`}
+                        </button>
                     </div>
-                </section>
+                </div>
             )}
 
+            {/* BOTTOM NAVIGATION (Fixed) */}
+            <div
+                className="fixed bottom-0 left-0 right-0 h-16 border-t flex items-center justify-around px-4 z-50 backdrop-blur-md"
+                style={{ backgroundColor: `${theme.backgroundColor}F0`, borderColor: `${theme.textColor}08` }}
+            >
+                {[
+                    { id: 'menu', icon: 'restaurant_menu', label: 'MENÚ' },
+                    { id: 'club', icon: 'stars', label: 'CLUB' },
+                    { id: 'profile', icon: 'person', label: 'PERFIL' }
+                ].map(nav => {
+                    const isActive = activeTab === nav.id;
+                    return (
+                        <button
+                            key={nav.id}
+                            onClick={() => handleNavClick(nav.id as any)}
+                            className="flex flex-col items-center gap-0.5"
+                        >
+                            <span
+                                className={`material-symbols-outlined text-[24px] transition-colors ${isActive ? 'fill-icon' : ''}`}
+                                style={{ color: isActive ? theme.accentColor : `${theme.textColor}40` }}
+                            >
+                                {nav.icon}
+                            </span>
+                            <span
+                                className="text-[8px] font-black uppercase tracking-widest transition-colors"
+                                style={{ color: isActive ? theme.accentColor : `${theme.textColor}40` }}
+                            >
+                                {nav.label}
+                            </span>
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* AUTH PROMPT MODAL */}
+            <AuthPromptModal
+                isOpen={showAuthPrompt}
+                onClose={() => setShowAuthPrompt(false)}
+                onRegister={() => navigate(`/m/${storeSlug}/auth`)}
+                theme={theme}
+            />
+
             <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+                .fill-icon { font-variation-settings: 'FILL' 1; }
+            `}</style>
         </div>
     );
 }

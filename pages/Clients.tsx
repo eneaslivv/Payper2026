@@ -14,36 +14,101 @@ const Clients: React.FC = () => {
   useEffect(() => {
     if (profile?.store_id) {
       fetchClients();
+
+      // SUSCRIPCIÓN REALTIME - Nuevos clientes aparecen mágicamente 🪄
+      const channel = supabase
+        .channel('new-clients-alert')
+        .on('postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'clients', filter: `store_id=eq.${profile.store_id}` },
+          (payload) => {
+            console.log("[Clients] Nuevo cliente detectado!", payload.new);
+            const newClient = payload.new as any;
+            setClients((prev) => [{
+              id: newClient.id,
+              name: newClient.name || 'Sin Nombre',
+              email: newClient.email || 'No Email',
+              join_date: new Date(newClient.created_at).toLocaleDateString(),
+              last_visit: '-',
+              total_spent: 0,
+              orders_count: 0,
+              points_balance: newClient.loyalty_points || 0,
+              status: 'active' as const,
+              is_vip: false,
+              notes: []
+            }, ...prev]);
+          }
+        )
+        .subscribe();
+
+      return () => { supabase.removeChannel(channel); };
     }
   }, [profile?.store_id]);
 
   const fetchClients = async () => {
     try {
-      const { data, error } = await supabase
+      console.log('[Clients] Fetching clients for Store ID:', profile?.store_id);
+
+      // Get current session to verify auth
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('[Clients] Current session user:', session?.user?.email);
+
+      // 1. Fetch all clients for this store
+      const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
         .select('*')
         .eq('store_id', profile?.store_id as string);
 
-      if (error) throw error;
+      console.log('[Clients] Raw query result:', { count: clientsData?.length, error: clientsError });
 
-      // Map DB to UI Type
-      const realClients: Client[] = (data || []).map(c => ({
-        id: c.id,
-        name: c.name || 'Sin Nombre',
-        email: c.email || 'No Email',
-        join_date: new Date(c.created_at).toLocaleDateString(),
-        last_visit: '-',
-        total_spent: 0,
-        orders_count: 0,
-        points_balance: c.loyalty_points || 0,
-        status: 'active',
-        is_vip: false,
-        notes: []
-      }));
+      if (clientsError) throw clientsError;
 
+      // 2. Fetch all orders for this store to aggregate metrics
+      // Use client_id to match orders to clients
+      let ordersData: any[] = [];
+      try {
+        const { data, error: ordersError } = await supabase
+          .from('orders')
+          .select('client_id, total_amount, created_at')
+          .eq('store_id', profile?.store_id as string);
+
+        if (!ordersError && data) {
+          ordersData = data;
+        }
+      } catch (orderErr) {
+        console.warn('[Clients] Orders fetch failed (non-blocking):', orderErr);
+      }
+
+      // Map DB to UI Type with real metrics
+      const realClients: Client[] = (clientsData || []).map((c: any) => {
+        // Match orders by client_id instead of name
+        const clientOrders = ordersData.filter(o => o.client_id === c.id);
+
+        const totalSpent = clientOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
+        const ordersCount = clientOrders.length;
+        const lastOrder = clientOrders.length > 0
+          ? clientOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+          : null;
+
+        return {
+          id: c.id,
+          name: c.name || c.full_name || 'Sin Nombre',
+          email: c.email || 'No Email',
+          join_date: new Date(c.created_at).toLocaleDateString(),
+          last_visit: lastOrder ? new Date(lastOrder.created_at).toLocaleDateString() : '-',
+          total_spent: totalSpent,
+          orders_count: ordersCount,
+          points_balance: c.loyalty_points || 0,
+          wallet_balance: c.wallet_balance || 0, // Saldo de wallet
+          status: 'active', // Defaulting to active unless blocked field exists
+          is_vip: totalSpent > 1000, // Dynamic VIP status based on LTV
+          notes: []
+        };
+      });
+
+      console.log('[Clients] Mapped clients:', realClients.length);
       setClients(realClients);
     } catch (e) {
-      console.error("Error fetching clients:", e);
+      console.error("[Clients] Error fetching clients:", e);
     }
   };
 
@@ -64,7 +129,21 @@ const Clients: React.FC = () => {
   const [isLoadingWallet, setIsLoadingWallet] = useState(false);
   const [walletTransactions, setWalletTransactions] = useState<any[]>([]);
 
-  const inviteLink = "https://coffeesquad.app/join/node-alpha-001";
+  // Points Modal State
+  const [showPointsModal, setShowPointsModal] = useState(false);
+  const [pointsClient, setPointsClient] = useState<Client | null>(null);
+  const [pointsAmount, setPointsAmount] = useState('');
+  const [pointsDescription, setPointsDescription] = useState('');
+  const [isLoadingPoints, setIsLoadingPoints] = useState(false);
+
+  // Gift Modal State
+  const [showGiftModal, setShowGiftModal] = useState(false);
+  const [giftClient, setGiftClient] = useState<Client | null>(null);
+  const [giftName, setGiftName] = useState('');
+  const [giftDescription, setGiftDescription] = useState('');
+  const [isLoadingGift, setIsLoadingGift] = useState(false);
+
+  const inviteLink = "https://payper.app/join/node-alpha-001";
 
   const selectedClient = useMemo(() =>
     clients.find(c => c.id === selectedClientId),
@@ -115,18 +194,12 @@ const Clients: React.FC = () => {
     setWalletDescription('');
 
     try {
-      // Fetch current balance
-      const { data: walletData } = await supabase
-        .from('wallets' as any)
-        .select('balance')
-        .eq('user_id', client.id)
-        .single();
-
-      setWalletBalance((walletData as any)?.balance || 0);
+      // El balance ya está en clients.wallet_balance, no necesitamos query separada
+      setWalletBalance(client.wallet_balance || 0);
 
       // Fetch recent transactions
       const { data: txData } = await supabase
-        .from('wallet_transactions' as any)
+        .from('wallet_transactions')
         .select('*, staff:staff_id(full_name)')
         .eq('wallet_id', client.id)
         .order('created_at', { ascending: false })
@@ -145,8 +218,8 @@ const Clients: React.FC = () => {
 
     setIsLoadingWallet(true);
     try {
-      const { data, error } = await (supabase.rpc as any)('admin_add_balance', {
-        target_user_id: walletClient.id,
+      const { data, error } = await (supabase.rpc as any)('admin_add_client_balance', {
+        target_client_id: walletClient.id,
         amount: parseFloat(walletAmount),
         staff_id: profile?.id,
         description: walletDescription || 'Carga de saldo desde panel admin'
@@ -155,6 +228,12 @@ const Clients: React.FC = () => {
       if (error) throw error;
 
       setWalletBalance(data);
+
+      // Actualizar el cliente en la lista local
+      setClients(prev => prev.map(c =>
+        c.id === walletClient.id ? { ...c, wallet_balance: data } : c
+      ));
+      setWalletClient({ ...walletClient, wallet_balance: data });
       setWalletAmount('');
       setWalletDescription('');
 
@@ -172,6 +251,78 @@ const Clients: React.FC = () => {
       alert('Error al agregar saldo: ' + e.message);
     } finally {
       setIsLoadingWallet(false);
+    }
+  };
+
+  // Points Functions
+  const openPointsModal = (client: Client) => {
+    setPointsClient(client);
+    setShowPointsModal(true);
+    setPointsAmount('');
+    setPointsDescription('');
+  };
+
+  const handleAddPoints = async () => {
+    if (!pointsClient || !pointsAmount || parseInt(pointsAmount) <= 0) return;
+
+    setIsLoadingPoints(true);
+    try {
+      const { data, error } = await (supabase.rpc as any)('admin_add_points', {
+        target_client_id: pointsClient.id,
+        points_amount: parseInt(pointsAmount),
+        staff_id: profile?.id,
+        description: pointsDescription || 'Puntos agregados manualmente'
+      });
+
+      if (error) throw error;
+
+      // Update local state
+      setClients(prev => prev.map(c =>
+        c.id === pointsClient.id ? { ...c, points_balance: data } : c
+      ));
+
+      setShowPointsModal(false);
+      setPointsAmount('');
+      setPointsDescription('');
+    } catch (e: any) {
+      console.error('Error adding points:', e);
+      alert('Error al agregar puntos: ' + e.message);
+    } finally {
+      setIsLoadingPoints(false);
+    }
+  };
+
+  // Gift Functions
+  const openGiftModal = (client: Client) => {
+    setGiftClient(client);
+    setShowGiftModal(true);
+    setGiftName('');
+    setGiftDescription('');
+  };
+
+  const handleGrantGift = async () => {
+    if (!giftClient || !giftName) return;
+
+    setIsLoadingGift(true);
+    try {
+      const { data, error } = await (supabase.rpc as any)('admin_grant_gift', {
+        target_client_id: giftClient.id,
+        gift_name: giftName,
+        gift_description: giftDescription || 'Regalo otorgado',
+        staff_id: profile?.id
+      });
+
+      if (error) throw error;
+
+      setShowGiftModal(false);
+      setGiftName('');
+      setGiftDescription('');
+      alert('¡Regalo otorgado exitosamente!');
+    } catch (e: any) {
+      console.error('Error granting gift:', e);
+      alert('Error al otorgar regalo: ' + e.message);
+    } finally {
+      setIsLoadingGift(false);
     }
   };
 
@@ -267,6 +418,20 @@ const Clients: React.FC = () => {
                         title="Gestionar Saldo"
                       >
                         <span className="material-symbols-outlined text-sm">account_balance_wallet</span>
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openPointsModal(client); }}
+                        className="size-8 rounded-lg bg-neon/10 text-neon hover:bg-neon hover:text-black transition-all flex items-center justify-center"
+                        title="Agregar Puntos"
+                      >
+                        <span className="material-symbols-outlined text-sm">stars</span>
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openGiftModal(client); }}
+                        className="size-8 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all flex items-center justify-center"
+                        title="Otorgar Regalo"
+                      >
+                        <span className="material-symbols-outlined text-sm">redeem</span>
                       </button>
                       <button className="text-text-secondary hover:text-neon transition-colors">
                         <span className="material-symbols-outlined text-lg">arrow_forward</span>
@@ -549,6 +714,122 @@ const Clients: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* POINTS MODAL */}
+      {showPointsModal && pointsClient && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-[#141714] border border-white/10 rounded-3xl w-full max-w-md p-8 shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h3 className="text-lg font-black text-white uppercase italic tracking-tight">Agregar Puntos</h3>
+                <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">{pointsClient.name}</p>
+              </div>
+              <button onClick={() => setShowPointsModal(false)} className="size-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-colors">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="text-[9px] font-black uppercase text-white/30 tracking-widest mb-2 block">Cantidad de Puntos</label>
+                <input
+                  type="number"
+                  value={pointsAmount}
+                  onChange={(e) => setPointsAmount(e.target.value)}
+                  placeholder="100"
+                  className="w-full h-14 px-5 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-lg placeholder:text-white/20 outline-none focus:border-neon/50 transition-colors"
+                />
+              </div>
+              <div>
+                <label className="text-[9px] font-black uppercase text-white/30 tracking-widest mb-2 block">Descripción (Opcional)</label>
+                <input
+                  type="text"
+                  value={pointsDescription}
+                  onChange={(e) => setPointsDescription(e.target.value)}
+                  placeholder="Bonificación especial..."
+                  className="w-full h-12 px-5 rounded-xl bg-white/5 border border-white/10 text-white font-medium text-sm placeholder:text-white/20 outline-none focus:border-neon/50 transition-colors"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleAddPoints}
+              disabled={isLoadingPoints || !pointsAmount || parseInt(pointsAmount) <= 0}
+              className="w-full py-4 bg-neon text-black rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
+            >
+              {isLoadingPoints ? (
+                <>
+                  <div className="size-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
+                  <span>Procesando...</span>
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-lg">stars</span>
+                  <span>Confirmar +{pointsAmount || '0'} Puntos</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* GIFT MODAL */}
+      {showGiftModal && giftClient && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-[#141714] border border-white/10 rounded-3xl w-full max-w-md p-8 shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h3 className="text-lg font-black text-white uppercase italic tracking-tight">Otorgar Regalo</h3>
+                <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">{giftClient.name}</p>
+              </div>
+              <button onClick={() => setShowGiftModal(false)} className="size-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-colors">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="text-[9px] font-black uppercase text-white/30 tracking-widest mb-2 block">Nombre del Regalo</label>
+                <input
+                  type="text"
+                  value={giftName}
+                  onChange={(e) => setGiftName(e.target.value)}
+                  placeholder="Café Gratis, Postre de Cortesía..."
+                  className="w-full h-14 px-5 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-lg placeholder:text-white/20 outline-none focus:border-primary/50 transition-colors"
+                />
+              </div>
+              <div>
+                <label className="text-[9px] font-black uppercase text-white/30 tracking-widest mb-2 block">Descripción (Opcional)</label>
+                <input
+                  type="text"
+                  value={giftDescription}
+                  onChange={(e) => setGiftDescription(e.target.value)}
+                  placeholder="Por su lealtad como cliente..."
+                  className="w-full h-12 px-5 rounded-xl bg-white/5 border border-white/10 text-white font-medium text-sm placeholder:text-white/20 outline-none focus:border-primary/50 transition-colors"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleGrantGift}
+              disabled={isLoadingGift || !giftName}
+              className="w-full py-4 bg-primary text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
+            >
+              {isLoadingGift ? (
+                <>
+                  <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  <span>Procesando...</span>
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-lg">redeem</span>
+                  <span>Confirmar Regalo</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
       )}

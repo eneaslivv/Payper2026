@@ -1,16 +1,20 @@
 
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
 import { useClient } from '../../contexts/ClientContext';
 import { OrderHistoryItem } from '../../components/client/types';
 import LoyaltyLockedView from '../../components/client/LoyaltyLockedView';
+import UserIdentityQR from '../../components/client/UserIdentityQR';
 
 const ProfilePage: React.FC = () => {
-  const { user, setUser, addToCart, products } = useClient();
+  const { user, setUser, addToCart, products, store } = useClient();
   const { slug } = useParams();
   const navigate = useNavigate();
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState<Partial<typeof user>>(user || {});
+
+  const accentColor = store?.menu_theme?.accentColor || '#4ADE80';
 
   const [showTopUp, setShowTopUp] = useState(false);
   const [showQR, setShowQR] = useState<{ isOpen: boolean; data: string; title: string }>({ isOpen: false, data: '', title: '' });
@@ -38,25 +42,56 @@ const ProfilePage: React.FC = () => {
     setTimeout(() => setShowToast(false), 3000);
   };
 
-  const handleSave = () => {
-    setUser({ ...user, ...formData });
-    setEditMode(false);
-    triggerToast('Perfil actualizado');
+  const handleSave = async () => {
+    if (!user) return;
+    setIsProcessing(true);
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          name: formData.name,
+          phone: formData.phone
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      setUser({ ...user, ...formData });
+      setEditMode(false);
+      triggerToast('Perfil actualizado');
+    } catch (err: any) {
+      console.error("Error updating profile:", err);
+      triggerToast('Error: ' + err.message);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const handleConfirmTopUp = () => {
+  const handleConfirmTopUp = async () => {
     const amount = customAmount ? parseFloat(customAmount) : (selectedAmount || 0);
-    if (!amount || amount <= 0) return;
+    if (!amount || amount <= 0 || !user) return;
 
     setIsProcessing(true);
-    setTimeout(() => {
+    try {
+      const { data, error } = await (supabase.rpc as any)('admin_add_balance', {
+        p_user_id: user.id,
+        p_amount: amount,
+        p_description: 'Recarga de Saldo (Cliente)'
+      });
+
+      if (error) throw error;
+
       setUser({ ...user, balance: user.balance + amount });
       setIsProcessing(false);
       setShowTopUp(false);
       setSelectedAmount(20);
       setCustomAmount('');
       triggerToast(`$${amount.toFixed(2)} cargados con éxito`);
-    }, 1200);
+    } catch (err: any) {
+      console.error("Error topping up:", err);
+      triggerToast('Error en la recarga');
+      setIsProcessing(false);
+    }
   };
 
   const handleOrderAgain = (order: OrderHistoryItem) => {
@@ -111,7 +146,7 @@ const ProfilePage: React.FC = () => {
               className="rounded-[2.2rem] h-40 w-40 shadow-2xl ring-2 ring-white/10 bg-cover bg-center overflow-hidden transition-transform duration-700 group-hover:scale-105"
               style={{ backgroundImage: `url(${user.avatar})` }}
             ></div>
-            <div className="absolute bottom-3 right-3 bg-primary h-12 w-12 rounded-[1rem] flex items-center justify-center border-4 border-[#000] shadow-xl">
+            <div className="absolute bottom-3 right-3 h-12 w-12 rounded-[1rem] flex items-center justify-center border-4 border-[#000] shadow-xl" style={{ backgroundColor: accentColor }}>
               <span className="material-symbols-outlined text-black text-2xl font-black fill-icon">qr_code_2</span>
             </div>
           </div>
@@ -127,7 +162,8 @@ const ProfilePage: React.FC = () => {
             <span className="text-[32px] font-black text-white tracking-tighter italic leading-none">${user.balance.toFixed(2)}</span>
             <button
               onClick={() => setShowTopUp(true)}
-              className="mt-6 h-14 flex items-center justify-center bg-primary text-black px-10 rounded-full text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl border border-white/20"
+              className="mt-6 h-14 flex items-center justify-center text-black px-10 rounded-full text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl border border-white/20"
+              style={{ backgroundColor: accentColor }}
             >
               Recargar
             </button>
@@ -147,13 +183,13 @@ const ProfilePage: React.FC = () => {
         <div className="flex flex-col gap-6">
           <div className="flex items-center justify-between px-3">
             <h3 className="text-[11px] font-black uppercase tracking-[0.5em] text-white/30 italic">Información Personal</h3>
-            <button onClick={() => editMode ? handleSave() : setEditMode(true)} className="text-[10px] font-black text-primary uppercase tracking-[0.3em] active:scale-90 transition-transform">
+            <button onClick={() => editMode ? handleSave() : setEditMode(true)} className="text-[10px] font-black uppercase tracking-[0.3em] active:scale-90 transition-transform" style={{ color: accentColor }}>
               {editMode ? 'Guardar' : 'Editar'}
             </button>
           </div>
           <div className="bg-white/[0.02] rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/5 flex flex-col divide-y divide-white/5">
-            <EditableInfoItem icon="person" label="Nombre" value={formData.name || ''} editMode={editMode} onChange={(v) => setFormData({ ...formData, name: v })} />
-            <EditableInfoItem icon="call" label="Teléfono" value={formData.phone || ''} editMode={editMode} onChange={(v) => setFormData({ ...formData, phone: v })} />
+            <EditableInfoItem icon="person" label="Nombre" value={formData.name || ''} editMode={editMode} onChange={(v) => setFormData({ ...formData, name: v })} accentColor={accentColor} />
+            <EditableInfoItem icon="call" label="Teléfono" value={formData.phone || ''} editMode={editMode} onChange={(v) => setFormData({ ...formData, phone: v })} accentColor={accentColor} />
           </div>
         </div>
 
@@ -172,18 +208,19 @@ const ProfilePage: React.FC = () => {
                   </div>
                   <div className="flex flex-col items-end">
                     <span className="text-[18px] font-black text-white italic tracking-tighter leading-none">${order.total.toFixed(2)}</span>
-                    <span className="text-[7px] font-black text-primary/60 uppercase tracking-widest mt-2">Completado</span>
+                    <span className="text-[7px] font-black uppercase tracking-widest mt-2" style={{ color: accentColor }}>Completado</span>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between mt-2 pt-5 border-t border-white/[0.03]">
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[14px] text-primary fill-icon">stars</span>
+                    <span className="material-symbols-outlined text-[14px] fill-icon" style={{ color: accentColor }}>stars</span>
                     <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">+{order.pointsEarned || 0} Granos</span>
                   </div>
                   <button
                     onClick={() => handleOrderAgain(order)}
-                    className="flex items-center gap-3 h-11 px-6 rounded-full bg-white/5 border border-white/10 text-primary text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all hover:bg-primary hover:text-black hover:border-primary group/btn"
+                    className="flex items-center gap-3 h-11 px-6 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all group/btn"
+                    style={{ color: accentColor }}
                   >
                     <span>Repetir</span>
                     <span className="material-symbols-outlined text-[16px] group-hover/btn:translate-x-0.5 transition-transform">refresh</span>
@@ -213,9 +250,10 @@ const ProfilePage: React.FC = () => {
                     key={amount}
                     onClick={() => selectPreset(amount)}
                     className={`h-20 rounded-2xl font-black text-[20px] italic transition-all duration-500 border ${selectedAmount === amount
-                      ? 'bg-primary text-black border-primary'
+                      ? 'text-black'
                       : 'bg-white/[0.02] text-white/20 border-white/5'
                       }`}
+                    style={selectedAmount === amount ? { backgroundColor: accentColor, borderColor: accentColor } : {}}
                   >
                     ${amount}
                   </button>
@@ -238,9 +276,10 @@ const ProfilePage: React.FC = () => {
                 onClick={handleConfirmTopUp}
                 disabled={isProcessing || (!selectedAmount && !customAmount)}
                 className={`w-full h-24 rounded-full font-black uppercase text-[14px] tracking-[0.15em] active:scale-[0.97] transition-all duration-700 flex items-center justify-center gap-4 border border-white/20 ${(selectedAmount || customAmount)
-                  ? 'bg-primary text-black shadow-[0_25px_60px_rgba(54,226,123,0.3)]'
+                  ? 'text-black'
                   : 'bg-white/5 text-white/10 grayscale cursor-not-allowed'
                   }`}
+                style={(selectedAmount || customAmount) ? { backgroundColor: accentColor, boxShadow: `0 25px 60px -10px ${accentColor}4D` } : {}}
               >
                 {isProcessing ? (
                   <span className="material-symbols-outlined animate-spin text-[32px]">refresh</span>
@@ -260,14 +299,16 @@ const ProfilePage: React.FC = () => {
       )}
 
       {showQR.isOpen && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-8 bg-black/98 backdrop-blur-2xl animate-in fade-in duration-500" onClick={() => setShowQR({ ...showQR, isOpen: false })}>
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/98 backdrop-blur-2xl animate-in fade-in duration-500" onClick={() => setShowQR({ ...showQR, isOpen: false })}>
           <div className="w-full max-w-sm flex flex-col items-center" onClick={e => e.stopPropagation()}>
-            <div className="w-full bg-white rounded-[3rem] p-14 shadow-[0_0_100px_rgba(54,226,123,0.4)] mb-14 animate-in zoom-in-95 duration-500">
-              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${showQR.data}&color=000`} alt="ID QR" className="w-full aspect-square" />
-            </div>
-            <h3 className="text-[32px] font-black text-white uppercase tracking-tighter italic text-center mb-10 leading-none">{showQR.title}</h3>
-            <button onClick={() => setShowQR({ ...showQR, isOpen: false })} className="w-24 h-24 rounded-full bg-white/5 text-white flex items-center justify-center border border-white/10 active:scale-90 transition-transform">
-              <span className="material-symbols-outlined text-5xl">close</span>
+            {/* User Identity QR Component */}
+            <UserIdentityQR userCode={showQR.data} userName={user?.name || 'Cliente'} />
+
+            <button
+              onClick={() => setShowQR({ ...showQR, isOpen: false })}
+              className="mt-8 w-20 h-20 rounded-full bg-white/5 text-white flex items-center justify-center border border-white/10 active:scale-90 transition-transform"
+            >
+              <span className="material-symbols-outlined text-4xl">close</span>
             </button>
           </div>
         </div>
@@ -275,7 +316,7 @@ const ProfilePage: React.FC = () => {
 
       {/* Toast Notification */}
       <div className={`fixed bottom-32 left-1/2 -translate-x-1/2 z-[200] transition-all duration-700 transform ${showToast ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0 pointer-events-none'}`}>
-        <div className="bg-primary text-black px-12 py-5 rounded-full shadow-[0_20px_50px_rgba(54,226,123,0.4)] flex items-center gap-5 border border-white/30">
+        <div className="text-black px-12 py-5 rounded-full flex items-center gap-5 border border-white/30 shadow-2xl" style={{ backgroundColor: accentColor }}>
           <span className="material-symbols-outlined font-black text-2xl">check_circle</span>
           <p className="text-[12px] font-black tracking-[0.1em] uppercase">{toastMsg}</p>
         </div>
@@ -284,7 +325,7 @@ const ProfilePage: React.FC = () => {
   );
 };
 
-const EditableInfoItem: React.FC<{ icon: string, label: string, value: string, editMode: boolean, onChange: (v: string) => void }> = ({ icon, label, value, editMode, onChange }) => (
+const EditableInfoItem: React.FC<{ icon: string, label: string, value: string, editMode: boolean, onChange: (v: string) => void, accentColor: string }> = ({ icon, label, value, editMode, onChange, accentColor }) => (
   <div className="flex items-center gap-8 px-10 py-8 transition-colors">
     <div className="flex h-14 w-14 items-center justify-center rounded-[1.2rem] bg-white/5 text-slate-700 shrink-0">
       <span className="material-symbols-outlined text-[28px]">{icon}</span>
@@ -294,7 +335,8 @@ const EditableInfoItem: React.FC<{ icon: string, label: string, value: string, e
       {editMode ? (
         <input
           autoFocus
-          className="bg-primary/5 rounded-[1rem] border border-primary/20 p-3 text-lg font-black w-full text-white tracking-tight focus:ring-0 focus:border-primary/50 transition-all"
+          className="bg-white/5 rounded-[1rem] border border-white/10 p-3 text-lg font-black w-full text-white tracking-tight focus:ring-0 transition-all"
+          style={{ focusBorderColor: accentColor }}
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}

@@ -23,9 +23,11 @@ export const mapStatusToSupabase = (status: OrderStatus): string => {
 export const mapStatusFromSupabase = (status: string): OrderStatus => {
     switch (status) {
         case 'pending': return 'Pendiente';
+        case 'received': return 'Pendiente'; // Map 'received' to 'Pendiente' for Admin Board
         case 'preparing': return 'En Preparación';
         case 'ready': return 'Listo';
         case 'served': return 'Entregado';
+        case 'delivered': return 'Entregado'; // Handle both 'served' and 'delivered'
         case 'cancelled': return 'Cancelado';
         default: return 'Pendiente';
     }
@@ -35,21 +37,21 @@ export const mapOrderToSupabase = (order: Order, storeId: string): SupabaseOrder
     return {
         id: order.id,
         store_id: storeId,
-        customer_name: order.customer || 'Cliente General',
+        // customer_name column does not exist in DB
         total_amount: order.amount,
         status: mapStatusToSupabase(order.status),
     };
 };
 
-export const mapOrderItemToSupabase = (item: OrderItem, orderId: string): SupabaseOrderItem => {
+export const mapOrderItemToSupabase = (item: OrderItem, orderId: string, storeId: string): any => {
     return {
         order_id: orderId,
+        store_id: storeId,
+        tenant_id: storeId, // Using store_id as tenant_id
         product_id: item.productId || null,
-        name: item.name,
         quantity: item.quantity,
-        price_unit: item.price_unit,
-        variant_name: null,
-        addons: [],
-        note: null,
+        unit_price: item.price_unit,
+        total_price: (item.price_unit || 0) * item.quantity,
+        notes: (item as any).notes || (item as any).note || null,
     };
 };

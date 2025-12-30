@@ -4,7 +4,7 @@ import { Order, OrderStatus, Product } from '../types';
 import { useToast } from '../components/ToastSystem';
 import { MOCK_ORDERS, MOCK_PRODUCTS } from '../constants';
 import { supabase } from '../lib/supabase';
-import { mapOrderToSupabase, mapOrderItemToSupabase, mapStatusToSupabase } from '../lib/supabaseMappers';
+import { mapOrderToSupabase, mapOrderItemToSupabase, mapStatusToSupabase, mapStatusFromSupabase } from '../lib/supabaseMappers';
 import { useAuth } from './AuthContext';
 
 interface OfflineContextType {
@@ -13,10 +13,13 @@ interface OfflineContextType {
   orders: DBOrder[];
   products: Product[];
   pendingSyncCount: number;
+  pendingDeliveryOrders: string[];
   createOrder: (order: Order) => Promise<void>;
   updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
   refreshOrders: () => Promise<void>;
   triggerSync: () => Promise<void>;
+  syncOrder: (orderId: string) => Promise<void>;
+  confirmOrderDelivery: (orderId: string, staffId: string) => Promise<{ success: boolean, message: string }>;
 }
 
 const OfflineContext = createContext<OfflineContextType | undefined>(undefined);
@@ -27,6 +30,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [orders, setOrders] = useState<DBOrder[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
+  const [pendingDeliveryOrders, setPendingDeliveryOrders] = useState<string[]>([]);
   const { addToast } = useToast();
   const { profile } = useAuth();
 
@@ -46,34 +50,68 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         try {
           const { data: remoteOrders, error } = await supabase
             .from('orders')
-            .select('id, store_id, status, total_amount, created_at, payment_status, payment_method, customer_name, table_number, items:order_items(id, name, quantity, price, product_id)')
-            .eq('store_id', storeId)
-            // Optimization: Only fetch active orders for the board
-            .in('status', ['pending', 'preparing', 'ready', 'delivered'])
+            .select(`
+              id, 
+              store_id, 
+              status, 
+              total_amount, 
+              created_at, 
+              payment_status, 
+              payment_method,
+              payment_provider,
+              is_paid,
+              order_number, 
+              table_number, 
+              client:clients(name), 
+              items, 
+              order_items(
+                id, 
+                quantity, 
+                unit_price, 
+                product_id, 
+                product:inventory_items(name)
+              )
+            `)
             .order('created_at', { ascending: false })
-            .range(0, 49); // Pagination: Cap at 50 for performance
+            .range(0, 49);
+
+
+          console.log('[OfflineContext] Fetched remote orders:', remoteOrders?.length, remoteOrders, 'Error:', error);
 
           if (!error && remoteOrders) {
             // Merge strategy: Server is truth for 'synced' orders. Keep local 'pending' sync orders.
             const mappedRemote: DBOrder[] = remoteOrders.map((ro: any) => ({
               id: ro.id,
-              customer: ro.customer_name || 'Cliente',
+              customer: ro.client?.name || 'Cliente',
               table: ro.table_number,
-              status: (ro.status && ['Pendiente', 'En Preparación', 'Listo', 'Entregado', 'Cancelado'].includes(ro.status)) ? ro.status as OrderStatus : 'Pendiente',
+              status: ro.status ? mapStatusFromSupabase(ro.status) : 'Pendiente',
               type: ro.table_number ? 'dine-in' : 'takeaway',
-              paid: ro.payment_status === 'paid',
-              items: ro.items?.map((i: any) => ({
-                id: i.id || 'unknown',
-                name: i.name,
-                quantity: i.quantity,
-                price: i.price || 0,
-                price_unit: (i.price / i.quantity) || 0,
-                productId: i.product_id
-              })) || [],
-              total: ro.total_amount || 0,
+              paid: ro.is_paid || ro.payment_status === 'approved' || ro.payment_status === 'paid',
+              items: (ro.order_items && ro.order_items.length > 0)
+                ? ro.order_items.map((i: any) => ({
+                  id: i.id || 'unknown',
+                  name: i.product?.name || 'Ítem',
+                  quantity: i.quantity,
+                  price_unit: i.unit_price || 0,
+                  productId: i.product_id,
+                  inventory_items_to_deduct: []
+                }))
+                : (Array.isArray(ro.items) ? ro.items.map((i: any) => ({
+                  id: i.id || 'unknown',
+                  name: i.name || 'Ítem',
+                  quantity: i.quantity,
+                  price_unit: i.price_unit || i.price || 0,
+                  productId: i.id,
+                  inventory_items_to_deduct: []
+                })) : []),
               amount: ro.total_amount || 0,
               time: new Date(ro.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               paymentMethod: ro.payment_method,
+              payment_provider: ro.payment_provider,
+              payment_status: ro.payment_status,
+              is_paid: ro.is_paid,
+              order_number: ro.order_number,
+              created_at: ro.created_at,
               syncStatus: 'synced',
               lastModified: new Date(ro.created_at).getTime()
             }));
@@ -149,6 +187,135 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
       updatePendingCount();
     };
     loadData();
+
+    // Set up Realtime subscription for orders
+    if (storeId) {
+      console.log('[OfflineContext] Setting up Realtime for store:', storeId);
+
+      const channel = supabase
+        .channel('orders-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'orders',
+            filter: `store_id=eq.${storeId}`
+          },
+          async (payload) => {
+            console.log('[Realtime] Order change detected:', payload);
+
+            if (payload.eventType === 'INSERT') {
+              // New order arrived
+              const newOrder = payload.new as any;
+
+              // Fetch full order with items
+              const { data: fullOrder } = await supabase
+                .from('orders')
+                .select(`
+                  id, 
+                  store_id, 
+                  status, 
+                  total_amount, 
+                  created_at, 
+                  order_number, 
+                  table_number, 
+                  client:clients(name),
+                  items,
+                  order_items(
+                    id, 
+                    quantity, 
+                    unit_price, 
+                    product_id, 
+                    product:inventory_items(name)
+                  )
+                `)
+                .eq('id', newOrder.id)
+                .maybeSingle();
+
+              if (fullOrder) {
+                const orderData = fullOrder as any;
+                const mappedOrder: DBOrder = {
+                  id: orderData.id,
+                  customer: orderData.client?.name || 'Cliente',
+                  table: orderData.table_number,
+                  status: orderData.status ? mapStatusFromSupabase(orderData.status) : 'Pendiente',
+                  type: orderData.table_number ? 'dine-in' : 'takeaway',
+                  paid: orderData.payment_status === 'paid',
+                  items: (orderData.order_items && orderData.order_items.length > 0)
+                    ? orderData.order_items.map((i: any) => ({
+                      id: i.id || 'unknown',
+                      name: i.product?.name || 'Ítem',
+                      quantity: i.quantity,
+                      price_unit: i.unit_price || 0,
+                      productId: i.product_id,
+                      inventory_items_to_deduct: []
+                    }))
+                    : (Array.isArray(orderData.items) ? orderData.items.map((i: any) => ({
+                      id: i.id || 'unknown',
+                      name: i.name || 'Ítem',
+                      quantity: i.quantity,
+                      price_unit: i.price_unit || i.price || 0,
+                      productId: i.id,
+                      inventory_items_to_deduct: []
+                    })) : []),
+                  amount: orderData.total_amount || 0,
+                  time: new Date(orderData.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  paymentMethod: orderData.payment_method || 'cash',
+                  order_number: orderData.order_number,
+                  created_at: orderData.created_at,
+                  syncStatus: 'synced',
+                  lastModified: new Date(orderData.created_at).getTime()
+                };
+
+                // Add to orders at the beginning
+                setOrders(prev => [mappedOrder, ...prev]);
+
+                // Save to IndexedDB
+                await dbOps.saveOrder(mappedOrder);
+
+                // Show notification
+                addToast(
+                  `🔔 Nuevo Pedido${orderData.order_number ? ` #${orderData.order_number}` : ''}`,
+                  'info',
+                  `${orderData.table_number ? `Mesa ${orderData.table_number}` : 'Para llevar'} - $${orderData.total_amount}`
+                );
+              }
+            } else if (payload.eventType === 'UPDATE') {
+              // Order updated (e.g., status changed)
+              const updatedOrder = payload.new as any;
+
+              setOrders(prev => prev.map(order => {
+                if (order.id === updatedOrder.id) {
+                  return {
+                    ...order,
+                    status: updatedOrder.status ? mapStatusFromSupabase(updatedOrder.status) : order.status,
+                    syncStatus: 'synced'
+                  };
+                }
+                return order;
+              }));
+
+              // Update in IndexedDB
+              const existingOrder = await dbOps.getOrder(updatedOrder.id);
+              if (existingOrder) {
+                const updated = {
+                  ...existingOrder,
+                  status: updatedOrder.status ? mapStatusFromSupabase(updatedOrder.status) : existingOrder.status,
+                  syncStatus: 'synced' as const
+                };
+                await dbOps.saveOrder(updated);
+              }
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        console.log('[OfflineContext] Cleaning up Realtime subscription');
+        supabase.removeChannel(channel);
+      };
+    }
   }, [isOnline, storeId]);
 
   // Network Listeners
@@ -176,11 +343,79 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const updatePendingCount = async () => {
     const queue = await dbOps.getSyncQueue();
     setPendingSyncCount(queue.length);
+
+    // Update pending deliveries
+    const deliveryEvents = queue.filter(e => e.type === 'CONFIRM_DELIVERY');
+    const ids = deliveryEvents.map(e => (e.payload as any).orderId);
+    setPendingDeliveryOrders(ids);
   };
 
   const refreshOrders = async () => {
     const localOrders = await dbOps.getAllOrders();
     setOrders(localOrders.reverse());
+  };
+
+  const syncOrder = async (orderId: string) => {
+    if (!isOnline) return;
+
+    try {
+      const { data: remoteOrder, error } = await supabase
+        .from('orders')
+        .select('*, client:clients(name), items, order_items(id, quantity, unit_price, product_id, product:inventory_items(name))')
+        .eq('id', orderId)
+        .single();
+
+      if (error || !remoteOrder) throw error;
+
+      const mappedOrder: DBOrder = {
+        id: remoteOrder.id,
+        customer: (remoteOrder as any).client?.name || 'Cliente',
+        table: remoteOrder.table_number,
+        status: mapStatusFromSupabase(remoteOrder.status),
+        type: remoteOrder.table_number ? 'dine-in' : 'takeaway',
+        paid: remoteOrder.payment_status === 'paid',
+        items: (remoteOrder.order_items && remoteOrder.order_items.length > 0)
+          ? remoteOrder.order_items.map((i: any) => ({
+            id: i.id || 'unknown',
+            name: i.product?.name || 'Ítem',
+            quantity: i.quantity,
+            price_unit: i.unit_price || 0,
+            productId: i.product_id,
+            inventory_items_to_deduct: []
+          }))
+          : (Array.isArray(remoteOrder.items) ? (remoteOrder.items as any[]).map((i: any) => ({
+            id: i.id || 'unknown',
+            name: i.name || 'Ítem',
+            quantity: i.quantity,
+            price_unit: i.price_unit || i.price || 0,
+            productId: i.id,
+            inventory_items_to_deduct: []
+          })) : []),
+        amount: remoteOrder.total_amount || 0,
+        time: new Date(remoteOrder.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        paymentMethod: remoteOrder.payment_method || 'cash',
+        order_number: remoteOrder.order_number,
+        created_at: remoteOrder.created_at,
+        syncStatus: 'synced',
+        lastModified: new Date(remoteOrder.created_at).getTime()
+      };
+
+      await dbOps.saveOrder(mappedOrder);
+
+      setOrders(prev => {
+        const exists = prev.findIndex(o => o.id === mappedOrder.id);
+        if (exists >= 0) {
+          const newArr = [...prev];
+          newArr[exists] = mappedOrder;
+          return newArr;
+        }
+        return [mappedOrder, ...prev];
+      });
+
+      console.log(`[OfflineContext] Synced order #${orderId} from remote`);
+    } catch (err) {
+      console.error(`[OfflineContext] Failed to sync order ${orderId}`, err);
+    }
   };
 
   // --- ACTIONS ---
@@ -204,7 +439,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         // Sync Items
         if (newOrder.items.length > 0) {
-          const itemsPayload = newOrder.items.map(item => mapOrderItemToSupabase(item, newOrder.id));
+          const itemsPayload = newOrder.items.map(item => mapOrderItemToSupabase(item, newOrder.id, storeId || ''));
           // Filter out items without productId if necessary, or let it fail
           const validItems = itemsPayload.filter(i => i.product_id);
           if (validItems.length > 0) {
@@ -295,6 +530,66 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // --- SYNC ENGINE ---
 
+  const confirmOrderDelivery = async (orderId: string, staffId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return { success: false, message: 'Pedido no encontrado' };
+
+    // Optimistic Update
+    const updatedOrder: DBOrder = {
+      ...order,
+      status: 'Entregado',
+      syncStatus: 'pending',
+      lastModified: Date.now()
+    };
+    await dbOps.saveOrder(updatedOrder);
+    setOrders(prev => prev.map(o => o.id === orderId ? updatedOrder : o));
+
+    if (isOnline) {
+      try {
+        // @ts-ignore
+        const { data, error } = await supabase.rpc('confirm_order_delivery', {
+          p_order_id: orderId,
+          p_staff_id: staffId
+        });
+
+        if (error) throw error;
+
+        const result = data as { success: boolean, message: string };
+        if (result.success) {
+          const syncedOrder: DBOrder = { ...updatedOrder, syncStatus: 'synced' };
+          await dbOps.saveOrder(syncedOrder);
+          setOrders(prev => prev.map(o => o.id === orderId ? syncedOrder : o));
+        } else {
+          // Revert if domain logic rejected it
+          await dbOps.saveOrder(order);
+          setOrders(prev => prev.map(o => o.id === orderId ? order : o));
+        }
+        return result;
+      } catch (err) {
+        console.error("Delivery confirm failed", err);
+        const event: SyncEvent = {
+          id: `evt-del-${Date.now()}`,
+          type: 'CONFIRM_DELIVERY',
+          payload: { orderId, staffId, storeId }, // Include storeId in payload
+          timestamp: Date.now()
+        };
+        await dbOps.addToSyncQueue(event);
+        updatePendingCount();
+        return { success: true, message: 'Cambio guardado localmente (se sincronizará al volver online)' };
+      }
+    } else {
+      const event: SyncEvent = {
+        id: `evt-del-${Date.now()}`,
+        type: 'CONFIRM_DELIVERY',
+        payload: { orderId, staffId, storeId }, // Include storeId in payload
+        timestamp: Date.now()
+      };
+      await dbOps.addToSyncQueue(event);
+      updatePendingCount();
+      return { success: true, message: 'Guardado offline' };
+    }
+  };
+
   const triggerSync = useCallback(async () => {
     if (!navigator.onLine) return;
 
@@ -316,7 +611,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
           // Items
           if (order.items.length > 0) {
-            const itemsPayload = order.items.map(item => mapOrderItemToSupabase(item, order.id));
+            const itemsPayload = order.items.map(item => mapOrderItemToSupabase(item, order.id, storeId || ''));
             const validItems = itemsPayload.filter(i => i.product_id);
             if (validItems.length > 0) {
               // Ignore duplicates just in case
@@ -341,6 +636,20 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
           const currentOrders = await dbOps.getAllOrders();
           const order = currentOrders.find(o => o.id === orderId);
           if (order) await dbOps.saveOrder({ ...order, syncStatus: 'synced' });
+        } else if (event.type === 'CONFIRM_DELIVERY') {
+          const { orderId, staffId, storeId: eventStoreId } = event.payload;
+          // @ts-ignore
+          const { data, error } = await supabase.rpc('confirm_order_delivery', {
+            p_order_id: orderId,
+            p_staff_id: staffId
+          });
+          if (error) throw error;
+          const result = data as { success: boolean, message: string };
+          if (result.success) {
+            const currentOrders = await dbOps.getAllOrders();
+            const order = currentOrders.find(o => o.id === orderId);
+            if (order) await dbOps.saveOrder({ ...order, syncStatus: 'synced' });
+          }
         }
 
         // Remove from queue
@@ -367,10 +676,13 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
       orders,
       products,
       pendingSyncCount,
+      pendingDeliveryOrders,
       createOrder,
       updateOrderStatus,
       refreshOrders,
-      triggerSync
+      triggerSync,
+      syncOrder,
+      confirmOrderDelivery
     }}>
       {children}
     </OfflineContext.Provider>

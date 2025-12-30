@@ -3,6 +3,7 @@ import { Table, OrderStatus, TableStatus, AppMode } from '../types';
 import { ORDER_STATUS_COLORS, STATUS_COLORS } from '../constants';
 import { X, Plus, MoveHorizontal, CreditCard, CheckCircle2, Clock, BarChart3, Receipt, History as HistoryIcon, ArrowLeft, Banknote, QrCode, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
+import { getAppUrl } from '../../../lib/urlUtils';
 import { useAuth } from '../../../contexts/AuthContext';
 import QRCode from 'react-qr-code';
 import { useToast } from '../../../components/ToastSystem';
@@ -236,7 +237,7 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
               <div className="bg-white p-6 rounded-3xl border-4 border-[#36e27b] shadow-[0_0_50px_rgba(54,226,123,0.3)]">
                 {qrHash && (
                   <QRCode
-                    value={`https://coffeesquad.app/menu?t=${qrHash}`}
+                    value={`${getAppUrl()}/menu?t=${qrHash}`}
                     size={200}
                     viewBox={`0 0 256 256`}
                   />
@@ -246,13 +247,13 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
               <div className="space-y-2">
                 <p className="text-zinc-500 text-[9px] font-black uppercase tracking-[0.2em]">Enlace Permanente</p>
                 <div className="p-3 bg-zinc-900 rounded-xl border border-zinc-800 text-[10px] font-mono text-zinc-400 break-all max-w-[280px]">
-                  https://coffeesquad.app/menu?t={qrHash}
+                  {getAppUrl()}/menu?t={qrHash}
                 </div>
               </div>
 
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(`https://coffeesquad.app/menu?t=${qrHash}`);
+                  navigator.clipboard.writeText(`${getAppUrl()}/menu?t=${qrHash}`);
                   addToast('Enlace Copiado', 'success');
                 }}
                 className="px-6 py-3 bg-[#36e27b] text-black font-black text-[10px] uppercase tracking-widest rounded-xl hover:scale-105 transition-all shadow-lg shadow-[#36e27b]/20"

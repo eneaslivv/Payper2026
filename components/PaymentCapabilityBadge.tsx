@@ -41,27 +41,5 @@ export function PaymentCapabilityBadge({
         );
     }
 
-    return (
-        <div
-            className={`payment-badge ${className}`}
-            style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
-                backgroundColor: '#fef3c7',
-                color: '#d97706',
-                borderRadius: '20px',
-                fontSize: '12px',
-                fontWeight: '500',
-            }}
-        >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            <span>Solo efectivo</span>
-        </div>
-    );
+    if (!canProcessPayments) return null;
 }
