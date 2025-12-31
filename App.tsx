@@ -669,6 +669,31 @@ const MainRouter: React.FC = () => {
       </Router>
     );
   }
+  // --- SEGURIDAD: CLIENTES NO PUEDEN ENTRAR AL ADMIN ---
+  if (profile?.role === 'customer') {
+    const lastSlug = localStorage.getItem('last_store_slug');
+    if (lastSlug) {
+      console.log('🔒 Security: Client attempting to access Admin. Redirecting to:', lastSlug);
+      return <Navigate to={`/m/${lastSlug}`} replace />;
+    }
+    // Fallback if we don't know where they belong
+    return (
+      <div className="flex flex-col h-screen w-full items-center justify-center bg-black text-white p-6 text-center">
+        <span className="material-symbols-outlined text-6xl text-red-500 mb-4">lock</span>
+        <h1 className="text-xl font-bold mb-2">Acceso Restringido</h1>
+        <p className="text-zinc-500 text-sm mb-6 max-w-xs mx-auto">Esta área es exclusiva para el equipo operativo. Serás redirigido.</p>
+        <button
+          onClick={() => {
+            signOut();
+            window.location.href = '#/';
+          }}
+          className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-widest rounded-lg transition-all"
+        >
+          Ir al Inicio
+        </button>
+      </div>
+    );
+  }
 
   // --- ENTORNO OPERATIVO (LOCAL) ---
   return (

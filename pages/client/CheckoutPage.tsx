@@ -111,13 +111,13 @@ const CheckoutPage: React.FC = () => {
 
         // 2.1 Create order in PENDING state first
         const { data: pendingOrder, error: orderError } = await supabase
-          .from('orders')
+          .from('orders' as any)
           .insert(orderPayload)
           .select()
           .single();
 
         if (orderError) throw orderError;
-        const orderId = pendingOrder.id;
+        const orderId = (pendingOrder as any).id;
 
         // 2.2 Insert order items
         await insertOrderItems(orderId);
@@ -150,7 +150,7 @@ const CheckoutPage: React.FC = () => {
           if (selectedRewardId) {
             await (supabase.rpc as any)('rollback_redemption', { p_order_id: orderId });
           }
-          await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
+          await supabase.from('orders' as any).update({ status: 'cancelled' }).eq('id', orderId);
           addToast(walletResult?.error || 'Error al procesar pago con wallet', 'error');
           setIsProcessingPayment(false);
           return;
@@ -158,7 +158,7 @@ const CheckoutPage: React.FC = () => {
 
         // 2.5 Update order to APPROVED (this triggers the loyalty earn)
         const { error: updateError } = await supabase
-          .from('orders')
+          .from('orders' as any)
           .update({ is_paid: true, payment_status: 'approved' })
           .eq('id', orderId);
 
@@ -174,7 +174,7 @@ const CheckoutPage: React.FC = () => {
       if (paymentMethod === 'mercadopago') {
         // 3.1 Create order in pending state
         const { data: order, error: orderError } = await supabase
-          .from('orders')
+          .from('orders' as any)
           .insert(orderPayload)
           .select()
           .single();
@@ -182,24 +182,24 @@ const CheckoutPage: React.FC = () => {
         if (orderError) throw orderError;
 
         // 3.2 Insert order items
-        await insertOrderItems(order.id);
+        await insertOrderItems((order as any).id);
 
         // 3.3 Invoke create-checkout Edge Function
         const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout', {
           body: {
             store_id: store.id,
-            order_id: order.id,
+            order_id: (order as any).id,
             items: cart.map(item => ({
               title: item.name,
               unit_price: item.price,
               quantity: item.quantity
             })),
             back_urls: {
-              success: `${window.location.origin}/m/${slug}/order/${order.id}`,
-              failure: `${window.location.origin}/m/${slug}/checkout`,
-              pending: `${window.location.origin}/m/${slug}/order/${order.id}`
+              success: `${window.location.origin}/#/m/${slug}/order/${(order as any).id}`,
+              failure: `${window.location.origin}/#/m/${slug}/checkout`,
+              pending: `${window.location.origin}/#/m/${slug}/order/${(order as any).id}`
             },
-            external_reference: order.id
+            external_reference: (order as any).id
           }
         });
 
@@ -251,7 +251,7 @@ const CheckoutPage: React.FC = () => {
   const insertOrderItems = async (orderId: string) => {
     for (const item of cart) {
       const { data: orderItemData, error: itemsError } = await supabase
-        .from('order_items')
+        .from('order_items' as any)
         .insert({
           order_id: orderId,
           store_id: store!.id,
@@ -271,11 +271,11 @@ const CheckoutPage: React.FC = () => {
         continue;
       }
 
-      if (item.addon_ids && item.addon_ids.length > 0 && orderItemData?.id) {
+      if (item.addon_ids && item.addon_ids.length > 0 && (orderItemData as any)?.id) {
         const addonInserts = item.addon_ids.map(addonId => {
           const addonMeta = item.addons?.find(a => a.id === addonId);
           return {
-            order_item_id: orderItemData.id,
+            order_item_id: (orderItemData as any).id,
             addon_id: addonId,
             tenant_id: store!.id,
             price: addonMeta?.price || 0
