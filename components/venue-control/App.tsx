@@ -17,36 +17,61 @@ const App: React.FC = () => {
   const { addToast } = useToast();
 
   const [mode, setMode] = useState<AppMode>(AppMode.VIEW);
-  const [zones, setZones] = useState<Zone[]>(INITIAL_ZONES);
-  const [activeZoneId, setActiveZoneId] = useState<string>(INITIAL_ZONES[0].id);
+  const [zones, setZones] = useState<Zone[]>([]);
+  const [activeZoneId, setActiveZoneId] = useState<string>('');
 
   const [tables, setTables] = useState<Table[]>([]);
   const [bars, setBars] = useState<Bar[]>([]);
   const [qrs, setQrs] = useState<QR[]>([]);
   const [notifications, setNotifications] = useState<VenueNotification[]>([]);
 
+  // Selection States
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [selectedBarId, setSelectedBarId] = useState<string | null>(null);
   const [selectedQrId, setSelectedQrId] = useState<string | null>(null);
   const [selectedQrTarget, setSelectedQrTarget] = useState<{ id: string, name: string } | null>(null);
 
   const [zoom, setZoom] = useState(1);
-  const [searchTerm, setSearchTerm] = useState('');
   const [showAddMenu, setShowAddMenu] = useState(false);
 
-  // Estados para creación/edición de zonas
+  // Zone Management States
   const [isAddingZone, setIsAddingZone] = useState(false);
   const [isEditingZone, setIsEditingZone] = useState(false);
   const [zoneInputName, setZoneInputName] = useState('');
 
-  // --- SUPABASE INTEGRATION ---
+  // --- DATA FETCHING ---
+
+  const fetchZones = useCallback(async () => {
+    if (!profile?.store_id) return;
+    try {
+      const { data, error } = await supabase
+        .from('venue_zones' as any)
+        .select('*')
+        .eq('store_id', profile.store_id)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      if (data) {
+        setZones(data as unknown as Zone[]);
+        // Set active zone if not set or invalid
+        if (!activeZoneId || !(data as any[]).find(z => z.id === activeZoneId)) {
+          if (data.length > 0) setActiveZoneId(data[0].id);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching zones:', err);
+      // Optional: addToast('Error loading zones', 'error');
+    }
+  }, [profile?.store_id, activeZoneId]);
 
   const fetchNodes = useCallback(async () => {
     if (!profile?.store_id) return;
 
     try {
+      // Fetch from the VIEW active_venue_states
       const { data, error } = await supabase
-        .from('venue_nodes' as any)
+        .from('active_venue_states' as any)
         .select('*')
         .eq('store_id', profile.store_id);
 
@@ -58,41 +83,66 @@ const App: React.FC = () => {
 
       data?.forEach((node: any) => {
         const position = { x: node.position_x, y: node.position_y };
+        const metadata = node.metadata || {};
+        const size = { w: metadata.w || 80, h: metadata.h || 80 };
+        const rotation = node.rotation || metadata.rotation || 0;
+        const shape = metadata.shape || 'circle';
+
         if (node.type === 'table') {
+          // Check for QR Mask
+          if (metadata.subtype === 'qr') {
+            loadedQrs.push({
+              id: node.node_id,
+              name: node.label || 'QR SPOT',
+              zoneId: node.zone_id || '',
+              type: 'ZONE',
+              position,
+              isActive: true,
+              scanCount: 0,
+              totalGeneratedRevenue: 0
+            });
+            return; // Skip adding to tables
+          }
+
           loadedTables.push({
-            id: node.id,
+            id: node.node_id,
             name: node.label,
-            zoneId: activeZoneId, // Default zone as DB doesn't have it yet
+            zoneId: node.zone_id || '',
             capacity: 4,
-            status: node.status || TableStatus.FREE,
+            status: node.derived_status as TableStatus,
+            locationId: node.location_id,
             position,
-            size: { w: 80, h: 80 },
-            rotation: 0,
-            shape: 'circle',
-            totalAmount: 0,
+            size,
+            rotation,
+            shape,
+            totalAmount: node.current_total || 0,
             orders: [],
-            lastUpdate: new Date()
+            activeOrderId: node.active_order_id,
+            openedAt: node.order_start_time ? new Date(node.order_start_time) : undefined,
+            lastUpdate: new Date(node.updated_at || new Date())
           });
         } else if (node.type === 'bar') {
+          const barSize = { w: metadata.w || 200, h: metadata.h || 80 };
           loadedBars.push({
-            id: node.id,
+            id: node.node_id,
             name: node.label,
-            zoneId: activeZoneId,
+            zoneId: node.zone_id || '',
             location: '',
+            locationId: node.location_id,
             type: 'MAIN',
             isActive: true,
             position,
-            size: { w: 200, h: 80 },
-            rotation: 0,
+            size: barSize,
+            rotation,
             stock: [],
             qrIds: [],
             metrics: { revenue: 0, avgPrepTime: 0, activeOrders: 0, totalScans: 0 }
           });
         } else if (node.type === 'qr') {
           loadedQrs.push({
-            id: node.id,
+            id: node.node_id,
             name: node.label || 'QR SPOT',
-            zoneId: activeZoneId,
+            zoneId: node.zone_id || '',
             type: 'ZONE',
             position,
             isActive: true,
@@ -109,148 +159,157 @@ const App: React.FC = () => {
       console.error('Error fetching nodes:', err);
       addToast('Error al cargar mapa', 'error');
     }
-  }, [profile?.store_id, activeZoneId]); // Re-fetch only if store or zone changes (conceptually)
+  }, [profile?.store_id]);
 
+  // Fetch Notifications
+  const fetchNotifications = useCallback(async () => {
+    if (!profile?.store_id) return;
+    try {
+      const { data } = await supabase
+        .from('venue_notifications' as any)
+        .select('*')
+        .eq('store_id', profile.store_id)
+        .eq('is_read', false)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (data) {
+        // Map notifications to tables
+        setNotifications(data.map((n: any) => ({
+          id: n.id,
+          type: n.type as any,
+          tableId: n.node_id,
+          timestamp: new Date(n.created_at),
+          message: n.message,
+          isRead: n.is_read
+        })));
+      }
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+    }
+  }, [profile?.store_id]);
+
+  // Initial Load
   useEffect(() => {
-    fetchNodes();
+    if (profile?.store_id) {
+      fetchZones();
+      fetchNodes();
+      fetchNotifications();
+    }
+  }, [profile?.store_id, fetchZones, fetchNodes]);
 
+  // Realtime Subscriptions
+  useEffect(() => {
     if (!profile?.store_id) return;
 
-    // Realtime Subscription
-    const channel = supabase
-      .channel('venue_updates')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'venue_nodes', filter: `store_id=eq.${profile.store_id}` },
-        (payload) => {
-          fetchNodes(); // Simple refresh strategy for now
-        }
-      )
+    const channel = supabase.channel('venue_updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'venue_nodes', filter: `store_id=eq.${profile.store_id}` }, () => fetchNodes())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `store_id=eq.${profile.store_id}` }, () => fetchNodes())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'venue_zones', filter: `store_id=eq.${profile.store_id}` }, () => fetchZones())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'venue_notifications', filter: `store_id=eq.${profile.store_id}` }, () => fetchNotifications())
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [profile?.store_id, fetchNodes]);
+    return () => { supabase.removeChannel(channel); };
+  }, [profile?.store_id, fetchNodes, fetchZones, fetchNotifications]);
 
 
-  // --- ACTIONS (DB Connected) ---
-
-  // --- ZONE ACTIONS (Local State) ---
-  const handleAddZone = () => {
-    if (!zoneInputName.trim()) return;
-    const newZone: Zone = {
-      id: `z-${Date.now()}`,
-      name: zoneInputName.trim(),
-      description: ''
-    };
-    setZones(prev => [...prev, newZone]);
-    setActiveZoneId(newZone.id);
-    setZoneInputName('');
-    setIsAddingZone(false);
-    addToast('Sala creada', 'success');
+  // --- ZONE ACTIONS (DB) ---
+  const handleAddZone = async () => {
+    if (!zoneInputName.trim() || !profile?.store_id) return;
+    try {
+      const { error } = await supabase.from('venue_zones' as any).insert({
+        store_id: profile.store_id,
+        name: zoneInputName.trim()
+      });
+      if (error) throw error;
+      addToast('Sala creada', 'success');
+      setZoneInputName('');
+      setIsAddingZone(false);
+      fetchZones(); // Force refresh
+    } catch (e) {
+      console.error(e);
+      addToast('Error al crear sala', 'error');
+    }
   };
 
-  const handleUpdateZone = () => {
+  const handleUpdateZone = async () => {
     if (!zoneInputName.trim() || !activeZoneId) return;
-    setZones(prev => prev.map(z => z.id === activeZoneId ? { ...z, name: zoneInputName.trim() } : z));
-    setZoneInputName('');
-    setIsEditingZone(false);
-    addToast('Sala actualizada', 'success');
+    try {
+      const { error } = await supabase.from('venue_zones' as any).update({ name: zoneInputName.trim() }).eq('id', activeZoneId);
+      if (error) throw error;
+      addToast('Sala actualizada', 'success');
+      setZoneInputName('');
+      setIsEditingZone(false);
+      fetchZones(); // Force refresh
+    } catch (e) {
+      console.error(e);
+      addToast('Error al actualizar', 'error');
+    }
   };
 
-  const handleDeleteZone = (zoneId: string) => {
-    if (!zones.find(z => z.id === zoneId)) return;
-    if (confirm('¿Eliminar sala?')) {
-      const newZones = zones.filter(z => z.id !== zoneId);
-      setZones(newZones);
-      if (newZones.length > 0) setActiveZoneId(newZones[0].id);
-      else setActiveZoneId('');
+  const handleDeleteZone = async (zoneId: string) => {
+    if (!window.confirm('¿Eliminar sala?')) return;
+    try {
+      const { error } = await supabase.from('venue_zones' as any).delete().eq('id', zoneId);
+      if (error) throw error;
       addToast('Sala eliminada', 'info');
+      fetchZones(); // Force refresh
+    } catch (e) {
+      console.error(e);
+      addToast('Error al eliminar sala', 'error');
     }
   };
 
+  // --- NODE ACTIONS ---
   const addNode = async (type: 'table' | 'bar' | 'qr') => {
-    if (!profile?.store_id) return;
-
-    // Generic insert for table, bar, AND qr
-    try {
-      const { error } = await supabase
-        .from('venue_nodes' as any)
-        .insert({
-          store_id: profile.store_id,
-          label: type === 'table' ? `M-${tables.length + 1}` : type === 'bar' ? `BAR ${bars.length + 1}` : `QR-${qrs.length + 1}`,
-          type: type,
-          position_x: 400,
-          position_y: 300,
-          status: 'free'
-        });
-
-      if (error) throw error;
-      addToast(`${type === 'table' ? 'Mesa' : type === 'bar' ? 'Barra' : 'Punto QR'} creada`, 'success');
-    } catch (err: any) {
-      console.error('Error creating node:', err);
-      addToast('Error al crear elemento', 'error');
-    }
-    setShowAddMenu(false);
-  };
-
-
-  const handleUpdateTableStatus = useCallback(async (id: string, status: TableStatus) => {
-    if (!profile?.store_id) return;
-
-    // Optimistic Update
-    setTables(prev => prev.map(t => t.id === id ? { ...t, status } : t));
-
-    try {
-      const { error } = await supabase
-        .from('venue_nodes' as any)
-        .update({ status })
-        .eq('id', id)
-        .eq('store_id', profile.store_id);
-
-      if (error) throw error;
-
-      // Toast feedback
-      if (status === TableStatus.OCCUPIED) addToast('Mesa Abierta', 'success', 'Operación iniciada');
-      else if (status === TableStatus.FREE) addToast('Mesa Liberada', 'default', 'Lista para clientes');
-
-    } catch (err: any) {
-      console.error('Status Update Error:', err);
-      addToast('Error de Actualización', 'error', 'No se pudo cambiar el estado');
-      fetchNodes(); // Revert on error
-    }
-  }, [profile?.store_id, addToast, fetchNodes]);
-
-  const updateNodeProperty = useCallback(async (id: string, type: 'table' | 'bar', property: string, value: any) => {
-    if (!profile?.store_id) return;
-
-    // INTERCEPT QR MODAL TRIGGER
-    if (property === 'qr_modal') {
-      const target = type === 'table' ? tables.find(t => t.id === id) : bars.find(b => b.id === id);
-      if (target) setSelectedQrTarget({ id: target.id, name: target.name });
+    if (!profile?.store_id || !activeZoneId) {
+      if (!activeZoneId) addToast('Selecciona una sala primero', 'error');
       return;
     }
 
-    // Optimistic update
-    if (type === 'table') {
-      setTables(prev => prev.map(t => t.id === id ? { ...t, [property]: value } : t));
-    } else {
-      setBars(prev => prev.map(b => b.id === id ? { ...b, [property]: value } : b));
-    }
-
     try {
-      // Just a stub for now
-    } catch (e) {
-      console.error(e);
-      fetchNodes();
+      // MASK STRATEGY: Treat 'qr' as 'table' in DB to avoid enum errors, but distinguish via metadata
+      const dbType = type === 'qr' ? 'table' : type;
+
+      const defaultMetadata = type === 'table'
+        ? { shape: 'square', w: 80, h: 80 }
+        : type === 'bar'
+          ? { w: 120, h: 60 }
+          : { w: 50, h: 50, subtype: 'qr', shape: 'qr' }; // QR Metadata
+
+      const payload = {
+        store_id: profile.store_id,
+        label: type === 'table' ? `M-${tables.length + 1}` : type === 'bar' ? `BAR ${bars.length + 1}` : `QR-${qrs.length + 1}`,
+        type: dbType,
+        position_x: 400,
+        position_y: 300,
+        status: 'free',
+        zone_id: activeZoneId,
+        metadata: defaultMetadata
+      };
+
+      const { error } = await supabase
+        .from('venue_nodes' as any)
+        .insert(payload);
+
+      if (error) {
+        console.error('Supabase Insert Error:', error);
+        throw error;
+      }
+
+      addToast(`${type === 'table' ? 'Mesa' : type === 'bar' ? 'Barra' : 'Punto QR'} creada`, 'success');
+      setShowAddMenu(false);
+      fetchNodes(); // Force refresh just in case
+    } catch (err: any) {
+      console.error('Error creating node:', err);
+      // Detailed toast if possible
+      addToast(`Error: ${err.message || 'No se pudo crear'}`, 'error');
     }
-  }, [profile?.store_id, tables, bars, fetchNodes]);
+  };
 
   const updatePosition = useCallback(async (id: string, position: Position, type: 'table' | 'bar' | 'qr') => {
     if (!profile?.store_id) return;
-
-    // Optimistic Update
+    // Optimistic
     if (type === 'table') setTables(prev => prev.map(t => t.id === id ? { ...t, position } : t));
     else if (type === 'bar') setBars(prev => prev.map(b => b.id === id ? { ...b, position } : b));
     else if (type === 'qr') setQrs(prev => prev.map(q => q.id === id ? { ...q, position } : q));
@@ -259,31 +318,63 @@ const App: React.FC = () => {
       await supabase
         .from('venue_nodes' as any)
         .update({ position_x: Math.round(position.x), position_y: Math.round(position.y) })
-        .eq('id', id)
-        .eq('store_id', profile.store_id);
+        .eq('id', id);
     } catch (err) {
-      console.error('Error updating position:', err);
+      console.error('Position update error:', err);
     }
   }, [profile?.store_id]);
 
+  const updateNodeProperty = useCallback(async (id: string, type: 'table' | 'bar', property: string, value: any) => {
+    if (!profile?.store_id) return;
+    if (property === 'qr_modal') {
+      const target = type === 'table' ? tables.find(t => t.id === id) : bars.find(b => b.id === id);
+      if (target) setSelectedQrTarget({ id: target.id, name: target.name });
+      return;
+    }
+    // Optimistic update
+    if (type === 'table') setTables(prev => prev.map(t => t.id === id ? { ...t, [property]: value } : t));
+    else setBars(prev => prev.map(b => b.id === id ? { ...b, [property]: value } : b));
+
+    // Persist to database based on property type
+    try {
+      if (property === 'name') {
+        await supabase.from('venue_nodes' as any).update({ label: value }).eq('id', id);
+      } else if (property === 'rotation') {
+        await supabase.from('venue_nodes' as any).update({ rotation: value }).eq('id', id);
+      } else if (property === 'size') {
+        // Size is stored in metadata JSONB
+        const node = type === 'table' ? tables.find(t => t.id === id) : bars.find(b => b.id === id);
+        const currentMeta = (node as any)?.metadata || {};
+        await supabase.from('venue_nodes' as any).update({
+          metadata: { ...currentMeta, w: value.w, h: value.h }
+        }).eq('id', id);
+      } else if (property === 'shape') {
+        // Shape is stored in metadata
+        const node = tables.find(t => t.id === id);
+        const currentMeta = (node as any)?.metadata || {};
+        await supabase.from('venue_nodes' as any).update({
+          metadata: { ...currentMeta, shape: value }
+        }).eq('id', id);
+      }
+    } catch (err) {
+      console.error('Property update error:', err);
+    }
+  }, [profile?.store_id, tables, bars]);
+
   const deleteNode = async (id: string, type: 'table' | 'bar' | 'qr') => {
     if (!profile?.store_id) return;
+
+    // Role check: Only owners and admins can delete nodes
+    const canManageVenue = profile.role === 'store_owner' || profile.role === 'super_admin' || (profile as any).is_admin;
+    if (!canManageVenue) {
+      addToast('No tienes permiso', 'error', 'Solo el dueño puede eliminar elementos del mapa');
+      return;
+    }
+
     if (!window.confirm('¿Eliminar este elemento?')) return;
-
     try {
-      const { error } = await supabase
-        .from('venue_nodes' as any)
-        .delete()
-        .eq('id', id)
-        .eq('store_id', profile.store_id);
-
+      const { error } = await supabase.from('venue_nodes' as any).delete().eq('id', id);
       if (error) throw error;
-
-      // Optimistic update
-      if (type === 'table') setTables(prev => prev.filter(t => t.id !== id));
-      else if (type === 'bar') setBars(prev => prev.filter(b => b.id !== id));
-      else if (type === 'qr') setQrs(prev => prev.filter(q => q.id !== id));
-
       addToast('Elemento eliminado', 'info');
       clearSelections();
     } catch (err) {
@@ -292,28 +383,23 @@ const App: React.FC = () => {
     }
   };
 
-  const updateTableStatus = useCallback(async (id: string, newStatus: TableStatus) => {
+  // Status updates are now mostly driven by Orders, but "Clean" or "Closed" might be explicit
+  // For "Occupied", we rely on open_table RPC in TableDetail (to be implemented)
+  // For now, this generic updater can stick around for manual overrides if needed, but safe creation should be preferred.
+  const handleUpdateTableStatus = useCallback(async (id: string, status: TableStatus) => {
+    // This legacy function might need to be smarter. 
+    // If changing to OCCUPIED, should normally create an order. 
+    // For now, we update node status directly, but Sync Trigger might override it if no order exists?
+    // Actually trigger syncs FROM order TO node. Manual node update is allowed.
     try {
-      await supabase.from('venue_nodes' as any).update({ status: newStatus }).eq('id', id);
-    } catch (err) {
-      console.error('Error updating status:', err);
-    }
+      await supabase.from('venue_nodes' as any).update({ status }).eq('id', id);
+    } catch (e) { console.error(e); }
   }, []);
 
-  // --- SELECTION HANDLERS ---
-  const handleSelectTable = (id: string | null) => {
-    setSelectedTableId(id); setSelectedBarId(null); setSelectedQrId(null);
-  };
-  const handleSelectBar = (id: string | null) => {
-    setSelectedBarId(id); setSelectedTableId(null); setSelectedQrId(null);
-  };
-  const handleSelectQr = (id: string | null) => {
-    setSelectedQrId(id); setSelectedTableId(null); setSelectedBarId(null);
-  };
-
-  const clearSelections = () => {
-    setSelectedTableId(null); setSelectedBarId(null); setSelectedQrId(null); setSelectedQrTarget(null);
-  };
+  const handleSelectTable = (id: string | null) => { setSelectedTableId(id); setSelectedBarId(null); setSelectedQrId(null); };
+  const handleSelectBar = (id: string | null) => { setSelectedBarId(id); setSelectedTableId(null); setSelectedQrId(null); };
+  const handleSelectQr = (id: string | null) => { setSelectedQrId(id); setSelectedTableId(null); setSelectedBarId(null); };
+  const clearSelections = () => { setSelectedTableId(null); setSelectedBarId(null); setSelectedQrId(null); setSelectedQrTarget(null); };
 
   const selectedTable = useMemo(() => tables.find(t => t.id === selectedTableId), [tables, selectedTableId]);
   const selectedBar = useMemo(() => bars.find(b => b.id === selectedBarId), [bars, selectedBarId]);
@@ -321,8 +407,6 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-black text-white overflow-hidden relative font-sans selection:bg-[#36e27b] selection:text-black">
-
-      {/* --- HEADER --- */}
       <Layout
         mode={mode}
         setMode={setMode}
@@ -341,10 +425,7 @@ const App: React.FC = () => {
         onDeleteZone={handleDeleteZone}
       >
         <div className="flex-1 relative overflow-hidden flex h-full">
-          {/* CANVAS AREA */}
           <div className="flex-1 relative bg-[#0a0a0a] overflow-hidden cursor-crosshair group/map">
-
-            {/* Background Grid */}
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
               style={{
                 backgroundImage: 'linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px)',
@@ -376,14 +457,22 @@ const App: React.FC = () => {
                 onSelectBar={handleSelectBar}
                 onSelectQr={handleSelectQr}
                 onUpdatePosition={updatePosition}
+                onUpdateProperty={updateNodeProperty}
                 onDeleteNode={deleteNode}
                 zoom={zoom}
                 setZoom={setZoom}
                 onBackgroundClick={clearSelections}
+                notifications={notifications}
+                onDismissNotification={async (notificationId: string) => {
+                  await supabase.from('venue_notifications' as any)
+                    .update({ is_read: true, attended_at: new Date().toISOString(), attended_by: profile?.id })
+                    .eq('id', notificationId);
+                  fetchNotifications();
+                }}
               />
             )}
 
-            {/* MODE INDICATOR */}
+            {/* OVERLAYS (Mode, Zoom) - Kept same structure */}
             <div className="absolute bottom-6 left-6 pointer-events-none z-10 transition-all duration-500 ease-out transform translate-y-0 opacity-100">
               <div className={`px-4 py-2 rounded-full border backdrop-blur-md flex items-center gap-3 shadow-2xl
                      ${mode === AppMode.VIEW
@@ -400,44 +489,66 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {/* ZOOM CONTROLS */}
-            <div className="absolute bottom-6 right-6 flex flex-col gap-2 z-10">
-              <button onClick={() => setZoom(z => Math.min(z + 0.1, 2))} className="p-3 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full shadow-lg transition-all active:scale-95">
-                <ZoomIn size={18} />
-              </button>
-              <button onClick={() => setZoom(z => Math.max(z - 0.1, 0.5))} className="p-3 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full shadow-lg transition-all active:scale-95">
-                <ZoomOut size={18} />
-              </button>
-              <div className="h-px w-8 bg-zinc-800 mx-auto my-1"></div>
-              <button onClick={() => setZoom(1)} className="p-3 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full shadow-lg transition-all active:scale-95 group">
-                <span className="text-[10px] font-black group-hover:hidden">100%</span>
-                <MousePointer2 size={18} className="hidden group-hover:block" />
-              </button>
-            </div>
+            {/* MANAGEMENT DOCK (EDIT MODE) */}
+            {mode === AppMode.EDIT && (
+              <div className="absolute bottom-8 right-1/2 translates-x-1/2 md:translate-x-0 md:right-8 flex items-center gap-3 z-50">
 
+                {/* GESTIÓN INDICATOR */}
+                <div className="bg-[#111] border border-zinc-800 rounded-full h-12 px-6 flex items-center gap-3 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.8)] animate-in fade-in slide-in-from-bottom-4">
+                  <div className="w-2 h-2 rounded-full bg-[#36e27b] animate-pulse shadow-[0_0_10px_#36e27b]"></div>
+                  <span className="text-xs font-black text-[#36e27b] uppercase tracking-widest">Gestión</span>
+                </div>
+
+                {/* CONTROLS PILL */}
+                <div className="bg-[#111] border border-zinc-800 rounded-full h-12 p-1.5 flex items-center gap-1 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.8)] animate-in fade-in slide-in-from-bottom-4 delay-75">
+                  <button
+                    onClick={() => setZoom(z => Math.max(z - 0.1, 0.5))}
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors active:scale-95"
+                  >
+                    <ZoomOut size={16} />
+                  </button>
+
+                  <button
+                    onClick={() => setZoom(z => Math.min(z + 0.1, 2))}
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors active:scale-95"
+                  >
+                    <ZoomIn size={16} />
+                  </button>
+
+                  <div className="w-px h-4 bg-zinc-800 mx-1"></div>
+
+                  <button
+                    onClick={() => setShowAddMenu(true)}
+                    className="h-9 px-4 rounded-full bg-[#36e27b] text-black hover:bg-[#2ecc71] transition-all flex items-center justify-center shadow-[0_0_15px_-3px_rgba(54,226,123,0.4)] hover:shadow-[0_0_20px_-3px_rgba(54,226,123,0.6)] active:scale-95"
+                  >
+                    <Plus size={18} strokeWidth={3} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STANDARD ZOOM (VIEW/DISPATCH MODE) */}
+            {mode !== AppMode.EDIT && (
+              <div className="absolute bottom-6 right-6 flex flex-col gap-2 z-10">
+                <button onClick={() => setZoom(z => Math.min(z + 0.1, 2))} className="p-3 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full shadow-lg transition-all active:scale-95">
+                  <ZoomIn size={18} />
+                </button>
+                <button onClick={() => setZoom(z => Math.max(z - 0.1, 0.5))} className="p-3 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full shadow-lg transition-all active:scale-95">
+                  <ZoomOut size={18} />
+                </button>
+                <div className="h-px w-8 bg-zinc-800 mx-auto my-1"></div>
+                <button onClick={() => setZoom(1)} className="p-3 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full shadow-lg transition-all active:scale-95 group">
+                  <span className="text-[10px] font-black group-hover:hidden">100%</span>
+                  <MousePointer2 size={18} className="hidden group-hover:block" />
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* SIDE PANEL (DETAILS) */}
-          <div className="w-[380px] border-l border-zinc-800 bg-[#0a0a0a] flex flex-col relative z-20 shadow-[-10px_0_30px_-10px_rgba(0,0,0,0.5)]">
-            {selectedTable ? (
-              <TableDetail
-                table={selectedTable}
-                onClose={clearSelections}
-                onUpdateStatus={handleUpdateTableStatus}
-                onUpdateProperty={(prop, val) => updateNodeProperty(selectedTable.id, 'table', prop, val)}
-                mode={mode}
-              />
-            ) : selectedBar ? (
-              <BarDetail
-                bar={selectedBar}
-                onClose={clearSelections}
-                onUpdateProperty={(prop, val) => updateNodeProperty(selectedBar.id, 'bar', prop, val)}
-                mode={mode}
-              />
-            ) : selectedQr ? (
-              <QRDetail qr={selectedQr} onClose={clearSelections} />
-            ) : (
-              // EMPTY STATE (Dashboard / Summary)
+
+
+          <div className="w-[380px] border-l border-zinc-800 bg-[#0a0a0a] flex flex-col relative z-20 shadow-[-10px_0_30px_-10px_rgba(0,0,0,0.5)] transition-all duration-300">
+            {(!selectedTable && !selectedBar && !selectedQr) && (
               <div className="h-full flex flex-col items-center justify-center p-8 text-center space-y-6 opacity-30 select-none pointer-events-none">
                 <div className="w-24 h-24 rounded-full border-2 border-dashed border-zinc-600 flex items-center justify-center">
                   <MousePointer2 className="w-8 h-8 text-zinc-600" />
@@ -452,54 +563,98 @@ const App: React.FC = () => {
             )}
           </div>
         </div>
-      </Layout>
+      </Layout >
 
-      {/* MODALS */}
-      {showAddMenu && (
-        <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-[#111] border border-zinc-800 rounded-3xl p-8 w-full max-w-md shadow-2xl transform scale-100 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-black text-white italic uppercase tracking-wider">Agregar Elemento</h3>
-              <button onClick={() => setShowAddMenu(false)} className="p-2 hover:bg-zinc-800 rounded-full transition-colors">
-                <XIcon className="text-zinc-500 hover:text-white" size={20} />
-              </button>
-            </div>
+      {/* DETAIL PANELS - Rendered outside Layout to overlap everything (z-index fix) */}
+      {
+        selectedTable && (
+          <TableDetail
+            table={selectedTable}
+            onClose={clearSelections}
+            onUpdateStatus={handleUpdateTableStatus}
+            onUpdateProperty={(prop, val) => updateNodeProperty(selectedTable.id, 'table', prop, val)}
+            mode={mode}
+          />
+        )
+      }
 
-            <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => addNode('table')} className="p-6 bg-zinc-900/50 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800 rounded-2xl flex flex-col items-center gap-4 transition-all group">
-                <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Circle size={24} className="text-white" />
-                </div>
-                <span className="text-xs font-bold text-zinc-300 uppercase tracking-widest">Mesa</span>
-              </button>
+      {
+        selectedBar && (
+          <BarDetail
+            bar={selectedBar}
+            allQrs={qrs}
+            onClose={clearSelections}
+            onUpdateProperty={(prop, val) => updateNodeProperty(selectedBar.id, 'bar', prop, val)}
+            mode={mode}
+            onToggleQrAssignment={(qrId) => {
+              const currentIds = selectedBar.qrIds || [];
+              const newIds = currentIds.includes(qrId)
+                ? currentIds.filter(id => id !== qrId)
+                : [...currentIds, qrId];
+              updateNodeProperty(selectedBar.id, 'bar', 'qrIds', newIds);
+            }}
+            onUpdateStock={() => console.log('Update Stock')}
+            onTransferOpen={() => console.log('Open Transfer')}
+            onToggleQr={(qrId) => console.log('Toggle QR', qrId)}
+            onClosureOpen={() => console.log('Closure Open')}
+          />
+        )
+      }
 
-              <button onClick={() => addNode('bar')} className="p-6 bg-zinc-900/50 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800 rounded-2xl flex flex-col items-center gap-4 transition-all group">
-                <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Beer size={24} className="text-white" />
-                </div>
-                <span className="text-xs font-bold text-zinc-300 uppercase tracking-widest">Barra</span>
-              </button>
+      {
+        selectedQr && (
+          <QRDetail qr={selectedQr} onClose={clearSelections} mode={mode} onToggleStatus={(id) => console.log('Toggle Status', id)} onUpdateProperty={(prop, val) => updateNodeProperty(selectedQr.id, 'qr', prop, val)} />
+        )
+      }
 
-              <button onClick={() => addNode('qr')} className="p-6 bg-zinc-900/50 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800 rounded-2xl flex flex-col items-center gap-4 transition-all col-span-2 group">
-                <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <QrCode size={24} className="text-white" />
-                </div>
-                <span className="text-xs font-bold text-zinc-300 uppercase tracking-widest">Punto QR (Standalone)</span>
-              </button>
+      {
+        showAddMenu && (
+          <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-[#111] border border-zinc-800 rounded-3xl p-8 w-full max-w-md shadow-2xl transform scale-100 animate-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-xl font-black text-white italic uppercase tracking-wider">Agregar Elemento</h3>
+                <button onClick={() => setShowAddMenu(false)} className="p-2 hover:bg-zinc-800 rounded-full transition-colors">
+                  <XIcon className="text-zinc-500 hover:text-white" size={20} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <button onClick={() => addNode('table')} className="p-6 bg-zinc-900/50 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800 rounded-2xl flex flex-col items-center gap-4 transition-all group">
+                  <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Circle size={24} className="text-white" />
+                  </div>
+                  <span className="text-xs font-bold text-zinc-300 uppercase tracking-widest">Mesa</span>
+                </button>
+
+                <button onClick={() => addNode('bar')} className="p-6 bg-zinc-900/50 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800 rounded-2xl flex flex-col items-center gap-4 transition-all group">
+                  <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Beer size={24} className="text-white" />
+                  </div>
+                  <span className="text-xs font-bold text-zinc-300 uppercase tracking-widest">Barra</span>
+                </button>
+
+                <button onClick={() => addNode('qr')} className="p-6 bg-zinc-900/50 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800 rounded-2xl flex flex-col items-center gap-4 transition-all col-span-2 group">
+                  <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <QrCode size={24} className="text-white" />
+                  </div>
+                  <span className="text-xs font-bold text-zinc-300 uppercase tracking-widest">Punto QR (Standalone)</span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
-      {selectedQrTarget && (
-        <QRGenerator
-          targetId={selectedQrTarget.id}
-          targetName={selectedQrTarget.name}
-          onClose={() => setSelectedQrTarget(null)}
-        />
-      )}
-
-    </div>
+      {
+        selectedQrTarget && (
+          <QRGenerator
+            targetId={selectedQrTarget.id}
+            targetName={selectedQrTarget.name}
+            onClose={() => setSelectedQrTarget(null)}
+          />
+        )
+      }
+    </div >
   );
 };
 

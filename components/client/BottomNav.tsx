@@ -11,11 +11,11 @@ interface BottomNavProps {
 const BottomNav: React.FC<BottomNavProps> = ({ activePath, accentColor }) => {
   const navigate = useNavigate();
   const { slug } = useParams();
-  const { setShowAuthModal, user } = useClient();
+  const { setShowAuthModal, user, isFeatureEnabled } = useClient();
 
   const navItems = [
     { label: 'Menú', icon: 'restaurant_menu', path: `/m/${slug}` },
-    { label: 'Club', icon: 'stars', path: `/m/${slug}/loyalty` },
+    ...(isFeatureEnabled('loyalty') ? [{ label: 'Club', icon: 'stars', path: `/m/${slug}/loyalty` }] : []),
     { label: 'Perfil', icon: 'person', path: `/m/${slug}/profile` },
   ];
 

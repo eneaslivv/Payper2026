@@ -303,8 +303,13 @@ const OrderBoard: React.FC = () => {
 
             <div className="flex-1 overflow-y-auto p-8 space-y-8 no-scrollbar">
               <div className="space-y-1">
-                <label className="text-[9px] font-black text-text-secondary uppercase tracking-[0.2em]">Cliente Operativo</label>
-                <p className="text-xl font-black text-white uppercase italic tracking-tight">{selectedOrder.customer}</p>
+                <label className="text-[9px] font-black text-text-secondary uppercase tracking-[0.2em]">Cliente</label>
+                <div className="flex flex-col">
+                  <p className="text-xl font-black text-white uppercase italic tracking-tight">{selectedOrder.customer}</p>
+                  {selectedOrder.client_email && (
+                    <p className="text-[10px] font-bold text-white/50 lowercase tracking-wider mb-1">{selectedOrder.client_email}</p>
+                  )}
+                </div>
                 <p className="text-[10px] text-neon font-bold uppercase tracking-widest">{selectedOrder.table ? `UBICACIÓN: MESA ${selectedOrder.table}` : 'MODALIDAD: PARA LLEVAR'}</p>
               </div>
 

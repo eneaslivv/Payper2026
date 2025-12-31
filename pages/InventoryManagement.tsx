@@ -12,7 +12,7 @@ import InvoiceProcessor from './InvoiceProcessor';
 import { useOffline } from '../contexts/OfflineContext';
 
 type DrawerTab = 'details' | 'recipe' | 'history';
-type InventoryFilter = 'all' | 'ingredient' | 'sellable' | 'recipes';
+type InventoryFilter = 'all' | 'ingredient' | 'sellable' | 'recipes' | 'logistics';
 type WizardMethod = 'selector' | 'manual' | 'bulk' | 'invoice';
 type ManualType = 'ingredient' | 'recipe';
 // Added Type for Stock Movement
@@ -84,6 +84,11 @@ function InputBlock({ label, children }: { label: string, children: React.ReactN
   );
 }
 
+import { StockTransferModal } from '../components/StockTransferModal';
+import { StockAdjustmentModal } from '../components/StockAdjustmentModal';
+import { AIStockInsight } from '../components/AIStockInsight';
+import { LogisticsView } from '../components/LogisticsView';
+
 const InventoryManagement: React.FC = () => {
   const { profile } = useAuth();
   const { pendingDeliveryOrders, orders: offlineOrders } = useOffline();
@@ -104,10 +109,11 @@ const InventoryManagement: React.FC = () => {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
-  const [drawerTab, setDrawerTab] = useState<DrawerTab>('details');
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [adjustmentModal, setAdjustmentModal] = useState<{ open: boolean, type: 'WASTE' | 'ADJUSTMENT' | 'PURCHASE' }>({ open: false, type: 'WASTE' });
+  const [drawerTab, setDrawerTab] = useState<'details' | 'recipe' | 'history'>('details');
   const [filter, setFilter] = useState<InventoryFilter>('all');
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string | 'special-open' | null>(null);
-
   const [searchTerm, setSearchTerm] = useState('');
 
   // History State
@@ -1002,16 +1008,25 @@ const InventoryManagement: React.FC = () => {
         'Prefer': 'return=minimal'
       };
 
-      const table = selectedItem.item_type === 'sellable' ? 'products' : 'inventory_items';
+      // Map UI unit values to DB enum
+      let finalUnitType = selectedItem.unit_type;
+      if (selectedItem.unit_measure) {
+        const map: Record<string, string> = { 'un': 'unit', 'g': 'gram', 'L': 'liter', 'ml': 'ml', 'kg': 'kg' };
+        finalUnitType = map[selectedItem.unit_measure] as any || selectedItem.unit_measure;
+      }
 
-      // Prepare payload - update category_id
+      // Prepare payload - update category_id and other editable fields
       const payload: any = {
-        category_id: selectedItem.category_ids?.[0] || null
+        category_id: selectedItem.category_ids?.[0] || null,
+        cost: selectedItem.cost,
+        unit_size: selectedItem.unit_size,
+        unit_type: finalUnitType
       };
 
       // Only update specific fields if they changed? For now update what we edit in drawer
       // We are only editing category in the drawer explicitly for now, and description via AI
       if (selectedItem.description) payload.description = selectedItem.description;
+      if (selectedItem.price !== undefined) payload.price = selectedItem.price;
 
       const response = await fetch(`https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/${table}?id=eq.${selectedItem.id}`, {
         method: 'PATCH',
@@ -1066,10 +1081,11 @@ const InventoryManagement: React.FC = () => {
             COFFESQUAD INVENTORY SYSTEM
           </div>
           <h1 className="text-2xl font-black italic-black tracking-tighter text-text-main dark:text-white uppercase leading-none">
-            Control <span className="text-white/80">Operativo</span> <span className="text-[10px] text-neon ml-2">v0.1.0-FIX</span>
+            Control <span className="text-white/80">Operativo</span>
           </h1>
+
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => {
               // Clear cache and force refresh
@@ -1078,27 +1094,29 @@ const InventoryManagement: React.FC = () => {
               fetchData(true);
               addToast('Inventario actualizado', 'success');
             }}
-            className="px-4 py-1.5 rounded-lg bg-white/5 text-white/60 font-bold text-[9px] uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all hover:text-neon hover:border-white/30 hover:bg-white/5"
+            className="px-3 md:px-4 py-1.5 rounded-lg bg-white/5 text-white/60 font-bold text-[9px] uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all hover:text-neon hover:border-white/30 hover:bg-white/5"
           >
             <span className="material-symbols-outlined text-base">refresh</span>
-            REFRESCAR
+            <span className="hidden sm:inline">REFRESCAR</span>
           </button>
           <button
             onClick={() => setShowInvoiceProcessor(true)}
-            className="px-4 py-1.5 rounded-lg bg-white/5 text-white/60 font-bold text-[9px] uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all hover:text-neon hover:border-white/30 hover:bg-white/5"
+            className="px-3 md:px-4 py-1.5 rounded-lg bg-white/5 text-white/60 font-bold text-[9px] uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all hover:text-neon hover:border-white/30 hover:bg-white/5"
           >
             <span className="material-symbols-outlined text-base">document_scanner</span>
-            ESCANEAR FACTURA
+            <span className="hidden sm:inline">ESCANEAR FACTURA</span>
           </button>
-          <button onClick={() => { setShowInsumoWizard(true); setWizardMethod('selector'); }} className="px-4 py-1.5 rounded-lg bg-neon text-black font-bold text-[9px] uppercase tracking-widest border border-neon flex items-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+          <button onClick={() => { setShowInsumoWizard(true); setWizardMethod('selector'); }} className="px-3 md:px-4 py-1.5 rounded-lg bg-neon text-black font-bold text-[9px] uppercase tracking-widest border border-neon flex items-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)]">
             <span className="material-symbols-outlined text-base">add_circle</span>
-            NUEVO REGISTRO
+            <span className="hidden sm:inline">NUEVO REGISTRO</span>
           </button>
         </div>
+
       </header>
 
       {/* KPI CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+
         <KpiCard label="Valorización Total" value={`$${kpis.totalValue}`} icon="payments" color="text-neon bg-white/5" />
         <KpiCard label="Alerta de Stock" value={`${kpis.lowStock}`} icon="warning" color={kpis.lowStock > 0 ? "text-neon bg-white/10" : "text-white/40 bg-white/5"} />
         {recipesAtRisk > 0 && (
@@ -1119,12 +1137,13 @@ const InventoryManagement: React.FC = () => {
 
       <div className="flex flex-col gap-3">
         {/* Type Filters */}
-        <div className="flex bg-[#141714] p-1 rounded-xl border border-white/[0.04] shadow-soft max-w-fit">
-          <TabBtn active={filter === 'all'} onClick={() => setFilter('all')}>VISTA GLOBAL</TabBtn>
+        <div className="flex overflow-x-auto no-scrollbar bg-[#141714] p-1 rounded-xl border border-white/[0.04] shadow-soft max-w-full md:max-w-fit">
+          <TabBtn active={filter === 'all'} onClick={() => setFilter('all')}>GLOBAL</TabBtn>
           <TabBtn active={filter === 'ingredient'} onClick={() => setFilter('ingredient')}>INSUMOS</TabBtn>
           <TabBtn active={filter === 'sellable'} onClick={() => setFilter('sellable')}>PRODUCTOS</TabBtn>
           <TabBtn active={filter === 'recipes'} onClick={() => setFilter('recipes')}>RECETAS</TabBtn>
         </div>
+
 
         {/* Category Filters */}
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-full py-1">
@@ -1300,300 +1319,273 @@ const InventoryManagement: React.FC = () => {
         </div>
       ) : (
         <>
-          {/* BUSCADOR */}
-          <div className="relative group">
-            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-neon transition-colors">search</span>
-            <input
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Rastrear ítem por SKU o nombre..."
-              className="w-full bg-[#141714] border border-white/[0.04] rounded-2xl h-12 pl-12 pr-4 text-[10px] font-bold text-white uppercase tracking-widest outline-none focus:border-white/30 transition-all placeholder:text-white/10"
-            />
+          {/* ACTIONS */}
+          <div className="flex gap-3 relative z-[100]">
+            <button
+              onClick={() => setFilter('logistics')}
+              className={`hidden md:flex items-center gap-2 px-4 py-2 border rounded-xl transition-all group ${filter === 'logistics' ? 'bg-white border-white' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+            >
+              <span className={`material-symbols-outlined text-lg ${filter === 'logistics' ? 'text-black' : 'text-white/60 group-hover:text-white'}`}>store</span>
+              <span className={`text-[10px] font-black uppercase tracking-widest ${filter === 'logistics' ? 'text-black' : 'text-white/60 group-hover:text-white'}`}>UBICACIONES</span>
+            </button>
+
+            {/* BUSCADOR */}
+            <div className="relative group">
+              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-neon transition-colors">search</span>
+              <input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Rastrear ítem por SKU o nombre..."
+                className="w-full bg-[#141714] border border-white/[0.04] rounded-2xl h-12 pl-12 pr-4 text-[10px] font-bold text-white uppercase tracking-widest outline-none focus:border-white/30 transition-all placeholder:text-white/10"
+              />
+            </div>
           </div>
 
-          {/* TABLA PRINCIPAL */}
-          <div className="bg-[#141714] rounded-2xl border border-white/[0.04] shadow-2xl overflow-hidden min-h-[400px]">
-            {loading ? (
-              <div className="flex flex-col items-center justify-center p-20 space-y-4">
-                <div className="size-10 border-t-2 border-neon rounded-full animate-spin"></div>
-                <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Cargando Matrix...</p>
-              </div>
-            ) : items.length === 0 ? (
-              <div className="flex flex-col items-center justify-center p-20 text-center animate-in fade-in zoom-in duration-700">
-                <div className="size-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 mb-8">
-                  <span className="material-symbols-outlined text-5xl">inventory_2</span>
+          {/* TABLA PRINCIPAL / LOGISTICS VIEW */}
+          {filter === 'logistics' ? (
+            <LogisticsView />
+          ) : (
+            <div className="bg-[#141714] rounded-2xl border border-white/[0.04] shadow-2xl overflow-hidden min-h-[400px]">
+              {loading ? (
+                <div className="flex flex-col items-center justify-center p-20 space-y-4">
+                  <div className="size-10 border-t-2 border-neon rounded-full animate-spin"></div>
+                  <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Cargando Matrix...</p>
                 </div>
-                <h3 className="text-2xl font-black text-white uppercase italic-black tracking-tighter mb-4">
-                  Nodo <span className="text-neon">sin Datos</span>
-                </h3>
-                <p className="text-[#71766F] text-[11px] font-bold uppercase tracking-[0.2em] max-w-sm mb-10 leading-relaxed opacity-60">
-                  Inicia la carga de suministros o productos para activar el panel de control.
-                </p>
-                <button
-                  onClick={() => { setShowInsumoWizard(true); setWizardMethod('selector'); }}
-                  className="px-10 py-4 bg-neon text-black rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(255,255,255,0.1)] hover:scale-[1.05] active:scale-95 transition-all"
-                >
-                  Cargar Primer Ítem
-                </button>
-              </div>
-            ) : (
-              <div className="overflow-x-auto no-scrollbar">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-white/[0.01] border-b border-white/[0.03]">
-                      <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest">Identidad Operativa</th>
-                      <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest">Stock Sellado</th>
-                      <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest">Abiertos</th>
-                      <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest text-center">Clase</th>
-                      <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest text-center">Menú</th>
-                      <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest text-center">Costo Est.</th>
-                      <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest text-right">Audit</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/[0.02]">
-                    {filteredItems.map(item => (
-                      <tr
-                        key={item.id}
-                        className="hover:bg-white/[0.01] transition-colors cursor-pointer group"
-                      >
-                        <td className="px-6 py-4" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); }}>
-                          <div className="flex items-center gap-4">
-                            <div className="size-10 rounded-xl overflow-hidden bg-black/40 border border-white/5 relative">
-                              <img src={item.image_url} className="size-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                            </div>
-                            <div>
-                              <p className="text-[11px] font-black dark:text-white uppercase italic tracking-tight leading-none mb-1">{item.name}</p>
-                              {(() => {
-                                const cat = categories.find(c => c.id === item.category_ids?.[0]);
-                                return cat ? (
-                                  <p className="text-[7px] text-white/60 font-bold uppercase tracking-widest">{cat.name}</p>
-                                ) : (
-                                  <p className="text-[7px] text-text-secondary font-bold uppercase opacity-30 tracking-widest group-hover:text-white/50">SKU: {item.sku}</p>
-                                );
-                              })()}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); }}>
-                          {/* CELDA 1: Stock Sellado */}
-                          <div className="flex flex-col">
-                            {item.item_type === 'sellable' ? (
-                              (() => {
-                                const { status, variantsStatus } = getRecipeAvailability(item);
-                                // If no recipe involved, maybe show -- 
-                                const hasRecipe = productRecipes.some(pr => pr.product_id === item.id);
-                                if (!hasRecipe) return <span className="text-[14px] font-black text-white/20">--</span>;
+              ) : items.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-20 text-center animate-in fade-in zoom-in duration-700">
+                  <div className="size-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 mb-8">
+                    <span className="material-symbols-outlined text-5xl">inventory_2</span>
+                  </div>
+                  <h3 className="text-2xl font-black text-white uppercase italic-black tracking-tighter mb-4">
+                    Nodo <span className="text-neon">sin Datos</span>
+                  </h3>
+                  <p className="text-[#71766F] text-[11px] font-bold uppercase tracking-[0.2em] max-w-sm mb-10 leading-relaxed opacity-60">
+                    Inicia la carga de suministros o productos para activar el panel de control.
+                  </p>
+                  <button
+                    onClick={() => { setShowInsumoWizard(true); setWizardMethod('selector'); }}
+                    className="px-10 py-4 bg-neon text-black rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(255,255,255,0.1)] hover:scale-[1.05] active:scale-95 transition-all"
+                  >
+                    Cargar Primer Ítem
+                  </button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto no-scrollbar">
+                  <table className="w-full text-left border-collapse min-w-[800px]">
 
-                                if (status === 'Available') {
-                                  return (
-                                    <div className="flex flex-col gap-1">
-                                      <span className="text-[10px] font-black text-neon uppercase bg-neon/10 px-2 py-0.5 rounded w-fit">Disponible</span>
-                                      <span className="text-[7px] text-green-500/60 font-bold uppercase tracking-wide">✓ Sin riesgos</span>
-                                    </div>
+                    <thead>
+                      <tr className="bg-white/[0.01] border-b border-white/[0.03]">
+                        <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest">Identidad Operativa</th>
+                        <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest">Stock Sellado</th>
+                        <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest">Abiertos</th>
+                        <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest text-center">Clase</th>
+                        <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest text-center">Menú</th>
+                        <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest text-center">Costo Est.</th>
+                        <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest text-right">Audit</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/[0.02]">
+                      {filteredItems.map(item => (
+                        <tr
+                          key={item.id}
+                          className="hover:bg-white/[0.01] transition-colors cursor-pointer group"
+                        >
+                          <td className="px-6 py-4" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); }}>
+                            <div className="flex items-center gap-4">
+                              <div className="size-10 rounded-xl overflow-hidden bg-black/40 border border-white/5 relative">
+                                <img src={item.image_url} className="size-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                              </div>
+                              <div>
+                                <p className="text-[11px] font-black dark:text-white uppercase italic tracking-tight leading-none mb-1">{item.name}</p>
+                                {(() => {
+                                  const cat = categories.find(c => c.id === item.category_ids?.[0]);
+                                  return cat ? (
+                                    <p className="text-[7px] text-white/60 font-bold uppercase tracking-widest">{cat.name}</p>
+                                  ) : (
+                                    <p className="text-[7px] text-text-secondary font-bold uppercase opacity-30 tracking-widest group-hover:text-white/50">SKU: {item.sku}</p>
                                   );
-                                } else if (status === 'Critical') {
-                                  // Count critical/missing ingredients
-                                  const criticalIngredients: Array<{ name: string, hasStock: boolean }> = [];
-                                  variantsStatus.forEach(v => {
-                                    v.ingredients.forEach(ing => {
-                                      if (!ing.hasStock || ing.isCritical) {
-                                        if (!criticalIngredients.find(ci => ci.name === ing.name)) {
-                                          criticalIngredients.push({ name: ing.name, hasStock: ing.hasStock });
-                                        }
-                                      }
-                                    });
-                                  });
-                                  const count = criticalIngredients.length;
+                                })()}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); }}>
+                            {/* CELDA 1: Stock Sellado */}
+                            <div className="flex flex-col">
+                              {item.item_type === 'sellable' ? (
+                                (() => {
+                                  const { status, variantsStatus } = getRecipeAvailability(item);
+                                  // If no recipe involved, maybe show -- 
+                                  const hasRecipe = productRecipes.some(pr => pr.product_id === item.id);
+                                  if (!hasRecipe) return <span className="text-[14px] font-black text-white/20">--</span>;
 
-                                  return (
-                                    <div className="flex flex-col gap-1">
-                                      <span className="text-[10px] font-black text-yellow-400 uppercase bg-yellow-400/10 px-2 py-0.5 rounded w-fit">Disponible</span>
-                                      <span className="text-[7px] text-yellow-500/80 font-bold uppercase tracking-wide">⚠️ {count} ingrediente{count > 1 ? 's' : ''} crítico{count > 1 ? 's' : ''}</span>
-                                    </div>
-                                  );
-                                } else {
-                                  return <span className="text-[10px] font-black text-red-500 uppercase bg-red-500/10 px-2 py-0.5 rounded w-fit">No Disponible</span>;
-                                }
-                              })()
-                            ) : (
-                              <>
-                                <span className="font-black italic text-[14px] text-neon">
-                                  {Math.max(0, item.current_stock - (item.open_count || 0)).toLocaleString()}
-                                  <span className="text-[8px] uppercase opacity-30 ml-1">{item.unit_type}</span>
-                                </span>
-                                {item.current_stock <= item.min_stock && (
-                                  <span className="text-[6px] font-black text-white/40 uppercase tracking-widest">CRÍTICO</span>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          {/* CELDA 2: Paquetes Abiertos con Información Detallada */}
-                          {(item.open_packages?.length > 0 || item.open_count > 0) ? (
-                            <div className="space-y-2">
-                              {item.open_packages?.slice(0, 3).map((pkg, idx) => {
-                                // Support both new format (package_capacity, remaining) and legacy (remaining_quantity)
-                                const capacity = pkg.package_capacity || 1000; // Default 1L if not specified
-                                const remaining = pkg.remaining ?? pkg.remaining_quantity ?? 0;
-                                const percentage = capacity ? Math.round((remaining / capacity) * 100) : 0;
-                                const barColor = percentage > 50 ? '#FFFFFF' : percentage > 20 ? '#A1A1A1' : '#404040';
-                                const glowColor = percentage > 50 ? 'shadow-[0_0_4px_rgba(255,255,255,0.3)]' : 'shadow-none';
-
-                                // Determine package size category for visual differentiation
-                                const isLarge = capacity >= 1000; // >= 1L
-                                const hasCapacityInfo = pkg.package_capacity !== undefined;
-                                const barHeight = isLarge ? 'h-2' : 'h-1.5';
-
-                                return (
-                                  <div key={pkg.id || idx} className="space-y-1">
-                                    {/* Capacity and Location Info */}
-                                    <div className="flex items-center justify-between gap-2">
-                                      <div className="flex items-center gap-1.5">
-                                        {isLarge && <span className="material-symbols-outlined text-white/30 text-[10px]">inventory_2</span>}
-                                        <span className="text-[9px] font-bold text-white/70">
-                                          {hasCapacityInfo ? (
-                                            <>{remaining}{item.unit_type} de {capacity}{item.unit_type}</>
-                                          ) : (
-                                            <>{remaining}{item.unit_type} abierto</>
-                                          )}
-                                        </span>
+                                  if (status === 'Available') {
+                                    return (
+                                      <div className="flex flex-col gap-1">
+                                        <span className="text-[10px] font-black text-neon uppercase bg-neon/10 px-2 py-0.5 rounded w-fit">Disponible</span>
+                                        <span className="text-[7px] text-green-500/60 font-bold uppercase tracking-wide">✓ Sin riesgos</span>
                                       </div>
-                                      <span className="text-[8px] font-black font-mono text-white/40">
-                                        {percentage}%
-                                      </span>
-                                    </div>
+                                    );
+                                  } else if (status === 'Critical') {
+                                    // Count critical/missing ingredients
+                                    const criticalIngredients: Array<{ name: string, hasStock: boolean }> = [];
+                                    variantsStatus.forEach(v => {
+                                      v.ingredients.forEach(ing => {
+                                        if (!ing.hasStock || ing.isCritical) {
+                                          if (!criticalIngredients.find(ci => ci.name === ing.name)) {
+                                            criticalIngredients.push({ name: ing.name, hasStock: ing.hasStock });
+                                          }
+                                        }
+                                      });
+                                    });
+                                    const count = criticalIngredients.length;
 
-                                    {/* Progress Bar */}
-                                    <div className={`w-full ${barHeight} bg-white/5 rounded-full overflow-hidden relative`}>
-                                      <div
-                                        className={`h-full transition-all duration-300 ${glowColor}`}
-                                        style={{
-                                          width: `${percentage}%`,
-                                          backgroundColor: barColor
-                                        }}
-                                      />
-                                    </div>
-
-                                    {/* Location (if available) */}
-                                    {pkg.location && (
-                                      <span className="text-[7px] text-white/30 uppercase tracking-widest">
-                                        📍 {pkg.location}
-                                      </span>
-                                    )}
-                                  </div>
-                                );
-                              }) || (
-                                  // Fallback: si no hay open_packages pero sí open_count
-                                  <div className="flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-white/20 text-[12px]">inventory_2</span>
-                                    <span className="text-[10px] font-black text-white/60">{item.open_count}</span>
-                                    <span className="text-[7px] text-white/20 uppercase tracking-widest">abiertos</span>
-                                  </div>
-                                )}
-                              {item.open_packages?.length > 3 && (
-                                <span className="text-[7px] text-white/20 pl-1">+{item.open_packages.length - 3} más</span>
+                                    return (
+                                      <div className="flex flex-col gap-1">
+                                        <span className="text-[10px] font-black text-yellow-400 uppercase bg-yellow-400/10 px-2 py-0.5 rounded w-fit">Disponible</span>
+                                        <span className="text-[7px] text-yellow-500/80 font-bold uppercase tracking-wide">⚠️ {count} ingrediente{count > 1 ? 's' : ''} crítico{count > 1 ? 's' : ''}</span>
+                                      </div>
+                                    );
+                                  } else {
+                                    return <span className="text-[10px] font-black text-red-500 uppercase bg-red-500/10 px-2 py-0.5 rounded w-fit">No Disponible</span>;
+                                  }
+                                })()
+                              ) : (
+                                <>
+                                  <span className="font-black italic text-[14px] text-neon">
+                                    {Math.max(0, item.current_stock - (item.open_count || 0)).toLocaleString()}
+                                    <span className="text-[8px] uppercase opacity-30 ml-1">{item.unit_type}</span>
+                                  </span>
+                                  {item.current_stock <= item.min_stock && (
+                                    <span className="text-[6px] font-black text-white/40 uppercase tracking-widest">CRÍTICO</span>
+                                  )}
+                                </>
                               )}
                             </div>
-                          ) : (
-                            <span className="text-[8px] text-white/10 tracking-widest">---</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-center" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); }}>
-                          {(() => {
-                            // Check both item.recipe AND productRecipes state
-                            const hasRecipe = (item.recipe && item.recipe.length > 0) || productRecipes.some(pr => pr.product_id === item.id);
-                            if (item.item_type === 'ingredient') {
-                              return (
-                                <span className="px-2 py-0.5 rounded-full text-[7px] font-black uppercase bg-neon/10 text-neon border border-neon/30 group-hover:border-neon/50 transition-all">
-                                  INSUMO
-                                </span>
-                              );
-                            } else if (hasRecipe) {
-                              return (
-                                <span className="px-2 py-0.5 rounded-full text-[7px] font-black uppercase bg-violet-500/10 text-violet-400 border border-violet-500/30 group-hover:border-violet-500/50 transition-all">
-                                  RECETA
-                                </span>
-                              );
-                            } else {
-                              return (
-                                <span className="px-2 py-0.5 rounded-full text-[7px] font-black uppercase bg-orange-500/10 text-orange-400 border border-orange-500/30 group-hover:border-orange-500/50 transition-all">
-                                  PRODUCTO
-                                </span>
-                              );
-                            }
-                          })()}
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          {/* Minimal Cute Switch */}
-                          <button
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              const newValue = !item.is_menu_visible;
-                              // Optimistic update
-                              setItems(prev => prev.map(i => i.id === item.id ? { ...i, is_menu_visible: newValue } : i));
+                          </td>
+                          <td className="px-6 py-4">
+                            {/* CELDA 2: Paquetes Abiertos - Vista Compacta */}
+                            {(item.open_packages?.length > 0 || item.open_count > 0) ? (
+                              <div
+                                className="flex items-center gap-2 cursor-pointer hover:bg-white/5 rounded-lg px-2 py-1 transition-all group"
+                                onClick={() => { setSelectedItem(item); setDrawerTab('details'); }}
+                              >
+                                <div className="flex items-center gap-1.5">
+                                  <span className="material-symbols-outlined text-white/40 text-sm group-hover:text-neon transition-colors">inventory_2</span>
+                                  <span className="text-sm font-black text-white">{item.open_packages?.length || item.open_count}</span>
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="text-[8px] font-bold text-white/50 uppercase tracking-wider">ABIERTOS</span>
+                                  {item.open_packages?.length > 0 && (
+                                    <span className="text-[7px] text-white/30">
+                                      {item.open_packages.reduce((sum, pkg) => sum + (pkg.remaining ?? pkg.remaining_quantity ?? 0), 0)}{item.unit_type} total
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="material-symbols-outlined text-white/20 text-xs ml-auto group-hover:text-white/50 transition-colors">chevron_right</span>
+                              </div>
+                            ) : (
+                              <span className="text-[8px] text-white/10 tracking-widest">---</span>
+                            )}
+                          </td>
 
-                              try {
-                                const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-                                const storageKey = 'sb-yjxjyxhksedwfeueduwl-auth-token';
-                                const storedData = localStorage.getItem(storageKey);
-                                let token = '';
-                                if (storedData) token = JSON.parse(storedData).access_token;
-
-                                await fetch(`https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/inventory_items?id=eq.${item.id}`, {
-                                  method: 'PATCH',
-                                  headers: {
-                                    'Content-Type': 'application/json',
-                                    'apikey': apiKey,
-                                    'Authorization': `Bearer ${token || apiKey}`,
-                                    'Prefer': 'return=minimal'
-                                  },
-                                  body: JSON.stringify({ is_menu_visible: newValue })
-                                });
-                                addToast(newValue ? 'Item visible en menú' : 'Item oculto del menú', 'success');
-                              } catch (err) {
-                                console.error(err);
-                                addToast('Error al actualizar', 'error');
-                                // Revert
-                                setItems(prev => prev.map(i => i.id === item.id ? { ...i, is_menu_visible: !newValue } : i));
+                          <td className="px-6 py-4 text-center" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); }}>
+                            {(() => {
+                              // Check both item.recipe AND productRecipes state
+                              const hasRecipe = (item.recipe && item.recipe.length > 0) || productRecipes.some(pr => pr.product_id === item.id);
+                              if (item.item_type === 'ingredient') {
+                                return (
+                                  <span className="px-2 py-0.5 rounded-full text-[7px] font-black uppercase bg-neon/10 text-neon border border-neon/30 group-hover:border-neon/50 transition-all">
+                                    INSUMO
+                                  </span>
+                                );
+                              } else if (hasRecipe) {
+                                return (
+                                  <span className="px-2 py-0.5 rounded-full text-[7px] font-black uppercase bg-violet-500/10 text-violet-400 border border-violet-500/30 group-hover:border-violet-500/50 transition-all">
+                                    RECETA
+                                  </span>
+                                );
+                              } else {
+                                return (
+                                  <span className="px-2 py-0.5 rounded-full text-[7px] font-black uppercase bg-orange-500/10 text-orange-400 border border-orange-500/30 group-hover:border-orange-500/50 transition-all">
+                                    PRODUCTO
+                                  </span>
+                                );
                               }
-                            }}
-                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black ${item.is_menu_visible ? 'bg-neon' : 'bg-white/10'}`}
-                          >
-                            <span className="sr-only">Toggle Menu Visibility</span>
-                            <span
-                              className={`${item.is_menu_visible ? 'translate-x-5 shadow-[0_0_10px_rgba(255,255,255,0.2)]' : 'translate-x-1 bg-white/40'} inline-block h-3 w-3 transform rounded-full bg-black transition duration-300 ease-in-out`}
-                            />
-                          </button>
-                        </td>
-                        <td className="px-6 py-4 text-center font-mono text-[10px] text-white/60" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); }}>
-                          ${item.cost.toFixed(2)}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <button className="size-8 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-neon hover:text-black transition-all group-hover:border-white/30">
-                            <span className="material-symbols-outlined text-lg">bolt</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                            })()}
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            {/* Minimal Cute Switch */}
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const newValue = !item.is_menu_visible;
+                                // Optimistic update
+                                setItems(prev => prev.map(i => i.id === item.id ? { ...i, is_menu_visible: newValue } : i));
+
+                                try {
+                                  const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+                                  const storageKey = 'sb-yjxjyxhksedwfeueduwl-auth-token';
+                                  const storedData = localStorage.getItem(storageKey);
+                                  let token = '';
+                                  if (storedData) token = JSON.parse(storedData).access_token;
+
+                                  await fetch(`https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/inventory_items?id=eq.${item.id}`, {
+                                    method: 'PATCH',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                      'apikey': apiKey,
+                                      'Authorization': `Bearer ${token || apiKey}`,
+                                      'Prefer': 'return=minimal'
+                                    },
+                                    body: JSON.stringify({ is_menu_visible: newValue })
+                                  });
+                                  addToast(newValue ? 'Item visible en menú' : 'Item oculto del menú', 'success');
+                                } catch (err) {
+                                  console.error(err);
+                                  addToast('Error al actualizar', 'error');
+                                  // Revert
+                                  setItems(prev => prev.map(i => i.id === item.id ? { ...i, is_menu_visible: !newValue } : i));
+                                }
+                              }}
+                              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black ${item.is_menu_visible ? 'bg-neon' : 'bg-white/10'}`}
+                            >
+                              <span className="sr-only">Toggle Menu Visibility</span>
+                              <span
+                                className={`${item.is_menu_visible ? 'translate-x-5 shadow-[0_0_10px_rgba(255,255,255,0.2)]' : 'translate-x-1 bg-white/40'} inline-block h-3 w-3 transform rounded-full bg-black transition duration-300 ease-in-out`}
+                              />
+                            </button>
+                          </td>
+                          <td className="px-6 py-4 text-center font-mono text-[10px] text-white/60" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); }}>
+                            ${item.cost.toFixed(2)}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <button className="size-8 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-neon hover:text-black transition-all group-hover:border-white/30">
+                              <span className="material-symbols-outlined text-lg">bolt</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
 
       {/* OVERLAY PARA CERRAR DRAWER */}
-      {selectedItem && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[4999] transition-opacity duration-300"
-          onClick={() => setSelectedItem(null)}
-        />
-      )}
+      {
+        selectedItem && (
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[4999] transition-opacity duration-300"
+            onClick={() => setSelectedItem(null)}
+          />
+        )
+      }
 
       {/* DRAWER LATERAL PREMIUM */}
-      <div className={`fixed inset-y-0 right-0 z-[5000] h-screen w-full max-w-[420px] bg-[#0D0F0D] border-l border-white/10 shadow-3xl transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col ${selectedItem ? 'translate-x-0' : 'translate-x-full opacity-0'}`}>
+      <div className={`fixed inset-y-0 right-0 z-[5000] h-screen w-full max-w-[420px] bg-[#0D0F0D] border-l border-white/10 shadow-3xl transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col ${selectedItem ? 'translate-x-0' : 'translate-x-full opacity-0 pointer-events-none invisible'}`}>
         {selectedItem && (
           <>
             <div className="p-6 flex justify-between items-center border-b border-white/5 bg-gradient-to-r from-white/5 to-transparent">
@@ -1658,67 +1650,233 @@ const InventoryManagement: React.FC = () => {
               {drawerTab === 'details' && (
                 <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-[9px] font-black uppercase text-white/40 tracking-[0.2em]">Categoría del Menú</label>
-                      <select
-                        value={selectedItem.category_ids?.[0] || ''}
-                        onChange={(e) => {
-                          const newCatId = e.target.value;
-                          setSelectedItem(prev => prev ? { ...prev, category_ids: newCatId ? [newCatId] : [] } : null);
-                        }}
-                        className="w-full bg-black border border-white/10 rounded-xl h-12 px-4 text-sm font-bold text-white outline-none focus:border-white/50 appearance-none cursor-pointer"
-                      >
-                        <option value="">SIN CATEGORÍA (GENERAL)</option>
-                        {categories
-                          .sort((a, b) => (a.position || 0) - (b.position || 0))
-                          .map(cat => (
-                            <option key={cat.id} value={cat.id}>{cat.name}</option>
-                          ))}
-                      </select>
+                    {/* Compact Category & Unit Size Row */}
+                    <div className="flex gap-4">
+                      <div className="flex-[2] space-y-1">
+                        <label className="text-[9px] font-black uppercase text-white/40 tracking-[0.2em] ml-1"> Categoría </label>
+                        <select
+                          value={selectedItem.category_ids?.[0] || ''}
+                          onChange={(e) => {
+                            const newCatId = e.target.value;
+                            setSelectedItem(prev => prev ? { ...prev, category_ids: newCatId ? [newCatId] : [] } : null);
+                          }}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl h-10 px-3 text-xs font-bold text-white outline-none focus:border-white/30 appearance-none cursor-pointer hover:bg-white/10 transition-colors"
+                        >
+                          <option value="">SIN CATEGORÍA</option>
+                          {categories
+                            .sort((a, b) => (a.position || 0) - (b.position || 0))
+                            .map(cat => (
+                              <option key={cat.id} value={cat.id}>{cat.name}</option>
+                            ))}
+                        </select>
+                      </div>
+
+                      {selectedItem.item_type !== 'sellable' && (
+                        <div className="flex-1 space-y-1">
+                          <label className="text-[9px] font-black uppercase text-white/40 tracking-[0.2em] ml-1"> Tamaño Unit. </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              value={selectedItem.unit_size || ''}
+                              onChange={(e) => setSelectedItem(prev => prev ? { ...prev, unit_size: parseFloat(e.target.value) || 0 } : null)}
+                              placeholder="0"
+                              className="w-full bg-white/5 border border-white/10 rounded-xl h-10 px-2 text-center text-xs font-bold text-white outline-none focus:border-white/30"
+                            />
+                            <select
+                              value={selectedItem.unit_measure || 'ml'}
+                              onChange={(e) => setSelectedItem(prev => prev ? { ...prev, unit_measure: e.target.value } : null)}
+                              className="bg-white/5 border border-white/10 rounded-xl h-10 px-1 text-[10px] font-bold text-white/60 outline-none appearance-none text-center min-w-[3rem]"
+                            >
+                              <option value="ml">ml</option>
+                              <option value="g">g</option>
+                              <option value="kg">kg</option>
+                              <option value="L">L</option>
+                              <option value="un">un</option>
+                            </select>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
+                    {/* Cost & Price Row */}
                     <div className="grid grid-cols-2 gap-4">
-                      <MetricBlock label="VALOR ACTUAL" value={`$${selectedItem.cost.toFixed(2)}`} icon="payments" color="text-white/60" />
-                      <MetricBlock label="GANANCIA" value={selectedItem.price ? `$${(selectedItem.price - selectedItem.cost).toFixed(2)}` : '--'} icon="trending_up" color="text-white/40" />
-                    </div>
-                  </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase text-white/40 tracking-[0.2em] ml-1"> Costo Unit. </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20 text-xs">$</span>
+                          <input
+                            type="number"
+                            value={selectedItem.cost || ''}
+                            onChange={(e) => setSelectedItem(prev => prev ? { ...prev, cost: parseFloat(e.target.value) || 0 } : null)}
+                            className="w-full bg-black border border-white/10 rounded-2xl h-12 pl-6 pr-4 font-black text-white text-lg outline-none focus:border-neon/50 text-right"
+                          />
+                        </div>
+                      </div>
 
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-end">
-                      <label className="text-[9px] font-black uppercase text-white/40 tracking-[0.2em]">Descripción Gourmet AI</label>
-                      <button
-                        onClick={generateAIGourmetDescription}
-                        disabled={aiGenerating}
-                        className="text-[8px] font-black text-white uppercase flex items-center gap-1 hover:brightness-125 disabled:opacity-30"
-                      >
-                        <span className="material-symbols-outlined text-xs">{aiGenerating ? 'sync' : 'auto_awesome'}</span>
-                        {aiGenerating ? 'GENERANDO...' : 'RE-GENERAR'}
-                      </button>
-                    </div>
-                    <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 relative overflow-hidden group">
-                      <div className="absolute top-0 left-0 w-1 h-full bg-white/20 group-hover:bg-neon transition-all"></div>
-                      <p className="text-[11px] text-white/70 leading-relaxed font-medium">
-                        {selectedItem.description || "Sin descripción generada. Haz click arriba para que la IA cree una descripción tentadora para este producto."}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[8px] font-black uppercase text-white/40 tracking-[0.2em]">Precio Venta</label>
-                      <div className="h-12 bg-black border border-white/10 rounded-2xl flex items-center justify-center font-black text-lg text-neon">
-                        ${selectedItem.price?.toFixed(2) || '0.00'}
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase text-white/40 tracking-[0.2em] ml-1"> Valor Stock </label>
+                        <div className="h-12 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-end px-4 font-black text-white/40 text-lg">
+                          ${((selectedItem.current_stock || 0) * (selectedItem.cost || 0)).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        </div>
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-[8px] font-black uppercase text-white/40 tracking-[0.2em]">Margen Neto</label>
-                      <div className="h-12 bg-black border border-white/10 rounded-2xl flex items-center justify-center font-black text-lg text-neon">
-                        {selectedItem.price ? `${(((selectedItem.price - selectedItem.cost) / selectedItem.cost) * 100).toFixed(0)}%` : '0%'}
+
+                    {selectedItem.item_type === 'sellable' && (
+                      <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
+                        <div className="space-y-2">
+                          <label className="text-[8px] font-black uppercase text-white/40 tracking-[0.2em]">Precio Venta</label>
+                          <div className="h-12 bg-black border border-white/10 rounded-2xl flex items-center justify-center font-black text-lg text-neon">
+                            ${selectedItem.price?.toFixed(2) || '0.00'}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[8px] font-black uppercase text-white/40 tracking-[0.2em]">Margen Neto</label>
+                          <div className="h-12 bg-black border border-white/10 rounded-2xl flex items-center justify-center font-black text-lg text-neon">
+                            {selectedItem.price ? `${(((selectedItem.price - selectedItem.cost) / selectedItem.cost) * 100).toFixed(0)}%` : '0%'}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ACTIONS - Contextual Mobile Header */}
+                  <div className="flex items-center gap-2 p-4 border-b border-white/5 bg-white/[0.01]">
+                    <button
+                      onClick={() => setAdjustmentModal({ open: true, type: 'WASTE' })}
+                      className="flex-1 py-3 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-500/20 transition-all"
+                    >
+                      <span className="material-symbols-outlined text-sm">delete_forever</span>
+                      Pérdida
+                    </button>
+                    <button
+                      onClick={() => setAdjustmentModal({ open: true, type: 'PURCHASE' })}
+                      className="flex-1 py-3 rounded-xl bg-neon/10 text-neon border border-neon/20 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-neon/20 transition-all"
+                    >
+                      <span className="material-symbols-outlined text-sm">shopping_cart</span>
+                      Compra
+                    </button>
+                    <button
+                      onClick={() => setAdjustmentModal({ open: true, type: 'ADJUSTMENT' })}
+                      className="flex-1 py-3 rounded-xl bg-orange-500/10 text-orange-500 border border-orange-500/20 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-orange-500/20 transition-all"
+                    >
+                      <span className="material-symbols-outlined text-sm">tune</span>
+                      Ajuste
+                    </button>
+                  </div>
+
+                  {/* METRICS & DETAILS */}
+                  {drawerTab === 'details' && (
+                    <div className="bg-white/5 rounded-2xl p-4 border border-white/5 space-y-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-[9px] font-black text-[#71766F] uppercase tracking-[0.2em] mb-1">STOCK TOTAL</p>
+                          <p className="text-3xl font-black text-white tracking-tighter">{selectedItem.current_stock} <span className="text-sm text-white/40">{selectedItem.unit_type}</span></p>
+                        </div>
+                        <button
+                          onClick={() => setIsTransferModalOpen(true)}
+                          className="px-4 py-2 bg-neon/10 border border-neon/20 rounded-xl flex items-center gap-2 hover:bg-neon/20 transition-all group"
+                        >
+                          <span className="material-symbols-outlined text-neon text-lg group-hover:scale-110 transition-transform">swap_horiz</span>
+                          <span className="text-[9px] font-black text-neon uppercase tracking-widest">TRANSFERIR</span>
+                        </button>
+                      </div>
+
+                      <AIStockInsight
+                        currentStock={selectedItem.current_stock}
+                        minStock={selectedItem.min_stock || 0}
+                      />
+
+                    </div>
+                  )}
+
+                  {/* PAQUETES ABIERTOS - Sección Detallada */}
+                  {(selectedItem.open_packages?.length > 0 || selectedItem.open_count > 0) && (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-neon text-sm">inventory_2</span>
+                        <span className="text-[9px] font-black uppercase text-white/60 tracking-[0.2em]">Paquetes Abiertos</span>
+                        <div className="flex-1 h-px bg-white/10"></div>
+                        <span className="text-xs font-black text-neon">{selectedItem.open_packages?.length || selectedItem.open_count}</span>
+                      </div>
+
+                      <div className="space-y-3">
+                        {selectedItem.open_packages?.map((pkg, idx) => {
+                          const capacity = pkg.package_capacity || 1000;
+                          const remaining = pkg.remaining ?? pkg.remaining_quantity ?? 0;
+                          const percentage = capacity ? Math.round((remaining / capacity) * 100) : 0;
+                          const barColor = percentage > 50 ? '#4ADE80' : percentage > 20 ? '#FBBF24' : '#EF4444';
+                          const statusText = percentage > 50 ? 'Disponible' : percentage > 20 ? 'Medio' : 'Bajo';
+
+                          return (
+                            <div key={pkg.id || idx} className="p-4 rounded-xl bg-white/[0.03] border border-white/10 space-y-3">
+                              {/* Header con número de paquete */}
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div className="size-6 rounded-lg bg-white/10 flex items-center justify-center">
+                                    <span className="text-[9px] font-black text-white/60">{idx + 1}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] font-bold text-white">
+                                      {remaining}{selectedItem.unit_type} de {capacity}{selectedItem.unit_type}
+                                    </span>
+                                    <span className="text-[8px] text-white/40 ml-2">restante</span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full"
+                                    style={{ backgroundColor: `${barColor}20`, color: barColor }}
+                                  >
+                                    {statusText}
+                                  </span>
+                                  <span className="text-sm font-black font-mono" style={{ color: barColor }}>
+                                    {percentage}%
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Progress Bar */}
+                              <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full transition-all duration-500 rounded-full"
+                                  style={{
+                                    width: `${percentage}%`,
+                                    backgroundColor: barColor,
+                                    boxShadow: `0 0 10px ${barColor}40`
+                                  }}
+                                />
+                              </div>
+
+                              {/* Info adicional */}
+                              <div className="flex items-center justify-between text-[8px]">
+                                {pkg.location ? (
+                                  <span className="text-white/40 flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[10px]">location_on</span>
+                                    {pkg.location}
+                                  </span>
+                                ) : (
+                                  <span className="text-white/20">Sin ubicación</span>
+                                )}
+                                {pkg.opened_at && (
+                                  <span className="text-white/30">
+                                    Abierto: {new Date(pkg.opened_at).toLocaleDateString('es-AR')}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }) || (
+                            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 text-center">
+                              <span className="text-sm font-bold text-white/40">{selectedItem.open_count} paquetes abiertos</span>
+                              <p className="text-[9px] text-white/20 mt-1">Sin información detallada disponible</p>
+                            </div>
+                          )}
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
+
 
               {drawerTab === 'recipe' && (
                 <div className="space-y-6 animate-in slide-in-from-right-8 duration-500">
@@ -2266,7 +2424,8 @@ const InventoryManagement: React.FC = () => {
               </div>
             </div>
           </div>
-        )}
+        )
+      }
 
       {/* INVOICE PROCESSOR MODAL */}
       <InvoiceProcessor
@@ -2275,554 +2434,580 @@ const InventoryManagement: React.FC = () => {
       />
 
       {/* RECIPE MODAL - ULTRA MINIMALIST & PREMIUM */}
-      {showRecipeModal && (
-        <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-[#050605]/80 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-[#0A0C0A] rounded-[2rem] border border-white/5 w-full max-w-lg shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] relative overflow-hidden group">
-            {/* Subtle glow effects */}
-            <div className="absolute top-0 right-0 size-64 bg-white/5 blur-[80px] rounded-full pointer-events-none opacity-50"></div>
+      {
+        showRecipeModal && (
+          <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-[#050605]/80 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="bg-[#0A0C0A] rounded-[2rem] border border-white/5 w-full max-w-lg shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] relative overflow-hidden group">
+              {/* Subtle glow effects */}
+              <div className="absolute top-0 right-0 size-64 bg-white/5 blur-[80px] rounded-full pointer-events-none opacity-50"></div>
 
-            <div className="relative p-6 space-y-6">
-              {/* Header Compacto */}
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <div className="size-8 rounded-full bg-white/10 flex items-center justify-center border border-white/20 shadow-neon-soft">
-                    <span className="material-symbols-outlined text-neon text-sm">science</span>
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-black text-white italic uppercase tracking-tighter leading-none">
-                      {editingProductId ? 'Editar Fórmula' : 'Nueva Receta'}
-                    </h2>
-                    <p className="text-[9px] font-bold text-white/30 uppercase tracking-[0.2em] mt-0.5">
-                      ```
-                      Composición Maestra
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => { setShowRecipeModal(false); setEditingProductId(null); setRecipeIngredients([]); setCustomRecipeName(''); }}
-                  className="size-8 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:text-neon hover:bg-white/10 transition-all"
-                >
-                  <span className="material-symbols-outlined text-lg">close</span>
-                </button>
-              </div>
-
-              {/* Product Selector with Custom Name Input */}
-              <div className="relative group/select transition-all">
-                <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent group-focus-within/select:via-white/50"></div>
-                <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-1.5 block ml-1">Producto Final</label>
-                <div className="relative">
-                  <input
-                    list="products-list"
-                    type="text"
-                    placeholder="Buscar o escribir nombre nuevo..."
-                    value={customRecipeName}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setCustomRecipeName(val);
-
-                      // Check if it matches an existing product
-                      const matched = items.find(i => i.name.toLowerCase() === val.toLowerCase() && i.item_type === 'sellable');
-                      if (matched) {
-                        setEditingProductId(matched.id);
-                        // Load existing recipe
-                        const existing = productRecipes.filter(r => r.product_id === matched.id);
-                        if (existing.length > 0) {
-                          const mappedIngredients: RecipeIngredientUI[] = existing.map(r => {
-                            const invItem = items.find(i => i.id === r.inventory_item_id);
-                            let unit: any = invItem?.unit_type || 'un';
-                            let qty = r.quantity_required;
-                            if (unit === 'kg') { if (qty < 1) { unit = 'g'; qty *= 1000; } }
-                            else if (unit === 'l') { if (qty < 1) { unit = 'ml'; qty *= 1000; } }
-                            return { id: r.inventory_item_id, qty: Number(qty.toFixed(4)), unit };
-                          });
-                          setRecipeIngredients(mappedIngredients);
-                          // Set price if editing
-                          if (matched.base_price || matched.price) {
-                            setCustomPrice((matched.base_price || matched.price || 0).toString());
-                          }
-                        } else {
-                          // Is existing product but has no recipe, clear ingredients if not already editing
-                          if (editingProductId !== matched.id) setRecipeIngredients([]);
-                          // Also load price
-                          if (matched.base_price || matched.price) {
-                            setCustomPrice((matched.base_price || matched.price || 0).toString());
-                          }
-                        }
-                      } else {
-                        setEditingProductId(null); // New product mode
-                        // Keep ingredients if we are just typing a new name
-                      }
-                    }}
-                    className="w-full bg-[#111311] border border-white/5 rounded-xl h-12 pl-4 pr-10 text-sm font-bold text-white outline-none placeholder:text-white/20 focus:border-white/30 focus:bg-white/[0.03] transition-all"
-                  />
-                  <datalist id="products-list">
-                    {items.filter(i => i.item_type === 'sellable').map(product => (
-                      <option key={product.id} value={product.name} />
-                    ))}
-                  </datalist>
-
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/20">
-                    {editingProductId ? (
-                      <span className="material-symbols-outlined text-green-500 text-sm" title="Producto Existente">check_circle</span>
-                    ) : customRecipeName ? (
-                      <span className="material-symbols-outlined text-blue-500 text-sm animate-pulse" title="Se creará nuevo producto">add_circle</span>
-                    ) : (
-                      <span className="material-symbols-outlined text-sm">search</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Ingredients List - Open & Clean */}
-              <div className="space-y-4 pt-2">
-                <div className="flex justify-between items-end border-b border-white/5 pb-2">
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Composición</label>
-                  {recipeIngredients.length > 0 && (
-                    <span className="text-[10px] text-white/40 font-mono">{recipeIngredients.length} componentes</span>
-                  )}
-                </div>
-
-                <div className="space-y-0.5 min-h-[100px]">
-                  {recipeIngredients.length === 0 ? (
-                    <div className="py-12 flex flex-col items-center justify-center text-center gap-4 opacity-40">
-                      <div className="size-16 rounded-full bg-white/5 flex items-center justify-center">
-                        <span className="material-symbols-outlined text-3xl text-white/20">soup_kitchen</span>
-                      </div>
-                      <p className="text-xs text-white/30 font-bold uppercase tracking-widest max-w-[200px]">
-                        Agrega los insumos base para esta receta
+              <div className="relative p-6 space-y-6">
+                {/* Header Compacto */}
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="size-8 rounded-full bg-white/10 flex items-center justify-center border border-white/20 shadow-neon-soft">
+                      <span className="material-symbols-outlined text-neon text-sm">science</span>
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-black text-white italic uppercase tracking-tighter leading-none">
+                        {editingProductId ? 'Editar Fórmula' : 'Nueva Receta'}
+                      </h2>
+                      <p className="text-[9px] font-bold text-white/30 uppercase tracking-[0.2em] mt-0.5">
+                        ```
+                        Composición Maestra
                       </p>
                     </div>
-                  ) : (
-                    recipeIngredients.map((r) => {
-                      const ing = items.find(i => i.id === r.id);
-                      if (!ing) return null;
+                  </div>
+                  <button
+                    onClick={() => { setShowRecipeModal(false); setEditingProductId(null); setRecipeIngredients([]); setCustomRecipeName(''); }}
+                    className="size-8 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:text-neon hover:bg-white/10 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-lg">close</span>
+                  </button>
+                </div>
 
-                      const u = (r.unit || 'unit').toLowerCase();
-                      const isMass = ['kg', 'g', 'gram', 'gramo'].includes(u);
-                      const isVolume = ['l', 'ml', 'litro', 'cc'].includes(u);
+                {/* Product Selector with Custom Name Input */}
+                <div className="relative group/select transition-all">
+                  <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent group-focus-within/select:via-white/50"></div>
+                  <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-1.5 block ml-1">Producto Final</label>
+                  <div className="relative">
+                    <input
+                      list="products-list"
+                      type="text"
+                      placeholder="Buscar o escribir nombre nuevo..."
+                      value={customRecipeName}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setCustomRecipeName(val);
 
-                      return (
-                        <div key={r.id} className="flex items-center justify-between py-3 px-2 group hover:bg-white/[0.02] rounded-lg transition-colors">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-light text-neon">{ing.name}</span>
-                            <span className="text-[10px] text-white/20 uppercase tracking-wider">{ing.unit_type}</span>
-                          </div>
+                        // Check if it matches an existing product
+                        const matched = items.find(i => i.name.toLowerCase() === val.toLowerCase() && i.item_type === 'sellable');
+                        if (matched) {
+                          setEditingProductId(matched.id);
+                          // Load existing recipe
+                          const existing = productRecipes.filter(r => r.product_id === matched.id);
+                          if (existing.length > 0) {
+                            const mappedIngredients: RecipeIngredientUI[] = existing.map(r => {
+                              const invItem = items.find(i => i.id === r.inventory_item_id);
+                              let unit: any = invItem?.unit_type || 'un';
+                              let qty = r.quantity_required;
+                              if (unit === 'kg') { if (qty < 1) { unit = 'gram'; qty *= 1000; } }
+                              else if (unit === 'liter') { if (qty < 1) { unit = 'ml'; qty *= 1000; } }
+                              return { id: r.inventory_item_id, qty: Number(qty.toFixed(4)), unit };
+                            });
+                            setRecipeIngredients(mappedIngredients);
+                            // Set price if editing
+                            if (matched.base_price || matched.price) {
+                              setCustomPrice((matched.base_price || matched.price || 0).toString());
+                            }
+                          } else {
+                            // Is existing product but has no recipe, clear ingredients if not already editing
+                            if (editingProductId !== matched.id) setRecipeIngredients([]);
+                            // Also load price
+                            if (matched.base_price || matched.price) {
+                              setCustomPrice((matched.base_price || matched.price || 0).toString());
+                            }
+                          }
+                        } else {
+                          setEditingProductId(null); // New product mode
+                          // Keep ingredients if we are just typing a new name
+                        }
+                      }}
+                      className="w-full bg-[#111311] border border-white/5 rounded-xl h-12 pl-4 pr-10 text-sm font-bold text-white outline-none placeholder:text-white/20 focus:border-white/30 focus:bg-white/[0.03] transition-all"
+                    />
+                    <datalist id="products-list">
+                      {items.filter(i => i.item_type === 'sellable').map(product => (
+                        <option key={product.id} value={product.name} />
+                      ))}
+                    </datalist>
 
-                          <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2 relative group/input">
-                              <input
-                                type="number"
-                                value={r.qty}
-                                onChange={(e) => updateIngredientQty(r.id, parseFloat(e.target.value) || 0)}
-                                className="w-20 bg-transparent text-right text-lg font-bold text-white outline-none placeholder:text-white/20 focus:text-neon transition-colors border-b border-transparent focus:border-white/50 px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                placeholder="0"
-                              />
-                              <button
-                                onClick={() => {
-                                  const currentUnit = r.unit;
-                                  let nextUnit: any = currentUnit;
-                                  // Cycle logic
-                                  if (currentUnit === 'kg') nextUnit = 'g';
-                                  else if (currentUnit === 'g') nextUnit = 'kg';
-                                  else if (currentUnit === 'l') nextUnit = 'ml';
-                                  else if (currentUnit === 'ml') nextUnit = 'l';
-                                  else if (currentUnit === 'un') nextUnit = 'un';
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/20">
+                      {editingProductId ? (
+                        <span className="material-symbols-outlined text-green-500 text-sm" title="Producto Existente">check_circle</span>
+                      ) : customRecipeName ? (
+                        <span className="material-symbols-outlined text-blue-500 text-sm animate-pulse" title="Se creará nuevo producto">add_circle</span>
+                      ) : (
+                        <span className="material-symbols-outlined text-sm">search</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
 
-                                  // Update ONLY the unit, keep the quantity number as is
-                                  setRecipeIngredients(prev => prev.map(item => item.id === r.id ? { ...item, unit: nextUnit } : item));
-                                }}
-                                className="h-6 px-1.5 flex items-center justify-center rounded bg-white/5 hover:bg-white/10 text-[10px] font-bold text-white/50 hover:text-neon transition-colors cursor-pointer border border-white/5 uppercase"
-                                title="Cambiar unidad"
-                              >
-                                {r.unit}
-                              </button>
-                            </div>
+                {/* Ingredients List - Open & Clean */}
+                <div className="space-y-4 pt-2">
+                  <div className="flex justify-between items-end border-b border-white/5 pb-2">
+                    <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Composición</label>
+                    {recipeIngredients.length > 0 && (
+                      <span className="text-[10px] text-white/40 font-mono">{recipeIngredients.length} componentes</span>
+                    )}
+                  </div>
 
-                            {/* Price Display */}
-                            <div className="w-24 text-right">
-                              <span className="text-xs font-mono text-white/50">
-                                {(() => {
-                                  let q = r.qty;
-                                  if (['g', 'ml', 'gram'].includes((r.unit || '').toLowerCase())) q /= 1000;
-                                  return formatCurrency((ing?.cost || 0) * q);
-                                })()}
-                              </span>
-                            </div>
-
-                            {/* Delete */}
-                            <button
-                              onClick={() => removeIngredient(r.id)}
-                              className="size-8 flex items-center justify-center rounded-full hover:bg-red-500/10 text-white/10 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
-                            >
-                              <span className="material-symbols-outlined text-base">close</span>
-                            </button>
-                          </div>
+                  <div className="space-y-0.5 min-h-[100px]">
+                    {recipeIngredients.length === 0 ? (
+                      <div className="py-12 flex flex-col items-center justify-center text-center gap-4 opacity-40">
+                        <div className="size-16 rounded-full bg-white/5 flex items-center justify-center">
+                          <span className="material-symbols-outlined text-3xl text-white/20">soup_kitchen</span>
                         </div>
-                      );
-                    })
-                  )}
-
-                  {/* Add Button - Custom Searchable Dropdown */}
-                  <div className="pt-4 relative z-50">
-                    {!showIngredientSelector ? (
-                      <div
-                        onClick={() => {
-                          setShowIngredientSelector(true);
-                          setTimeout(() => document.getElementById('ing-search-input')?.focus(), 100);
-                        }}
-                        className="flex items-center justify-center gap-3 w-full py-4 border border-dashed border-white/10 rounded-xl hover:border-white/30 hover:bg-white/[0.02] transition-all cursor-pointer group"
-                      >
-                        <span className="material-symbols-outlined text-white/30 group-hover:text-neon transition-colors">add_circle</span>
-                        <span className="text-xs font-bold text-white/30 uppercase tracking-widest group-hover:text-neon transition-colors">Añadir Insumo</span>
+                        <p className="text-xs font-bold text-white/30 uppercase tracking-widest max-w-[200px]">
+                          Agrega los insumos base para esta receta
+                        </p>
                       </div>
                     ) : (
-                      <div className="flex flex-col gap-2 animate-in fade-in zoom-in duration-200">
-                        <div className="relative">
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 material-symbols-outlined text-sm">search</span>
-                          <input
-                            id="ing-search-input"
-                            autoFocus
-                            className="w-full bg-[#0a0a0a] border border-white/20 rounded-lg py-3 pl-10 pr-10 text-sm text-neon placeholder:text-white/20 outline-none shadow-[0_0_15px_rgba(255,255,255,0.05)] font-light focus:border-white/40 transition-all"
-                            placeholder="Buscar ingrediente..."
-                            value={ingredientSearch}
-                            onChange={(e) => setIngredientSearch(e.target.value)}
-                            onBlur={() => {
-                              setTimeout(() => {
-                                setShowIngredientSelector(false);
-                                setIngredientSearch('');
-                              }, 200);
-                            }}
-                          />
-                          <button
-                            onClick={() => setShowIngredientSelector(false)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-neon"
-                          >
-                            <span className="material-symbols-outlined text-sm">close</span>
-                          </button>
-                        </div>
+                      recipeIngredients.map((r) => {
+                        const ing = items.find(i => i.id === r.id);
+                        if (!ing) return null;
 
-                        {/* Popover Results */}
-                        <div className="absolute top-14 left-0 w-full bg-[#111] border border-white/10 rounded-lg shadow-2xl max-h-60 overflow-y-auto no-scrollbar z-[100]">
-                          {items.filter(i =>
-                            i.item_type === 'ingredient' &&
-                            !recipeIngredients.find(r => r.id === i.id) &&
-                            i.name.toLowerCase().includes(ingredientSearch.toLowerCase())
-                          ).length === 0 ? (
-                            <div className="p-4 text-center text-xs text-white/30">No se encontraron ingredientes</div>
-                          ) : (
-                            items.filter(i =>
+                        const u = (r.unit || 'unit').toLowerCase();
+                        const isMass = ['kg', 'g', 'gram'].includes(u);
+                        const isVolume = ['l', 'ml', 'litro', 'cc'].includes(u);
+
+                        return (
+                          <div key={r.id} className="flex items-center justify-between py-3 px-2 group hover:bg-white/[0.02] rounded-lg transition-colors">
+                            <div className="flex flex-col">
+                              <span className="text-sm font-light text-neon">{ing.name}</span>
+                              <span className="text-[10px] text-white/20 uppercase tracking-wider">{ing.unit_type}</span>
+                            </div>
+
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-2 relative group/input">
+                                <input
+                                  type="number"
+                                  value={r.qty}
+                                  onChange={(e) => updateIngredientQty(r.id, parseFloat(e.target.value) || 0)}
+                                  className="w-20 bg-transparent text-right text-lg font-bold text-white outline-none placeholder:text-white/20 focus:text-neon transition-colors border-b border-transparent focus:border-white/50 px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  placeholder="0"
+                                />
+                                <button
+                                  onClick={() => {
+                                    const currentUnit = r.unit;
+                                    let nextUnit: any = currentUnit;
+                                    // Cycle logic
+                                    if (currentUnit === 'kg') nextUnit = 'gram';
+                                    else if (currentUnit === 'gram') nextUnit = 'kg';
+                                    else if (currentUnit === 'liter') nextUnit = 'ml';
+                                    else if (currentUnit === 'ml') nextUnit = 'liter';
+                                    else if (currentUnit === 'unit') nextUnit = 'unit';
+
+                                    // Update ONLY the unit, keep the quantity number as is
+                                    setRecipeIngredients(prev => prev.map(item => item.id === r.id ? { ...item, unit: nextUnit } : item));
+                                  }}
+                                  className="h-6 px-1.5 flex items-center justify-center rounded bg-white/5 hover:bg-white/10 text-[10px] font-bold text-white/50 hover:text-neon transition-colors cursor-pointer border border-white/5 uppercase"
+                                  title="Cambiar unidad"
+                                >
+                                  {r.unit}
+                                </button>
+                              </div>
+
+                              {/* Price Display */}
+                              <div className="w-24 text-right">
+                                <span className="text-xs font-mono text-white/50">
+                                  {(() => {
+                                    let q = r.qty;
+                                    if (['gram', 'ml'].includes((r.unit || '').toLowerCase())) q /= 1000;
+                                    return formatCurrency((ing?.cost || 0) * q);
+                                  })()}
+                                </span>
+                              </div>
+
+                              {/* Delete */}
+                              <button
+                                onClick={() => removeIngredient(r.id)}
+                                className="size-8 flex items-center justify-center rounded-full hover:bg-red-500/10 text-white/10 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
+                              >
+                                <span className="material-symbols-outlined text-base">close</span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+
+                    {/* Add Button - Custom Searchable Dropdown */}
+                    <div className="pt-4 relative z-50">
+                      {!showIngredientSelector ? (
+                        <div
+                          onClick={() => {
+                            setShowIngredientSelector(true);
+                            setTimeout(() => document.getElementById('ing-search-input')?.focus(), 100);
+                          }}
+                          className="flex items-center justify-center gap-3 w-full py-4 border border-dashed border-white/10 rounded-xl hover:border-white/30 hover:bg-white/[0.02] transition-all cursor-pointer group"
+                        >
+                          <span className="material-symbols-outlined text-white/30 group-hover:text-neon transition-colors">add_circle</span>
+                          <span className="text-xs font-bold text-white/30 uppercase tracking-widest group-hover:text-neon transition-colors">Añadir Insumo</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-2 animate-in fade-in zoom-in duration-200">
+                          <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 material-symbols-outlined text-sm">search</span>
+                            <input
+                              id="ing-search-input"
+                              autoFocus
+                              className="w-full bg-[#0a0a0a] border border-white/20 rounded-lg py-3 pl-10 pr-10 text-sm text-neon placeholder:text-white/20 outline-none shadow-[0_0_15px_rgba(255,255,255,0.05)] font-light focus:border-white/40 transition-all"
+                              placeholder="Buscar ingrediente..."
+                              value={ingredientSearch}
+                              onChange={(e) => setIngredientSearch(e.target.value)}
+                              onBlur={() => {
+                                setTimeout(() => {
+                                  setShowIngredientSelector(false);
+                                  setIngredientSearch('');
+                                }, 200);
+                              }}
+                            />
+                            <button
+                              onClick={() => setShowIngredientSelector(false)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-neon"
+                            >
+                              <span className="material-symbols-outlined text-sm">close</span>
+                            </button>
+                          </div>
+
+                          {/* Popover Results */}
+                          <div className="absolute top-14 left-0 w-full bg-[#111] border border-white/10 rounded-lg shadow-2xl max-h-60 overflow-y-auto no-scrollbar z-[100]">
+                            {items.filter(i =>
                               i.item_type === 'ingredient' &&
                               !recipeIngredients.find(r => r.id === i.id) &&
                               i.name.toLowerCase().includes(ingredientSearch.toLowerCase())
-                            ).map(ing => (
-                              <div
-                                key={ing.id}
-                                onMouseDown={(e) => {
-                                  e.preventDefault(); // Prevent blur
-                                  const item = ing;
-                                  let defaultUnit: any = item?.unit_type || 'un';
-                                  let defaultQty = 1;
+                            ).length === 0 ? (
+                              <div className="p-4 text-center text-xs text-white/30">No se encontraron ingredientes</div>
+                            ) : (
+                              items.filter(i =>
+                                i.item_type === 'ingredient' &&
+                                !recipeIngredients.find(r => r.id === i.id) &&
+                                i.name.toLowerCase().includes(ingredientSearch.toLowerCase())
+                              ).map(ing => (
+                                <div
+                                  key={ing.id}
+                                  onMouseDown={(e) => {
+                                    e.preventDefault(); // Prevent blur
+                                    const item = ing;
+                                    let defaultUnit: any = item?.unit_type || 'unit';
+                                    let defaultQty = 1;
 
-                                  // RESTORED AUTOMATIC CONVERSION LOGIC
-                                  if (item?.unit_type === 'kg') { defaultUnit = 'g'; defaultQty = 100; }
-                                  else if (item?.unit_type === 'l') { defaultUnit = 'ml'; defaultQty = 100; }
+                                    // RESTORED AUTOMATIC CONVERSION LOGIC
+                                    if (item?.unit_type === 'kg') { defaultUnit = 'gram'; defaultQty = 100; }
+                                    else if (item?.unit_type === 'liter') { defaultUnit = 'ml'; defaultQty = 100; }
 
-                                  setRecipeIngredients(prev => [...prev, { id: item.id, qty: defaultQty, unit: defaultUnit }]);
-                                  setShowIngredientSelector(false);
-                                  setIngredientSearch('');
-                                }}
-                                className="px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/5 cursor-pointer flex justify-between items-center group/opt"
-                              >
-                                <span className="text-sm text-gray-300 group-hover/opt:text-neon transition-colors">{ing.name}</span>
-                                <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded text-white/30">{ing.unit_type}</span>
-                              </div>
-                            ))
-                          )}
+                                    setRecipeIngredients(prev => [...prev, { id: item.id, qty: defaultQty, unit: defaultUnit }]);
+                                    setShowIngredientSelector(false);
+                                    setIngredientSearch('');
+                                  }}
+                                  className="px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/5 cursor-pointer flex justify-between items-center group/opt"
+                                >
+                                  <span className="text-sm text-gray-300 group-hover/opt:text-neon transition-colors">{ing.name}</span>
+                                  <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded text-white/30">{ing.unit_type}</span>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+
+                  {/* Footer Costs & Price - Ultra Minimalist Text-Based */}
+                  <div className="pt-8 mt-6 grid grid-cols-1 md:grid-cols-3 gap-12 border-t border-white/[0.04]">
+
+                    {/* Costo Total */}
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Costo Total</span>
+                      <div className="flex items-baseline">
+                        <span className="text-3xl font-light text-white tracking-tighter">
+                          {(() => {
+                            const totalCost = recipeIngredients.reduce((sum, r) => {
+                              const ing = items.find(i => i.id === r.id);
+                              let qty = r.qty;
+                              const isG = ['gram', 'ml'].includes((r.unit || '').toLowerCase());
+                              if (isG) qty /= 1000;
+                              return sum + (ing?.cost || 0) * qty;
+                            }, 0);
+                            return formatCurrency(totalCost);
+                          })()}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Precio Venta - Ghost Input - Fixed */}
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Precio Venta</span>
+                      <div className="relative group/price">
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-xl text-white/30 font-light">$</span>
+                          <input
+                            type="number"
+                            value={customPrice}
+                            onChange={(e) => setCustomPrice(e.target.value)}
+                            placeholder="0.00"
+                            className="w-full bg-transparent text-3xl font-light text-white outline-none border-none focus:ring-0 p-0 m-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none placeholder:text-white/10"
+                          />
+                        </div>
+                        {/* Animated Underline */}
+                        <div className="absolute bottom-0 left-0 w-full h-px bg-white/10 group-focus-within/price:bg-neon group-focus-within/price:h-[2px] transition-all"></div>
+
+                        {/* Rounding Actions - Below Input */}
+                        <div className="grid grid-cols-2 gap-2 pt-3">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const val = parseFloat(customPrice || '0');
+                              if (!isNaN(val) && val > 0) {
+                                const rounded = Math.floor(val / 100) * 100;
+                                setCustomPrice(rounded.toString());
+                              }
+                            }}
+                            className="flex items-center justify-center p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-neon transition-all border border-white/5 hover:border-white/20 active:scale-95"
+                            title="Redondear Abajo"
+                          >
+                            <span className="material-symbols-outlined text-xl">arrow_downward</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const val = parseFloat(customPrice || '0');
+                              if (!isNaN(val) && val > 0) {
+                                const rounded = Math.ceil(val / 100) * 100;
+                                setCustomPrice(rounded.toString());
+                              }
+                            }}
+                            className="flex items-center justify-center p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-neon transition-all border border-white/5 hover:border-white/20 active:scale-95"
+                            title="Redondear Arriba"
+                          >
+                            <span className="material-symbols-outlined text-xl">arrow_upward</span>
+                          </button>
                         </div>
                       </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+                    </div>
 
-
-              {/* Footer Costs & Price - Ultra Minimalist Text-Based */}
-              <div className="pt-8 mt-6 grid grid-cols-1 md:grid-cols-3 gap-12 border-t border-white/[0.04]">
-
-                {/* Costo Total */}
-                <div className="flex flex-col gap-2">
-                  <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Costo Total</span>
-                  <div className="flex items-baseline">
-                    <span className="text-3xl font-light text-white tracking-tighter">
+                    {/* Margen - Ghost Input - Fixed */}
+                    <div className="flex flex-col gap-2">
                       {(() => {
                         const totalCost = recipeIngredients.reduce((sum, r) => {
                           const ing = items.find(i => i.id === r.id);
                           let qty = r.qty;
-                          const isG = ['g', 'ml', 'gram'].includes((r.unit || '').toLowerCase());
-                          if (isG) qty /= 1000;
+                          if (['gram', 'ml'].includes((r.unit || '').toLowerCase())) qty /= 1000;
                           return sum + (ing?.cost || 0) * qty;
                         }, 0);
-                        return formatCurrency(totalCost);
-                      })()}
-                    </span>
-                  </div>
-                </div>
+                        const priceVal = parseFloat(customPrice || '0');
+                        const profit = priceVal - totalCost;
+                        const currentMargin = priceVal > 0 ? ((profit / priceVal) * 100) : 0;
 
-                {/* Precio Venta - Ghost Input - Fixed */}
-                <div className="flex flex-col gap-2">
-                  <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Precio Venta</span>
-                  <div className="relative group/price">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-xl text-white/30 font-light">$</span>
-                      <input
-                        type="number"
-                        value={customPrice}
-                        onChange={(e) => setCustomPrice(e.target.value)}
-                        placeholder="0.00"
-                        className="w-full bg-transparent text-3xl font-light text-white outline-none border-none focus:ring-0 p-0 m-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none placeholder:text-white/10"
-                      />
-                    </div>
-                    {/* Animated Underline */}
-                    <div className="absolute bottom-0 left-0 w-full h-px bg-white/10 group-focus-within/price:bg-neon group-focus-within/price:h-[2px] transition-all"></div>
+                        let marginColor = 'text-white/30';
+                        if (priceVal > 0) {
+                          if (currentMargin < 0) marginColor = 'text-red-500';
+                          else if (currentMargin < 30) marginColor = 'text-yellow-500';
+                          else marginColor = 'text-neon';
+                        }
 
-                    {/* Rounding Actions - Below Input */}
-                    <div className="grid grid-cols-2 gap-2 pt-3">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          const val = parseFloat(customPrice || '0');
-                          if (!isNaN(val) && val > 0) {
-                            const rounded = Math.floor(val / 100) * 100;
-                            setCustomPrice(rounded.toString());
-                          }
-                        }}
-                        className="flex items-center justify-center p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-neon transition-all border border-white/5 hover:border-white/20 active:scale-95"
-                        title="Redondear Abajo"
-                      >
-                        <span className="material-symbols-outlined text-xl">arrow_downward</span>
-                      </button>
+                        return (
+                          <div className="flex flex-col justify-between h-full group/margin">
+                            <div className="flex justify-between items-baseline">
+                              <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Margen</span>
+                              <span className="text-[10px] text-white/30 font-mono">Ganancia: <span className="text-neon">{formatCurrency(profit)}</span></span>
+                            </div>
 
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          const val = parseFloat(customPrice || '0');
-                          if (!isNaN(val) && val > 0) {
-                            const rounded = Math.ceil(val / 100) * 100;
-                            setCustomPrice(rounded.toString());
-                          }
-                        }}
-                        className="flex items-center justify-center p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-neon transition-all border border-white/5 hover:border-white/20 active:scale-95"
-                        title="Redondear Arriba"
-                      >
-                        <span className="material-symbols-outlined text-xl">arrow_upward</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Margen - Ghost Input - Fixed */}
-                <div className="flex flex-col gap-2">
-                  {(() => {
-                    const totalCost = recipeIngredients.reduce((sum, r) => {
-                      const ing = items.find(i => i.id === r.id);
-                      let qty = r.qty;
-                      if (['g', 'ml', 'gram'].includes((r.unit || '').toLowerCase())) qty /= 1000;
-                      return sum + (ing?.cost || 0) * qty;
-                    }, 0);
-                    const priceVal = parseFloat(customPrice || '0');
-                    const profit = priceVal - totalCost;
-                    const currentMargin = priceVal > 0 ? ((profit / priceVal) * 100) : 0;
-
-                    let marginColor = 'text-white/30';
-                    if (priceVal > 0) {
-                      if (currentMargin < 0) marginColor = 'text-red-500';
-                      else if (currentMargin < 30) marginColor = 'text-yellow-500';
-                      else marginColor = 'text-neon';
-                    }
-
-                    return (
-                      <div className="flex flex-col justify-between h-full group/margin">
-                        <div className="flex justify-between items-baseline">
-                          <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Margen</span>
-                          <span className="text-[10px] text-white/30 font-mono">Ganancia: <span className="text-neon">{formatCurrency(profit)}</span></span>
-                        </div>
-
-                        <div className="relative">
-                          <div className="flex items-baseline justify-end gap-1">
-                            <input
-                              type="number"
-                              className={`w-full bg-transparent text-right text-3xl font-light outline-none border-none focus:ring-0 p-0 m-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${marginColor} placeholder:text-white/10`}
-                              placeholder="0"
-                              value={priceVal > 0 ? currentMargin.toFixed(1) : ''}
-                              onChange={(e) => {
-                                const targetMargin = parseFloat(e.target.value);
-                                if (!isNaN(targetMargin) && targetMargin < 100) {
-                                  if (targetMargin === 0) setCustomPrice(totalCost.toFixed(2));
-                                  else setCustomPrice((totalCost / (1 - (targetMargin / 100))).toFixed(2));
-                                }
-                              }}
-                            />
-                            <span className="text-xl text-white/20 font-light">%</span>
+                            <div className="relative">
+                              <div className="flex items-baseline justify-end gap-1">
+                                <input
+                                  type="number"
+                                  className={`w-full bg-transparent text-right text-3xl font-light outline-none border-none focus:ring-0 p-0 m-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${marginColor} placeholder:text-white/10`}
+                                  placeholder="0"
+                                  value={priceVal > 0 ? currentMargin.toFixed(1) : ''}
+                                  onChange={(e) => {
+                                    const targetMargin = parseFloat(e.target.value);
+                                    if (!isNaN(targetMargin) && targetMargin < 100) {
+                                      if (targetMargin === 0) setCustomPrice(totalCost.toFixed(2));
+                                      else setCustomPrice((totalCost / (1 - (targetMargin / 100))).toFixed(2));
+                                    }
+                                  }}
+                                />
+                                <span className="text-xl text-white/20 font-light">%</span>
+                              </div>
+                              <div className="absolute bottom-0 right-0 w-full h-px bg-white/10 group-focus-within/margin:bg-white/50 transition-all"></div>
+                            </div>
                           </div>
-                          <div className="absolute bottom-0 right-0 w-full h-px bg-white/10 group-focus-within/margin:bg-white/50 transition-all"></div>
-                        </div>
-                      </div>
-                    )
-                  })()}
-                </div>
+                        )
+                      })()}
+                    </div>
 
-              </div>
+                  </div>
 
-              {/* Actions - Premium Minimal */}
-              <div className="pt-12 flex items-center justify-end gap-6">
-                <button
-                  onClick={() => { setShowRecipeModal(false); setEditingProductId(null); setRecipeIngredients([]); setCustomRecipeName(''); }}
-                  className="text-[10px] font-bold text-white/30 hover:text-white uppercase tracking-widest transition-colors py-2 px-4"
-                >
-                  Cancelar
-                </button>
+                  {/* Actions - Premium Minimal */}
+                  <div className="pt-12 flex items-center justify-end gap-6">
+                    <button
+                      onClick={() => { setShowRecipeModal(false); setEditingProductId(null); setRecipeIngredients([]); setCustomRecipeName(''); }}
+                      className="text-[10px] font-bold text-white/30 hover:text-white uppercase tracking-widest transition-colors py-2 px-4"
+                    >
+                      Cancelar
+                    </button>
 
-                <button
-                  onClick={async () => {
-                    try {
-                      let finalProductId = editingProductId;
-                      // Safe store ID retrieval
-                      let currentStoreId = storeId;
-                      if (!currentStoreId) {
-                        const { data: { user } } = await supabase.auth.getUser();
-                        if (user?.user_metadata?.store_id) {
-                          currentStoreId = user.user_metadata.store_id;
-                          // Update state if possible, but use local var for now
-                        } else {
-                          // Fallback: try to find a store associated with user profile
-                          const { data: profile } = await supabase.from('profiles').select('store_id').eq('id', user?.id).single();
-                          if (profile?.store_id) currentStoreId = profile.store_id;
-                        }
-                      }
+                    <button
+                      onClick={async () => {
+                        try {
+                          let finalProductId = editingProductId;
+                          // Safe store ID retrieval
+                          let currentStoreId = storeId;
+                          if (!currentStoreId) {
+                            const { data: { user } } = await supabase.auth.getUser();
+                            if (user?.user_metadata?.store_id) {
+                              currentStoreId = user.user_metadata.store_id;
+                              // Update state if possible, but use local var for now
+                            } else {
+                              // Fallback: try to find a store associated with user profile
+                              const { data: profile } = await supabase.from('profiles').select('store_id').eq('id', user?.id).single();
+                              if (profile?.store_id) currentStoreId = profile.store_id;
+                            }
+                          }
 
-                      if (!currentStoreId) {
-                        addToast('Error Crítico: No se detectó ID de Tienda. Recarga la página.', 'error');
-                        return;
-                      }
+                          if (!currentStoreId) {
+                            addToast('Error Crítico: No se detectó ID de Tienda. Recarga la página.', 'error');
+                            return;
+                          }
 
-                      if (!currentStoreId) {
-                        const { data: userSession } = await supabase.auth.getUser();
-                        if (userSession?.user?.user_metadata?.store_id) {
-                          currentStoreId = userSession.user.user_metadata.store_id;
-                        } else {
-                          const { data: profile } = await supabase.from('profiles').select('store_id').eq('id', userSession?.user?.id).single();
-                          if (profile?.store_id) currentStoreId = profile.store_id;
-                        }
-                      }
+                          if (!currentStoreId) {
+                            const { data: userSession } = await supabase.auth.getUser();
+                            if (userSession?.user?.user_metadata?.store_id) {
+                              currentStoreId = userSession.user.user_metadata.store_id;
+                            } else {
+                              const { data: profile } = await supabase.from('profiles').select('store_id').eq('id', userSession?.user?.id).single();
+                              if (profile?.store_id) currentStoreId = profile.store_id;
+                            }
+                          }
 
-                      if (!currentStoreId) {
-                        addToast('Error Crítico: No se detectó ID de Tienda. Recarga la página.', 'error');
-                        return;
-                      }
+                          if (!currentStoreId) {
+                            addToast('Error Crítico: No se detectó ID de Tienda. Recarga la página.', 'error');
+                            return;
+                          }
 
-                      // Fetch Tenant ID logic if needed, or fallback to storeId if schema implies one-to-one
-                      // Critical Fix: Explicitly fetch tenant_id from stores if possible. Using 'as any' to avoid TS errors on dynamic column.
-                      // @ts-ignore
-                      const { data: storeData } = await supabase.from('stores').select('*').eq('id', currentStoreId).single();
-                      const tenantId = (storeData as any)?.tenant_id || (storeData as any)?.organization_id || currentStoreId;
-
-                      // Creation Logic
-                      if (!finalProductId && customRecipeName.trim()) {
-                        const calculatedCost = recipeIngredients.reduce((sum, r) => {
-                          const ing = items.find(i => i.id === r.id);
-                          let qty = r.qty;
-                          if (['g', 'ml', 'gram'].includes((r.unit || '').toLowerCase())) qty /= 1000;
-                          return sum + (ing?.cost || 0) * qty;
-                        }, 0);
-                        const finalPrice = customPrice ? parseFloat(customPrice) : (calculatedCost * 2);
-
-                        // Secure Save via RPC
-                        const sku = `REC-${Math.floor(Math.random() * 10000)}`;
-
-                        // @ts-ignore
-                        const { data: rpcData, error: rpcError } = await supabase.rpc('create_recipe_product', {
-                          p_name: customRecipeName,
-                          p_base_price: finalPrice,
-                          p_store_id: currentStoreId,
-                          p_sku: sku
-                        });
-
-                        console.log('RPC create_recipe_product debug:', { rpcData, rpcError });
-
-                        if (!rpcError && rpcData && (rpcData as any).success) {
-                          finalProductId = (rpcData as any).data.id;
-                          addToast('Producto creado via Backend', 'success');
-                        } else {
-                          const errorDetail = rpcError?.message || (rpcData as any)?.error || 'Unknown';
-                          console.warn('RPC failed, attempting direct insert:', errorDetail);
-
-                          // Fallback: Direct Insert (Legacy)
+                          // Fetch Tenant ID logic if needed, or fallback to storeId if schema implies one-to-one
+                          // Critical Fix: Explicitly fetch tenant_id from stores if possible. Using 'as any' to avoid TS errors on dynamic column.
                           // @ts-ignore
-                          const { data: newProd, error: prodError } = await supabase.from('products').insert({
-                            name: customRecipeName,
-                            sku: sku,
-                            base_price: finalPrice,
-                            category: 'Recetas',
-                            is_available: true,
-                            active: true,
-                            store_id: currentStoreId,
-                            tax_rate: 0,
-                            created_at: new Date().toISOString(),
-                            updated_at: new Date().toISOString()
-                          }).select().single();
+                          const { data: storeData } = await supabase.from('stores').select('*').eq('id', currentStoreId).single();
+                          const tenantId = (storeData as any)?.tenant_id || (storeData as any)?.organization_id || currentStoreId;
 
-                          if (prodError) throw prodError;
-                          if (!newProd) throw new Error('Failed to create product object');
-                          finalProductId = newProd.id;
-                          addToast('Producto creado via Fallback', 'success');
+                          // Creation Logic
+                          if (!finalProductId && customRecipeName.trim()) {
+                            const calculatedCost = recipeIngredients.reduce((sum, r) => {
+                              const ing = items.find(i => i.id === r.id);
+                              let qty = r.qty;
+                              if (['gram', 'ml'].includes((r.unit || '').toLowerCase())) qty /= 1000;
+                              return sum + (ing?.cost || 0) * qty;
+                            }, 0);
+                            const finalPrice = customPrice ? parseFloat(customPrice) : (calculatedCost * 2);
+
+                            // Secure Save via RPC
+                            const sku = `REC-${Math.floor(Math.random() * 10000)}`;
+
+                            // @ts-ignore
+                            const { data: rpcData, error: rpcError } = await supabase.rpc('create_recipe_product', {
+                              p_name: customRecipeName,
+                              p_base_price: finalPrice,
+                              p_store_id: currentStoreId,
+                              p_sku: sku
+                            });
+
+                            console.log('RPC create_recipe_product debug:', { rpcData, rpcError });
+
+                            if (!rpcError && rpcData && (rpcData as any).success) {
+                              finalProductId = (rpcData as any).data.id;
+                              addToast('Producto creado via Backend', 'success');
+                            } else {
+                              const errorDetail = rpcError?.message || (rpcData as any)?.error || 'Unknown';
+                              console.warn('RPC failed, attempting direct insert:', errorDetail);
+
+                              // Fallback: Direct Insert (Legacy)
+                              // @ts-ignore
+                              const { data: newProd, error: prodError } = await supabase.from('products').insert({
+                                name: customRecipeName,
+                                sku: sku,
+                                base_price: finalPrice,
+                                category: 'Recetas',
+                                is_available: true,
+                                active: true,
+                                store_id: currentStoreId,
+                                tax_rate: 0,
+                                created_at: new Date().toISOString(),
+                                updated_at: new Date().toISOString()
+                              }).select().single();
+
+                              if (prodError) throw prodError;
+                              if (!newProd) throw new Error('Failed to create product object');
+                              finalProductId = newProd.id;
+                              addToast('Producto creado via Fallback', 'success');
+                            }
+
+                            addToast('Producto creado: ' + customRecipeName, 'success');
+                          }
+
+                          if (!finalProductId) { addToast('Selecciona producto o escribe un nombre', 'error'); return; }
+                          if (recipeIngredients.length === 0) { addToast('Sin ingredientes', 'error'); return; }
+
+                          // Save Recipe Logic
+                          const { error: delError } = await supabase.from('product_recipes').delete().eq('product_id', finalProductId);
+                          if (delError) throw delError;
+
+                          const rows = recipeIngredients.map(r => {
+                            let quantity_required = r.qty;
+                            if (r.unit === 'gram' || r.unit === 'ml') quantity_required /= 1000;
+                            return { product_id: finalProductId, inventory_item_id: r.id, quantity_required };
+                          });
+
+                          const { error: insError } = await supabase.from('product_recipes').insert(rows);
+                          if (insError) throw insError;
+
+                          addToast('Receta guardada exitosamente', 'success');
+                          setShowRecipeModal(false);
+                          setEditingProductId(null);
+                          setRecipeIngredients([]);
+                          setCustomRecipeName('');
+                          fetchData(true);
+
+                        } catch (err: any) {
+                          console.error(err);
+                          addToast('Error: ' + (err.message || ''), 'error');
                         }
-
-                        addToast('Producto creado: ' + customRecipeName, 'success');
-                      }
-
-                      if (!finalProductId) { addToast('Selecciona producto o escribe un nombre', 'error'); return; }
-                      if (recipeIngredients.length === 0) { addToast('Sin ingredientes', 'error'); return; }
-
-                      // Save Recipe Logic
-                      const { error: delError } = await supabase.from('product_recipes').delete().eq('product_id', finalProductId);
-                      if (delError) throw delError;
-
-                      const rows = recipeIngredients.map(r => {
-                        let quantity_required = r.qty;
-                        if (r.unit === 'g' || r.unit === 'ml') quantity_required /= 1000;
-                        return { product_id: finalProductId, inventory_item_id: r.id, quantity_required };
-                      });
-
-                      const { error: insError } = await supabase.from('product_recipes').insert(rows);
-                      if (insError) throw insError;
-
-                      addToast('Receta guardada exitosamente', 'success');
-                      setShowRecipeModal(false);
-                      setEditingProductId(null);
-                      setRecipeIngredients([]);
-                      setCustomRecipeName('');
-                      fetchData(true);
-
-                    } catch (err: any) {
-                      console.error(err);
-                      addToast('Error: ' + (err.message || ''), 'error');
-                    }
-                  }}
-                  className="h-10 px-8 rounded-full bg-neon text-black font-bold text-[10px] uppercase tracking-widest hover:bg-gray-200 transition-all flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.2)]"
-                >
-                  <span>Guardar Receta</span>
-                  <span className="material-symbols-outlined text-base">arrow_forward</span>
-                </button>
+                      }}
+                      className="h-10 px-8 rounded-full bg-neon text-black font-bold text-[10px] uppercase tracking-widest hover:bg-gray-200 transition-all flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.2)]"
+                    >
+                      <span>Guardar Receta</span>
+                      <span className="material-symbols-outlined text-base">arrow_forward</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )
+        )
       }
+
+      {/* STOCK TRANSFER MODAL */}
+      {selectedItem && (
+        <StockTransferModal
+          isOpen={isTransferModalOpen}
+          onClose={() => setIsTransferModalOpen(false)}
+          item={selectedItem}
+          onSuccess={() => fetchData(false)}
+          onInitialStockClick={() => {
+            setShowInsumoWizard(true);
+            setWizardMethod('selector');
+          }}
+        />
+      )}
+
+      {/* STOCK ADJUSTMENT MODAL */}
+      {selectedItem && (
+        <StockAdjustmentModal
+          isOpen={adjustmentModal.open}
+          onClose={() => setAdjustmentModal({ ...adjustmentModal, open: false })}
+          item={selectedItem}
+          type={adjustmentModal.type}
+          onSuccess={() => fetchData(false)}
+        />
+      )}
     </div >
   );
 };

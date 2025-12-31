@@ -11,20 +11,29 @@ interface TableMapProps {
   qrs: QR[];
   mode: AppMode;
   zoom: number;
-  selectedId: string | null;
-  onTableClick: (table: Table) => void;
-  onBarClick: (bar: Bar) => void;
-  onQrClick?: (qr: QR) => void;
+  setZoom?: (fn: (z: number) => number) => void;
+  activeZoneId?: string;
+  selectedTableId: string | null;
+  selectedBarId: string | null;
+  selectedQrId: string | null;
+  onSelectTable: (id: string | null) => void;
+  onSelectBar: (id: string | null) => void;
+  onSelectQr?: (id: string | null) => void;
   onUpdatePosition: (id: string, pos: Position, type: 'table' | 'bar' | 'qr') => void;
   onUpdateProperty?: (id: string, type: 'table' | 'bar', property: string, value: any) => void;
   onDeleteNode?: (id: string, type: 'table' | 'bar' | 'qr') => void;
   onBackgroundClick?: () => void;
   onTableAction?: (id: string, status: TableStatus) => void;
+  notifications?: Array<{ id: string; type: NotificationType; tableId: string; message: string; }>;
+  onDismissNotification?: (notificationId: string) => void;
 }
 
 const TableMap: React.FC<TableMapProps> = ({
-  tables, bars, qrs, mode, zoom, selectedId,
-  onTableClick, onBarClick, onQrClick, onUpdatePosition, onUpdateProperty, onDeleteNode, onBackgroundClick, onTableAction
+  tables, bars, qrs, mode, zoom, setZoom, activeZoneId,
+  selectedTableId, selectedBarId, selectedQrId,
+  onSelectTable, onSelectBar, onSelectQr,
+  onUpdatePosition, onUpdateProperty, onDeleteNode, onBackgroundClick, onTableAction,
+  notifications = [], onDismissNotification
 }) => {
   const [activeDrag, setActiveDrag] = useState<{
     id: string;
@@ -105,14 +114,11 @@ const TableMap: React.FC<TableMapProps> = ({
     if (startPointerPos.current && !hasMoved.current) {
       if (id && type) {
         if (type === 'table') {
-          const table = tables.find(t => t.id === id);
-          if (table) onTableClick(table);
+          onSelectTable(id);
         } else if (type === 'bar') {
-          const bar = bars.find(b => b.id === id);
-          if (bar) onBarClick(bar);
+          onSelectBar(id);
         } else if (type === 'qr') {
-          const qr = qrs.find(q => q.id === id);
-          if (qr && onQrClick) onQrClick(qr);
+          if (onSelectQr) onSelectQr(id);
         }
       } else {
         onBackgroundClick?.();
@@ -160,7 +166,7 @@ const TableMap: React.FC<TableMapProps> = ({
         }}
       >
         {bars.map((bar) => {
-          const isSelected = selectedId === bar.id;
+          const isSelected = selectedBarId === bar.id;
           const isDragging = activeDrag?.id === bar.id;
           const activeOrdersCount = bar.metrics.activeOrders;
 
@@ -210,9 +216,18 @@ const TableMap: React.FC<TableMapProps> = ({
         })}
 
         {tables.map((table) => {
-          const isSelected = selectedId === table.id;
+          const isSelected = selectedTableId === table.id;
           const isDragging = activeDrag?.id === table.id;
-          const notification = table.activeNotifications?.[0];
+          // Get notifications from DB props instead of local state
+          const tableNotification = notifications.find(n => n.tableId === table.id);
+          const notification = tableNotification ? {
+            id: tableNotification.id,
+            type: tableNotification.type,
+            tableId: tableNotification.tableId,
+            timestamp: new Date(),
+            message: tableNotification.message,
+            isRead: false
+          } : undefined;
           const activeOrdersCount = table.orders.filter(o => o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.CANCELLED).length;
 
           return (
@@ -224,6 +239,7 @@ const TableMap: React.FC<TableMapProps> = ({
               isDragging={isDragging}
               activeOrdersCount={activeOrdersCount}
               notification={notification}
+              openedAt={table.openedAt}
               onPointerDown={(e) => handlePointerDown(e, table.id, 'table')}
               onPointerUp={(e) => { e.stopPropagation(); handlePointerUp(e, table.id, 'table'); }}
               onUpdateProperty={onUpdateProperty}
@@ -234,7 +250,7 @@ const TableMap: React.FC<TableMapProps> = ({
         })}
 
         {qrs.map((qr) => {
-          const isSelected = selectedId === qr.id;
+          const isSelected = selectedQrId === qr.id;
           const isDragging = activeDrag?.id === qr.id;
           return (
             <div
@@ -259,9 +275,9 @@ const TableMap: React.FC<TableMapProps> = ({
         })}
       </div>
       {/* FLOATING STATUS MENU (LIVE MODE) */}
-      {mode === AppMode.VIEW && selectedId && tables.find(t => t.id === selectedId) && (
+      {mode === AppMode.VIEW && selectedTableId && tables.find(t => t.id === selectedTableId) && (
         (() => {
-          const table = tables.find(t => t.id === selectedId)!;
+          const table = tables.find(t => t.id === selectedTableId)!;
           return (
             <div
               className="absolute z-[100] flex flex-col gap-2 p-2 bg-black/90 backdrop-blur-xl border border-zinc-800 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200"

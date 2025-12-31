@@ -7,7 +7,7 @@ import { MenuRenderer } from '../../components/MenuRenderer';
 const MenuPage: React.FC = () => {
   const navigate = useNavigate();
   const { slug } = useParams();
-  const { store, products, user, hasActiveOrder, setIsHubOpen, cart } = useClient();
+  const { store, products, user, hasActiveOrder, setIsHubOpen, cart, getMenuRule, isOrderingAllowed, serviceMode, tableLabel } = useClient();
 
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [searchQuery, setSearchQuery] = useState('');
@@ -70,18 +70,32 @@ const MenuPage: React.FC = () => {
   // Consume categories from context (Synced with DB)
   const { categories } = useClient();
 
+  const hideOutOfStock = getMenuRule('hideOutofStock');
+
   const filteredProducts = useMemo(() => {
-    // When no search and "Todos" is selected, return all products
-    if (!searchQuery && selectedCategory === 'Todos') {
-      return products;
+    let filtered = products;
+
+    // 1. Filter by Stock Rule
+    if (hideOutOfStock) {
+      filtered = filtered.filter(p => !p.isOutOfStock);
     }
 
-    return products.filter(item => {
+    // 2. Filter by Search & Category
+    // When no search and "Todos" is selected, return filtered list
+    if (!searchQuery && selectedCategory === 'Todos') {
+      return filtered;
+    }
+
+    return filtered.filter(item => {
       const matchesSearch = !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = selectedCategory === 'Todos' || item.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
-  }, [products, searchQuery, selectedCategory]);
+  }, [products, searchQuery, selectedCategory, hideOutOfStock]);
+
+  // Determine if ordering is allowed (Gateway)
+  // TODO: Detect actual channel (takeaway vs dineIn) from URL or Context. Defaulting to dineIn for now.
+  const allowOrdering = isOrderingAllowed('dineIn');
 
   const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -120,8 +134,11 @@ const MenuPage: React.FC = () => {
         onCategoryChange={setSelectedCategory}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        allowOrdering={allowOrdering}
         onItemClick={(item) => navigate(`/m/${slug}/product/${item.id}`)}
         onAddToCart={(item) => navigate(`/m/${slug}/product/${item.id}`)} // Or direct add if desired
+        serviceMode={serviceMode}
+        tableLabel={tableLabel}
       />
 
       {/* USER HUB BUTTON (Floating Overlay) */}

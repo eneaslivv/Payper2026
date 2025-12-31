@@ -62,7 +62,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
               is_paid,
               order_number, 
               table_number, 
-              client:clients(name), 
+              client:clients(name, email), 
               items, 
               order_items(
                 id, 
@@ -83,6 +83,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
             const mappedRemote: DBOrder[] = remoteOrders.map((ro: any) => ({
               id: ro.id,
               customer: ro.client?.name || 'Cliente',
+              client_email: ro.client?.email,
               table: ro.table_number,
               status: ro.status ? mapStatusFromSupabase(ro.status) : 'Pendiente',
               type: ro.table_number ? 'dine-in' : 'takeaway',
@@ -220,7 +221,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                   created_at, 
                   order_number, 
                   table_number, 
-                  client:clients(name),
+                  client:clients(name, email),
                   items,
                   order_items(
                     id, 
@@ -238,6 +239,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 const mappedOrder: DBOrder = {
                   id: orderData.id,
                   customer: orderData.client?.name || 'Cliente',
+                  client_email: orderData.client?.email,
                   table: orderData.table_number,
                   status: orderData.status ? mapStatusFromSupabase(orderData.status) : 'Pendiente',
                   type: orderData.table_number ? 'dine-in' : 'takeaway',
@@ -361,7 +363,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       const { data: remoteOrder, error } = await supabase
         .from('orders')
-        .select('*, client:clients(name), items, order_items(id, quantity, unit_price, product_id, product:inventory_items(name))')
+        .select('*, client:clients(name, email), items, order_items(id, quantity, unit_price, product_id, product:inventory_items(name))')
         .eq('id', orderId)
         .single();
 
@@ -370,6 +372,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const mappedOrder: DBOrder = {
         id: remoteOrder.id,
         customer: (remoteOrder as any).client?.name || 'Cliente',
+        client_email: (remoteOrder as any).client?.email,
         table: remoteOrder.table_number,
         status: mapStatusFromSupabase(remoteOrder.status),
         type: remoteOrder.table_number ? 'dine-in' : 'takeaway',

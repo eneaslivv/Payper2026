@@ -98,18 +98,31 @@ const MenuDesign: React.FC = () => {
     });
 
     const [logicConfig, setLogicConfig] = useState({
-        autoConfirm: false,
-        taxInclusive: true,
-        allowTableOrder: true,
-        allowTakeaway: true,
-        is_dining_open: true, // New field
-        is_delivery_open: true, // New field
-        is_takeaway_open: true, // New field
-        is_curbside_open: false, // New field
-        delivery_radius_km: 5, // New field
-        min_order_value: 10, // New field
-        estimated_wait_time: 20, // New field
-        delivery_fee: 3, // New field
+        // 1. Operación General
+        operation: {
+            isOpen: true,
+            messageClosed: '',
+            estimatedWaitMinutes: 20
+        },
+        // 2. Canales
+        channels: {
+            dineIn: { enabled: true, allowOrdering: true },
+            takeaway: { enabled: true, minTimeMinutes: 15 },
+            delivery: { enabled: true, radiusKm: 5, minOrderAmount: 0 }
+        },
+        // 3. Features
+        features: {
+            wallet: { allowTopUp: false, allowPayment: false },
+            loyalty: { enabled: false, showPoints: false },
+            guestMode: { enabled: true, allowOrdering: false }
+        },
+        // 4. Reglas
+        rules: {
+            hideOutofStock: false,
+            enforceStock: false,
+            showCalories: false,
+            showAllergens: true
+        }
     });
 
     // Item Selector Modal State
@@ -247,10 +260,35 @@ const MenuDesign: React.FC = () => {
                 }));
 
                 if (Object.keys(savedLogic).length > 0) {
-                    setLogicConfig(prev => ({
-                        ...prev,
-                        ...savedLogic
-                    }));
+                    // Check if it's the new nested structure or old flat structure
+                    if ((savedLogic as any).operation || (savedLogic as any).channels) {
+                        // New structure found
+                        setLogicConfig(prev => ({
+                            ...prev,
+                            ...savedLogic
+                        }));
+                    } else {
+                        // Legacy structure detected - Migrate key values
+                        const legacy = savedLogic as any;
+                        setLogicConfig(prev => ({
+                            ...prev,
+                            operation: {
+                                ...prev.operation,
+                                estimatedWaitMinutes: legacy.estimated_wait_time || 20
+                            },
+                            channels: {
+                                dineIn: { ...prev.channels.dineIn, enabled: legacy.is_dining_open ?? true },
+                                takeaway: { ...prev.channels.takeaway, enabled: legacy.is_takeaway_open ?? true },
+                                delivery: {
+                                    ...prev.channels.delivery,
+                                    enabled: legacy.is_delivery_open ?? true,
+                                    radiusKm: legacy.delivery_radius_km || 5,
+                                    minOrderAmount: legacy.min_order_value || 0
+                                }
+                            }
+                        }));
+                        console.log('[MenuDesign] Migrated legacy logic config to V2 structure');
+                    }
                 }
             }
 
@@ -915,33 +953,99 @@ const MenuDesign: React.FC = () => {
 
                     {activeTab === 'LÓGICA' && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {/* 1. OPERACIÓN GENERAL */}
                             <div className="bg-[#141714] border border-white/5 rounded-2xl p-4 shadow-xl">
                                 <h3 className="text-[10px] font-black text-[#52525B] tracking-widest uppercase mb-4 flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 bg-[#4ADE80] rounded-full opacity-50" />
-                                    Protocolos
+                                    <div className={`w-1.5 h-1.5 rounded-full ${logicConfig.operation.isOpen ? 'bg-[#4ADE80]' : 'bg-red-500'}`} />
+                                    Operación General
                                 </h3>
                                 <div className="space-y-2">
-                                    <Toggle label="Autofirma" active={logicConfig.autoConfirm} onChange={v => setLogicConfig({ ...logicConfig, autoConfirm: v })} />
-                                    <Toggle label="Impuestos" active={logicConfig.taxInclusive} onChange={v => setLogicConfig({ ...logicConfig, taxInclusive: v })} />
-                                    <Toggle label="Pedido Mesa" active={logicConfig.allowTableOrder} onChange={v => setLogicConfig({ ...logicConfig, allowTableOrder: v })} />
-                                    <Toggle label="Takeaway" active={logicConfig.allowTakeaway} onChange={v => setLogicConfig({ ...logicConfig, allowTakeaway: v })} />
+                                    <Toggle label="Tienda Abierta" active={logicConfig.operation.isOpen} onChange={v => setLogicConfig({ ...logicConfig, operation: { ...logicConfig.operation, isOpen: v } })} />
+                                    <LogicRow label="Demora (min)" value={logicConfig.operation.estimatedWaitMinutes} onChange={v => setLogicConfig({ ...logicConfig, operation: { ...logicConfig.operation, estimatedWaitMinutes: v } })} unit="min" />
+
+                                    {/* Mensaje de cierre opcional */}
+                                    {!logicConfig.operation.isOpen && (
+                                        <div className="mt-2">
+                                            <label className="text-[9px] font-bold text-[#52525B] uppercase tracking-wider mb-1 block">Mensaje de Cierre</label>
+                                            <input
+                                                type="text"
+                                                value={logicConfig.operation.messageClosed || ''}
+                                                onChange={e => setLogicConfig({ ...logicConfig, operation: { ...logicConfig.operation, messageClosed: e.target.value } })}
+                                                placeholder="Ej: Volvemos a las 19:00hs"
+                                                className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-xs font-medium text-white/80 focus:border-[#4ADE80]/50 outline-none"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
+                            {/* 2. CANALES */}
                             <div className="bg-[#141714] border border-white/5 rounded-2xl p-4 shadow-xl">
                                 <h3 className="text-[10px] font-black text-[#52525B] tracking-widest uppercase mb-4 flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 bg-[#4ADE80] rounded-full opacity-50" />
-                                    Canales & Restricciones
+                                    Canales & Accesos
                                 </h3>
-                                <div className="grid grid-cols-2 gap-2 mb-4">
-                                    <ChannelBtn icon={<StoreIcon className="w-3.5 h-3.5" />} label="SALÓN" active={logicConfig.is_dining_open} onClick={v => setLogicConfig({ ...logicConfig, is_dining_open: v })} />
-                                    <ChannelBtn icon={<Truck className="w-3.5 h-3.5" />} label="ENVÍO" active={logicConfig.is_delivery_open} onClick={v => setLogicConfig({ ...logicConfig, is_delivery_open: v })} />
-                                    <ChannelBtn icon={<Package className="w-3.5 h-3.5" />} label="RETIRO" active={logicConfig.is_takeaway_open} onClick={v => setLogicConfig({ ...logicConfig, is_takeaway_open: v })} />
-                                    <ChannelBtn icon={<Coffee className="w-3.5 h-3.5" />} label="VEREDA" active={logicConfig.is_curbside_open} onClick={v => setLogicConfig({ ...logicConfig, is_curbside_open: v })} />
+
+                                {/* Mesa */}
+                                <div className="mb-4 pb-4 border-b border-white/5">
+                                    <h4 className="text-[9px] font-bold text-white/40 uppercase mb-2">En el Local</h4>
+                                    <div className="space-y-2">
+                                        <ChannelBtn icon={<StoreIcon className="w-3.5 h-3.5" />} label="MESA / SALÓN" active={logicConfig.channels.dineIn.enabled} onClick={v => setLogicConfig({ ...logicConfig, channels: { ...logicConfig.channels, dineIn: { ...logicConfig.channels.dineIn, enabled: v } } })} />
+                                        {logicConfig.channels.dineIn.enabled && (
+                                            <Toggle label="Permitir Pedidos" active={logicConfig.channels.dineIn.allowOrdering} onChange={v => setLogicConfig({ ...logicConfig, channels: { ...logicConfig.channels, dineIn: { ...logicConfig.channels.dineIn, allowOrdering: v } } })} />
+                                        )}
+                                    </div>
                                 </div>
+
+                                {/* Takeaway */}
+                                <div className="mb-4 pb-4 border-b border-white/5">
+                                    <h4 className="text-[9px] font-bold text-white/40 uppercase mb-2">Para Llevar</h4>
+                                    <div className="space-y-2">
+                                        <ChannelBtn icon={<Package className="w-3.5 h-3.5" />} label="TAKEAWAY" active={logicConfig.channels.takeaway.enabled} onClick={v => setLogicConfig({ ...logicConfig, channels: { ...logicConfig.channels, takeaway: { ...logicConfig.channels.takeaway, enabled: v } } })} />
+                                    </div>
+                                </div>
+
+                                {/* Delivery */}
+                                <div>
+                                    <h4 className="text-[9px] font-bold text-white/40 uppercase mb-2">Delivery</h4>
+                                    <div className="space-y-2">
+                                        <ChannelBtn icon={<Truck className="w-3.5 h-3.5" />} label="DELIVERY" active={logicConfig.channels.delivery.enabled} onClick={v => setLogicConfig({ ...logicConfig, channels: { ...logicConfig.channels, delivery: { ...logicConfig.channels.delivery, enabled: v } } })} />
+                                        {logicConfig.channels.delivery.enabled && (
+                                            <>
+                                                <LogicRow label="Radio (km)" value={logicConfig.channels.delivery.radiusKm} onChange={v => setLogicConfig({ ...logicConfig, channels: { ...logicConfig.channels, delivery: { ...logicConfig.channels.delivery, radiusKm: v } } })} unit="km" />
+                                                <LogicRow label="Mínimo ($)" value={logicConfig.channels.delivery.minOrderAmount} onChange={v => setLogicConfig({ ...logicConfig, channels: { ...logicConfig.channels, delivery: { ...logicConfig.channels.delivery, minOrderAmount: v } } })} unit="$" />
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 3. FEATURES (WALLET & LOYALTY) */}
+                            <div className="bg-[#141714] border border-white/5 rounded-2xl p-4 shadow-xl">
+                                <h3 className="text-[10px] font-black text-[#52525B] tracking-widest uppercase mb-4 flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full opacity-50" />
+                                    Experiencia & Fidelidad
+                                </h3>
                                 <div className="space-y-2">
-                                    <LogicRow label="Radio (km)" value={logicConfig.delivery_radius_km} onChange={v => setLogicConfig({ ...logicConfig, delivery_radius_km: v })} unit="km" />
-                                    <LogicRow label="Min. ($)" value={logicConfig.min_order_value} onChange={v => setLogicConfig({ ...logicConfig, min_order_value: v })} unit="$" />
+                                    <Toggle label="Wallet (Saldo)" active={logicConfig.features.wallet.allowPayment} onChange={v => setLogicConfig({ ...logicConfig, features: { ...logicConfig.features, wallet: { ...logicConfig.features.wallet, allowPayment: v, allowTopUp: v } } })} />
+                                    <Toggle label="Puntos (Loyalty)" active={logicConfig.features.loyalty.enabled} onChange={v => setLogicConfig({ ...logicConfig, features: { ...logicConfig.features, loyalty: { ...logicConfig.features.loyalty, enabled: v, showPoints: v } } })} />
+                                    <Toggle label="Modo Invitado" active={logicConfig.features.guestMode.enabled} onChange={v => setLogicConfig({ ...logicConfig, features: { ...logicConfig.features, guestMode: { ...logicConfig.features.guestMode, enabled: v } } })} />
+                                </div>
+                            </div>
+
+                            {/* 4. REGLAS DE MENÚ */}
+                            <div className="bg-[#141714] border border-white/5 rounded-2xl p-4 shadow-xl">
+                                <h3 className="text-[10px] font-black text-[#52525B] tracking-widest uppercase mb-4 flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 bg-red-500 rounded-full opacity-50" />
+                                    Reglas de Menú
+                                </h3>
+                                <div className="space-y-2">
+                                    <div className="p-3 bg-red-500/5 rounded-xl border border-red-500/10">
+                                        <Toggle label="Ocultar Sin Stock" active={logicConfig.rules.hideOutofStock} onChange={v => setLogicConfig({ ...logicConfig, rules: { ...logicConfig.rules, hideOutofStock: v } })} />
+                                        <p className="text-[9px] text-red-400/60 mt-1 pl-1">Los productos con stock 0 desaparecerán del menú.</p>
+                                    </div>
+                                    <Toggle label="Mostrar Calorías" active={logicConfig.rules.showCalories} onChange={v => setLogicConfig({ ...logicConfig, rules: { ...logicConfig.rules, showCalories: v } })} />
+                                    <Toggle label="Mostrar Alérgenos" active={logicConfig.rules.showAllergens} onChange={v => setLogicConfig({ ...logicConfig, rules: { ...logicConfig.rules, showAllergens: v } })} />
                                 </div>
                             </div>
                         </div>

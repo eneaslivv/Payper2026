@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { OrderStatus } from './types';
 import { useClient } from '../../contexts/ClientContext';
+import { supabase } from '../../lib/supabase';
 
 interface ActiveOrderWidgetProps {
   hasActiveOrder: boolean;
@@ -17,7 +18,7 @@ interface ActiveOrderWidgetProps {
 const ActiveOrderWidget: React.FC<ActiveOrderWidgetProps> = ({ hasActiveOrder, status, isHubOpen, setIsHubOpen, tableNumber, accentColor, activeOrderId, activeOrders = [] }) => {
   const navigate = useNavigate();
   const { slug } = useParams();
-  const { setActiveOrderId, setOrderStatus } = useClient();
+  const { setActiveOrderId, setOrderStatus, store } = useClient();
   const [isPolling, setIsPolling] = useState(false);
   const [showTipModal, setShowTipModal] = useState(false);
   const [serviceFeedback, setServiceFeedback] = useState<string | null>(null);
@@ -41,14 +42,60 @@ const ActiveOrderWidget: React.FC<ActiveOrderWidgetProps> = ({ hasActiveOrder, s
     if (window.navigator.vibrate) window.navigator.vibrate(10);
   };
 
-  const handleServiceRequest = (type: 'waiter' | 'bill' | 'help') => {
+  // Persist service requests to DB for real-time Command notifications
+  const handleServiceRequest = async (type: 'waiter' | 'bill' | 'help') => {
     const messages = {
       waiter: 'Avisamos al barista, ya se acerca 🙌',
       bill: 'Estamos preparando tu cuenta 🧾',
       help: 'En breve te asistimos ☕'
     };
+
+    const notificationTypes: Record<string, string> = {
+      waiter: 'CALL_WAITER',
+      bill: 'REQUEST_CHECK',
+      help: 'HELP'
+    };
+
+    // Show immediate feedback
     setServiceFeedback(messages[type]);
     if (window.navigator.vibrate) window.navigator.vibrate(50);
+
+    // Persist to DB - only if we have store context
+    if (!store?.id) {
+      console.warn('No store ID available for notification');
+      setTimeout(() => setServiceFeedback(null), 4000);
+      return;
+    }
+
+    try {
+      const currentOrder = activeOrders.find(o => o.id === activeOrderId);
+      console.log('[Notification] Persisting:', {
+        store_id: store.id,
+        node_id: currentOrder?.node_id,
+        order_id: activeOrderId,
+        type: notificationTypes[type],
+        tableNumber
+      });
+
+      const { error } = await supabase.from('venue_notifications' as any).insert({
+        store_id: store.id,
+        node_id: currentOrder?.node_id || null,
+        order_id: activeOrderId,
+        type: notificationTypes[type],
+        message: tableNumber
+          ? `Mesa ${tableNumber}: ${type === 'waiter' ? 'Llamando barista' : type === 'bill' ? 'Pidiendo cuenta' : 'Necesita ayuda'}`
+          : `Cliente ${type === 'waiter' ? 'llama barista' : type === 'bill' ? 'pide cuenta' : 'necesita ayuda'}`
+      });
+
+      if (error) {
+        console.error('[Notification] Insert error:', error);
+      } else {
+        console.log('[Notification] Persisted successfully');
+      }
+    } catch (e) {
+      console.error('[Notification] Failed to persist:', e);
+    }
+
     setTimeout(() => setServiceFeedback(null), 4000);
   };
 
@@ -147,30 +194,44 @@ const ActiveOrderWidget: React.FC<ActiveOrderWidgetProps> = ({ hasActiveOrder, s
       {isHubOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsHubOpen(false)}>
           <div
-            className="w-full max-w-md bg-[#0a110b] rounded-t-[3.5rem] shadow-2xl animate-in slide-in-from-bottom-10 border-t border-white/5 flex flex-col max-h-[92vh] overflow-hidden"
+            className="w-full max-w-md bg-[#0a110b] rounded-t-[2.5rem] shadow-2xl animate-in slide-in-from-bottom-10 border-t border-white/5 flex flex-col overflow-hidden"
+            style={{ maxHeight: 'calc(100dvh - env(safe-area-inset-top) - 20px)' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-full flex flex-col items-center py-4">
-              <button onClick={() => setIsHubOpen(false)} className="w-12 h-1 bg-white/10 rounded-full mb-4"></button>
+            {/* Close Handle - More prominent for mobile */}
+            <div className="w-full flex flex-col items-center pt-3 pb-2 shrink-0">
+              <button
+                onClick={() => setIsHubOpen(false)}
+                className="w-14 h-1.5 bg-white/20 rounded-full active:bg-white/40 transition-colors"
+                aria-label="Cerrar"
+              />
             </div>
 
-            <div className="flex-1 overflow-y-auto no-scrollbar px-8 pb-12">
-              <div className="flex justify-between items-start mb-6">
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto overscroll-contain px-6 pb-8" style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}>
+              <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h2 className="text-[32px] font-black text-white italic uppercase tracking-tighter leading-none mb-1">Hub de Orden</h2>
+                  <h2 className="text-[28px] sm:text-[32px] font-black text-white italic uppercase tracking-tighter leading-none mb-1">Hub de Orden</h2>
                   <div className="flex items-center gap-2 mt-1">
                     <div
                       className={`w-1.5 h-1.5 rounded-full ${isPolling ? 'animate-ping' : 'animate-pulse'}`}
                       style={{ backgroundColor: accentColor, boxShadow: `0 0 8px ${accentColor}` }}
                     ></div>
-                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">Estado: En Tiempo Real • Mesa {tableNumber || '??'}</p>
+                    <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.2em]">Estado: En Tiempo Real • Mesa {tableNumber || '??'}</p>
                   </div>
                 </div>
+                {/* Explicit Close Button for accessibility */}
+                <button
+                  onClick={() => setIsHubOpen(false)}
+                  className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 transition-all shrink-0"
+                >
+                  <span className="material-symbols-outlined text-lg">close</span>
+                </button>
               </div>
 
               {/* Multi-Order Switcher 🚈 */}
               {activeOrders.length > 1 && (
-                <div className="flex gap-2 mb-8 overflow-x-auto no-scrollbar py-2 -mx-2 px-2">
+                <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar py-2 -mx-2 px-2">
                   {activeOrders.map((o) => {
                     const isSelected = o.id === activeOrderId;
                     const orderNum = o.order_number || o.id.slice(0, 4);
@@ -193,7 +254,7 @@ const ActiveOrderWidget: React.FC<ActiveOrderWidgetProps> = ({ hasActiveOrder, s
               )}
 
               {hasActiveOrder ? (
-                <div className="flex gap-2 mb-10 animate-in slide-in-from-top-2 duration-500">
+                <div className="flex gap-2 mb-8 animate-in slide-in-from-top-2 duration-500">
                   {['REC', 'PREP', 'LISTO', 'FIN'].map((s, i) => {
                     const states = ['received', 'preparing', 'ready', 'delivered'];
                     // Logic to handle both internal keys and DB strings
@@ -223,64 +284,73 @@ const ActiveOrderWidget: React.FC<ActiveOrderWidgetProps> = ({ hasActiveOrder, s
                   })}
                 </div>
               ) : (
-                <div className="mb-10 p-6 rounded-[2rem] bg-surface-dark border border-white/5 flex items-center justify-center animate-in slide-in-from-top-2">
+                <div className="mb-8 p-5 rounded-[2rem] bg-surface-dark border border-white/5 flex items-center justify-center animate-in slide-in-from-top-2">
                   <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] text-center italic opacity-60">Esperando tu próximo pedido...</p>
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className={`grid ${tableNumber ? 'grid-cols-2' : 'grid-cols-1'} gap-3 mb-5`}>
                 <button
                   onClick={handleGoToTracking}
-                  className={`flex flex-col items-center justify-center p-8 rounded-[2.5rem] transition-all gap-3 shadow-2xl group active:scale-95 ${hasActiveOrder
+                  className={`flex flex-col items-center justify-center p-6 rounded-[2rem] transition-all gap-2 shadow-xl group active:scale-95 ${hasActiveOrder
                     ? 'text-black'
                     : 'bg-surface-dark border border-white/5 text-slate-500 grayscale opacity-50'
                     }`}
-                  style={hasActiveOrder ? { backgroundColor: accentColor, boxShadow: `0 15px 40px ${accentColor}40` } : {}}
+                  style={hasActiveOrder ? { backgroundColor: accentColor, boxShadow: `0 10px 30px ${accentColor}40` } : {}}
                 >
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${hasActiveOrder ? 'bg-black/10' : 'bg-white/5'}`}>
-                    <span className="material-symbols-outlined text-3xl font-black fill-icon">qr_code_2</span>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${hasActiveOrder ? 'bg-black/10' : 'bg-white/5'}`}>
+                    <span className="material-symbols-outlined text-2xl font-black fill-icon">qr_code_2</span>
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest leading-none">Ver QR Retiro</span>
+                  <span className="text-[9px] font-black uppercase tracking-widest leading-none">Ver QR Retiro</span>
                 </button>
 
-                <button
-                  onClick={() => handleServiceRequest('waiter')}
-                  className="flex flex-col items-center justify-center p-8 rounded-[2.5rem] bg-surface-dark border border-white/5 active:scale-95 transition-all gap-3 group"
-                >
-                  <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center text-slate-400 transition-all group-hover:bg-white/10" style={{ color: accentColor }}>
-                    <span className="material-symbols-outlined text-3xl">person_alert</span>
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 leading-none">Llamar Barista</span>
-                </button>
+                {/* Only show waiter/bill buttons if user has a table assigned */}
+                {tableNumber && (
+                  <>
+                    <button
+                      onClick={() => handleServiceRequest('waiter')}
+                      className="flex flex-col items-center justify-center p-6 rounded-[2rem] bg-surface-dark border border-white/5 active:scale-95 transition-all gap-2 group"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-slate-400 transition-all group-hover:bg-white/10" style={{ color: accentColor }}>
+                        <span className="material-symbols-outlined text-2xl">person_alert</span>
+                      </div>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 leading-none">Llamar Barista</span>
+                    </button>
 
-                <button
-                  onClick={() => handleServiceRequest('bill')}
-                  className="flex flex-col items-center justify-center p-8 rounded-[2.5rem] bg-surface-dark border border-white/5 active:scale-95 transition-all gap-3 group"
-                >
-                  <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center text-slate-400 transition-all group-hover:bg-white/10" style={{ color: accentColor }}>
-                    <span className="material-symbols-outlined text-3xl">receipt_long</span>
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 leading-none">Pedir Cuenta</span>
-                </button>
+                    <button
+                      onClick={() => handleServiceRequest('bill')}
+                      className="flex flex-col items-center justify-center p-6 rounded-[2rem] bg-surface-dark border border-white/5 active:scale-95 transition-all gap-2 group"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-slate-400 transition-all group-hover:bg-white/10" style={{ color: accentColor }}>
+                        <span className="material-symbols-outlined text-2xl">receipt_long</span>
+                      </div>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 leading-none">Pedir Cuenta</span>
+                    </button>
+                  </>
+                )}
 
+                {/* Tip button - Always visible */}
                 <button
                   onClick={() => setShowTipModal(true)}
-                  className="flex flex-col items-center justify-center p-8 rounded-[2.5rem] bg-surface-dark border border-white/5 active:scale-95 transition-all gap-3 group"
+                  className="flex flex-col items-center justify-center p-6 rounded-[2rem] bg-surface-dark border border-white/5 active:scale-95 transition-all gap-2 group"
                 >
-                  <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center text-slate-400 transition-all group-hover:bg-white/10" style={{ color: accentColor }}>
-                    <span className="material-symbols-outlined text-3xl">{tipAmount ? 'verified' : 'volunteer_activism'}</span>
+                  <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-slate-400 transition-all group-hover:bg-white/10" style={{ color: accentColor }}>
+                    <span className="material-symbols-outlined text-2xl">{tipAmount ? 'verified' : 'volunteer_activism'}</span>
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 leading-none">{tipAmount ? `$${tipAmount}` : 'Dar Propina'}</span>
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 leading-none">{tipAmount ? `$${tipAmount}` : 'Dar Propina'}</span>
                 </button>
               </div>
 
-              <button
-                onClick={() => handleServiceRequest('help')}
-                className="w-full py-6 rounded-[2.2rem] bg-white/5 text-slate-500 font-black uppercase text-[10px] tracking-[0.4em] hover:text-white transition-all flex items-center justify-center gap-3 active:scale-95"
-              >
-                <span>Soporte de Pedido</span>
-                <span className="material-symbols-outlined text-base">support_agent</span>
-              </button>
+              {/* Soporte button - only show if has table */}
+              {tableNumber && (
+                <button
+                  onClick={() => handleServiceRequest('help')}
+                  className="w-full py-5 rounded-[2rem] bg-white/5 text-slate-500 font-black uppercase text-[9px] tracking-[0.3em] hover:text-white transition-all flex items-center justify-center gap-2 active:scale-95"
+                >
+                  <span>Soporte de Pedido</span>
+                  <span className="material-symbols-outlined text-sm">support_agent</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

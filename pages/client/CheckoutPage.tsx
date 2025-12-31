@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useClient } from '../../contexts/ClientContext'; // Import context
+import { useClient } from '../../contexts/ClientContext';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../components/ToastSystem';
 
 type PaymentMethodType = 'wallet' | 'mercadopago';
+
+interface Reward {
+  id: string;
+  name: string;
+  points: number;
+  product_id?: string;
+  is_active: boolean;
+}
 
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
@@ -27,6 +35,11 @@ const CheckoutPage: React.FC = () => {
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [tempValue, setTempValue] = useState('');
 
+  // Loyalty Rewards State
+  const [availableRewards, setAvailableRewards] = useState<Reward[]>([]);
+  const [selectedRewardId, setSelectedRewardId] = useState<string | null>(null);
+  const [rewardDiscount, setRewardDiscount] = useState(0);
+
   // Redirect to auth if not logged in
   useEffect(() => {
     if (!user) {
@@ -34,8 +47,23 @@ const CheckoutPage: React.FC = () => {
     }
   }, [user, navigate, slug]);
 
+  // Fetch available rewards
+  useEffect(() => {
+    const fetchRewards = async () => {
+      if (!store?.id || !user?.points) return;
+      const { data } = await (supabase.from('loyalty_rewards' as any) as any)
+        .select('*')
+        .eq('store_id', store.id)
+        .eq('is_active', true)
+        .lte('points', user.points);
+      setAvailableRewards(data || []);
+    };
+    fetchRewards();
+  }, [store?.id, user?.points]);
+
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const discount = isRedeemingPoints ? 2.00 : 0;
+  // Discount now comes from selected reward, not hardcoded
+  const discount = rewardDiscount;
   const tax = subtotal * 0.08;
   const total = subtotal + tax - discount;
 
@@ -73,7 +101,7 @@ const CheckoutPage: React.FC = () => {
         is_paid: false
       };
 
-      // 2. WALLET FLOW (no changes)
+      // 2. WALLET FLOW — SAFE: Order first, Redeem, then Pay
       if (paymentMethod === 'wallet') {
         if (!hasEnoughBalance) {
           addToast('Saldo insuficiente en tu wallet', 'error');
@@ -81,34 +109,64 @@ const CheckoutPage: React.FC = () => {
           return;
         }
 
+        // 2.1 Create order in PENDING state first
+        const { data: pendingOrder, error: orderError } = await supabase
+          .from('orders')
+          .insert(orderPayload)
+          .select()
+          .single();
+
+        if (orderError) throw orderError;
+        const orderId = pendingOrder.id;
+
+        // 2.2 Insert order items
+        await insertOrderItems(orderId);
+
+        // 2.3 Process reward redemption if selected (BEFORE payment)
+        if (selectedRewardId) {
+          const { data: redeemResult, error: redeemError } = await (supabase.rpc as any)('redeem_reward', {
+            p_client_id: user?.id,
+            p_reward_id: selectedRewardId,
+            p_order_id: orderId
+          });
+
+          if (redeemError || !redeemResult?.success) {
+            // Redemption failed - mark order as cancelled and abort
+            await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
+            addToast(redeemResult?.error || 'Error al canjear recompensa', 'error');
+            setIsProcessingPayment(false);
+            return;
+          }
+        }
+
+        // 2.4 Process wallet payment
         const { data: walletResult, error: walletError } = await (supabase.rpc as any)('pay_with_wallet', {
           p_client_id: user?.id,
           p_amount: total
         });
 
         if (walletError || !walletResult?.success) {
+          // Payment failed - rollback redemption if any
+          if (selectedRewardId) {
+            await (supabase.rpc as any)('rollback_redemption', { p_order_id: orderId });
+          }
+          await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
           addToast(walletResult?.error || 'Error al procesar pago con wallet', 'error');
           setIsProcessingPayment(false);
           return;
         }
 
-        orderPayload.is_paid = true;
-        orderPayload.payment_status = 'approved';
-
-        const { data, error } = await supabase
+        // 2.5 Update order to APPROVED (this triggers the loyalty earn)
+        const { error: updateError } = await supabase
           .from('orders')
-          .insert(orderPayload)
-          .select()
-          .single();
+          .update({ is_paid: true, payment_status: 'approved' })
+          .eq('id', orderId);
 
-        if (error) throw error;
-
-        // Insert order items
-        await insertOrderItems(data.id);
+        if (updateError) throw updateError;
 
         setHasActiveOrder(true);
         clearCart();
-        navigate(`/m/${slug}/order/${data.id}`, { replace: true });
+        navigate(`/m/${slug}/order/${orderId}`, { replace: true });
         return;
       }
 
@@ -342,6 +400,56 @@ const CheckoutPage: React.FC = () => {
             </button>
           </div>
         </section>
+
+        {/* CANJEAR RECOMPENSA - LOYALTY */}
+        {availableRewards.length > 0 && (
+          <section className="px-6 mb-12">
+            <h3 className="mb-6 text-[10px] font-black uppercase tracking-[0.4em] text-slate-700 px-1 flex items-center gap-2">
+              <span className="material-symbols-outlined text-sm" style={{ color: accentColor }}>redeem</span>
+              Canjear Puntos ({user?.points || 0} disponibles)
+            </h3>
+            <div className="flex flex-col gap-3">
+              {availableRewards.map((reward) => (
+                <div
+                  key={reward.id}
+                  onClick={() => {
+                    if (selectedRewardId === reward.id) {
+                      setSelectedRewardId(null);
+                      setRewardDiscount(0);
+                    } else {
+                      setSelectedRewardId(reward.id);
+                      // For now, use a fixed discount or fetch from reward metadata
+                      // In production, this should come from reward.discount_value or product price
+                      setRewardDiscount(5); // Placeholder - should be dynamic
+                    }
+                  }}
+                  className={`group flex cursor-pointer items-center justify-between rounded-2xl p-5 active:scale-[0.98] transition-all duration-300 border ${selectedRewardId === reward.id
+                    ? 'border-neon bg-neon/10 shadow-lg'
+                    : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.04]'
+                    }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`flex size-12 items-center justify-center rounded-xl ${selectedRewardId === reward.id ? 'bg-neon text-black' : 'bg-white/5 text-slate-500'
+                      }`}>
+                      <span className="material-symbols-outlined text-xl">redeem</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-black text-sm uppercase tracking-tight text-white">{reward.name}</span>
+                      <span className={`text-xs font-bold uppercase tracking-widest ${selectedRewardId === reward.id ? 'text-neon' : 'text-slate-600'
+                        }`}>
+                        {reward.points} puntos
+                      </span>
+                    </div>
+                  </div>
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-full transition-all duration-300 ${selectedRewardId === reward.id ? 'bg-neon text-black scale-100' : 'bg-white/5 scale-75 opacity-0'
+                    }`}>
+                    <span className="material-symbols-outlined text-lg font-black">check</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* MÉTODO DE PAGO REFORZADO */}
         <section className="px-6 mb-12">

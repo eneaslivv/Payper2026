@@ -4,12 +4,22 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Client, LoyaltyTransaction } from '../types';
 
+interface TimelineEvent {
+  type: 'order' | 'wallet' | 'loyalty' | 'note' | 'login';
+  label: string;
+  detail: string;
+  timestamp: string;
+  icon?: string;
+}
+
 const Clients: React.FC = () => {
   const { profile } = useAuth();
   const [clients, setClients] = useState<Client[]>([]); // Start empty, no mocks
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'blocked'>('all');
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
+  const [isTimelineLoading, setIsTimelineLoading] = useState(false);
 
   useEffect(() => {
     if (profile?.store_id) {
@@ -148,6 +158,126 @@ const Clients: React.FC = () => {
   const selectedClient = useMemo(() =>
     clients.find(c => c.id === selectedClientId),
     [clients, selectedClientId]);
+
+  // Timeline Fetching
+  useEffect(() => {
+    const fetchTimeline = async () => {
+      if (!selectedClientId) {
+        setTimelineEvents([]);
+        return;
+      }
+
+      setIsTimelineLoading(true);
+      try {
+        const events: TimelineEvent[] = [];
+
+        // 1. Fetch Orders
+        const { data: orders } = await supabase
+          .from('orders')
+          .select('id, created_at, total_amount, status, payment_method, order_number')
+          .eq('client_id', selectedClientId)
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (orders) {
+          orders.forEach(o => {
+            events.push({
+              type: 'order',
+              label: o.status === 'Entregado' ? 'PEDIDO ENTREGADO' : 'PEDIDO REALIZADO',
+              detail: `Ord #${o.order_number || o.id.slice(0, 4)} — $${o.total_amount.toFixed(2)} (${o.payment_method})`,
+              timestamp: o.created_at,
+              icon: 'shopping_bag'
+            });
+          });
+        }
+
+        // 2. Fetch Wallet Transactions
+        const { data: walletTx } = await supabase
+          .from('wallet_transactions')
+          .select('*')
+          .eq('wallet_id', selectedClientId)
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (walletTx) {
+          walletTx.forEach(tx => {
+            events.push({
+              type: 'wallet',
+              label: tx.amount >= 0 ? 'CARGA DE SALDO' : 'PAGO CON WALLET',
+              detail: `${tx.description || 'Movimiento de saldo'} — ${tx.amount >= 0 ? '+' : ''}$${Math.abs(tx.amount).toFixed(2)}`,
+              timestamp: tx.created_at,
+              icon: 'account_balance_wallet'
+            });
+          });
+        }
+
+        // 3. Fetch Loyalty Transactions (NEW - from ledger)
+        const { data: loyaltyTx } = await (supabase.from('loyalty_transactions' as any) as any)
+          .select('*')
+          .eq('client_id', selectedClientId)
+          .eq('is_rolled_back', false)
+          .order('created_at', { ascending: false })
+          .limit(15);
+
+        if (loyaltyTx) {
+          loyaltyTx.forEach((tx: any) => {
+            let label = 'ACTIVIDAD DE PUNTOS';
+            let icon = 'stars';
+
+            if (tx.type === 'earn') {
+              label = 'PUNTOS GANADOS';
+              icon = 'add_circle';
+            } else if (tx.type === 'burn') {
+              label = 'PUNTOS CANJEADOS';
+              icon = 'redeem';
+            } else if (tx.type === 'gift') {
+              label = 'REGALO OTORGADO';
+              icon = 'card_giftcard';
+            } else if (tx.type === 'adjustment') {
+              label = tx.points >= 0 ? 'AJUSTE DE PUNTOS (+)' : 'AJUSTE DE PUNTOS (-)';
+              icon = 'tune';
+            } else if (tx.type === 'rollback') {
+              label = 'REEMBOLSO DE PUNTOS';
+              icon = 'undo';
+            }
+
+            events.push({
+              type: 'loyalty',
+              label,
+              detail: `${tx.description || tx.type} — ${tx.points >= 0 ? '+' : ''}${tx.points} pts`,
+              timestamp: tx.created_at,
+              icon
+            });
+          });
+        }
+
+        // 4. Notes (from Client object)
+        const currentClient = clients.find(c => c.id === selectedClientId);
+        if (currentClient && currentClient.notes) {
+          currentClient.notes.forEach(n => {
+            events.push({
+              type: 'note',
+              label: 'NOTA INTERNA',
+              detail: `"${n.content}" — ${n.staff_name}`,
+              timestamp: n.timestamp,
+              icon: 'edit_note'
+            });
+          });
+        }
+
+        // 4. Sort all by timestamp descending
+        events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+        setTimelineEvents(events);
+      } catch (err) {
+        console.error("Error fetching timeline:", err);
+      } finally {
+        setIsTimelineLoading(false);
+      }
+    };
+
+    fetchTimeline();
+  }, [selectedClientId, clients]);
 
   const filteredClients = useMemo(() => {
     return clients.filter(c => {
@@ -492,12 +622,22 @@ const Clients: React.FC = () => {
               <div className="space-y-6">
                 <h4 className="text-[10px] font-black uppercase tracking-widest dark:text-white italic border-b border-black/[0.02] pb-4">Timeline Inmutable</h4>
                 <div className="space-y-6 relative before:absolute before:inset-y-0 before:left-3 before:w-px before:bg-black/[0.05] dark:before:bg-white/[0.05]">
-                  <ActivityItem label="Pedido Entregado" time="Hace 15 min" detail="Pedido #592 — $12.50 via MP" />
-                  <ActivityItem label="Puntos Otorgados" time="Hace 15 min" detail="+125 pts acreditados automáticamente" />
-                  <ActivityItem label="Inicio de Sesión" time="Hace 1 hora" detail="Escaneo de Mesa 01 — Terminal Alpha" />
-                  {selectedClient.notes.map(note => (
-                    <ActivityItem key={note.id} label="Nota Interna" time={note.timestamp} detail={`"${note.content}" — ${note.staff_name}`} isNote />
-                  ))}
+                  {isTimelineLoading ? (
+                    <p className="text-[10px] text-text-secondary pl-8">Cargando historial...</p>
+                  ) : timelineEvents.length > 0 ? (
+                    timelineEvents.map((event, idx) => (
+                      <ActivityItem
+                        key={`${event.type}-${idx}`}
+                        label={event.label}
+                        time={new Date(event.timestamp).toLocaleString()}
+                        detail={event.detail}
+                        isNote={event.type === 'note'}
+                        icon={event.icon}
+                      />
+                    ))
+                  ) : (
+                    <p className="text-[10px] text-text-secondary pl-8">No hay actividad reciente.</p>
+                  )}
                 </div>
               </div>
 
@@ -856,10 +996,10 @@ const MetricBlock: React.FC<{ label: string, value: string, icon: string, color?
   </div>
 );
 
-const ActivityItem: React.FC<{ label: string, time: string, detail: string, isNote?: boolean }> = ({ label, time, detail, isNote }) => (
+const ActivityItem: React.FC<{ label: string, time: string, detail: string, isNote?: boolean, icon?: string }> = ({ label, time, detail, isNote, icon }) => (
   <div className="relative pl-10 group">
     <div className={`absolute left-0 top-0 size-6 rounded-full flex items-center justify-center border border-white dark:border-surface-dark z-10 ${isNote ? 'bg-accent/20 text-accent' : 'bg-black/5 text-text-secondary'}`}>
-      <span className="material-symbols-outlined text-[10px]">{isNote ? 'edit_note' : 'fiber_manual_record'}</span>
+      <span className="material-symbols-outlined text-[10px]">{icon || (isNote ? 'edit_note' : 'fiber_manual_record')}</span>
     </div>
     <div className="flex justify-between items-baseline mb-1">
       <p className={`text-[10px] font-black uppercase tracking-tighter italic ${isNote ? 'text-accent' : 'dark:text-white'}`}>{label}</p>

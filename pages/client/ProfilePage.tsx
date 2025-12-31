@@ -8,7 +8,7 @@ import LoyaltyLockedView from '../../components/client/LoyaltyLockedView';
 import UserIdentityQR from '../../components/client/UserIdentityQR';
 
 const ProfilePage: React.FC = () => {
-  const { user, setUser, addToCart, products, store } = useClient();
+  const { user, setUser, addToCart, products, store, isFeatureEnabled } = useClient();
   const { slug } = useParams();
   const navigate = useNavigate();
   const [editMode, setEditMode] = useState(false);
@@ -101,7 +101,7 @@ const ProfilePage: React.FC = () => {
     let addedCount = 0;
 
     itemNames.forEach(name => {
-      const menuItem = products.find(i => i.name.toLowerCase() === name.toLowerCase());
+      const menuItem = products?.find(i => i.name.toLowerCase() === name.toLowerCase());
       if (menuItem) {
         addToCart(menuItem, 1, [], 'Chico', '');
         addedCount++;
@@ -157,27 +157,32 @@ const ProfilePage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-2 gap-5">
-          <div className="bg-white/[0.02] rounded-[2.5rem] p-8 border border-white/5 flex flex-col items-center justify-center gap-2 shadow-xl">
-            <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20 mb-2">Saldo</span>
-            <span className="text-[32px] font-black text-white tracking-tighter italic leading-none">${user.balance.toFixed(2)}</span>
-            <button
-              onClick={() => setShowTopUp(true)}
-              className="mt-6 h-14 flex items-center justify-center text-black px-10 rounded-full text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl border border-white/20"
-              style={{ backgroundColor: accentColor }}
-            >
-              Recargar
-            </button>
-          </div>
-          <div className="bg-white/[0.02] rounded-[2.5rem] p-8 border border-white/5 flex flex-col items-center justify-center gap-2 shadow-xl">
-            <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20 mb-2">Puntos</span>
-            <span className="text-[32px] font-black text-white tracking-tighter italic leading-none">{user.points}</span>
-            <button
-              onClick={() => navigate('/loyalty')}
-              className="mt-6 h-14 flex items-center justify-center bg-white/5 text-slate-300 px-10 rounded-full text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all border border-white/10"
-            >
-              Canjear
-            </button>
-          </div>
+          {isFeatureEnabled('wallet') && (
+            <div className="bg-white/[0.02] rounded-[2.5rem] p-8 border border-white/5 flex flex-col items-center justify-center gap-2 shadow-xl">
+              <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20 mb-2">Saldo</span>
+              <span className="text-[32px] font-black text-white tracking-tighter italic leading-none">${user.balance.toFixed(2)}</span>
+              <button
+                onClick={() => setShowTopUp(true)}
+                className="mt-6 h-14 flex items-center justify-center text-black px-10 rounded-full text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl border border-white/20"
+                style={{ backgroundColor: accentColor }}
+              >
+                Recargar
+              </button>
+            </div>
+          )}
+
+          {isFeatureEnabled('loyalty') && (
+            <div className="bg-white/[0.02] rounded-[2.5rem] p-8 border border-white/5 flex flex-col items-center justify-center gap-2 shadow-xl">
+              <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20 mb-2">Puntos</span>
+              <span className="text-[32px] font-black text-white tracking-tighter italic leading-none">{user.points}</span>
+              <button
+                onClick={() => navigate(`/m/${slug}/loyalty`)}
+                className="mt-6 h-14 flex items-center justify-center bg-white/5 text-slate-300 px-10 rounded-full text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all border border-white/10"
+              >
+                Canjear
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-6">
@@ -214,8 +219,12 @@ const ProfilePage: React.FC = () => {
 
                 <div className="flex items-center justify-between mt-2 pt-5 border-t border-white/[0.03]">
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[14px] fill-icon" style={{ color: accentColor }}>stars</span>
-                    <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">+{order.pointsEarned || 0} Granos</span>
+                    {isFeatureEnabled('loyalty') && (
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[14px] fill-icon" style={{ color: accentColor }}>stars</span>
+                        <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">+{order.pointsEarned || 0} Granos</span>
+                      </div>
+                    )}
                   </div>
                   <button
                     onClick={() => handleOrderAgain(order)}

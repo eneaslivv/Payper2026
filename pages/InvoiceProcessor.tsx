@@ -280,44 +280,80 @@ const InvoiceProcessor: React.FC<InvoiceProcessorProps> = ({ isOpen = true, onCl
             for (const item of selectedInvoice.items) {
                 let finalInventoryId = item.matched_inventory_id;
 
-                // 1. Si ya tiene match, actualizamos stock
+                // 1. Si ya tiene match, actualizamos stock vía RPC (Trazable)
                 if (finalInventoryId) {
                     const existingItem = inventoryItems.find(i => i.id === finalInventoryId);
                     if (existingItem) {
-                        const newStock = (existingItem.current_stock || 0) + item.quantity;
-                        await fetch(
-                            `https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/inventory_items?id=eq.${finalInventoryId}`,
-                            { method: 'PATCH', headers: getAuthHeaders(), body: JSON.stringify({ current_stock: newStock }) }
-                        );
+                        // Buscamos la ubicación de destino (por ahora Depósito o la ubicación predeterminada)
+                        const { data: defaultLoc } = await supabase
+                            .from('storage_locations')
+                            .select('id')
+                            .eq('store_id', storeId)
+                            .eq('is_default', true)
+                            .single();
+
+                        const targetLoc = defaultLoc?.id;
+
+                        if (targetLoc) {
+                            await supabase.rpc('transfer_stock', {
+                                p_item_id: finalInventoryId,
+                                p_from_location_id: null,
+                                p_to_location_id: targetLoc,
+                                p_quantity: item.quantity,
+                                p_user_id: profile?.id || '',
+                                p_notes: `Compra de ${selectedInvoice.proveedor} (Factura ${selectedInvoice.nro_factura})`,
+                                p_movement_type: 'PURCHASE',
+                                p_reason: 'Reposición de Stock'
+                            });
+                        } else {
+                            // Fallback (solo si no hay ubicaciones, aunque el Trigger sync_inventory_item_total_stock requiere item_stock_levels)
+                            console.warn('No se encontró ubicación predeterminada para la compra');
+                        }
                     }
                 }
-                // 2. Si NO tiene match, CREAMOS el item nuevo
+                // 2. Si NO tiene match, CREAMOS el item nuevo (y luego impactamos stock)
                 else {
-                    // Use category_id if selected, or default to first available category or null
                     const categoryId = item.category_id || (categories.length > 0 ? categories[0].id : null);
 
-                    const createRes = await fetch('https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/inventory_items', {
-                        method: 'POST',
-                        headers: headers, // Includes Prefer: return=representation
-                        body: JSON.stringify({
+                    const { data: createdItems, error: createError } = await supabase
+                        .from('inventory_items')
+                        .insert({
                             store_id: storeId,
                             name: item.name,
-                            current_stock: item.quantity,
-                            cost: item.unit_price,
+                            sku: `ITEM-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
+                            current_stock: 0,
+                            item_type: 'ingredient',
                             unit_type: item.unit || 'unit',
-                            min_stock_alert: 5,
+                            min_stock: 5,
                             category_id: categoryId
                         })
-                    });
+                        .select();
 
-                    if (!createRes.ok) {
-                        const err = await createRes.text();
-                        throw new Error(`Error creando producto ${item.name}: ${err}`);
-                    }
+                    if (createError) throw createError;
 
-                    const createdItems = await createRes.json();
                     if (createdItems && createdItems.length > 0) {
                         finalInventoryId = createdItems[0].id;
+
+                        // Impactamos el stock inicial de la compra
+                        const { data: defaultLoc } = await supabase
+                            .from('storage_locations')
+                            .select('id')
+                            .eq('store_id', storeId)
+                            .eq('is_default', true)
+                            .single();
+
+                        if (defaultLoc?.id) {
+                            await supabase.rpc('transfer_stock', {
+                                p_item_id: finalInventoryId,
+                                p_from_location_id: null,
+                                p_to_location_id: defaultLoc.id,
+                                p_quantity: item.quantity,
+                                p_user_id: profile?.id || '',
+                                p_notes: `Carga inicial por compra: ${selectedInvoice.proveedor}`,
+                                p_movement_type: 'PURCHASE',
+                                p_reason: 'Carga inicial'
+                            });
+                        }
                     }
                 }
 

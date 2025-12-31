@@ -1,16 +1,24 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useClient } from '../../contexts/ClientContext';
 import { Voucher } from '../../components/client/types';
 import LoyaltyLockedView from '../../components/client/LoyaltyLockedView';
 
 const LoyaltyPage: React.FC = () => {
-  const { user, setUser, store } = useClient();
+  const { user, setUser, store, isFeatureEnabled } = useClient();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'rewards' | 'vouchers' | 'benefits'>('rewards');
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [showQR, setShowQR] = useState<{ isOpen: boolean; data: string; title: string }>({ isOpen: false, data: '', title: '' });
   const [progressWidth, setProgressWidth] = useState(0);
+
+  useEffect(() => {
+    if (store && !isFeatureEnabled('loyalty')) {
+      navigate(`/m/${store.slug}`, { replace: true });
+    }
+  }, [store, isFeatureEnabled, navigate]);
 
   // Get accent color from store theme
   const accentColor = store?.menu_theme?.accentColor || '#4ADE80';

@@ -51,13 +51,13 @@ export const INITIAL_TABLES: Table[] = [
 ];
 
 export const INITIAL_BARS: Bar[] = [
-  { 
-    id: 'b1', 
-    name: 'BAR PRINCIPAL', 
+  {
+    id: 'b1',
+    name: 'BAR PRINCIPAL',
     zoneId: 'z1',
-    location: 'Nivel 1', 
+    location: 'Nivel 1',
     type: 'MAIN',
-    isActive: true, 
+    isActive: true,
     position: { x: 80, y: 140 },
     size: { w: 280, h: 100 },
     rotation: 0,
@@ -80,11 +80,13 @@ export const INITIAL_QRS: QR[] = [
 ];
 
 export const STATUS_COLORS = {
-  [TableStatus.FREE]: 'bg-[#36e27b]', 
-  [TableStatus.OCCUPIED]: 'bg-rose-500',
-  [TableStatus.PENDING_ORDER]: 'bg-rose-500',
-  [TableStatus.PAYING]: 'bg-amber-400',
-  [TableStatus.CLOSED]: 'bg-zinc-800'
+  [TableStatus.FREE]: 'bg-[#36e27b]',           // Verde - Disponible
+  [TableStatus.RESERVED]: 'bg-[#4f46e5]',       // Índigo/Azul - Reservado
+  [TableStatus.OCCUPIED]: 'bg-rose-500',        // Rojo - Con orden activa
+  [TableStatus.PENDING_ORDER]: 'bg-amber-500',  // Ámbar - Esperando pedido (diferenciado)
+  [TableStatus.BILL_REQUESTED]: 'bg-cyan-400',  // Cyan - Pidieron cuenta
+  [TableStatus.PAYING]: 'bg-violet-500',        // Violeta - Procesando pago
+  [TableStatus.CLOSED]: 'bg-zinc-600'           // Gris - Cerrada
 };
 
 export const ORDER_STATUS_COLORS = {

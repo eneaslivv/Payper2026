@@ -6,7 +6,7 @@ import { useToast } from '../components/ToastSystem';
 
 import { Store, RolePermissions, SectionSlug } from '../types';
 
-export type UserRole = 'super_admin' | 'store_owner' | 'staff';
+export type UserRole = 'super_admin' | 'store_owner' | 'staff' | 'customer';
 
 export interface UserProfile {
     id: string;
@@ -351,11 +351,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
 
-        // STEP 3: Profile not found - DON'T logout automatically
-        // Let App.tsx show an error screen where user can manually retry or logout
-        console.warn('[AUTH] ⚠️ Profile not found for user:', userEmail);
-        console.warn('[AUTH] User will see error screen in App.tsx');
-        // Profile stays null - App.tsx handles this with "Error de Perfil" screen
+        // STEP 3: Profile not found after retries -> AUTO-HEAL 🏳️
+        // Instead of leaving the user in limbo, we create a basic profile row.
+        console.warn(`[AUTH] ⚠️ Profile missing for ${userEmail}. Initiating AUTO-HEALING...`);
+
+        const autoHealProfile: UserProfile = {
+            id: userId,
+            email: userEmail || `user_${userId.substr(0, 8)}@temp.livv`,
+            full_name: session?.user?.user_metadata?.full_name || 'Nuevo Usuario',
+            role: 'customer', // Default role
+            is_active: true,
+            store_id: session?.user?.user_metadata?.store_id || undefined
+        };
+
+        try {
+            const { data: newProfile, error: createError } = await supabase
+                .from('profiles')
+                .upsert(autoHealProfile) // Upsert is safer than insert
+                .select()
+                .single();
+
+            if (createError) {
+                console.error('[AUTH] Auto-heal failed:', createError);
+                throw createError;
+            }
+
+            if (newProfile) {
+                console.log('[AUTH] ✅ Profile AUTO-HEALED successfully.');
+                setProfile(newProfile as UserProfile);
+                setPermissions(null); // Customers usually have no special permissions
+                return;
+            }
+        } catch (healError) {
+            console.error('[AUTH] Critical Auto-Heal Error:', healError);
+            // NOW we fall through to the manual error screen if even auto-heal fails
+        }
     };
 
     const hasPermission = (slug: SectionSlug, action: 'view' | 'create' | 'edit' | 'delete' = 'view'): boolean => {

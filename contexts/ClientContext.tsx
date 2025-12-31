@@ -2,51 +2,11 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { CartItem, MenuItem, UserProfile, OrderStatus } from '../components/client/types';
+import { MenuLogic, Store } from '../types'; // Import from global types
 import { INITIAL_USER } from '../components/client/constants';
+import { getQRContext, clearQRContext, QRContext } from '../lib/qrContext';
 
-interface MenuTheme {
-    // Paleta Cromática
-    accentColor?: string;
-    backgroundColor?: string;
-    cardColor?: string;
-    textColor?: string;
-    // Marca & Cabecera
-    storeName?: string;
-    logoUrl?: string;
-    headerImage?: string;
-    headerOverlay?: number;
-    headerAlignment?: 'left' | 'center';
-    // Disposición & Tarjetas
-    layout?: 'grid' | 'list';
-    columns?: 1 | 2;
-    cardStyle?: 'glass' | 'solid' | 'minimal' | 'border' | 'floating';
-    borderRadius?: 'none' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
-    fontStyle?: 'modern' | 'serif' | 'mono';
-    // Visibilidad de Contenido
-    showImages?: boolean;
-    showPrices?: boolean;
-    showDescription?: boolean;
-    showQuickAdd?: boolean;
-    showBadges?: boolean;
-}
-
-interface MenuLogic {
-    autoConfirm?: boolean;
-    taxInclusive?: boolean;
-    allowTableOrder?: boolean;
-    allowTakeaway?: boolean;
-    requireAuth?: boolean; // If true, require login before checkout
-}
-
-interface Store {
-    id: string;
-    name: string;
-    slug: string;
-    logo_url?: string;
-    theme_color?: string;
-    menu_theme?: MenuTheme;
-    menu_logic?: MenuLogic;
-}
+// Local interfaces removed in favor of global types
 
 interface ClientContextType {
     store: Store | null;
@@ -75,6 +35,18 @@ interface ClientContextType {
     activeOrderId: string | null;
     setActiveOrderId: (id: string | null) => void;
     activeOrders: any[];
+    // Config Helpers
+    isStoreOpen: () => boolean;
+    getClosedMessage: () => string;
+    isFeatureEnabled: (feature: 'wallet' | 'loyalty' | 'guestMode') => boolean;
+    isChannelEnabled: (channel: 'dineIn' | 'takeaway' | 'delivery') => boolean;
+    isOrderingAllowed: (channel: 'dineIn' | 'takeaway' | 'delivery') => boolean;
+    getMenuRule: (rule: 'hideOutofStock' | 'showCalories') => boolean;
+    // QR Context
+    qrContext: QRContext | null;
+    orderChannel: 'table' | 'qr' | 'takeaway' | 'delivery' | null;
+    tableLabel: string | null;
+    serviceMode: 'counter' | 'table' | 'club';
 }
 
 
@@ -99,6 +71,11 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
     const [activeOrders, setActiveOrders] = useState<any[]>([]);
+
+    // QR Context State
+    const [qrContext, setQRContextState] = useState<QRContext | null>(null);
+    const [orderChannel, setOrderChannel] = useState<'table' | 'qr' | 'takeaway' | 'delivery' | null>(null);
+    const [tableLabel, setTableLabel] = useState<string | null>(null);
 
     // Auth Listener & User Data Fetching
     useEffect(() => {
@@ -181,8 +158,8 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 name: user?.user_metadata?.full_name || 'Cliente Nuevo',
                 email: user?.email || '',
                 phone: user?.user_metadata?.phone || '',
-                loyalty_points: 0,
-                wallet_balance: 0, // Agregamos wallet_balance al default
+                points_balance: 0,
+                wallet_balance: 0,
                 store_id: store.id,
                 created_at: new Date().toISOString()
             };
@@ -233,15 +210,15 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 id: clientData.id,
                 name: clientData.name || 'Invitado',
                 email: clientData.email || '',
-                phone: clientData.phone || '',
-                points: clientData.loyalty_points || 0,
-                balance: clientData.wallet_balance || 0, // Use clients.wallet_balance directly
-                status: clientData.loyalty_points < 500 ? 'Bronce' : clientData.loyalty_points < 1200 ? 'Plata' : 'Oro',
-                vouchers: (vouchersData || []).map(v => ({
+                // Phone not currently in clients table
+                points: clientData.points_balance || 0,
+                balance: clientData.wallet_balance || 0,
+                status: (clientData.points_balance || 0) < 500 ? 'Bronce' : (clientData.points_balance || 0) < 1200 ? 'Plata' : 'Oro',
+                vouchers: (vouchersData || []).map((v: any) => ({
                     id: v.id,
                     name: 'Cupón de Regalo', // Should be linked to rewards table
                     expiry: v.expires_at ? new Date(v.expires_at).toLocaleDateString() : 'Sin expiración',
-                    type: v.status === 'used' ? 'redemption' : 'gift'
+                    type: v.is_used ? 'redemption' : 'gift'
                 })),
                 avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${clientData.id}`,
                 onboardingCompleted: true,
@@ -250,7 +227,8 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     date: new Date(o.created_at).toLocaleDateString(),
                     items: (o.order_items || []).map((oi: any) => `${oi.quantity}x ${oi.name}`).join(', ') || 'Pedido sin detalles',
                     total: o.total_amount,
-                    pointsEarned: Math.floor(o.total_amount * 10)
+                    // Points now come from loyalty_transactions ledger, not calculated here
+                    pointsEarned: undefined
                 }))
             };
 
@@ -292,6 +270,28 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         fetchStore();
     }, [slug]);
 
+    // Load QR Context when store is ready
+    useEffect(() => {
+        if (!store?.id || !slug) return;
+
+        const ctx = getQRContext();
+
+        if (ctx && ctx.store_slug === slug) {
+            // Context matches this store - use it
+            setQRContextState(ctx);
+            setOrderChannel(ctx.channel);
+            setTableLabel(ctx.node_label);
+            console.log('[QR Context] Loaded:', ctx.channel, ctx.node_label);
+        } else if (ctx && ctx.store_slug !== slug) {
+            // Context is for different store - clear it
+            console.log('[QR Context] Wrong store, clearing');
+            clearQRContext();
+            setQRContextState(null);
+            setOrderChannel(null);
+            setTableLabel(null);
+        }
+    }, [store?.id, slug]);
+
     // Fetch Categories and Products
     useEffect(() => {
         if (!store?.id) return;
@@ -299,11 +299,11 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const fetchData = async () => {
             setLoadingProducts(true);
             try {
-                // 1. Fetch Categories - Simplified query to avoid column errors
+                // 1. Fetch Categories
                 const { data: catsData, error: catsError } = await (supabase
-                    .from('categories') as any)
+                    .from('categories' as any)
                     .select('id, name')
-                    .eq('store_id', store.id);
+                    .eq('store_id', store.id));
 
                 if (catsError) console.error('[ClientContext] Error fetching categories:', catsError);
 
@@ -397,6 +397,97 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const clearCart = () => setCart([]);
 
+    // --- LOGIC HELPERS ---
+
+    const getLogic = (): MenuLogic | null => {
+        return store?.menu_logic || null;
+    };
+
+    const isStoreOpen = (): boolean => {
+        const logic = getLogic();
+        // Default to OPEN if no logic defined (conservative for business continuity)
+        // But if logic exists, respect the master switch
+        if (!logic) return true;
+        // Check legacy flat structure if migration failed or pending
+        if ((logic as any).is_dining_open !== undefined) return true; // Legacy fallback
+
+        return logic.operation?.isOpen ?? true;
+    };
+
+    const getClosedMessage = (): string => {
+        const logic = getLogic();
+        return logic?.operation?.messageClosed || 'Cerrado por el momento';
+    };
+
+    const isFeatureEnabled = (feature: 'wallet' | 'loyalty' | 'guestMode'): boolean => {
+        const logic = getLogic();
+        if (!logic) return false; // Default OFF for advanced features if no config
+
+        // Handle Legacy
+        if ((logic as any).operation === undefined) return false;
+
+        switch (feature) {
+            case 'wallet': return logic.features?.wallet?.allowPayment ?? false;
+            case 'loyalty': return logic.features?.loyalty?.enabled ?? true; // Default ON to restore visibility
+            case 'guestMode': return logic.features?.guestMode?.enabled ?? true;
+            default: return false;
+        }
+    };
+
+    const isChannelEnabled = (channel: 'dineIn' | 'takeaway' | 'delivery'): boolean => {
+        const logic = getLogic();
+        if (!logic) return true; // Default ON for basic channels
+
+        // Handle Legacy
+        if ((logic as any).operation === undefined) {
+            const legacy = logic as any;
+            if (channel === 'dineIn') return legacy.is_dining_open ?? true;
+            if (channel === 'takeaway') return legacy.is_takeaway_open ?? true;
+            if (channel === 'delivery') return legacy.is_delivery_open ?? true;
+            return true;
+        }
+
+        switch (channel) {
+            case 'dineIn': return logic.channels?.dineIn?.enabled ?? true;
+            case 'takeaway': return logic.channels?.takeaway?.enabled ?? true;
+            case 'delivery': return logic.channels?.delivery?.enabled ?? true;
+            default: return true;
+        }
+    };
+
+    const isOrderingAllowed = (channel: 'dineIn' | 'takeaway' | 'delivery'): boolean => {
+        const logic = getLogic();
+        if (!logic) return true;
+
+        if ((logic as any).operation === undefined) {
+            // Legacy
+            if (channel === 'dineIn') return (logic as any).allowTableOrder ?? true;
+            if (channel === 'takeaway') return (logic as any).allowTakeaway ?? true;
+            return true;
+        }
+
+        switch (channel) {
+            case 'dineIn': return logic.channels?.dineIn?.allowOrdering ?? true;
+            // Takeaway/Delivery don't have explicit strict "allowOrdering" sub-flag in schema, usually enabled=open
+            // But we can default to enabled check or always true if channel is open
+            default: return true;
+        }
+    };
+
+    const getMenuRule = (rule: 'hideOutofStock' | 'showCalories'): boolean => {
+        const logic = getLogic();
+        if (!logic) return false;
+
+        // Handle Legacy (no rules existed)
+        if ((logic as any).operation === undefined) return false;
+
+        switch (rule) {
+            case 'hideOutofStock': return logic.rules?.hideOutofStock ?? false;
+            case 'showCalories': return logic.rules?.showCalories ?? false;
+            default: return false;
+        }
+    };
+
     return (
         <ClientContext.Provider value={{
             store,
@@ -424,7 +515,18 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             setShowAuthModal,
             activeOrderId,
             setActiveOrderId,
-            activeOrders
+            activeOrders,
+            isStoreOpen,
+            getClosedMessage,
+            isFeatureEnabled,
+            isChannelEnabled,
+            isOrderingAllowed,
+            getMenuRule,
+            // QR Context
+            qrContext,
+            orderChannel,
+            tableLabel,
+            serviceMode: store?.service_mode || 'counter',
         }}>
             {children}
         </ClientContext.Provider>

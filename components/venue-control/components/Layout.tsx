@@ -96,8 +96,27 @@ const Layout: React.FC<LayoutProps> = ({
               </div>
             ))}
 
+            {isAddingZone && (
+              <div className="flex items-center px-3 bg-zinc-900 rounded-full h-8 animate-in fade-in slide-in-from-left-2 border border-[#36e27b] shadow-[0_0_15px_-5px_#36e27b]">
+                <input
+                  autoFocus
+                  placeholder="NOMBRE SALA"
+                  className="bg-transparent text-[10px] font-black text-white outline-none w-24 uppercase tracking-widest placeholder:text-zinc-700"
+                  value={zoneInputName}
+                  onChange={(e) => setZoneInputName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') onAddZone();
+                    if (e.key === 'Escape') setIsAddingZone(false);
+                  }}
+                />
+                <button onClick={onAddZone} className="text-[#36e27b] hover:scale-110 transition-transform ml-2">
+                  <Check size={14} strokeWidth={3} />
+                </button>
+              </div>
+            )}
+
             {/* ADD BUTTON */}
-            {mode === AppMode.EDIT && (
+            {!isAddingZone && mode === AppMode.EDIT && (
               <button
                 onClick={() => { setZoneInputName(''); setIsAddingZone(true); }}
                 className="w-[34px] h-[34px] rounded-full flex items-center justify-center bg-zinc-900 hover:bg-zinc-800 text-zinc-500 hover:text-white border border-white/5 transition-all ml-1 shadow-lg"
@@ -111,7 +130,7 @@ const Layout: React.FC<LayoutProps> = ({
         {/* RIGHT: CONTROLS */}
         <div className="flex items-center gap-6">
 
-          {/* MODE SWITCHER (PILL) */}
+          {/* MODE SWITCHER (PILL) - Simplified: Operativo / Gestión */}
           <div className="flex items-center bg-[#111] border border-zinc-900 rounded-full p-1.5 h-[46px]">
             {/* OPERATIVO */}
             <button
@@ -123,20 +142,6 @@ const Layout: React.FC<LayoutProps> = ({
             >
               <Zap size={12} className={mode === AppMode.VIEW ? "text-[#36e27b]" : "opacity-0 w-0"} />
               <span>Operativo</span>
-            </button>
-
-            <div className="w-px h-3 bg-zinc-800 mx-1"></div>
-
-            {/* DESPACHO */}
-            <button
-              onClick={() => setMode(AppMode.DISPATCH)}
-              className={`h-[34px] px-6 rounded-full text-[10px] font-black tracking-widest uppercase flex items-center gap-2 transition-all
-                     ${mode === AppMode.DISPATCH
-                  ? 'bg-zinc-800 text-amber-400 border border-zinc-700 shadow-lg'
-                  : 'text-zinc-600 hover:text-zinc-400'}`}
-            >
-              <ClipboardList size={12} className={mode === AppMode.DISPATCH ? "text-amber-400" : "opacity-0 w-0"} />
-              <span>Despacho</span>
             </button>
 
             <div className="w-px h-3 bg-zinc-800 mx-1"></div>
@@ -165,16 +170,6 @@ const Layout: React.FC<LayoutProps> = ({
                 <Bell size={16} />
               </button>
             </div>
-
-            {mode === AppMode.EDIT && (
-              <button
-                onClick={onAddNode}
-                className="h-[46px] px-6 rounded-full bg-[#36e27b] text-black font-black text-[10px] tracking-widest uppercase hover:bg-[#2ecc71] transition-all shadow-[0_0_20px_-5px_#36e27b] flex items-center gap-2"
-              >
-                <Plus size={14} strokeWidth={4} />
-                <span>Nuevo</span>
-              </button>
-            )}
           </div>
 
         </div>

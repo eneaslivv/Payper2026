@@ -30,6 +30,7 @@ import ClientAuthPage from './pages/client/AuthPage';
 import ClientProfilePage from './pages/client/ProfilePage';
 import ClientLoyaltyPage from './pages/client/LoyaltyPage';
 import ClientOrderStatusPage from './pages/client/OrderStatusPage';
+import QRResolver from './pages/QRResolver';
 import ClientWalletPage from './pages/client/WalletPage';
 import ScanOrderModal from './components/ScanOrderModal';
 import { MenuPage } from './pages/MenuPage';
@@ -456,8 +457,13 @@ const MainRouter: React.FC = () => {
   // Check BEFORE any auth logic so logged-in users can also access client menu
   const isClientMenu = window.location.hash.includes('#/m/');
   const isOrderRoute = window.location.hash.includes('#/orden/') || window.location.hash.includes('/order/');
+  const isQRRoute = window.location.hash.includes('#/qr/');
 
-  if (isClientMenu || isOrderRoute) {
+  // DEBUG: Log routing decision
+  console.log('[ROUTING] Hash:', window.location.hash);
+  console.log('[ROUTING] isClientMenu:', isClientMenu, 'isOrderRoute:', isOrderRoute, 'isQRRoute:', isQRRoute);
+
+  if (isClientMenu || isOrderRoute || isQRRoute) {
     return (
       <Router>
         <Routes>
@@ -479,13 +485,22 @@ const MainRouter: React.FC = () => {
             <Route path="wallet" element={<ClientWalletPage />} />
           </Route>
 
+          {/* QR Resolver Route */}
+          <Route path="/qr/:hash" element={<QRResolver />} />
+
           {/* Order Confirmation Routes */}
           <Route path="/orden/:orderId/confirmado" element={<OrderConfirmationPage />} />
           <Route path="/orden/:orderId/error" element={<OrderConfirmationPage />} />
           <Route path="/orden/:orderId/pendiente" element={<OrderConfirmationPage />} />
 
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* Fallback for unmatched routes - show not found */}
+          <Route path="*" element={
+            <div className="flex flex-col h-screen w-full items-center justify-center bg-black text-white">
+              <span className="material-symbols-outlined text-4xl mb-4 text-white/30">search_off</span>
+              <h1 className="text-xl font-black">Página no encontrada</h1>
+              <p className="text-white/50 text-sm mt-2">El menú que buscás no existe</p>
+            </div>
+          } />
         </Routes>
       </Router>
     );
@@ -568,44 +583,34 @@ const MainRouter: React.FC = () => {
   // Skip profile check if: god mode, client route, or potential store route
   if (user && !profile && !isClientRoute && !isPotentialStoreRoute && !isGodModeUser && !isCheckoutReturn) {
     return (
-      <div className="flex flex-col h-screen w-full items-center justify-center bg-black gap-4 p-4 text-center">
-        <span className="material-symbols-outlined text-4xl text-red-500 animate-pulse">error</span>
-        <h1 className="text-white font-black uppercase tracking-widest">Error de Perfil</h1>
-        <p className="text-zinc-500 text-xs max-w-md">
-          Tu usuario <span className="text-white font-mono">{user.email}</span> está autenticado, pero no tiene perfil en la base de datos de Payper.
-        </p>
-
-        <div className="bg-white/5 p-4 rounded text-[10px] font-mono text-zinc-400 border border-white/10 mt-2">
-          <p>User ID: {user.id}</p>
-          <p>Status: Missing Row in public.profiles</p>
+      <div className="flex flex-col h-screen w-full items-center justify-center bg-black gap-6 p-6 text-center">
+        <div className="relative size-20">
+          <div className="absolute inset-0 rounded-full border-4 border-white/5 border-t-neon animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="material-symbols-outlined text-2xl text-neon">manage_accounts</span>
+          </div>
         </div>
-
-        <div className="flex gap-4 mt-6 flex-wrap justify-center">
+        <div>
+          <h1 className="text-white text-lg font-black uppercase tracking-[0.2em] mb-2">Configurando Cuenta</h1>
+          <p className="text-zinc-500 text-xs max-w-xs mx-auto leading-relaxed">
+            Estamos preparando tu perfil de usuario. Esto solo tomará unos segundos...
+          </p>
+        </div>
+        <div className="flex gap-4 mt-4">
           <button
-            onClick={() => {
-              // Try to go to a client menu - check if user has a store from metadata
-              const storeSlug = user?.user_metadata?.store_slug || 'ciro';
-              window.location.hash = `/m/${storeSlug}`;
-            }}
-            className="px-6 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold uppercase tracking-widest rounded transition-all"
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-white/5 hover:bg-white/10 text-white text-[10px] font-black uppercase tracking-widest rounded-full transition-all border border-white/5"
           >
-            Ir al Menú
+            Recargar Página
           </button>
           <button
             onClick={() => {
               localStorage.clear();
               window.location.reload();
             }}
-            className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-widest rounded transition-all"
+            className="px-6 py-2 text-red-500/50 hover:text-red-500 text-[10px] font-black uppercase tracking-widest rounded transition-all"
           >
-            Cerrar Sesión
-          </button>
-          {/* Retry Fetch - maybe it was just a network glitch */}
-          <button
-            onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-neon text-black text-xs font-bold uppercase tracking-widest rounded hover:scale-105 transition-all"
-          >
-            Reintentar
+            Salir
           </button>
         </div>
       </div>
@@ -636,7 +641,28 @@ const MainRouter: React.FC = () => {
             <Route path="/plans" element={<SaaSAdmin initialTab="plans" />} />
             <Route path="/metrics" element={<SaaSAdmin initialTab="metrics" />} />
             <Route path="/audit" element={<SaaSAdmin initialTab="audit" />} />
+            <Route path="/audit" element={<SaaSAdmin initialTab="audit" />} />
             <Route path="/join" element={<JoinTeam />} />
+            {/* QR Resolver Fallback */}
+            <Route path="/qr/:hash" element={<QRResolver />} />
+
+            {/* Public Menu Routes for Testing */}
+            <Route path="/m/:slug" element={
+              <ClientProvider>
+                <ClientLayout />
+              </ClientProvider>
+            }>
+              <Route index element={<ClientMenuPage />} />
+              <Route path="product/:id" element={<ClientProductPage />} />
+              <Route path="cart" element={<ClientCartPage />} />
+              <Route path="checkout" element={<ClientCheckoutPage />} />
+              <Route path="tracking/:orderId" element={<ClientTrackingPage />} />
+              <Route path="auth" element={<ClientAuthPage />} />
+              <Route path="profile" element={<ClientProfilePage />} />
+              <Route path="loyalty" element={<ClientLoyaltyPage />} />
+              <Route path="wallet" element={<ClientWalletPage />} />
+            </Route>
+
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </SaaSLayout>
@@ -650,6 +676,9 @@ const MainRouter: React.FC = () => {
       <OfflineProvider>
         <OperativeLayout activeNode={activeNode} activeTenant={activeTenant}>
           <Routes>
+            {/* QR Resolver Fallback */}
+            <Route path="/qr/:hash" element={<QRResolver />} />
+
             {/* Public Menu Routes (Accessible when logged in) */}
             <Route path="/m/:slug" element={
               <ClientProvider>

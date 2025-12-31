@@ -1,9 +1,81 @@
 
 export type ItemType = 'ingredient' | 'sellable' | 'prepared' | 'final_product' | 'pack';
 export type UnitType = 'unit' | 'gram' | 'ml' | 'kg' | 'oz' | 'liter';
-export type MovementType = 'purchase' | 'manual_adjustment' | 'recipe_consumption' | 'sale' | 'waste' | 'return';
+export type MovementType = 'purchase' | 'manual_adjustment' | 'recipe_consumption' | 'sale' | 'waste' | 'return' | 'TRANSFER' | 'PURCHASE' | 'WASTE' | 'ADJUSTMENT';
 
 // --- SAAS & TENANT CONTROL ---
+
+export interface MenuLogic {
+  // 1. Operación General
+  operation: {
+    isOpen: boolean; // Master switch
+    messageClosed?: string; // "Cerrado por reformas", etc.
+    estimatedWaitMinutes?: number;
+  };
+
+  // 2. Gestión de Canales (Gatekeepers)
+  channels: {
+    dineIn: {
+      enabled: boolean; // "Mesa"
+      allowOrdering: boolean; // Si false, solo ver carta
+    };
+    takeaway: {
+      enabled: boolean; // "Para llevar"
+      minTimeMinutes?: number;
+    };
+    delivery: {
+      enabled: boolean;
+      radiusKm?: number;
+      minOrderAmount?: number;
+    };
+    staff?: {
+      enabled: boolean;
+      requirePin: boolean;
+    };
+  };
+
+  // 3. Experiencia Cliente (Features)
+  features: {
+    wallet: {
+      allowTopUp: boolean; // "Cargar saldo"
+      allowPayment: boolean; // "Pagar con saldo"
+    };
+    loyalty: {
+      enabled: boolean; // "Programa de puntos"
+      showPoints: boolean; // Mostrar puntos en header
+    };
+    guestMode: {
+      enabled: boolean; // Permitir entrar sin login
+      allowOrdering: boolean; // Permitir pedir sin login (poco común, pero posible)
+    };
+  };
+
+  // 4. Reglas de Menú
+  rules: {
+    hideOutofStock: boolean; // Si true, items con stock <= 0 desaparecen
+    enforceStock: boolean; // Si true, bloquea add-to-cart si stock <= 0 (aunque se vea)
+    showCalories: boolean;
+    showAllergens: boolean;
+  };
+
+  // 5. Menús Dinámicos (New)
+  dynamic_menus?: {
+    enabled: boolean;
+    menus: {
+      id: string;
+      name: string; // "Almuerzo", "Cena", "VIP", "Terraza"
+      isActive: boolean;
+      schedule?: {
+        enabled: boolean;
+        days: number[]; // 0=Sun, 1=Mon...
+        start: string; // '00:00'
+        end: string; // '23:59'
+      };
+      node_ids?: string[]; // Specific tables/nodes (if empty, applies generally if schedule matches)
+      category_ids?: string[]; // Whitelist: only show these categories
+    }[];
+  };
+}
 export interface MenuTheme {
   // Marca
   storeName: string;
@@ -95,8 +167,9 @@ export interface Store {
   owner_email?: string;
   plan?: string;
   onboarding_status?: string;
+  service_mode?: 'counter' | 'table' | 'club';
   menu_theme?: any;
-  menu_logic?: any;
+  menu_logic?: MenuLogic;
   created_at: string;
   updated_at: string;
   // Mercado Pago Fields
@@ -324,6 +397,7 @@ export interface GlobalUser {
 export interface Order {
   id: string;
   customer: string;
+  client_email?: string; // New field for registered users
   time: string;
   items: OrderItem[];
   status: OrderStatus;
@@ -479,6 +553,37 @@ export interface Recipe {
   final_product_id: string;
   yield_quantity: number;
   items: RecipeItem[];
+}
+
+// --- STOCK TRANSFER SYSTEM ---
+export interface StorageLocation {
+  id: string;
+  store_id: string;
+  name: string;
+  type: 'warehouse' | 'point_of_sale' | 'kitchen';
+  is_default: boolean;
+}
+
+export interface ItemStockLevel {
+  id: string;
+  inventory_item_id: string;
+  location_id: string;
+  quantity: number;
+  location?: StorageLocation; // For frontend joins
+}
+
+export interface StockTransfer {
+  id: string;
+  inventory_item_id: string;
+  from_location_id?: string;
+  to_location_id?: string;
+  quantity: number;
+  user_id: string;
+  notes?: string;
+  created_at: string;
+  from_location?: StorageLocation;
+  to_location?: StorageLocation;
+  user?: { email: string }; // For display
 }
 
 // --- MISSING TYPES ---

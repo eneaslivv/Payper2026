@@ -7,6 +7,7 @@ export enum AppMode {
 
 export enum TableStatus {
   FREE = 'free',
+  RESERVED = 'reserved',
   OCCUPIED = 'occupied',
   BILL_REQUESTED = 'bill_requested',
   PENDING_ORDER = 'pending_order',
@@ -50,6 +51,7 @@ export interface Size {
 
 export interface OrderItem {
   id: string;
+  productId?: string; // Link to real product
   name: string;
   price: number;
   quantity: number;
@@ -61,12 +63,14 @@ export interface Zone {
   id: string;
   name: string;
   description: string;
+  sort_order?: number; // Added from DB
 }
 
 export interface Table {
   id: string;
   name: string;
   zoneId: string;
+  locationId?: string; // Link to inventory
   capacity: number;
   status: TableStatus;
   position: Position;
@@ -74,7 +78,12 @@ export interface Table {
   rotation: number;
   shape: 'circle' | 'square';
   totalAmount: number;
-  orders: OrderItem[];
+  orders: OrderItem[]; // Items of the active order
+  activeOrderId?: string; // DB ID of the active order
+  openedAt?: Date; // When the current session started
+  reservedAt?: Date; // RESERVATION: when
+  reservedFor?: string; // RESERVATION: who
+  reservationNote?: string; // RESERVATION: notes
   qrId?: string;
   assignedStaff?: string;
   lastUpdate: Date;
@@ -94,7 +103,8 @@ export interface Bar {
   id: string;
   name: string;
   zoneId: string;
-  location: string;
+  location: string; // Visual label
+  locationId?: string; // Link to inventory storage_location
   type: 'MAIN' | 'SECONDARY' | 'SERVICE';
   isActive: boolean;
   position: Position;
@@ -161,4 +171,12 @@ export interface LogMovement {
   description: string;
   user: string;
   entityId: string;
+}
+
+export interface StorageLocation {
+  id: string;
+  store_id: string;
+  name: string;
+  type: 'warehouse' | 'point_of_sale' | 'kitchen';
+  is_default: boolean;
 }

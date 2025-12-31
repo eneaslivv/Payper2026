@@ -31,6 +31,9 @@ interface MenuRendererProps {
     onCategoryChange: (category: string) => void;
     searchQuery?: string;
     onSearchChange?: (query: string) => void;
+    allowOrdering?: boolean;
+    serviceMode?: 'counter' | 'table' | 'club';
+    tableLabel?: string | null;
 }
 
 export const MenuRenderer: React.FC<MenuRendererProps> = ({
@@ -47,7 +50,10 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
     activeCategory,
     onCategoryChange,
     searchQuery = '',
-    onSearchChange
+    onSearchChange,
+    allowOrdering = true,
+    serviceMode,
+    tableLabel
 }) => {
 
     // --- STYLE HELPERS ---
@@ -67,6 +73,8 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
 
     const getPrice = (item: DisplayItem) => item.base_price || item.price || 0;
     const getImage = (item: DisplayItem) => item.image || item.image_url || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200';
+
+    const showAdd = theme.showAddButton && allowOrdering;
 
     return (
         <div
@@ -101,7 +109,11 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
                             <img src={logoUrl || theme.logoUrl} className="w-16 h-16 rounded-full object-cover border-2 border-white/10 mb-4 shadow-xl" />
                         )}
                         <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter leading-none mb-1 shadow-black drop-shadow-lg">
-                            {storeName}
+                            {(serviceMode === 'table' && tableLabel) ? (
+                                <>
+                                    MESA <span style={{ color: theme.accentColor }}>{tableLabel}</span>
+                                </>
+                            ) : storeName}
                         </h1>
                         {theme.showBadges && <PaymentCapabilityBadge canProcessPayments={canProcessPayments} mpNickname={mpNickname} />}
                     </motion.div>
@@ -122,7 +134,11 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
                         />
                     )}
                     <h1 className="text-4xl font-black uppercase tracking-tighter leading-none mb-2" style={{ color: theme.textColor }}>
-                        {storeName}
+                        {(serviceMode === 'table' && tableLabel) ? (
+                            <>
+                                MESA <span style={{ color: theme.accentColor }}>{tableLabel}</span>
+                            </>
+                        ) : storeName}
                     </h1>
                     {theme.showBadges && <PaymentCapabilityBadge canProcessPayments={canProcessPayments} mpNickname={mpNickname} />}
                 </motion.div>
@@ -227,7 +243,7 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
             </motion.div>
 
             {/* PRODUCT GRID/LIST */}
-            <div className={`px-4 md:px-6 pb-24 flex-1 ${activeLayout === 'grid' ? 'overflow-y-auto' : ''}`}>
+            <div className={`px-4 md:px-6 pb-24 flex-1 overflow-y-auto`}>
                 <motion.div
                     layout
                     className={activeLayout === 'grid' ? `grid gap-3 md:gap-6 ${theme.columns === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3'}` : 'flex flex-col gap-3 md:gap-4'}
@@ -279,7 +295,7 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
                                                 )}
                                             </div>
                                         </div>
-                                        {theme.showAddButton && (
+                                        {showAdd && (
                                             <button
                                                 onClick={() => onAddToCart && onAddToCart(product)}
                                                 className="w-10 h-10 rounded-full flex items-center justify-center transition-all bg-white/5 hover:bg-white/10 group-hover:scale-110"
@@ -310,7 +326,7 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
                                         <div className="aspect-square bg-cover bg-center relative overflow-hidden" style={{ backgroundImage: `url(${imageUrl})` }}>
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity" />
 
-                                            {theme.showAddButton && (
+                                            {showAdd && (
                                                 <motion.button
                                                     whileTap={{ scale: 0.9 }}
                                                     onClick={() => onAddToCart && onAddToCart(product)}
@@ -334,7 +350,7 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
                                         {theme.showPrices && (
                                             <div className="mt-3 flex items-center justify-between">
                                                 <span className="font-black text-[15px] italic-black" style={{ color: theme.accentColor }}>${price.toLocaleString('es-AR')}</span>
-                                                {!theme.showImages && theme.showAddButton && (
+                                                {!theme.showImages && showAdd && (
                                                     <button onClick={() => onAddToCart && onAddToCart(product)} className="w-8 h-8 rounded-full flex items-center justify-center bg-white/5">
                                                         <span className="material-symbols-outlined text-xs" style={{ color: theme.accentColor }}>add</span>
                                                     </button>

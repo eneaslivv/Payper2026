@@ -232,43 +232,34 @@ export type Database = {
             }
             order_items: {
                 Row: {
-                    created_at: string
                     id: string
-                    notes: string | null
                     order_id: string
-                    product_id: string
+                    product_id: string | null
+                    product_name: string | null
                     quantity: number
-                    store_id: string
-                    tenant_id: string
-                    total_price: number
-                    unit_price: number
-                    variant_id: string | null
+                    price_at_time: number
+                    status: string
+                    created_at: string
                 }
                 Insert: {
-                    created_at?: string
                     id?: string
-                    notes?: string | null
                     order_id: string
-                    product_id: string
-                    quantity: number
-                    store_id: string
-                    tenant_id: string
-                    total_price: number
-                    unit_price: number
-                    variant_id?: string | null
+                    product_id?: string | null
+                    product_name?: string | null
+                    quantity?: number
+                    price_at_time: number
+                    status?: string
+                    created_at?: string
                 }
                 Update: {
-                    created_at?: string
                     id?: string
-                    notes?: string | null
                     order_id?: string
-                    product_id?: string
+                    product_id?: string | null
+                    product_name?: string | null
                     quantity?: number
-                    store_id?: string
-                    tenant_id?: string
-                    total_price?: number
-                    unit_price?: number
-                    variant_id?: string | null
+                    price_at_time?: number
+                    status?: string
+                    created_at?: string
                 }
                 Relationships: [
                     {
@@ -277,14 +268,7 @@ export type Database = {
                         isOneToOne: false
                         referencedRelation: "orders"
                         referencedColumns: ["id"]
-                    },
-                    {
-                        foreignKeyName: "order_items_product_id_fkey"
-                        columns: ["product_id"]
-                        isOneToOne: false
-                        referencedRelation: "products"
-                        referencedColumns: ["id"]
-                    },
+                    }
                 ]
             }
             orders: {
@@ -300,6 +284,8 @@ export type Database = {
                     is_paid: boolean | null
                     items: Json | null
                     location_identifier: string | null
+                    node_id: string | null
+                    source_location_id: string | null
                     order_number: number
                     paid_at: string | null
                     payment_id: string | null
@@ -329,6 +315,8 @@ export type Database = {
                     is_paid?: boolean | null
                     items?: Json | null
                     location_identifier?: string | null
+                    node_id?: string | null
+                    source_location_id?: string | null
                     order_number?: number
                     paid_at?: string | null
                     payment_id?: string | null
@@ -358,6 +346,8 @@ export type Database = {
                     is_paid?: boolean | null
                     items?: Json | null
                     location_identifier?: string | null
+                    node_id?: string | null
+                    source_location_id?: string | null
                     order_number?: number
                     paid_at?: string | null
                     payment_id?: string | null
@@ -388,6 +378,20 @@ export type Database = {
                         columns: ["store_id"]
                         isOneToOne: false
                         referencedRelation: "stores"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "orders_node_id_fkey"
+                        columns: ["node_id"]
+                        isOneToOne: false
+                        referencedRelation: "venue_nodes"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "orders_source_location_id_fkey"
+                        columns: ["source_location_id"]
+                        isOneToOne: false
+                        referencedRelation: "storage_locations"
                         referencedColumns: ["id"]
                     },
                 ]
@@ -652,6 +656,141 @@ export type Database = {
                     },
                 ]
             }
+            storage_locations: {
+                Row: {
+                    created_at: string | null
+                    id: string
+                    is_default: boolean | null
+                    name: string
+                    store_id: string
+                    type: string
+                    updated_at: string | null
+                }
+                Insert: {
+                    created_at?: string | null
+                    id?: string
+                    is_default?: boolean | null
+                    name: string
+                    store_id: string
+                    type: string
+                    updated_at?: string | null
+                }
+                Update: {
+                    created_at?: string | null
+                    id?: string
+                    is_default?: boolean | null
+                    name?: string
+                    store_id?: string
+                    type?: string
+                    updated_at?: string | null
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "storage_locations_store_id_fkey"
+                        columns: ["store_id"]
+                        isOneToOne: false
+                        referencedRelation: "stores"
+                        referencedColumns: ["id"]
+                    },
+                ]
+            }
+            item_stock_levels: {
+                Row: {
+                    id: string
+                    inventory_item_id: string
+                    location_id: string
+                    quantity: number
+                    updated_at: string | null
+                }
+                Insert: {
+                    id?: string
+                    inventory_item_id: string
+                    location_id: string
+                    quantity: number
+                    updated_at?: string | null
+                }
+                Update: {
+                    id?: string
+                    inventory_item_id?: string
+                    location_id?: string
+                    quantity?: number
+                    updated_at?: string | null
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "item_stock_levels_inventory_item_id_fkey"
+                        columns: ["inventory_item_id"]
+                        isOneToOne: false
+                        referencedRelation: "inventory_items"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "item_stock_levels_location_id_fkey"
+                        columns: ["location_id"]
+                        isOneToOne: false
+                        referencedRelation: "storage_locations"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
+            stock_transfers: {
+                Row: {
+                    id: string
+                    inventory_item_id: string
+                    from_location_id: string | null
+                    to_location_id: string | null
+                    quantity: number
+                    user_id: string | null
+                    notes: string | null
+                    batch_id: string | null
+                    created_at: string | null
+                }
+                Insert: {
+                    id?: string
+                    inventory_item_id: string
+                    from_location_id?: string | null
+                    to_location_id?: string | null
+                    quantity: number
+                    user_id?: string | null
+                    notes?: string | null
+                    batch_id?: string | null
+                    created_at?: string | null
+                }
+                Update: {
+                    id?: string
+                    inventory_item_id?: string
+                    from_location_id?: string | null
+                    to_location_id?: string | null
+                    quantity?: number
+                    user_id?: string | null
+                    notes?: string | null
+                    batch_id?: string | null
+                    created_at?: string | null
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "stock_transfers_inventory_item_id_fkey"
+                        columns: ["inventory_item_id"]
+                        isOneToOne: false
+                        referencedRelation: "inventory_items"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "stock_transfers_from_location_id_fkey"
+                        columns: ["from_location_id"]
+                        isOneToOne: false
+                        referencedRelation: "storage_locations"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "stock_transfers_to_location_id_fkey"
+                        columns: ["to_location_id"]
+                        isOneToOne: false
+                        referencedRelation: "storage_locations"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
             stores: {
                 Row: {
                     address: string | null
@@ -688,12 +827,112 @@ export type Database = {
                 }
                 Relationships: []
             }
+            venue_nodes: {
+                Row: {
+                    id: string
+                    store_id: string
+                    type: string
+                    label: string
+                    position_x: number
+                    position_y: number
+                    rotation: number
+                    created_at: string
+                    updated_at: string
+                    zone_id: string | null
+                    location_id: string | null
+                    status: string
+                }
+                Insert: {
+                    id?: string
+                    store_id: string
+                    type: string
+                    label: string
+                    position_x: number
+                    position_y: number
+                    rotation: number
+                    created_at?: string
+                    updated_at?: string
+                    zone_id?: string | null
+                    location_id?: string | null
+                    status?: string
+                }
+                Update: {
+                    id?: string
+                    store_id?: string
+                    type?: string
+                    label?: string
+                    position_x?: number
+                    position_y?: number
+                    rotation?: number
+                    created_at?: string
+                    updated_at?: string
+                    zone_id?: string | null
+                    location_id?: string | null
+                    status?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "venue_nodes_zone_id_fkey"
+                        columns: ["zone_id"]
+                        isOneToOne: false
+                        referencedRelation: "venue_zones"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "venue_nodes_location_id_fkey"
+                        columns: ["location_id"]
+                        isOneToOne: false
+                        referencedRelation: "storage_locations"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
+            venue_zones: {
+                Row: {
+                    id: string
+                    store_id: string
+                    name: string
+                    description: string | null
+                    sort_order: number
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    store_id: string
+                    name: string
+                    description?: string | null
+                    sort_order?: number
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    store_id?: string
+                    name?: string
+                    description?: string | null
+                    sort_order?: number
+                    created_at?: string
+                    updated_at?: string
+                }
+                Relationships: []
+            }
         }
         Views: {
             [_ in never]: never
         }
         Functions: {
-            [_ in never]: never
+            transfer_stock: {
+                Args: {
+                    p_item_id: string
+                    p_from_location_id: string | null
+                    p_to_location_id: string | null
+                    p_quantity: number
+                    p_user_id: string
+                    p_notes: string
+                }
+                Returns: Json
+            }
         }
         Enums: {
             app_role: "super_admin" | "store_owner" | "staff"

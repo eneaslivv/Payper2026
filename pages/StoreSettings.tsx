@@ -442,6 +442,7 @@ const StoreSettings: React.FC = () => {
                     tax_info: store.tax_info,
                     logo_url: store.logo_url,
                     onboarding_status: 'COMPLETED',
+                    service_mode: (store as any).service_mode || 'counter',
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', profile.store_id);
@@ -629,28 +630,73 @@ const StoreSettings: React.FC = () => {
                                         />
                                     </div>
                                 </div>
+                            </div>
 
-                                <div className="mt-12 p-8 rounded-[2rem] bg-neon/5 border border-neon/10 space-y-6">
-                                    <div className="flex items-center gap-3">
-                                        <span className="material-symbols-outlined text-neon text-xl">security</span>
-                                        <h5 className="text-[10px] font-black text-neon uppercase tracking-widest pt-0.5 whitespace-nowrap">Gestión de Seguridad</h5>
-                                        <div className="w-full h-px bg-neon/10"></div>
+                            {/* Service Mode Configuration */}
+                            <div className="mt-12 p-8 rounded-[2rem] bg-neon/5 border border-neon/10 space-y-6">
+                                <div className="flex items-center gap-3">
+                                    <span className="material-symbols-outlined text-neon text-xl">tune</span>
+                                    <h5 className="text-[10px] font-black text-neon uppercase tracking-widest pt-0.5 whitespace-nowrap">Modo de Operación</h5>
+                                    <div className="w-full h-px bg-neon/10"></div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <p className="text-[10px] text-white/30 uppercase tracking-widest leading-relaxed">
+                                        Define el flujo operativo de tus clientes al escanear QR.
+                                    </p>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        {[
+                                            { id: 'counter', label: 'Barra / Rápido', icon: 'point_of_sale', desc: 'Pago inmediato al pedir' },
+                                            { id: 'table', label: 'Mesa con Cuenta', icon: 'table_restaurant', desc: 'Pago al finalizar (Check-out)' },
+                                            { id: 'club', label: 'Modo Club', icon: 'local_bar', desc: 'Consumo contra saldo precargado' }
+                                        ].map(mode => (
+                                            <button
+                                                key={mode.id}
+                                                onClick={() => setStore({ ...store, service_mode: mode.id })}
+                                                className={`relative p-6 rounded-2xl border flex flex-col items-center text-center gap-3 transition-all group ${((store as any).service_mode === mode.id || (!((store as any).service_mode) && mode.id === 'counter'))
+                                                    ? 'bg-neon/10 border-neon/30 text-white shadow-neon-soft'
+                                                    : 'bg-black/40 border-white/5 text-white/30 hover:bg-white/5 hover:text-white hover:border-white/10'
+                                                    }`}
+                                            >
+                                                <div className={`size-10 rounded-full flex items-center justify-center transition-all ${((store as any).service_mode === mode.id || (!((store as any).service_mode) && mode.id === 'counter'))
+                                                    ? 'bg-neon text-black'
+                                                    : 'bg-white/5 text-white/30 group-hover:bg-white/10 group-hover:text-white'
+                                                    }`}>
+                                                    <span className="material-symbols-outlined text-xl">{mode.icon}</span>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black uppercase tracking-widest mb-1">{mode.label}</p>
+                                                    <p className="text-[8px] opacity-60 font-medium leading-tight">{mode.desc}</p>
+                                                </div>
+                                                {((store as any).service_mode === mode.id || (!((store as any).service_mode) && mode.id === 'counter')) && (
+                                                    <div className="absolute top-3 right-3 size-2 bg-neon rounded-full animate-pulse shadow-neon-soft"></div>
+                                                )}
+                                            </button>
+                                        ))}
                                     </div>
-                                    <div className="grid grid-cols-2 gap-8 items-end">
-                                        <div className="space-y-3">
-                                            <p className="text-[9px] font-black text-white/20 uppercase tracking-widest ml-2">Cambiar Contraseña Maestra</p>
-                                            <input
-                                                type="password"
-                                                value={newPassword}
-                                                onChange={e => setNewPassword(e.target.value)}
-                                                className="w-full h-14 bg-black border border-white/5 rounded-xl px-6 text-white text-xs font-bold focus:border-neon outline-none transition-all placeholder:text-white/5"
-                                                placeholder="DEJAR EN BLANCO PARA MANTENER LA ACTUAL"
-                                            />
-                                        </div>
-                                        <p className="text-[9px] text-white/20 font-medium leading-relaxed italic border-l border-white/5 pl-6 pb-2">
-                                            La contraseña maestra permite el acceso total al nodo. Recomendamos usar al menos 12 caracteres y rotarla cada 90 días.
-                                        </p>
+                                </div>
+                            </div>
+
+                            <div className="mt-12 p-8 rounded-[2rem] bg-neon/5 border border-neon/10 space-y-6">
+                                <div className="flex items-center gap-3">
+                                    <span className="material-symbols-outlined text-neon text-xl">security</span>
+                                    <h5 className="text-[10px] font-black text-neon uppercase tracking-widest pt-0.5 whitespace-nowrap">Gestión de Seguridad</h5>
+                                    <div className="w-full h-px bg-neon/10"></div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-8 items-end">
+                                    <div className="space-y-3">
+                                        <p className="text-[9px] font-black text-white/20 uppercase tracking-widest ml-2">Cambiar Contraseña Maestra</p>
+                                        <input
+                                            type="password"
+                                            value={newPassword}
+                                            onChange={e => setNewPassword(e.target.value)}
+                                            className="w-full h-14 bg-black border border-white/5 rounded-xl px-6 text-white text-xs font-bold focus:border-neon outline-none transition-all placeholder:text-white/5"
+                                            placeholder="DEJAR EN BLANCO PARA MANTENER LA ACTUAL"
+                                        />
                                     </div>
+                                    <p className="text-[9px] text-white/20 font-medium leading-relaxed italic border-l border-white/5 pl-6 pb-2">
+                                        La contraseña maestra permite el acceso total al nodo. Recomendamos usar al menos 12 caracteres y rotarla cada 90 días.
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -963,7 +1009,7 @@ const StoreSettings: React.FC = () => {
                 onInvite={handleInvite}
                 isSaving={isSaving}
             />
-        </div>
+        </div >
     );
 };
 

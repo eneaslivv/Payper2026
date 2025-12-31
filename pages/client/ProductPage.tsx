@@ -8,7 +8,7 @@ const ProductPage: React.FC = () => {
   const navigate = useNavigate();
   const { addToCart, user, products, store } = useClient();
 
-  const item = products.find(i => i.id === id);
+  const item = products?.find(i => i.id === id);
 
   // --- STATE ---
   const [quantity, setQuantity] = useState(1);
