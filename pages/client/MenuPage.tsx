@@ -3,11 +3,16 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { MenuItem } from '../../components/client/types';
 import { useClient } from '../../contexts/ClientContext';
 import { MenuRenderer } from '../../components/MenuRenderer';
+import SessionSelector from '../../components/client/SessionSelector';
 
 const MenuPage: React.FC = () => {
   const navigate = useNavigate();
   const { slug } = useParams();
-  const { store, products, user, hasActiveOrder, setIsHubOpen, cart, getMenuRule, isOrderingAllowed, serviceMode, tableLabel } = useClient();
+  const {
+    store, products, user, hasActiveOrder, setIsHubOpen, cart,
+    getMenuRule, isOrderingAllowed, serviceMode, tableLabel,
+    showSessionSelector, setShowSessionSelector, onSessionCreated
+  } = useClient();
 
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [searchQuery, setSearchQuery] = useState('');
@@ -105,7 +110,7 @@ const MenuPage: React.FC = () => {
   const radiusClass = getRadiusClass();
 
   return (
-    <div className={`flex flex-col min-h-screen ${fontClass}`} style={{ backgroundColor, color: textColor }}>
+    <div className={`flex flex-col min-h-screen w-full overflow-x-hidden ${fontClass}`} style={{ backgroundColor, color: textColor }}>
       {/* UNIFIED RENDERER */}
       <MenuRenderer
         theme={{
@@ -197,6 +202,16 @@ const MenuPage: React.FC = () => {
             </div>
           </button>
         </div>
+      )}
+      {/* SESSION SELECTOR MODAL */}
+      {showSessionSelector && store && (
+        <SessionSelector
+          storeId={store.id}
+          storeSlug={slug || ''}
+          accentColor={accentColor}
+          onSessionCreated={onSessionCreated}
+          onClose={() => setShowSessionSelector(false)}
+        />
       )}
     </div>
   );

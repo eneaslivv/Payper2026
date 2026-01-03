@@ -7,10 +7,12 @@ import TableDetail from './components/TableDetail';
 import BarDetail from './components/BarDetail';
 import QRDetail from './components/QRDetail';
 import QRGenerator from './components/QRGenerator';
+import LiveActivityPanel from './components/LiveActivityPanel';
 import { AppMode, Table, Bar, QR, TableStatus, Position, OrderStatus, Zone, NotificationType, VenueNotification } from './types';
 import { INITIAL_ZONES } from './constants';
 import { ZoomIn, ZoomOut, Zap, MousePointer2, Plus, Beer, Circle, QrCode, Check, Trash2, Edit3, X as XIcon, Users, Layers, Bell, Timer, Clock, Hand, Receipt, AlertCircle, ChevronRight, ClipboardList } from 'lucide-react';
 import { useToast } from '../../components/ToastSystem';
+import { TransferStockModal } from '../../components/TransferStockModal';
 
 const App: React.FC = () => {
   const { profile } = useAuth();
@@ -19,6 +21,7 @@ const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>(AppMode.VIEW);
   const [zones, setZones] = useState<Zone[]>([]);
   const [activeZoneId, setActiveZoneId] = useState<string>('');
+  const [storeSlug, setStoreSlug] = useState<string>('');
 
   const [tables, setTables] = useState<Table[]>([]);
   const [bars, setBars] = useState<Bar[]>([]);
@@ -38,6 +41,10 @@ const App: React.FC = () => {
   const [isAddingZone, setIsAddingZone] = useState(false);
   const [isEditingZone, setIsEditingZone] = useState(false);
   const [zoneInputName, setZoneInputName] = useState('');
+
+  // Transfer Modal State
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [transferSourceLocationId, setTransferSourceLocationId] = useState<string | undefined>(undefined);
 
   // --- DATA FETCHING ---
 
@@ -76,6 +83,18 @@ const App: React.FC = () => {
         .eq('store_id', profile.store_id);
 
       if (error) throw error;
+
+      // FETCH STORAGE LOCATIONS (For linking bars)
+      const { data: locations } = await supabase
+        .from('storage_locations')
+        .select('id, bar_id')
+        .eq('store_id', profile.store_id)
+        .not('bar_id', 'is', null);
+
+      const barLocationMap = new Map();
+      locations?.forEach((l: any) => {
+        if (l.bar_id) barLocationMap.set(l.bar_id, l.id);
+      });
 
       const loadedTables: Table[] = [];
       const loadedBars: Bar[] = [];
@@ -128,7 +147,7 @@ const App: React.FC = () => {
             name: node.label,
             zoneId: node.zone_id || '',
             location: '',
-            locationId: node.location_id,
+            locationId: node.location_id || barLocationMap.get(node.node_id),
             type: 'MAIN',
             isActive: true,
             position,
@@ -195,6 +214,10 @@ const App: React.FC = () => {
       fetchZones();
       fetchNodes();
       fetchNotifications();
+      // Fetch store slug for QR URLs
+      supabase.from('stores').select('slug').eq('id', profile.store_id).single().then(({ data }) => {
+        if (data?.slug) setStoreSlug(data.slug);
+      });
     }
   }, [profile?.store_id, fetchZones, fetchNodes]);
 
@@ -324,7 +347,7 @@ const App: React.FC = () => {
     }
   }, [profile?.store_id]);
 
-  const updateNodeProperty = useCallback(async (id: string, type: 'table' | 'bar', property: string, value: any) => {
+  const updateNodeProperty = useCallback(async (id: string, type: 'table' | 'bar' | 'qr', property: string, value: any) => {
     if (!profile?.store_id) return;
     if (property === 'qr_modal') {
       const target = type === 'table' ? tables.find(t => t.id === id) : bars.find(b => b.id === id);
@@ -333,7 +356,8 @@ const App: React.FC = () => {
     }
     // Optimistic update
     if (type === 'table') setTables(prev => prev.map(t => t.id === id ? { ...t, [property]: value } : t));
-    else setBars(prev => prev.map(b => b.id === id ? { ...b, [property]: value } : b));
+    else if (type === 'bar') setBars(prev => prev.map(b => b.id === id ? { ...b, [property]: value } : b));
+    else if (type === 'qr') setQrs(prev => prev.map(q => q.id === id ? { ...q, [property]: value } : q));
 
     // Persist to database based on property type
     try {
@@ -355,11 +379,18 @@ const App: React.FC = () => {
         await supabase.from('venue_nodes' as any).update({
           metadata: { ...currentMeta, shape: value }
         }).eq('id', id);
+      } else if (property === 'barId') {
+        // Assign QR to a bar - stored in metadata
+        const qr = qrs.find(q => q.id === id);
+        const currentMeta = (qr as any)?.metadata || {};
+        await supabase.from('venue_nodes' as any).update({
+          metadata: { ...currentMeta, barId: value }
+        }).eq('id', id);
       }
     } catch (err) {
       console.error('Property update error:', err);
     }
-  }, [profile?.store_id, tables, bars]);
+  }, [profile?.store_id, tables, bars, qrs]);
 
   const deleteNode = async (id: string, type: 'table' | 'bar' | 'qr') => {
     if (!profile?.store_id) return;
@@ -371,7 +402,8 @@ const App: React.FC = () => {
       return;
     }
 
-    if (!window.confirm('¿Eliminar este elemento?')) return;
+    const nodeLabel = type === 'table' ? tables.find(t => t.id === id)?.name : type === 'bar' ? bars.find(b => b.id === id)?.name : qrs.find(q => q.id === id)?.name;
+    if (!window.confirm(`¿Eliminar "${nodeLabel || 'este elemento'}"? Esta acción no se puede deshacer.`)) return;
     try {
       const { error } = await supabase.from('venue_nodes' as any).delete().eq('id', id);
       if (error) throw error;
@@ -380,6 +412,30 @@ const App: React.FC = () => {
     } catch (err) {
       console.error('Error deleting:', err);
       addToast('Error al eliminar', 'error');
+    }
+  };
+
+  // Toggle QR active status
+  const handleToggleQrStatus = async (id: string) => {
+    if (!profile?.store_id) return;
+    const qr = qrs.find(q => q.id === id);
+    if (!qr) return;
+
+    const newStatus = !qr.isActive;
+    // Optimistic update
+    setQrs(prev => prev.map(q => q.id === id ? { ...q, isActive: newStatus } : q));
+
+    try {
+      // Update status in venue_nodes (closed = inactive, free = active)
+      await supabase.from('venue_nodes' as any).update({
+        status: newStatus ? 'free' : 'closed'
+      }).eq('id', id);
+      addToast(newStatus ? 'Punto QR activado' : 'Punto QR desactivado', 'success');
+    } catch (err) {
+      console.error('Error toggling QR status:', err);
+      // Revert optimistic update
+      setQrs(prev => prev.map(q => q.id === id ? { ...q, isActive: !newStatus } : q));
+      addToast('Error al cambiar estado', 'error');
     }
   };
 
@@ -549,17 +605,34 @@ const App: React.FC = () => {
 
           <div className="w-[380px] border-l border-zinc-800 bg-[#0a0a0a] flex flex-col relative z-20 shadow-[-10px_0_30px_-10px_rgba(0,0,0,0.5)] transition-all duration-300">
             {(!selectedTable && !selectedBar && !selectedQr) && (
-              <div className="h-full flex flex-col items-center justify-center p-8 text-center space-y-6 opacity-30 select-none pointer-events-none">
-                <div className="w-24 h-24 rounded-full border-2 border-dashed border-zinc-600 flex items-center justify-center">
-                  <MousePointer2 className="w-8 h-8 text-zinc-600" />
+              mode === AppMode.VIEW ? (
+                <LiveActivityPanel
+                  storeId={profile?.store_id || ''}
+                  zones={zones.map(z => ({ id: z.id, name: z.name }))}
+                  activeZoneId={activeZoneId}
+                  onSelectTable={(tableNumber) => {
+                    // Find table by name and select it
+                    const targetTable = tables.find(t => t.name === tableNumber);
+                    if (targetTable) {
+                      setSelectedTableId(targetTable.id);
+                      setSelectedBarId(null);
+                      setSelectedQrId(null);
+                    }
+                  }}
+                />
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center p-8 text-center space-y-6 opacity-30 select-none pointer-events-none">
+                  <div className="w-24 h-24 rounded-full border-2 border-dashed border-zinc-600 flex items-center justify-center">
+                    <MousePointer2 className="w-8 h-8 text-zinc-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-zinc-400 uppercase tracking-widest">Selecciona un elemento</h3>
+                    <p className="text-[10px] text-zinc-600 mt-2 max-w-[200px] mx-auto leading-relaxed">
+                      Haz clic en una mesa o barra para ver detalles, gestionar pedidos o editar propiedades.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-black text-zinc-400 uppercase tracking-widest">Selecciona un elemento</h3>
-                  <p className="text-[10px] text-zinc-600 mt-2 max-w-[200px] mx-auto leading-relaxed">
-                    Haz clic en una mesa o barra para ver detalles, gestionar pedidos o editar propiedades.
-                  </p>
-                </div>
-              </div>
+              )
             )}
           </div>
         </div>
@@ -594,16 +667,46 @@ const App: React.FC = () => {
               updateNodeProperty(selectedBar.id, 'bar', 'qrIds', newIds);
             }}
             onUpdateStock={() => console.log('Update Stock')}
-            onTransferOpen={() => console.log('Open Transfer')}
+            onTransferOpen={(barId) => {
+              const bar = bars.find(b => b.id === barId);
+              if (bar?.locationId) {
+                setTransferSourceLocationId(bar.locationId);
+                setIsTransferModalOpen(true);
+              } else {
+                addToast('Barra sin ubicación de inventario vinculada', 'error');
+              }
+            }}
             onToggleQr={(qrId) => console.log('Toggle QR', qrId)}
             onClosureOpen={() => console.log('Closure Open')}
           />
         )
       }
 
+      {/* QUICK TRANSFER MODAL */}
+      <TransferStockModal
+        isOpen={isTransferModalOpen}
+        onClose={() => setIsTransferModalOpen(false)}
+        onSuccess={() => {
+          setIsTransferModalOpen(false);
+          // Optional: refresh logic if needed
+        }}
+        preselectedFromLocation={transferSourceLocationId}
+      />
+
       {
         selectedQr && (
-          <QRDetail qr={selectedQr} onClose={clearSelections} mode={mode} onToggleStatus={(id) => console.log('Toggle Status', id)} onUpdateProperty={(prop, val) => updateNodeProperty(selectedQr.id, 'qr', prop, val)} />
+          <QRDetail
+            qr={selectedQr}
+            bars={bars}
+            onClose={clearSelections}
+            mode={mode}
+            storeSlug={storeSlug}
+            storeId={profile?.store_id}
+            onToggleStatus={handleToggleQrStatus}
+            onUpdateProperty={(prop, val) => updateNodeProperty(selectedQr.id, 'qr', prop, val)}
+            onReassign={(qrId, barId) => updateNodeProperty(qrId, 'qr', 'barId', barId)}
+            onDelete={() => deleteNode(selectedQr.id, 'qr')}
+          />
         )
       }
 

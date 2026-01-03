@@ -46,10 +46,10 @@ const QRResolver: React.FC = () => {
         try {
             setState('loading');
 
-            // 1. Query qr_links by hash
-            const { data: qrLink, error: qrError } = await supabase
-                .from('qr_links' as any)
-                .select('id, store_id, target_node_id, code_hash, target_type, is_active')
+            // 1. Query qr_codes by hash (NEW TABLE)
+            const { data: qrCode, error: qrError } = await supabase
+                .from('qr_codes' as any)
+                .select('id, store_id, qr_type, table_id, bar_id, location_id, label, is_active')
                 .eq('code_hash', qrHash)
                 .maybeSingle();
 
@@ -60,15 +60,29 @@ const QRResolver: React.FC = () => {
                 return;
             }
 
-            if (!qrLink) {
-                setState('not_found');
+            if (!qrCode) {
+                // Fallback: try legacy qr_links table
+                const { data: legacyQr } = await supabase
+                    .from('qr_links' as any)
+                    .select('id, store_id, target_node_id, code_hash, target_type, is_active')
+                    .eq('code_hash', qrHash)
+                    .maybeSingle();
+
+                if (!legacyQr) {
+                    setState('not_found');
+                    return;
+                }
+
+                // Handle legacy QR (without session system)
+                console.warn('[QRResolver] Using legacy qr_links - no session created');
+                await handleLegacyQR(legacyQr as any, qrHash);
                 return;
             }
 
-            const link = qrLink as unknown as QRLinkData;
+            const qr = qrCode as any;
 
             // 2. Check if QR is active
-            if (!link.is_active) {
+            if (!qr.is_active) {
                 setState('inactive');
                 return;
             }
@@ -77,7 +91,7 @@ const QRResolver: React.FC = () => {
             const { data: store, error: storeError } = await supabase
                 .from('stores')
                 .select('id, slug, name')
-                .eq('id', link.store_id)
+                .eq('id', qr.store_id)
                 .single();
 
             if (storeError || !store) {
@@ -89,44 +103,54 @@ const QRResolver: React.FC = () => {
 
             const storeData = store as StoreData;
 
-            // 4. Get node data if exists
-            let nodeData: VenueNodeData | null = null;
-            if (link.target_node_id) {
-                const { data: node } = await supabase
-                    .from('venue_nodes')
-                    .select('id, type, label')
-                    .eq('id', link.target_node_id)
-                    .single();
+            // 4. Call log_qr_scan RPC (creates session + audit log)
+            const { data: scanResult, error: scanError } = await (supabase.rpc as any)('log_qr_scan', {
+                p_qr_id: qr.id,
+                p_source: 'camera',
+                p_user_agent: navigator.userAgent,
+                p_create_session: true
+            });
 
-                if (node) {
-                    nodeData = node as VenueNodeData;
-                }
+            if (scanError) {
+                console.error('Scan log error:', scanError);
+                // Continue anyway - session creation is not blocking
             }
 
-            // 5. Determine channel based on node type
+            const sessionId = scanResult?.session_id || null;
+            const context = scanResult?.context || {};
+
+            // 5. Determine channel based on qr_type
             let channel: QRContext['channel'] = 'qr';
             let nodeType: QRContext['node_type'] = null;
 
-            if (nodeData) {
-                nodeType = nodeData.type as QRContext['node_type'];
-                if (nodeData.type === 'table') {
-                    channel = 'table';
-                } else if (nodeData.type === 'bar') {
-                    channel = 'qr'; // Bar orders are immediate
-                }
+            if (qr.qr_type === 'table') {
+                channel = 'table';
+                nodeType = 'table';
+            } else if (qr.qr_type === 'bar') {
+                channel = 'qr';
+                nodeType = 'bar';
+            } else if (qr.qr_type === 'pickup') {
+                channel = 'takeaway';
+                nodeType = 'pickup_zone';
             }
 
-            // 6. Save context to localStorage
-            setQRContext({
+            // 6. Save context to localStorage (includes session_id)
+            const savedContext = setQRContext({
                 store_id: storeData.id,
                 store_slug: storeData.slug,
                 qr_hash: qrHash,
-                qr_id: link.id,
-                node_id: link.target_node_id,
-                node_label: nodeData?.label || null,
+                qr_id: qr.id,
+                node_id: qr.table_id || qr.bar_id || null,
+                node_label: qr.label,
                 node_type: nodeType,
                 channel: channel,
             });
+
+            // Also save session_id separately for order creation
+            if (sessionId) {
+                localStorage.setItem('client_session_id', sessionId);
+                console.log('[QRResolver] Session created:', sessionId);
+            }
 
             // 7. Redirect to menu
             setState('success');
@@ -137,6 +161,52 @@ const QRResolver: React.FC = () => {
             setErrorMessage('Error inesperado');
             setState('error');
         }
+    };
+
+    // Handle legacy qr_links (backward compatibility)
+    const handleLegacyQR = async (link: QRLinkData, qrHash: string) => {
+        const { data: store } = await supabase
+            .from('stores')
+            .select('id, slug, name')
+            .eq('id', link.store_id)
+            .single();
+
+        if (!store) {
+            setErrorMessage('Tienda no encontrada');
+            setState('error');
+            return;
+        }
+
+        let nodeData: VenueNodeData | null = null;
+        if (link.target_node_id) {
+            const { data: node } = await supabase
+                .from('venue_nodes')
+                .select('id, type, label')
+                .eq('id', link.target_node_id)
+                .single();
+            if (node) nodeData = node as VenueNodeData;
+        }
+
+        let channel: QRContext['channel'] = 'qr';
+        let nodeType: QRContext['node_type'] = null;
+        if (nodeData?.type === 'table') {
+            channel = 'table';
+            nodeType = 'table';
+        }
+
+        setQRContext({
+            store_id: (store as any).id,
+            store_slug: (store as any).slug,
+            qr_hash: qrHash,
+            qr_id: link.id,
+            node_id: link.target_node_id,
+            node_label: nodeData?.label || null,
+            node_type: nodeType,
+            channel: channel,
+        });
+
+        setState('success');
+        navigate(`/m/${(store as any).slug}`, { replace: true });
     };
 
     // Loading state

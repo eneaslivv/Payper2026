@@ -78,7 +78,7 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
 
     return (
         <div
-            className={`w-full h-full flex flex-col transition-colors duration-500 ${fontClass}`}
+            className={`w-full min-h-full flex flex-col transition-colors duration-500 ${fontClass}`}
             style={{ backgroundColor: theme.backgroundColor, color: theme.textColor }}
         >
             {/* HEADER HERO */}
@@ -199,7 +199,7 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
             {/* CATEGORIES */}
             <div
                 className="sticky top-0 z-40 backdrop-blur-3xl border-b py-4 no-scrollbar overflow-x-auto"
-                style={{ backgroundColor: `${theme.backgroundColor}E6`, borderColor: `${theme.textColor}10`, margin: '0 -1px' }}
+                style={{ backgroundColor: `${theme.backgroundColor}E6`, borderColor: `${theme.textColor}10` }}
             >
                 <div className="flex gap-3 px-6 items-center">
                     {(categories.length > 0 ? categories : [{ name: 'Todos' }, ...Array.from(new Set(products.map(p => p.category || 'General'))).map(c => ({ name: c }))]).map((catObj) => {
@@ -243,7 +243,7 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
             </motion.div>
 
             {/* PRODUCT GRID/LIST */}
-            <div className={`px-4 md:px-6 pb-24 flex-1 overflow-y-auto`}>
+            <div className={`px-4 md:px-6 pb-24`}>
                 <motion.div
                     layout
                     className={activeLayout === 'grid' ? `grid gap-3 md:gap-6 ${theme.columns === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3'}` : 'flex flex-col gap-3 md:gap-4'}

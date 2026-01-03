@@ -17,8 +17,9 @@ interface Reward {
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
-  const { cart, isRedeemingPoints, clearCart, setHasActiveOrder, store, user } = useClient();
-  const initialTable = '05'; // Mock table for now
+  const { cart, isRedeemingPoints, clearCart, setHasActiveOrder, store, user, qrContext, tableLabel: qrTableLabel, orderChannel } = useClient();
+  // Use QR context if available, otherwise fallback to manual input
+  const initialTable = qrTableLabel || '05';
 
   // Theme support
   const accentColor = store?.menu_theme?.accentColor || '#36e27b';
@@ -81,12 +82,16 @@ const CheckoutPage: React.FC = () => {
 
     try {
       // 1. Construct Order Payload
+      // Include node_id from QR context to link order to scanned location
+      // Include session_id for full session tracking
+      const sessionId = localStorage.getItem('client_session_id') || null;
+
       const orderPayload: any = {
         store_id: store.id,
         client_id: user?.id || null,
         table_number: deliveryMode === 'local' ? currentTable : currentBar,
         delivery_mode: deliveryMode,
-        channel: 'qr',
+        channel: orderChannel || 'qr', // Use channel from QR context
         payment_method: paymentMethod,
         payment_provider: paymentMethod === 'mercadopago' ? 'mercadopago' : 'wallet',
         items: cart.map(item => ({
@@ -98,7 +103,12 @@ const CheckoutPage: React.FC = () => {
         status: 'pending',
         delivery_status: 'pending',
         payment_status: 'pending',
-        is_paid: false
+        is_paid: false,
+        // Link to venue node if QR was scanned (mesa, barra, zona)
+        node_id: qrContext?.node_id || null,
+        location_identifier: qrTableLabel || null,
+        // Session tracking (NEW)
+        session_id: sessionId
       };
 
       // 2. WALLET FLOW — SAFE: Order first, Redeem, then Pay

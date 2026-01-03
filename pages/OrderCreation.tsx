@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MOCK_CLIENTS, MOCK_TABLES } from '../constants';
+
 import { Product, OrderItem, Client, Table, Order } from '../types';
 import { useToast } from '../components/ToastSystem';
 import { useOffline } from '../contexts/OfflineContext';
@@ -23,23 +23,72 @@ const OrderCreation: React.FC = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Client & Table States
+  const [clients, setClients] = useState<Client[]>([]);
+  const [tables, setTables] = useState<any[]>([]); // venue_nodes
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
   const [isScanningUser, setIsScanningUser] = useState(false);
   const [showTablePicker, setShowTablePicker] = useState(false);
-  const [selectedTable, setSelectedTable] = useState<Table | null>(null);
+  const [selectedTable, setSelectedTable] = useState<any | null>(null);
 
   // Submission States
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastOrderTotal, setLastOrderTotal] = useState(0);
+  const [showMultipleOrderWarning, setShowMultipleOrderWarning] = useState(false);
 
   // Camera Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  const categories = ['Todo', 'Cafetería', 'Pastelería', 'Bebidas', 'Sandwiches', 'Promos'];
+  // Dynamic Categories from Products
+  const categories = useMemo(() => {
+    const cats = Array.from(new Set(products.map(p => p.category).filter(Boolean)));
+    return ['Todo', ...cats.sort()];
+  }, [products]);
+
+  // Fetch Real Data
+  useEffect(() => {
+    if (!profile?.store_id) return;
+
+    const fetchData = async () => {
+      // 1. Fetch Clients
+      const { data: clientsData, error: clientsError } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('store_id', profile.store_id)
+        .eq('status', 'active')
+        .limit(50);
+
+      if (clientsData) {
+        // Map to Client interface to satisfy TS
+        const mappedClients: Client[] = clientsData.map((c: any) => ({
+          ...c,
+          orders_count: c.orders_count || 0,
+          total_spent: c.total_spent || 0,
+          points_balance: c.points_balance || 0,
+          wallet_balance: c.wallet_balance || 0,
+          is_vip: c.is_vip || false,
+          notes: c.notes || []
+        }));
+        setClients(mappedClients);
+      }
+
+      // 2. Fetch Venue Nodes (Tables)
+      const { data: nodesData } = await supabase
+        .from('venue_nodes')
+        .select('*')
+        .eq('store_id', profile.store_id)
+        .eq('status', 'active'); // Only fetch active nodes if that's the intention, or all
+
+      if (nodesData) {
+        setTables(nodesData);
+      }
+    };
+
+    fetchData();
+  }, [profile?.store_id]);
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
@@ -93,20 +142,48 @@ const OrderCreation: React.FC = () => {
     }
   };
 
+
   const filteredClients = useMemo(() => {
-    return MOCK_CLIENTS.filter(c =>
+    return clients.filter(c =>
       c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
       c.email.toLowerCase().includes(clientSearch.toLowerCase())
     );
-  }, [clientSearch]);
+  }, [clients, clientSearch]);
+
+  const filteredTables = useMemo(() => {
+    return tables.filter(t =>
+      t.name.toLowerCase().includes('') // Simple filter if needed
+    );
+  }, [tables]);
 
   const total = cart.reduce((acc, item) => acc + (item.price_unit * item.quantity), 0);
 
-  const handleConfirmSale = async () => {
+  const handleConfirmSale = async (force = false) => {
     if (cart.length === 0 || isSubmitting) return;
     if (!profile?.store_id) {
       addToast('Error', 'error', 'No se detectó el ID del local');
       return;
+    }
+
+    const tableNum = selectedTable?.name.replace('Mesa ', '') || null;
+
+    // CHECK ACTIVE ORDERS WARNING (Only if checking for the first time and has table)
+    if (!force && tableNum) {
+      try {
+        const { data: existing } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('table_number', tableNum)
+          .in('status', ['pending', 'in_progress', 'preparing'])
+          .maybeSingle();
+
+        if (existing) {
+          setShowMultipleOrderWarning(true);
+          return;
+        }
+      } catch (err) {
+        console.error('Check order error', err);
+      }
     }
 
     setIsSubmitting(true);
@@ -129,11 +206,12 @@ const OrderCreation: React.FC = () => {
         .insert({
           store_id: profile.store_id,
           customer_name: selectedClient ? selectedClient.name : 'Cliente General',
+          client_id: selectedClient?.id || null, // Link to real client
           total_amount: total,
           status: 'pending',
           is_paid: true, // Manual salon orders are usually paid or marked as such
           channel: 'table',
-          table_number: selectedTable?.name.replace('Mesa ', '') || null
+          table_number: tableNum
         })
         .select()
         .single();
@@ -164,6 +242,7 @@ const OrderCreation: React.FC = () => {
 
       setLastOrderTotal(total);
       setShowSuccess(true);
+      setShowMultipleOrderWarning(false);
       setIsCartOpenMobile(false);
 
     } catch (err: any) {
@@ -241,7 +320,7 @@ const OrderCreation: React.FC = () => {
       // Confirm Sale
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
-        handleConfirmSale();
+        handleConfirmSale(false);
         return;
       }
 
@@ -319,7 +398,7 @@ const OrderCreation: React.FC = () => {
             <div key={item.id} className={`p-4 bg-white/[0.02] rounded-2xl border flex justify-between items-center group animate-in slide-in-from-right-4 ${idx === cart.length - 1 ? 'border-neon/30 bg-neon/5' : 'border-white/5'}`}>
               <div className="flex flex-col">
                 <span className="text-[11px] font-black text-white uppercase italic tracking-tight">{item.name}</span>
-                <span className="text-[9px] font-bold text-white/30 uppercase mt-0.5">${item.price_unit.toFixed(2)}</span>
+                <span className="text-[9px] font-bold text-white/30 uppercase mt-0.5">${(item.price_unit || 0).toFixed(2)}</span>
               </div>
               <div className="flex items-center gap-4">
                 <span className="text-sm font-black text-neon italic">${(item.price_unit * item.quantity).toFixed(2)}</span>
@@ -344,7 +423,7 @@ const OrderCreation: React.FC = () => {
           <span className="text-4xl font-black italic-black text-neon leading-none tracking-tighter">${total.toFixed(2)}</span>
         </div>
         <button
-          onClick={handleConfirmSale}
+          onClick={() => handleConfirmSale(false)}
           disabled={cart.length === 0 || isSubmitting}
           className="w-full py-5 bg-neon text-black rounded-[1.5rem] font-black text-xs uppercase tracking-[0.3em] shadow-neon-soft active:scale-95 disabled:opacity-20 flex items-center justify-center gap-3 overflow-hidden relative group"
         >
@@ -434,7 +513,7 @@ const OrderCreation: React.FC = () => {
                 </div>
                 <div className="px-1">
                   <h4 className={`text-[10px] font-black uppercase italic tracking-tight leading-tight line-clamp-2 ${activeIndex === idx ? 'text-neon' : 'text-white'}`}>{p.name}</h4>
-                  <p className="text-xs font-black text-white/50 mt-1.5 leading-none">${p.price.toFixed(1)}</p>
+                  <p className="text-xs font-black text-white/50 mt-1.5 leading-none">${(p.price || 0).toFixed(1)}</p>
                 </div>
               </div>
             ))}
@@ -483,6 +562,137 @@ const OrderCreation: React.FC = () => {
         </div>
       )}
 
+      {/* MULTIPLE ORDERS WARNING */}
+      {showMultipleOrderWarning && (
+        <div className="fixed inset-0 z-[600] flex items-center justify-center p-6 animate-in fade-in duration-200">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowMultipleOrderWarning(false)}></div>
+          <div className="relative w-full max-w-sm bg-[#111] border border-yellow-500/30 rounded-3xl p-8 shadow-2xl transform scale-100 animate-in zoom-in-95 duration-200">
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="size-16 rounded-full bg-yellow-500/10 flex items-center justify-center text-yellow-500 mb-2">
+                <span className="material-symbols-outlined text-3xl">warning</span>
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-white uppercase italic tracking-tight">Mesa Ocupada</h3>
+                <p className="text-sm text-zinc-400 mt-2 font-medium">Ya existe un pedido activo en la <strong>{selectedTable?.name}</strong>.</p>
+                <p className="text-xs text-zinc-500 mt-1">¿Deseas crear un pedido adicional para esta misma mesa?</p>
+              </div>
+              <div className="w-full grid grid-cols-2 gap-3 mt-4">
+                <button
+                  onClick={() => setShowMultipleOrderWarning(false)}
+                  className="py-3 rounded-xl border border-zinc-700 text-zinc-400 font-bold uppercase text-[10px] hover:bg-zinc-800 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => handleConfirmSale(true)}
+                  className="py-3 rounded-xl bg-yellow-500 text-black font-black uppercase text-[10px] hover:bg-yellow-400 shadow-[0_0_20px_rgba(234,179,8,0.2)] transition-all"
+                >
+                  Crear Otro
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CLIENT PICKER MODAL */}
+      {showClientPicker && (
+        <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 animate-in fade-in duration-200">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowClientPicker(false)}></div>
+          <div className="relative w-full max-w-lg bg-surface-dark border border-white/10 rounded-[2.5rem] p-8 shadow-2xl flex flex-col max-h-[80vh] animate-in zoom-in-95">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-black uppercase italic text-white tracking-tighter">Seleccionar <span className="text-neon">Cliente</span></h3>
+              <button onClick={() => setShowClientPicker(false)} className="size-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10"><span className="material-symbols-outlined">close</span></button>
+            </div>
+            <div className="relative mb-4">
+              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20">search</span>
+              <input
+                autoFocus
+                value={clientSearch}
+                onChange={e => setClientSearch(e.target.value)}
+                className="w-full h-12 pl-12 pr-4 rounded-xl bg-black/20 border border-white/5 text-white/80 text-sm focus:border-neon/50 outline-none"
+                placeholder="Buscar por nombre o email..."
+              />
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+              {filteredClients.map(client => (
+                <button
+                  key={client.id}
+                  onClick={() => { setSelectedClient(client); setShowClientPicker(false); }}
+                  className={`w-full p-4 rounded-2xl flex items-center justify-between transition-all ${selectedClient?.id === client.id ? 'bg-neon/10 border border-neon/30' : 'bg-white/5 border border-transparent hover:bg-white/10'}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="size-10 rounded-full bg-white/10 flex items-center justify-center text-white/50 font-bold">
+                      {client.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="text-left">
+                      <p className={`text-sm font-bold ${selectedClient?.id === client.id ? 'text-neon' : 'text-white'}`}>{client.name}</p>
+                      <p className="text-[10px] text-white/40">{client.email}</p>
+                    </div>
+                  </div>
+                  {selectedClient?.id === client.id && <span className="material-symbols-outlined text-neon">check</span>}
+                </button>
+              ))}
+              {filteredClients.length === 0 && (
+                <div className="py-10 text-center text-white/20">
+                  <span className="material-symbols-outlined text-4xl mb-2">person_off</span>
+                  <p className="text-xs uppercase tracking-widest">No se encontraron clientes</p>
+                </div>
+              )}
+            </div>
+            <div className="pt-4 mt-4 border-t border-white/5">
+              <button
+                onClick={() => { setSelectedClient(null); setShowClientPicker(false); }}
+                className="w-full py-3 rounded-xl border border-white/10 text-white/40 font-bold uppercase text-xs hover:text-white hover:border-white/30 transition-all"
+              >
+                Continuar como Cliente General
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TABLE PICKER MODAL */}
+      {showTablePicker && (
+        <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 animate-in fade-in duration-200">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowTablePicker(false)}></div>
+          <div className="relative w-full max-w-4xl bg-surface-dark border border-white/10 rounded-[2.5rem] p-8 shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-black uppercase italic text-white tracking-tighter">Asignar <span className="text-accent">Mesa</span></h3>
+              <button onClick={() => setShowTablePicker(false)} className="size-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10"><span className="material-symbols-outlined">close</span></button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 p-1">
+              {tables.map(table => (
+                <button
+                  key={table.id}
+                  onClick={() => { setSelectedTable(table); setShowTablePicker(false); }}
+                  className={`aspect-square rounded-2xl border flex flex-col items-center justify-center p-4 transition-all active:scale-95 ${selectedTable?.id === table.id
+                    ? 'bg-accent/20 border-accent text-accent shadow-soft'
+                    : table.status === 'active'
+                      ? 'bg-black/20 border-red-500/30 text-red-400 opacity-60' // Occupied usually 'active' means occupied/open in some contexts, check logic. Assuming status 'active' means 'occupied' or 'enabled'? 
+                      : 'bg-white/5 border-white/5 text-white/60 hover:bg-white/10' // Assuming 'free' or other status
+                    } ${table.status === 'free' ? 'border-green-500/30 text-green-400' : ''}`}
+                >
+                  <span className="material-symbols-outlined text-3xl mb-2">{table.type === 'bar' ? 'local_bar' : 'table_restaurant'}</span>
+                  <span className="text-xs font-black uppercase">{table.name}</span>
+                  <span className="text-[9px] font-bold opacity-60 mt-1 uppercase">{table.status === 'active' ? 'Ocupada' : 'Libre'}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="pt-4 mt-4 border-t border-white/5">
+              <button
+                onClick={() => { setSelectedTable(null); setShowTablePicker(false); }}
+                className="w-full py-3 rounded-xl border border-white/10 text-white/40 font-bold uppercase text-xs hover:text-white hover:border-white/30 transition-all"
+              >
+                Sin Mesa Asignada (Para Llevar)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MOBILE CART OVERLAY */}
       <div className={`fixed inset-0 z-[100] transition-transform duration-500 lg:hidden ${isCartOpenMobile ? 'translate-y-0' : 'translate-y-full'}`}>
         <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" onClick={() => setIsCartOpenMobile(false)}></div>
@@ -498,6 +708,6 @@ const OrderCreation: React.FC = () => {
       </div>
     </div>
   );
-};
+}; // End Component
 
 export default OrderCreation;

@@ -157,18 +157,18 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
           if (!error && remoteProducts && remoteProducts.length > 0) {
             // Map Supabase 'products' rows back to 'Product' type
-            const mapped: Product[] = remoteProducts.map(rp => ({
+            const mapped: Product[] = remoteProducts.map((rp: any) => ({
               id: rp.id,
               name: rp.name,
               price: rp.price,
-              sku: 'GEN-' + rp.id.substring(0, 8),
-              category: 'General', // default or fetch category
-              image: rp.image_url || '',
-              stock: 100, // mock
-              stockStatus: 'Alto',
+              sku: rp.sku || 'GEN-' + rp.id.substring(0, 8),
+              category: rp.category || 'General',
+              image: rp.image_url || rp.image || '',
+              stock: rp.stock || 100,
+              stockStatus: rp.stock < 10 ? 'Bajo' : 'Alto',
               available: rp.available,
-              variants: [],
-              addons: []
+              variants: rp.variants || [],
+              addons: rp.addons || []
             }));
             localProducts = mapped;
             await dbOps.saveProducts(localProducts);

@@ -47,6 +47,14 @@ interface ClientContextType {
     orderChannel: 'table' | 'qr' | 'takeaway' | 'delivery' | null;
     tableLabel: string | null;
     serviceMode: 'counter' | 'table' | 'club';
+    // Session System
+    sessionId: string | null;
+    sessionValid: boolean;
+    showSessionSelector: boolean;
+    setShowSessionSelector: (v: boolean) => void;
+    onSessionCreated: (sessionId: string, sessionType: string, label: string | null) => void;
+    // Dynamic Menu System
+    menuId: string | null;
 }
 
 
@@ -75,7 +83,15 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // QR Context State
     const [qrContext, setQRContextState] = useState<QRContext | null>(null);
     const [orderChannel, setOrderChannel] = useState<'table' | 'qr' | 'takeaway' | 'delivery' | null>(null);
+
+    // Session System State
+    const [sessionId, setSessionId] = useState<string | null>(null);
+    const [sessionValid, setSessionValid] = useState(false);
+    const [showSessionSelector, setShowSessionSelector] = useState(false);
     const [tableLabel, setTableLabel] = useState<string | null>(null);
+
+    // Dynamic Menu System State
+    const [menuId, setMenuId] = useState<string | null>(null);
 
     // Auth Listener & User Data Fetching
     useEffect(() => {
@@ -270,26 +286,84 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         fetchStore();
     }, [slug]);
 
-    // Load QR Context when store is ready
+    // Load QR Context and Validate Session when store is ready
     useEffect(() => {
         if (!store?.id || !slug) return;
 
-        const ctx = getQRContext();
+        const validateSession = async () => {
+            // 1. Check for stored session
+            const storedSessionId = localStorage.getItem('client_session_id');
 
-        if (ctx && ctx.store_slug === slug) {
-            // Context matches this store - use it
-            setQRContextState(ctx);
-            setOrderChannel(ctx.channel);
-            setTableLabel(ctx.node_label);
-            console.log('[QR Context] Loaded:', ctx.channel, ctx.node_label);
-        } else if (ctx && ctx.store_slug !== slug) {
-            // Context is for different store - clear it
-            console.log('[QR Context] Wrong store, clearing');
-            clearQRContext();
-            setQRContextState(null);
-            setOrderChannel(null);
-            setTableLabel(null);
-        }
+            if (storedSessionId) {
+                // Validate with DB
+                const { data: result, error } = await (supabase.rpc as any)('get_active_session', {
+                    p_session_id: storedSessionId
+                });
+
+                if (result?.success && result?.session) {
+                    // Session valid
+                    setSessionId(storedSessionId);
+                    setSessionValid(true);
+
+                    // Use session data for channel/label
+                    const sess = result.session;
+                    if (sess.session_type === 'table') {
+                        setOrderChannel('table');
+                    } else if (sess.session_type === 'bar') {
+                        setOrderChannel('qr');
+                    } else if (sess.session_type === 'pickup') {
+                        setOrderChannel('takeaway');
+                    }
+
+                    console.log('[Session] Valid session loaded:', storedSessionId);
+                    return true;
+                } else {
+                    // Session expired or invalid
+                    console.log('[Session] Session expired or invalid, clearing');
+                    localStorage.removeItem('client_session_id');
+                    setSessionId(null);
+                    setSessionValid(false);
+                }
+            }
+            return false;
+        };
+
+        const loadContext = async () => {
+            const ctx = getQRContext();
+
+            if (ctx && ctx.store_slug === slug) {
+                // Context matches this store - use it
+                setQRContextState(ctx);
+                setOrderChannel(ctx.channel);
+                setTableLabel(ctx.node_label);
+                console.log('[QR Context] Loaded:', ctx.channel, ctx.node_label);
+
+                // Also validate session
+                await validateSession();
+            } else if (ctx && ctx.store_slug !== slug) {
+                // Context is for different store - clear it
+                console.log('[QR Context] Wrong store, clearing');
+                clearQRContext();
+                localStorage.removeItem('client_session_id');
+                setQRContextState(null);
+                setOrderChannel(null);
+                setTableLabel(null);
+                setSessionId(null);
+                setSessionValid(false);
+            } else {
+                // No QR context - check if we have a valid session
+                const hasValidSession = await validateSession();
+
+                // If no valid session and store is in table mode, show selector
+                // (Only if service_mode requires it - counter mode doesn't need session)
+                if (!hasValidSession && store?.service_mode === 'table') {
+                    console.log('[Session] No valid session, will prompt for context');
+                    // Don't auto-show - let the checkout page handle it
+                }
+            }
+        };
+
+        loadContext();
     }, [store?.id, slug]);
 
     // Fetch Categories and Products
@@ -314,41 +388,94 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     categoryMap[c.id] = c.name;
                 });
 
-                // 2. Fetch Products - NOTE: Removed is_menu_visible filter as it may not be set
-                // Products will be filtered client-side if needed
-                const { data, error } = await (supabase.from('inventory_items') as any)
-                    .select('*')
-                    .eq('store_id', store.id)
-                    .order('name', { ascending: true });
+                // 2. DYNAMIC MENU RESOLUTION
+                // Determine session context for menu resolution
+                const sessionType = qrContext?.node_type || orderChannel || 'generic';
+                const tableId = qrContext?.node_id || null;
 
-                if (error) throw error;
-
-                console.log('[ClientContext] Raw inventory_items query result:', data?.length || 0, 'items');
-                console.log('[ClientContext] Store ID used:', store.id);
-
-                // Map inventory_items to MenuItem interface including rich variants/addons
-                const mappedProducts: MenuItem[] = (data || []).map((item: any) => {
-                    // Resolve category name from ID
-                    const catName = item.category_id ? categoryMap[item.category_id] : (item.category || 'General');
-
-                    return {
-                        id: item.id,
-                        name: item.name,
-                        description: item.description || '',
-                        price: item.price || 0,
-                        // Use IDENTICAL fallback image as MenuDesign
-                        image: item.image_url || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
-                        category: catName,
-                        isPopular: item.is_popular || false,
-                        isOutOfStock: (item.current_stock !== undefined && item.current_stock <= 0) || false,
-                        variants: item.variants || [],
-                        addons: item.addons || [],
-                        // Explicitly sync with identical mapping keys as MenuDesign logic
-                        item_type: (item.cost > 0 || item.price > 0) ? 'sellable' : 'ingredient',
-                    };
+                // Call resolve_menu RPC
+                const { data: resolvedMenuId, error: menuError } = await (supabase.rpc as any)('resolve_menu', {
+                    p_store_id: store.id,
+                    p_session_type: sessionType,
+                    p_table_id: tableId,
+                    p_bar_id: null
                 });
 
-                setProducts(mappedProducts);
+                if (menuError) {
+                    console.error('[ClientContext] Error resolving menu:', menuError);
+                    // Fallback: load all products directly (backward compatibility)
+                }
+
+                if (resolvedMenuId) {
+                    console.log('[ClientContext] Resolved menu:', resolvedMenuId, 'for context:', sessionType);
+                    setMenuId(resolvedMenuId);
+
+                    // Fetch products from the resolved menu
+                    const { data: menuProducts, error: productsError } = await (supabase.rpc as any)('get_menu_products', {
+                        p_menu_id: resolvedMenuId
+                    });
+
+                    if (productsError) {
+                        console.error('[ClientContext] Error fetching menu products:', productsError);
+                    }
+
+                    if (menuProducts && menuProducts.length > 0) {
+                        console.log('[ClientContext] Menu products loaded:', menuProducts.length);
+
+                        // Map menu products to MenuItem interface
+                        const mappedProducts: MenuItem[] = menuProducts.map((item: any) => ({
+                            id: item.product_id,
+                            name: item.name,
+                            description: item.description || '',
+                            price: item.effective_price || item.base_price || 0,
+                            image: 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
+                            category: item.category || 'General',
+                            isPopular: false,
+                            isOutOfStock: !item.is_available,
+                            variants: [],
+                            addons: [],
+                            item_type: 'sellable' as const,
+                        }));
+
+                        setProducts(mappedProducts);
+                    } else {
+                        // Fallback: menu exists but has no products
+                        console.warn('[ClientContext] Menu has no products, loading all inventory');
+                        await loadAllProducts();
+                    }
+                } else {
+                    // No menu resolved, load all products (backward compatibility)
+                    console.warn('[ClientContext] No menu resolved, loading all inventory');
+                    await loadAllProducts();
+                }
+
+                // Helper: Load all products directly (fallback)
+                async function loadAllProducts() {
+                    const { data, error } = await (supabase.from('inventory_items') as any)
+                        .select('*')
+                        .eq('store_id', store.id)
+                        .order('name', { ascending: true });
+
+                    if (error) throw error;
+
+                    const mappedProducts: MenuItem[] = (data || []).map((item: any) => {
+                        const catName = item.category_id ? categoryMap[item.category_id] : (item.category || 'General');
+                        return {
+                            id: item.id,
+                            name: item.name,
+                            description: item.description || '',
+                            price: item.price || 0,
+                            image: item.image_url || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
+                            category: catName,
+                            isPopular: item.is_popular || false,
+                            isOutOfStock: (item.current_stock !== undefined && item.current_stock <= 0) || false,
+                            variants: item.variants || [],
+                            addons: item.addons || [],
+                            item_type: (item.cost > 0 || item.price > 0) ? 'sellable' : 'ingredient',
+                        };
+                    });
+                    setProducts(mappedProducts);
+                }
 
                 // Set categories: Filter empty names and normalize
                 if (dbCategories.length > 0) {
@@ -356,18 +483,8 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                         .filter((c: any) => c.name && c.name.trim() !== '')
                         .map((c: any) => ({ id: c.id, name: c.name }));
                     setCategories([{ id: 'all', name: 'Todos' }, ...validCats]);
-                } else {
-                    // Fallback from products
-                    const uniqueNames = Array.from(new Set(
-                        mappedProducts
-                            .map(p => p.category)
-                            .filter(catName => catName && catName.trim() !== '')
-                    ));
-                    setCategories([
-                        { id: 'all', name: 'Todos' },
-                        ...uniqueNames.map(name => ({ id: name, name }))
-                    ]);
                 }
+                // Note: category fallback from products is handled separately if needed
 
             } catch (err) {
                 console.error('Error fetching data:', err);
@@ -488,6 +605,28 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
     };
 
+    // Handler for when session is created manually (via SessionSelector)
+    const onSessionCreated = (newSessionId: string, sessionType: string, label: string | null) => {
+        setSessionId(newSessionId);
+        setSessionValid(true);
+        setShowSessionSelector(false);
+
+        // Set channel based on session type
+        if (sessionType === 'table') {
+            setOrderChannel('table');
+        } else if (sessionType === 'bar') {
+            setOrderChannel('qr');
+        } else if (sessionType === 'pickup') {
+            setOrderChannel('takeaway');
+        }
+
+        if (label) {
+            setTableLabel(label);
+        }
+
+        console.log('[Session] Created:', newSessionId, sessionType, label);
+    };
+
     return (
         <ClientContext.Provider value={{
             store,
@@ -527,6 +666,14 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             orderChannel,
             tableLabel,
             serviceMode: store?.service_mode || 'counter',
+            // Session System
+            sessionId,
+            sessionValid,
+            showSessionSelector,
+            setShowSessionSelector,
+            onSessionCreated,
+            // Dynamic Menu System
+            menuId,
         }}>
             {children}
         </ClientContext.Provider>

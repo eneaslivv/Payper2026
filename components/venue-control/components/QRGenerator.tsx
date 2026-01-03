@@ -25,29 +25,29 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ nodeId, storeId, nodeName, on
         try {
             setLoading(true);
 
-            // 1. Check if exists
+            // 1. Check if exists in new qr_codes table
             const { data: existing, error: fetchError } = await supabase
-                .from('qr_links' as any)
-                .select('hash')
+                .from('qr_codes' as any)
+                .select('code_hash')
                 .eq('store_id', storeId)
-                .eq('target_node_id', nodeId) // Changed from node_id to target_node_id based on prompt schema
+                .eq('table_id', nodeId)
                 .single();
 
             if (existing) {
-                setQrHash(existing.hash);
+                setQrHash((existing as any).code_hash);
             } else {
-                // 2. Generate and Insert
-                // Unique hash: store + node + timestamp + random
+                // 2. Generate and Insert into qr_codes (NEW TABLE)
                 const rawString = `${storeId}-${nodeId}-${Date.now()}`;
                 const newHash = btoa(rawString).replace(/[^a-zA-Z0-9]/g, '').substring(0, 12);
 
                 const { error: insertError } = await supabase
-                    .from('qr_links' as any)
+                    .from('qr_codes' as any)
                     .insert({
                         store_id: storeId,
-                        target_node_id: nodeId, // Changed to match schema
-                        hash: newHash,
-                        target_type: 'table',
+                        qr_type: 'table',
+                        table_id: nodeId,
+                        code_hash: newHash,
+                        label: nodeName,
                         is_active: true
                     });
 
@@ -62,7 +62,7 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ nodeId, storeId, nodeName, on
         }
     };
 
-    const qrUrl = qrHash ? `https://coffeesquad.app/menu?t=${qrHash}` : '';
+    const qrUrl = qrHash ? `${window.location.origin}/#/qr/${qrHash}` : '';
 
     const handleCopy = () => {
         if (!qrUrl) return;

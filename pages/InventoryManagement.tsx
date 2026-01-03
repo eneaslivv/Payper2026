@@ -84,6 +84,72 @@ function InputBlock({ label, children }: { label: string, children: React.ReactN
   );
 }
 
+// Location Stock Breakdown Component
+function LocationStockBreakdown({ itemId, unitType, packageSize }: { itemId: string, unitType: string, packageSize: number }) {
+  const [locations, setLocations] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchLocations = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase.rpc('get_item_stock_by_locations', { p_item_id: itemId });
+        if (error) throw error;
+        setLocations(data || []);
+      } catch (err) {
+        console.error('Error fetching location stock:', err);
+        setLocations([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (itemId) fetchLocations();
+  }, [itemId]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 text-white/30 text-[10px]">
+        <span className="animate-pulse">●</span> Cargando ubicaciones...
+      </div>
+    );
+  }
+
+  if (locations.length === 0) {
+    return (
+      <div className="text-[10px] text-white/30 italic">Sin stock registrado en ubicaciones.</div>
+    );
+  }
+
+  const locationTypeIcons: Record<string, string> = {
+    base: 'warehouse',
+    bar: 'local_bar',
+    kitchen: 'restaurant',
+    storage: 'inventory_2',
+    custom: 'place'
+  };
+
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {locations.map((loc) => (
+        <div key={loc.location_id} className="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-1 hover:bg-white/5 transition-all">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-neon/60 text-sm">
+              {locationTypeIcons[loc.location_type] || 'place'}
+            </span>
+            <span className="text-[10px] font-bold text-white/80 truncate">{loc.location_name}</span>
+          </div>
+          <div className="flex items-baseline gap-1 pl-6">
+            <span className="text-lg font-black text-neon">{loc.closed_units || 0}</span>
+            <span className="text-[8px] font-bold text-white/30 uppercase">
+              {unitType === 'gram' ? 'KG' : unitType === 'ml' ? 'L' : 'un'}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 import { StockTransferModal } from '../components/StockTransferModal';
 import { StockAdjustmentModal } from '../components/StockAdjustmentModal';
 import { AIStockInsight } from '../components/AIStockInsight';
@@ -271,7 +337,7 @@ const InventoryManagement: React.FC = () => {
 
     // CACHE STRATEGY
     // CACHE STRATEGY
-    const CACHE_KEY = `inventory_cache_v2_${storeId}`; // Force refresh
+    const CACHE_KEY = `inventory_cache_v4_${storeId}`; // Force refresh (v4 - added closed_stock)
     const CACHE_DURATION = 5 * 60 * 1000; // 5 mins
 
     // 1. Check Cache
@@ -393,6 +459,9 @@ const InventoryManagement: React.FC = () => {
         is_active: true,
         min_stock: i.min_stock_alert || 0,
         current_stock: i.current_stock || 0,
+        closed_stock: i.closed_stock || 0, // ADDED: Map closed_stock from DB
+        package_size: i.package_size || 1, // ADDED: Map package_size
+        content_unit: i.content_unit || i.unit_type || 'un', // ADDED: Map content_unit
         cost: i.cost || 0,
         category_ids: i.category_id ? [i.category_id] : [],
         presentations: [],
@@ -709,7 +778,7 @@ const InventoryManagement: React.FC = () => {
         return;
       }
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
       const ingredientsList = selectedItem.recipe?.map(r => {
         const ing = items.find(i => i.id === r.ingredientId);
         return ing?.name;
@@ -1010,25 +1079,28 @@ const InventoryManagement: React.FC = () => {
 
       // Map UI unit values to DB enum
       let finalUnitType = selectedItem.unit_type;
-      if (selectedItem.unit_measure) {
+
+      // Use explicit content_unit if available, or map existing unit_measure logic
+      const rawUnit = selectedItem.content_unit || selectedItem.unit_measure;
+      if (rawUnit) {
         const map: Record<string, string> = { 'un': 'unit', 'g': 'gram', 'L': 'liter', 'ml': 'ml', 'kg': 'kg' };
-        finalUnitType = map[selectedItem.unit_measure] as any || selectedItem.unit_measure;
+        // If it's a known unit type key, use it, otherwise keep current
+        if (map[rawUnit]) finalUnitType = map[rawUnit];
       }
 
-      // Prepare payload - update category_id and other editable fields
+      // Prepare payload - prioritize DB column names
       const payload: any = {
         category_id: selectedItem.category_ids?.[0] || null,
         cost: selectedItem.cost,
-        unit_size: selectedItem.unit_size,
+        package_size: selectedItem.package_size || selectedItem.unit_size, // Support both during migration
+        content_unit: selectedItem.content_unit || selectedItem.unit_measure,
         unit_type: finalUnitType
       };
 
-      // Only update specific fields if they changed? For now update what we edit in drawer
-      // We are only editing category in the drawer explicitly for now, and description via AI
       if (selectedItem.description) payload.description = selectedItem.description;
       if (selectedItem.price !== undefined) payload.price = selectedItem.price;
 
-      const response = await fetch(`https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/${table}?id=eq.${selectedItem.id}`, {
+      const response = await fetch(`https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/inventory_items?id=eq.${selectedItem.id}`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify(payload)
@@ -1036,8 +1108,15 @@ const InventoryManagement: React.FC = () => {
 
       if (!response.ok) throw new Error('Error updating item');
 
-      // Update local items state
-      setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, ...selectedItem } : i));
+      // Update local items state explicitly with calculated values to ensure UI reflects changes immediately
+      const updatedItem = {
+        ...selectedItem,
+        package_size: payload.package_size,
+        content_unit: payload.content_unit,
+        unit_type: finalUnitType
+      };
+
+      setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, ...updatedItem } : i));
 
       addToast('Ítem actualizado correctamente', 'success');
       setSelectedItem(null); // Close drawer on success
@@ -1058,9 +1137,9 @@ const InventoryManagement: React.FC = () => {
 
   const fetchStockHistory = async (itemId: string) => {
     setLoadingMovements(true);
-    const { data } = await (supabase.from as any)('stock_movements')
-      .select('*')
-      .eq('inventory_item_id', itemId)
+    const { data } = await (supabase.from as any)('inventory_audit_logs')
+      .select('*, qty_delta:quantity_delta, unit_type:unit')
+      .eq('item_id', itemId)
       .order('created_at', { ascending: false })
       .limit(50);
 
@@ -1451,41 +1530,88 @@ const InventoryManagement: React.FC = () => {
                                 })()
                               ) : (
                                 <>
+                                  {/* SIMPLIFIED: Show closed_stock directly */}
                                   <span className="font-black italic text-[14px] text-neon">
-                                    {Math.max(0, item.current_stock - (item.open_count || 0)).toLocaleString()}
-                                    <span className="text-[8px] uppercase opacity-30 ml-1">{item.unit_type}</span>
+                                    {item.closed_stock || 0}
+                                    <span className="text-[8px] uppercase opacity-30 ml-1">
+                                      {item.unit_type === 'gram' ? 'KG' : item.unit_type === 'ml' ? 'L' : item.unit_type || 'un'}
+                                    </span>
                                   </span>
-                                  {item.current_stock <= item.min_stock && (
-                                    <span className="text-[6px] font-black text-white/40 uppercase tracking-widest">CRÍTICO</span>
+                                  {(item.closed_stock || 0) <= (item.min_stock || 0) && (
+                                    <span className="text-[6px] font-black text-white/40 uppercase tracking-widest mt-1">CRÍTICO</span>
                                   )}
                                 </>
                               )}
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            {/* CELDA 2: Paquetes Abiertos - Vista Compacta */}
-                            {(item.open_packages?.length > 0 || item.open_count > 0) ? (
-                              <div
-                                className="flex items-center gap-2 cursor-pointer hover:bg-white/5 rounded-lg px-2 py-1 transition-all group"
-                                onClick={() => { setSelectedItem(item); setDrawerTab('details'); }}
-                              >
-                                <div className="flex items-center gap-1.5">
-                                  <span className="material-symbols-outlined text-white/40 text-sm group-hover:text-neon transition-colors">inventory_2</span>
-                                  <span className="text-sm font-black text-white">{item.open_packages?.length || item.open_count}</span>
-                                </div>
-                                <div className="flex flex-col">
-                                  <span className="text-[8px] font-bold text-white/50 uppercase tracking-wider">ABIERTOS</span>
-                                  {item.open_packages?.length > 0 && (
-                                    <span className="text-[7px] text-white/30">
-                                      {item.open_packages.reduce((sum, pkg) => sum + (pkg.remaining ?? pkg.remaining_quantity ?? 0), 0)}{item.unit_type} total
-                                    </span>
-                                  )}
-                                </div>
-                                <span className="material-symbols-outlined text-white/20 text-xs ml-auto group-hover:text-white/50 transition-colors">chevron_right</span>
-                              </div>
-                            ) : (
-                              <span className="text-[8px] text-white/10 tracking-widest">---</span>
-                            )}
+                            {/* Estado del Paquete (Calculado) - TABLE VIEW SIMPLIFIED */}
+                            {(() => {
+                              // Logic for Open Packages - TABLE CELL (SUMMARY ONLY)
+                              const isOpenList = (item.open_packages?.length > 0 || item.open_count > 0);
+
+                              if (isOpenList) {
+                                // SUMMARY view for multiple open packages
+                                const totalOpen = item.open_packages?.length || item.open_count || 0;
+                                return (
+                                  <div
+                                    className="flex flex-col items-start justify-center gap-0.5 p-2 rounded-lg bg-white/[0.02] border border-white/5 cursor-pointer hover:bg-white/5 transition-colors group/open w-fit min-w-[100px]"
+                                    onClick={(e) => { e.stopPropagation(); setSelectedItem(item); setDrawerTab('details'); }}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span className="material-symbols-outlined text-orange-500 text-sm group-hover/open:scale-110 transition-transform">inventory_2</span>
+                                      <span className="text-[10px] font-black text-white uppercase">{totalOpen} ABIERTO{totalOpen > 1 ? 'S' : ''}</span>
+                                    </div>
+                                    {/* Visual helper dots */}
+                                    <div className="flex gap-0.5 pl-6">
+                                      {Array.from({ length: Math.min(totalOpen, 5) }).map((_, i) => (
+                                        <div key={i} className="size-1.5 rounded-full bg-orange-500/50"></div>
+                                      ))}
+                                      {totalOpen > 5 && <span className="text-[6px] text-white/30">+</span>}
+                                    </div>
+                                  </div>
+                                );
+                              } else {
+                                // NO OPEN PACKAGES -> Show 100% Sealed Indicator if Stock Exists
+                                if (item.current_stock > 0) {
+                                  // Smart Unit Display - Standarized
+                                  // Prioritize package_size/content_unit (DB columns)
+                                  let rawSize = item.package_size || item.unit_size || 1;
+                                  let rawUnit = item.content_unit || item.unit_measure || item.unit_type || 'un';
+
+                                  // Normalize unit display
+                                  if (rawUnit === 'unit') rawUnit = 'un';
+
+                                  let displaySize = rawSize;
+                                  let displayUnit = rawUnit;
+
+                                  if (['gram', 'ml', 'g'].includes(rawUnit)) {
+                                    if (displaySize >= 1000) {
+                                      displaySize /= 1000;
+                                      displayUnit = rawUnit === 'gram' || rawUnit === 'g' ? 'KG' : 'L';
+                                    }
+                                  }
+
+                                  return (
+                                    <div className="flex items-center gap-2 group/sealed opacity-80">
+                                      <div className="flex items-center gap-1.5 bg-green-500/10 pl-2.5 pr-3 py-1 rounded-md border border-green-500/20">
+                                        <span className="material-symbols-outlined text-green-500 text-[10px]">verified</span>
+                                        <span className="text-[9px] font-black text-green-500 uppercase">100%</span>
+                                        <span className="w-px h-2.5 bg-green-500/20 mx-0.5"></span>
+                                        <span className="text-[9px] font-bold text-green-500/90 uppercase tracking-wide">{displaySize} {displayUnit}</span>
+                                      </div>
+                                    </div>
+                                  );
+                                } else {
+                                  return (
+                                    <div className="flex items-center gap-2 opacity-30">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-white/50"></span>
+                                      <span className="text-[9px] font-bold text-white uppercase">SIN STOCK</span>
+                                    </div>
+                                  );
+                                }
+                              }
+                            })()}
                           </td>
 
                           <td className="px-6 py-4 text-center" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); }}>
@@ -1588,22 +1714,28 @@ const InventoryManagement: React.FC = () => {
       <div className={`fixed inset-y-0 right-0 z-[5000] h-screen w-full max-w-[420px] bg-[#0D0F0D] border-l border-white/10 shadow-3xl transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col ${selectedItem ? 'translate-x-0' : 'translate-x-full opacity-0 pointer-events-none invisible'}`}>
         {selectedItem && (
           <>
-            <div className="p-6 flex justify-between items-center border-b border-white/5 bg-gradient-to-r from-white/5 to-transparent">
-              <div className="flex items-center gap-4">
-                <div className="size-14 rounded-2xl bg-black border border-white/10 overflow-hidden shadow-2xl relative">
+            <div className="p-4 flex justify-between items-center border-b border-white/5 bg-black/40">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="size-11 rounded-xl bg-black border border-white/10 overflow-hidden shadow-lg shrink-0">
                   <img src={selectedItem.image_url} className="size-full object-cover" />
-                  <div className="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-2xl"></div>
                 </div>
-                <div>
-                  <h3 className="text-xl font-black italic-black text-white uppercase tracking-tighter leading-none mb-1">{selectedItem.name}</h3>
-                  <div className="flex items-center gap-2">
-                    <span className="size-1.5 rounded-full bg-neon animate-pulse"></span>
-                    <p className="text-[8px] font-black text-white uppercase tracking-[0.2em]">SISTEMA DE ASIGNACIÓN BOM</p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h3 className="text-base font-black text-white uppercase tracking-tight leading-none truncate">{selectedItem.name}</h3>
+                    {selectedItem.category_ids?.[0] && (() => {
+                      const cat = categories.find(c => c.id === selectedItem.category_ids?.[0]);
+                      return cat ? (
+                        <span className="shrink-0 px-2 py-0.5 rounded-md bg-neon/10 border border-neon/20 text-[7px] font-black text-neon uppercase tracking-widest">
+                          {cat.name}
+                        </span>
+                      ) : null;
+                    })()}
                   </div>
+                  <p className="text-[7px] font-bold text-white/30 uppercase tracking-widest">{selectedItem.item_type === 'sellable' ? 'Producto' : 'Insumo'} · {selectedItem.sku || 'SKU'}</p>
                 </div>
               </div>
-              <button onClick={() => setSelectedItem(null)} className="size-10 rounded-2xl bg-white/5 flex items-center justify-center text-text-secondary hover:text-neon transition-all hover:bg-white/10">
-                <span className="material-symbols-outlined text-xl">close</span>
+              <button onClick={() => setSelectedItem(null)} className="size-8 rounded-lg bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all shrink-0 ml-2">
+                <span className="material-symbols-outlined text-lg">close</span>
               </button>
             </div>
 
@@ -1651,41 +1783,44 @@ const InventoryManagement: React.FC = () => {
                 <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
                   <div className="space-y-4">
                     {/* Compact Category & Unit Size Row */}
-                    <div className="flex gap-4">
-                      <div className="flex-[2] space-y-1">
-                        <label className="text-[9px] font-black uppercase text-white/40 tracking-[0.2em] ml-1"> Categoría </label>
-                        <select
-                          value={selectedItem.category_ids?.[0] || ''}
-                          onChange={(e) => {
-                            const newCatId = e.target.value;
-                            setSelectedItem(prev => prev ? { ...prev, category_ids: newCatId ? [newCatId] : [] } : null);
-                          }}
-                          className="w-full bg-white/5 border border-white/10 rounded-xl h-10 px-3 text-xs font-bold text-white outline-none focus:border-white/30 appearance-none cursor-pointer hover:bg-white/10 transition-colors"
-                        >
-                          <option value="">SIN CATEGORÍA</option>
-                          {categories
-                            .sort((a, b) => (a.position || 0) - (b.position || 0))
-                            .map(cat => (
-                              <option key={cat.id} value={cat.id}>{cat.name}</option>
-                            ))}
-                        </select>
+                    <div className="flex gap-3">
+                      <div className="flex-1">
+                        <div className="relative">
+                          <select
+                            value={selectedItem.category_ids?.[0] || ''}
+                            onChange={(e) => {
+                              const newCatId = e.target.value;
+                              setSelectedItem(prev => prev ? { ...prev, category_ids: newCatId ? [newCatId] : [] } : null);
+                            }}
+                            className="w-full appearance-none bg-[#111] border border-white/10 rounded-lg h-9 pl-3 pr-8 text-[11px] font-bold text-white outline-none focus:border-neon/50 cursor-pointer hover:border-white/20 transition-all"
+                          >
+                            <option value="">Sin categoría</option>
+                            {categories
+                              .sort((a, b) => (a.position || 0) - (b.position || 0))
+                              .map(cat => (
+                                <option key={cat.id} value={cat.id}>{cat.name}</option>
+                              ))}
+                          </select>
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 material-symbols-outlined text-white/30 text-sm pointer-events-none">expand_more</span>
+                        </div>
                       </div>
 
                       {selectedItem.item_type !== 'sellable' && (
-                        <div className="flex-1 space-y-1">
-                          <label className="text-[9px] font-black uppercase text-white/40 tracking-[0.2em] ml-1"> Tamaño Unit. </label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              value={selectedItem.unit_size || ''}
-                              onChange={(e) => setSelectedItem(prev => prev ? { ...prev, unit_size: parseFloat(e.target.value) || 0 } : null)}
-                              placeholder="0"
-                              className="w-full bg-white/5 border border-white/10 rounded-xl h-10 px-2 text-center text-xs font-bold text-white outline-none focus:border-white/30"
-                            />
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            // Bind to package_size (DB) or fallback to unit_size
+                            value={selectedItem.package_size || selectedItem.unit_size || ''}
+                            onChange={(e) => setSelectedItem(prev => prev ? { ...prev, package_size: parseFloat(e.target.value) || 0, unit_size: parseFloat(e.target.value) || 0 } : null)}
+                            placeholder="750"
+                            className="w-16 h-9 rounded-lg bg-[#111] border border-white/10 px-2 text-center text-[11px] font-bold text-white outline-none focus:border-neon/50 hover:border-white/20 transition-all"
+                          />
+                          <div className="relative">
                             <select
-                              value={selectedItem.unit_measure || 'ml'}
-                              onChange={(e) => setSelectedItem(prev => prev ? { ...prev, unit_measure: e.target.value } : null)}
-                              className="bg-white/5 border border-white/10 rounded-xl h-10 px-1 text-[10px] font-bold text-white/60 outline-none appearance-none text-center min-w-[3rem]"
+                              // Bind to content_unit (DB) or fallback to unit_measure
+                              value={selectedItem.content_unit || selectedItem.unit_measure || 'ml'}
+                              onChange={(e) => setSelectedItem(prev => prev ? { ...prev, content_unit: e.target.value, unit_measure: e.target.value } : null)}
+                              className="appearance-none bg-[#111] border border-white/10 rounded-lg h-9 pl-2 pr-5 text-[10px] font-bold text-white/60 outline-none cursor-pointer hover:border-white/20 transition-all"
                             >
                               <option value="ml">ml</option>
                               <option value="g">g</option>
@@ -1693,6 +1828,7 @@ const InventoryManagement: React.FC = () => {
                               <option value="L">L</option>
                               <option value="un">un</option>
                             </select>
+                            <span className="absolute right-1 top-1/2 -translate-y-1/2 material-symbols-outlined text-white/30 text-[10px] pointer-events-none">expand_more</span>
                           </div>
                         </div>
                       )}
@@ -1781,6 +1917,18 @@ const InventoryManagement: React.FC = () => {
                         </button>
                       </div>
 
+                      {/* STOCK POR UBICACIÓN - New Section */}
+                      {selectedItem.item_type === 'ingredient' && (
+                        <div className="mt-4 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-white/40 text-sm">location_on</span>
+                            <span className="text-[8px] font-black uppercase text-white/40 tracking-[0.2em]">Stock por Ubicación</span>
+                            <div className="flex-1 h-px bg-white/10"></div>
+                          </div>
+                          <LocationStockBreakdown itemId={selectedItem.id} unitType={selectedItem.unit_type} packageSize={selectedItem.package_size || 1} />
+                        </div>
+                      )}
+
                       <AIStockInsight
                         currentStock={selectedItem.current_stock}
                         minStock={selectedItem.min_stock || 0}
@@ -1801,56 +1949,68 @@ const InventoryManagement: React.FC = () => {
 
                       <div className="space-y-3">
                         {selectedItem.open_packages?.map((pkg, idx) => {
-                          const capacity = pkg.package_capacity || 1000;
+                          const capacity = pkg.package_capacity || (selectedItem.unit_size || selectedItem.package_size || 1000);
                           const remaining = pkg.remaining ?? pkg.remaining_quantity ?? 0;
                           const percentage = capacity ? Math.round((remaining / capacity) * 100) : 0;
                           const barColor = percentage > 50 ? '#4ADE80' : percentage > 20 ? '#FBBF24' : '#EF4444';
                           const statusText = percentage > 50 ? 'Disponible' : percentage > 20 ? 'Medio' : 'Bajo';
 
+                          // Unit Display Logic Smart (Prioritize user-edited fields for unit context)
+                          let rawUnit = selectedItem.unit_measure || selectedItem.content_unit || selectedItem.unit_type || 'un';
+                          let displayUnit = rawUnit;
+                          let displayCapacity = capacity;
+                          let displayRemaining = remaining;
+
+                          if (['gram', 'ml', 'g'].includes(rawUnit) && capacity >= 1000) {
+                            displayUnit = rawUnit === 'gram' || rawUnit === 'g' ? 'KG' : 'L';
+                            displayCapacity = capacity / 1000;
+                            displayRemaining = remaining / 1000;
+                          }
+
                           return (
                             <div key={pkg.id || idx} className="p-4 rounded-xl bg-white/[0.03] border border-white/10 space-y-3">
-                              {/* Header con número de paquete */}
+                              {/* Header con número de paquete y capacidad total */}
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                  <div className="size-6 rounded-lg bg-white/10 flex items-center justify-center">
-                                    <span className="text-[9px] font-black text-white/60">{idx + 1}</span>
+                                  <div className="size-8 rounded-lg bg-white/5 flex items-center justify-center border border-white/5">
+                                    <span className="text-[10px] font-black text-white/80">#{idx + 1}</span>
                                   </div>
-                                  <div>
-                                    <span className="text-[10px] font-bold text-white">
-                                      {remaining}{selectedItem.unit_type} de {capacity}{selectedItem.unit_type}
-                                    </span>
-                                    <span className="text-[8px] text-white/40 ml-2">restante</span>
+                                  <div className="flex flex-col">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[11px] font-black text-white tracking-wide">
+                                        {displayRemaining % 1 === 0 ? displayRemaining : displayRemaining.toFixed(2)} {displayUnit}
+                                      </span>
+                                      <span className="text-[9px] font-bold text-white/30 uppercase">/ {displayCapacity} {displayUnit}</span>
+                                    </div>
+                                    <span className="text-[8px] text-white/40 font-bold uppercase tracking-wider">{statusText}</span>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <span
-                                    className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full"
-                                    style={{ backgroundColor: `${barColor}20`, color: barColor }}
-                                  >
-                                    {statusText}
-                                  </span>
-                                  <span className="text-sm font-black font-mono" style={{ color: barColor }}>
+
+                                <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-lg border border-white/5">
+                                  <span className="text-base font-black font-mono" style={{ color: barColor }}>
                                     {percentage}%
                                   </span>
                                 </div>
                               </div>
 
-                              {/* Progress Bar */}
-                              <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                              {/* Progress Bar Enhanced */}
+                              <div className="relative w-full h-3 bg-black/60 rounded-full overflow-hidden border border-white/5">
                                 <div
-                                  className="h-full transition-all duration-500 rounded-full"
+                                  className="h-full transition-all duration-500 rounded-full relative overflow-hidden"
                                   style={{
                                     width: `${percentage}%`,
                                     backgroundColor: barColor,
-                                    boxShadow: `0 0 10px ${barColor}40`
+                                    boxShadow: `0 0 15px ${barColor}50`
                                   }}
-                                />
+                                >
+                                  <div className="absolute inset-0 bg-white/20 animate-pulse-slow"></div>
+                                </div>
                               </div>
 
-                              {/* Info adicional */}
-                              <div className="flex items-center justify-between text-[8px]">
+                              {/* Info adicional Footer */}
+                              <div className="flex items-center justify-between text-[8px] pt-1 border-t border-white/5">
                                 {pkg.location ? (
-                                  <span className="text-white/40 flex items-center gap-1">
+                                  <span className="text-white/40 flex items-center gap-1 hover:text-white/60 transition-colors cursor-default">
                                     <span className="material-symbols-outlined text-[10px]">location_on</span>
                                     {pkg.location}
                                   </span>
@@ -1858,8 +2018,8 @@ const InventoryManagement: React.FC = () => {
                                   <span className="text-white/20">Sin ubicación</span>
                                 )}
                                 {pkg.opened_at && (
-                                  <span className="text-white/30">
-                                    Abierto: {new Date(pkg.opened_at).toLocaleDateString('es-AR')}
+                                  <span className="text-white/30 font-mono">
+                                    {new Date(pkg.opened_at).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                                   </span>
                                 )}
                               </div>
@@ -2035,16 +2195,41 @@ const InventoryManagement: React.FC = () => {
                   )}
 
                   <div className="space-y-3">
+                    {/* RECIPE COST SUMMARY */}
+                    {selectedItem.recipe && selectedItem.recipe.length > 0 && (() => {
+                      const totalCost = selectedItem.recipe.reduce((sum, comp) => {
+                        const insumo = items.find(i => i.id === comp.ingredientId);
+                        return sum + (insumo ? comp.quantity * insumo.cost : 0);
+                      }, 0);
+                      return (
+                        <div className="p-4 rounded-2xl bg-neon/5 border border-neon/20 flex justify-between items-center">
+                          <div>
+                            <p className="text-[9px] font-black text-neon uppercase tracking-widest">Costo Total de Receta</p>
+                            <p className="text-[8px] text-white/40 mt-0.5">Suma de todos los insumos utilizados</p>
+                          </div>
+                          <p className="text-xl font-black text-neon font-mono">{formatCurrency(totalCost)}</p>
+                        </div>
+                      );
+                    })()}
+
                     {selectedItem.recipe?.map((comp, idx) => {
                       const insumo = items.find(i => i.id === comp.ingredientId);
                       if (!insumo) return null;
+                      const stockStatus = insumo.current_stock > comp.quantity * 10 ? 'ok' : insumo.current_stock > comp.quantity * 3 ? 'warning' : 'critical';
                       return (
                         <div key={idx} className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex justify-between items-center group hover:bg-white/[0.04] transition-all">
                           <div className="flex items-center gap-4">
                             <img src={insumo.image_url} className="size-10 rounded-xl object-cover grayscale group-hover:grayscale-0 transition-all" />
                             <div>
                               <p className="text-[11px] font-black text-white uppercase italic tracking-tight">{insumo.name}</p>
-                              <p className="text-[8px] font-bold text-white/80 uppercase mt-0.5">{comp.quantity} {insumo.unit_type} • x {formatCurrency(insumo.cost)}</p>
+                              <p className="text-[8px] font-bold text-white/80 uppercase mt-0.5">{comp.quantity} {insumo.unit_type} × {formatCurrency(insumo.cost)}</p>
+                              {/* STOCK INDICATOR */}
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <div className={`w-1.5 h-1.5 rounded-full ${stockStatus === 'ok' ? 'bg-neon' : stockStatus === 'warning' ? 'bg-yellow-500' : 'bg-red-500'}`} />
+                                <span className={`text-[7px] font-bold uppercase ${stockStatus === 'ok' ? 'text-neon/70' : stockStatus === 'warning' ? 'text-yellow-500/70' : 'text-red-500/70'}`}>
+                                  Stock: {insumo.current_stock?.toFixed(1) || 0} {insumo.unit_type}
+                                </span>
+                              </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-5">

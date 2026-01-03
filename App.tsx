@@ -1,9 +1,11 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
+import AdminDashboard from './pages/AdminDashboard';
+import DebugPayment from './pages/DebugPayment';
 import Dashboard from './pages/Dashboard';
 import InventoryManagement from './pages/InventoryManagement';
+import MenuManagement from './pages/MenuManagement';
 import InvoiceProcessor from './pages/InvoiceProcessor';
 import MenuDesign from './pages/MenuDesign';
 import Loyalty from './pages/Loyalty';
@@ -527,12 +529,15 @@ const MainRouter: React.FC = () => {
     const isOrderRoute = window.location.hash.includes('#/orden/') || window.location.hash.includes('/order/');
     // Check for direct store slug (e.g. #/my-cafe) while avoiding conflicts with system routes
     const isPotentialStoreRoute = window.location.hash.match(/^#\/[^/]+$/) &&
-      !['#/login', '#/join', '#/setup-owner', '#/dashboard', '#/admin'].includes(window.location.hash);
+      !['#/login', '#/join', '#/setup-owner', '#/dashboard', '#/admin', '#/debug-payment'].includes(window.location.hash);
 
-    if (isClientMenu || isOrderRoute || isPotentialStoreRoute) {
+    const isDebugRoute = window.location.hash.includes('#/debug-payment');
+
+    if (isClientMenu || isOrderRoute || isPotentialStoreRoute || isDebugRoute) {
       return (
         <Router>
           <Routes>
+            <Route path="/debug-payment" element={<DebugPayment />} />
             {/* Existing Client Module (Legacy/Structured) */}
             <Route path="/m/:slug" element={
               <ClientProvider>
@@ -722,9 +727,15 @@ const MainRouter: React.FC = () => {
             </Route>
 
             <Route path="/" element={<Dashboard />} />
+            <Route path="/debug-payment" element={<DebugPayment />} />
             <Route path="/inventory" element={
               <PermissionGuard section="inventory" fallback={<Navigate to="/" replace />}>
                 <InventoryManagement />
+              </PermissionGuard>
+            } />
+            <Route path="/menus" element={
+              <PermissionGuard section="inventory" fallback={<Navigate to="/" replace />}>
+                <MenuManagement />
               </PermissionGuard>
             } />
             <Route path="/invoice-processor" element={

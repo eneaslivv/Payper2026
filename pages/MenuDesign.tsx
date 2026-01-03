@@ -21,7 +21,16 @@ import {
     Store as StoreIcon,
     X,
     Trash2,
-    Check
+    Check,
+    Clock,
+    Calendar,
+    MapPin,
+    Star,
+    AlertTriangle,
+    Edit2,
+    ToggleLeft,
+    ToggleRight,
+    GripVertical
 } from 'lucide-react';
 
 interface MenuTheme {
@@ -55,13 +64,502 @@ interface MenuTheme {
     fontStyle: 'modern' | 'serif' | 'mono';
 }
 
+// ==========================================
+// INLINE MENU MANAGEMENT PANEL
+// ==========================================
+interface Menu {
+    id: string;
+    store_id: string;
+    name: string;
+    description: string | null;
+    is_active: boolean;
+    priority: number;
+    is_fallback: boolean;
+    product_count?: number;
+    rules?: MenuRule[];
+}
+
+interface MenuRule {
+    id: string;
+    menu_id: string;
+    rule_type: string;
+    rule_config: any;
+    is_active: boolean;
+}
+
+interface MenuProduct {
+    id: string;
+    menu_id: string;
+    product_id: string;
+    price_override: number | null;
+    sort_order: number;
+    is_visible: boolean;
+    product?: { name: string; base_price: number; category: string };
+}
+
+const WEEKDAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId }) => {
+    const { addToast } = useToast();
+    const [menus, setMenus] = useState<Menu[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [selectedMenu, setSelectedMenu] = useState<Menu | null>(null);
+    const [menuProducts, setMenuProducts] = useState<MenuProduct[]>([]);
+    const [allProducts, setAllProducts] = useState<any[]>([]);
+    const [venueNodes, setVenueNodes] = useState<any[]>([]);
+    const [showNodeSelector, setShowNodeSelector] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editForm, setEditForm] = useState({ name: '', description: '', priority: 100 });
+    const [activeSubTab, setActiveSubTab] = useState<'products' | 'rules'>('products');
+
+    useEffect(() => {
+        if (storeId) { fetchMenus(); fetchAllProducts(); fetchVenueNodes(); }
+    }, [storeId]);
+
+    const fetchMenus = async () => {
+        setLoading(true);
+        const { data } = await supabase.from('menus').select('*, menu_rules(*)').eq('store_id', storeId).order('priority');
+        const menusWithCounts = await Promise.all((data || []).map(async (m: any) => {
+            const { count } = await supabase.from('menu_products').select('*', { count: 'exact', head: true }).eq('menu_id', m.id);
+            return { ...m, product_count: count || 0, rules: m.menu_rules };
+        }));
+        setMenus(menusWithCounts);
+        setLoading(false);
+    };
+
+    const fetchAllProducts = async () => {
+        const { data } = await supabase.from('products').select('id, name, base_price, category').eq('store_id', storeId).eq('active', true).order('name');
+        setAllProducts(data || []);
+    };
+
+    const fetchVenueNodes = async () => {
+        const { data } = await supabase.from('venue_nodes').select('id, label, node_type').eq('store_id', storeId).order('label');
+        setVenueNodes(data || []);
+    };
+
+    const fetchMenuProducts = async (menuId: string) => {
+        const { data } = await supabase.from('menu_products').select('*, product:products(name, base_price, category)').eq('menu_id', menuId).order('sort_order');
+        setMenuProducts(data || []);
+    };
+
+    const handleSelectMenu = async (menu: Menu) => {
+        setSelectedMenu(menu);
+        setEditForm({ name: menu.name, description: menu.description || '', priority: menu.priority });
+        await fetchMenuProducts(menu.id);
+    };
+
+    const handleCreateMenu = async () => {
+        const { data } = await supabase.from('menus').insert({ store_id: storeId, name: 'Nuevo Menú', priority: 100, is_active: false, is_fallback: false }).select().single();
+        if (data) { fetchMenus(); setSelectedMenu(data); }
+    };
+
+    const handleSaveMenu = async () => {
+        if (!selectedMenu) return;
+        await supabase.from('menus').update({ name: editForm.name, description: editForm.description || null, priority: editForm.priority }).eq('id', selectedMenu.id);
+        setIsEditing(false);
+        fetchMenus();
+    };
+
+    const handleToggleActive = async (menu: Menu) => {
+        await supabase.from('menus').update({ is_active: !menu.is_active }).eq('id', menu.id);
+        fetchMenus();
+    };
+
+    const handleDeleteMenu = async (menu: Menu) => {
+        if (menu.is_fallback) { addToast('No se puede eliminar el menú fallback', 'error'); return; }
+        await supabase.from('menus').delete().eq('id', menu.id);
+        setSelectedMenu(null);
+        fetchMenus();
+    };
+
+    const handleAddProduct = async (productId: string) => {
+        if (!selectedMenu) return;
+        const maxOrder = Math.max(0, ...menuProducts.map(p => p.sort_order)) + 1;
+        await supabase.from('menu_products').insert({ menu_id: selectedMenu.id, product_id: productId, sort_order: maxOrder, is_visible: true });
+        fetchMenuProducts(selectedMenu.id);
+        fetchMenus();
+    };
+
+    const handleRemoveProduct = async (mpId: string) => {
+        await supabase.from('menu_products').delete().eq('id', mpId);
+        if (selectedMenu) fetchMenuProducts(selectedMenu.id);
+        fetchMenus();
+    };
+
+    const handleUpdatePriceOverride = async (mpId: string, price: number | null) => {
+        await supabase.from('menu_products').update({ price_override: price }).eq('id', mpId);
+        if (selectedMenu) fetchMenuProducts(selectedMenu.id);
+    };
+
+    const handleAddRule = async (ruleType: string, ruleConfig: any) => {
+        if (!selectedMenu) return;
+        await supabase.from('menu_rules').insert({ menu_id: selectedMenu.id, rule_type: ruleType, rule_config: ruleConfig, is_active: true });
+        fetchMenus();
+    };
+
+    const handleDeleteRule = async (ruleId: string) => {
+        await supabase.from('menu_rules').delete().eq('id', ruleId);
+        fetchMenus();
+    };
+
+    const hasFallback = menus.some(m => m.is_fallback);
+
+    const getRuleBadge = (rule: MenuRule) => {
+        const icons: Record<string, React.ReactNode> = {
+            time_range: <Clock size={10} />,
+            weekdays: <Calendar size={10} />,
+            session_type: <MapPin size={10} />,
+            tables: <MapPin size={10} />,
+            manual_override: <Star size={10} />
+        };
+        const colors: Record<string, string> = {
+            time_range: 'bg-purple-500/20 text-purple-400',
+            weekdays: 'bg-blue-500/20 text-blue-400',
+            session_type: 'bg-green-500/20 text-green-400',
+            tables: 'bg-yellow-500/20 text-yellow-400',
+            manual_override: 'bg-red-500/20 text-red-400'
+        };
+        return (
+            <span key={rule.id} className={`px-2 py-0.5 ${colors[rule.rule_type] || 'bg-white/10 text-white/40'} text-[9px] rounded-full flex items-center gap-1`}>
+                {icons[rule.rule_type]}{rule.rule_type.replace('_', ' ')}
+            </span>
+        );
+    };
+
+    if (loading) return (
+        <div className="flex items-center justify-center h-64">
+            <div className="relative">
+                <div className="w-12 h-12 border-4 border-[#4ADE80]/20 rounded-full animate-spin border-t-[#4ADE80]" />
+                <div className="absolute inset-0 w-12 h-12 border-4 border-transparent rounded-full animate-ping border-t-[#4ADE80]/30" />
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="flex h-full animate-in fade-in duration-500">
+            {/* LEFT: Menu List */}
+            <div className="w-80 border-r border-white/10 flex flex-col bg-gradient-to-b from-[#0D0F0D] to-[#141714]">
+                {/* Header */}
+                <div className="p-4 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-[#4ADE80]/5 to-transparent">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-[#4ADE80]/20 rounded-xl flex items-center justify-center">
+                            <Package size={16} className="text-[#4ADE80]" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-black text-white">Menús</h3>
+                            <p className="text-[9px] text-white/40">{menus.length} configurados</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={handleCreateMenu}
+                        className="p-2 bg-[#4ADE80]/10 text-[#4ADE80] rounded-xl hover:bg-[#4ADE80]/20 hover:scale-110 transition-all duration-300 shadow-lg shadow-[#4ADE80]/10"
+                    >
+                        <Plus size={16} />
+                    </button>
+                </div>
+
+                {/* Warning: No Fallback */}
+                {!hasFallback && (
+                    <div className="p-3 bg-gradient-to-r from-red-500/20 to-red-500/5 border-b border-red-500/20 flex items-center gap-2 animate-pulse">
+                        <AlertTriangle size={14} className="text-red-400" />
+                        <span className="text-[10px] text-red-400 font-medium">Falta menú fallback</span>
+                    </div>
+                )}
+
+                {/* Menu List */}
+                <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                    {menus.map((menu, idx) => (
+                        <button
+                            key={menu.id}
+                            onClick={() => handleSelectMenu(menu)}
+                            className={`
+                                w-full p-4 rounded-2xl text-left transition-all duration-300 group
+                                ${selectedMenu?.id === menu.id
+                                    ? 'bg-gradient-to-r from-[#4ADE80]/15 to-[#4ADE80]/5 border border-[#4ADE80]/30 shadow-lg shadow-[#4ADE80]/10 scale-[1.02]'
+                                    : 'bg-white/[0.02] border border-white/5 hover:bg-white/5 hover:border-white/10 hover:scale-[1.01]'}
+                            `}
+                            style={{ animationDelay: `${idx * 50}ms` }}
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="font-bold text-white text-sm truncate group-hover:text-[#4ADE80] transition-colors">{menu.name}</span>
+                                <div className="flex items-center gap-2">
+                                    {menu.is_fallback && (
+                                        <span className="px-2 py-0.5 bg-gradient-to-r from-yellow-500/30 to-yellow-500/10 text-yellow-400 text-[8px] font-black rounded-full uppercase tracking-wide">
+                                            Default
+                                        </span>
+                                    )}
+                                    <span className={`w-3 h-3 rounded-full transition-all duration-300 ${menu.is_active ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-white/20'}`} />
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-[10px] text-white/50 bg-white/5 px-2 py-0.5 rounded-full">{menu.product_count} productos</span>
+                                <span className="text-[10px] text-white/50 bg-white/5 px-2 py-0.5 rounded-full">P:{menu.priority}</span>
+                                {menu.rules?.filter(r => r.is_active).slice(0, 2).map(r => getRuleBadge(r))}
+                            </div>
+                        </button>
+                    ))}
+
+                    {menus.length === 0 && (
+                        <div className="text-center py-12">
+                            <Package size={32} className="mx-auto text-white/10 mb-3" />
+                            <p className="text-white/30 text-xs">Sin menús</p>
+                            <button onClick={handleCreateMenu} className="mt-3 text-[#4ADE80] text-[10px] hover:underline">+ Crear primero</button>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* RIGHT: Detail */}
+            <div className="flex-1 flex flex-col bg-[#0A0B09]">
+                {selectedMenu ? (
+                    <div className="animate-in fade-in slide-in-from-right-2 duration-500 flex flex-col h-full">
+                        {/* Header */}
+                        <div className="p-6 border-b border-white/10 bg-gradient-to-r from-white/[0.02] to-transparent">
+                            <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                    {isEditing ? (
+                                        <input
+                                            value={editForm.name}
+                                            onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                                            className="bg-black/50 border border-[#4ADE80]/30 rounded-xl px-4 py-2 text-white font-black text-lg w-64 focus:outline-none focus:ring-2 focus:ring-[#4ADE80]/50"
+                                            autoFocus
+                                        />
+                                    ) : (
+                                        <h2 className="text-2xl font-black text-white mb-1 flex items-center gap-2">
+                                            {selectedMenu.name}
+                                            {selectedMenu.is_active && <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />}
+                                        </h2>
+                                    )}
+                                    <p className="text-[11px] text-white/40 flex items-center gap-2">
+                                        {selectedMenu.is_fallback ? (
+                                            <span className="text-yellow-400">⭐ Menú fallback (siempre activo)</span>
+                                        ) : (
+                                            <><span>Prioridad: {selectedMenu.priority}</span> • <span>{menuProducts.length} productos</span></>
+                                        )}
+                                    </p>
+                                </div>
+                                <div className="flex gap-2">
+                                    {isEditing ? (
+                                        <>
+                                            <button onClick={() => setIsEditing(false)} className="p-2.5 text-white/40 hover:text-white rounded-xl hover:bg-white/5 transition-all"><X size={18} /></button>
+                                            <button onClick={handleSaveMenu} className="p-2.5 bg-[#4ADE80]/20 text-[#4ADE80] rounded-xl hover:bg-[#4ADE80]/30 transition-all"><Save size={18} /></button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <button onClick={() => setIsEditing(true)} className="p-2.5 text-white/40 hover:text-white rounded-xl hover:bg-white/5 transition-all"><Edit2 size={18} /></button>
+                                            <button
+                                                onClick={() => handleToggleActive(selectedMenu)}
+                                                className={`p-2.5 rounded-xl transition-all duration-300 ${selectedMenu.is_active ? 'bg-green-500/20 text-green-400 shadow-lg shadow-green-500/20' : 'bg-white/5 text-white/40'}`}
+                                            >
+                                                {selectedMenu.is_active ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                                            </button>
+                                            {!selectedMenu.is_fallback && (
+                                                <button onClick={() => handleDeleteMenu(selectedMenu)} className="p-2.5 text-red-400/60 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all"><Trash2 size={18} /></button>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Tabs */}
+                        <div className="px-6 py-4 flex gap-2 border-b border-white/5">
+                            <button
+                                onClick={() => setActiveSubTab('products')}
+                                className={`px-5 py-2.5 rounded-xl text-[11px] font-bold transition-all duration-300 ${activeSubTab === 'products'
+                                    ? 'bg-gradient-to-r from-[#4ADE80]/20 to-[#4ADE80]/10 text-[#4ADE80] shadow-lg shadow-[#4ADE80]/10'
+                                    : 'bg-white/5 text-white/50 hover:text-white hover:bg-white/10'
+                                    }`}
+                            >
+                                <span className="flex items-center gap-2">
+                                    <Coffee size={14} />
+                                    Productos ({menuProducts.length})
+                                </span>
+                            </button>
+                            <button
+                                onClick={() => setActiveSubTab('rules')}
+                                className={`px-5 py-2.5 rounded-xl text-[11px] font-bold transition-all duration-300 ${activeSubTab === 'rules'
+                                    ? 'bg-gradient-to-r from-[#4ADE80]/20 to-[#4ADE80]/10 text-[#4ADE80] shadow-lg shadow-[#4ADE80]/10'
+                                    : 'bg-white/5 text-white/50 hover:text-white hover:bg-white/10'
+                                    }`}
+                            >
+                                <span className="flex items-center gap-2">
+                                    <Clock size={14} />
+                                    Reglas ({selectedMenu.rules?.filter(r => r.is_active).length || 0})
+                                </span>
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {activeSubTab === 'products' && (
+                                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                    {/* Add Product Dropdown */}
+                                    <select
+                                        onChange={e => { if (e.target.value) handleAddProduct(e.target.value); e.target.value = ''; }}
+                                        className="w-full bg-gradient-to-r from-[#4ADE80]/10 to-transparent border border-[#4ADE80]/20 rounded-xl px-4 py-3 text-white text-xs cursor-pointer hover:border-[#4ADE80]/40 transition-all focus:outline-none focus:ring-2 focus:ring-[#4ADE80]/30"
+                                    >
+                                        <option value="" className="bg-[#141714]">+ Agregar producto al menú...</option>
+                                        {allProducts.filter(p => !menuProducts.find(mp => mp.product_id === p.id)).map(p => (
+                                            <option key={p.id} value={p.id} className="bg-[#141714]">{p.name} - ${p.base_price}</option>
+                                        ))}
+                                    </select>
+
+                                    {/* Product List */}
+                                    {menuProducts.map((mp, idx) => (
+                                        <div
+                                            key={mp.id}
+                                            className="flex items-center gap-4 p-4 bg-gradient-to-r from-white/[0.03] to-transparent border border-white/10 rounded-2xl group hover:border-white/20 hover:bg-white/[0.04] transition-all duration-300"
+                                            style={{ animationDelay: `${idx * 30}ms` }}
+                                        >
+                                            <div className="p-2 bg-white/5 rounded-xl cursor-grab">
+                                                <GripVertical size={16} className="text-white/20 group-hover:text-white/40 transition-colors" />
+                                            </div>
+                                            <div className="w-10 h-10 bg-gradient-to-br from-[#4ADE80]/20 to-[#4ADE80]/5 rounded-xl flex items-center justify-center">
+                                                <Coffee size={16} className="text-[#4ADE80]/60" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-bold text-white">{mp.product?.name}</p>
+                                                <p className="text-[10px] text-white/40">{mp.product?.category}</p>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-[11px] text-white/40 bg-white/5 px-2 py-1 rounded-lg">${mp.product?.base_price}</span>
+                                                <input
+                                                    type="number"
+                                                    placeholder="Override"
+                                                    value={mp.price_override ?? ''}
+                                                    onChange={e => handleUpdatePriceOverride(mp.id, e.target.value ? parseFloat(e.target.value) : null)}
+                                                    className="w-24 bg-black/50 border border-white/20 rounded-xl px-3 py-1.5 text-white text-[11px] focus:outline-none focus:border-[#4ADE80]/50 transition-colors"
+                                                />
+                                                <button
+                                                    onClick={() => handleRemoveProduct(mp.id)}
+                                                    className="p-2 text-red-400/40 hover:text-red-400 hover:bg-red-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-all"
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    {menuProducts.length === 0 && (
+                                        <div className="text-center py-16">
+                                            <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                                <Package size={24} className="text-white/20" />
+                                            </div>
+                                            <p className="text-white/30 text-sm mb-2">Sin productos en este menú</p>
+                                            <p className="text-white/20 text-xs">Usá el selector de arriba para agregar</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {activeSubTab === 'rules' && (
+                                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                    {/* Rule Buttons */}
+                                    <div className="flex flex-wrap gap-2 p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
+                                        <button onClick={() => handleAddRule('time_range', { from: '18:00', to: '23:59' })} className="px-4 py-2.5 bg-gradient-to-r from-purple-500/20 to-purple-500/10 text-purple-400 rounded-xl text-[11px] font-bold flex items-center gap-2 hover:from-purple-500/30 hover:to-purple-500/15 transition-all shadow-lg shadow-purple-500/10"><Clock size={14} /> Horario</button>
+                                        <button onClick={() => handleAddRule('weekdays', { days: [5, 6] })} className="px-4 py-2.5 bg-gradient-to-r from-blue-500/20 to-blue-500/10 text-blue-400 rounded-xl text-[11px] font-bold flex items-center gap-2 hover:from-blue-500/30 hover:to-blue-500/15 transition-all shadow-lg shadow-blue-500/10"><Calendar size={14} /> Días</button>
+                                        <button onClick={() => handleAddRule('session_type', { values: ['table'] })} className="px-4 py-2.5 bg-gradient-to-r from-green-500/20 to-green-500/10 text-green-400 rounded-xl text-[11px] font-bold flex items-center gap-2 hover:from-green-500/30 hover:to-green-500/15 transition-all shadow-lg shadow-green-500/10"><MapPin size={14} /> Tipo Sesión</button>
+                                        <button onClick={() => setShowNodeSelector(true)} className="px-4 py-2.5 bg-gradient-to-r from-orange-500/20 to-orange-500/10 text-orange-400 rounded-xl text-[11px] font-bold flex items-center gap-2 hover:from-orange-500/30 hover:to-orange-500/15 transition-all shadow-lg shadow-orange-500/10"><StoreIcon size={14} /> Barras/Mesas</button>
+                                        <button onClick={() => handleAddRule('manual_override', { enabled: true })} className="px-4 py-2.5 bg-gradient-to-r from-red-500/20 to-red-500/10 text-red-400 rounded-xl text-[11px] font-bold flex items-center gap-2 hover:from-red-500/30 hover:to-red-500/15 transition-all shadow-lg shadow-red-500/10"><Star size={14} /> Override</button>
+                                    </div>
+
+                                    {/* Node Selector Modal */}
+                                    {showNodeSelector && (
+                                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center animate-in fade-in duration-200" onClick={() => setShowNodeSelector(false)}>
+                                            <div className="bg-gradient-to-b from-[#1a1d1a] to-[#141714] border border-white/10 rounded-3xl p-6 max-w-md w-full mx-4 max-h-[70vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+                                                <h3 className="text-lg font-black text-white mb-4 flex items-center gap-2">
+                                                    <StoreIcon size={20} className="text-orange-400" />
+                                                    Seleccionar Barras/Mesas
+                                                </h3>
+                                                <div className="flex-1 overflow-y-auto space-y-2 mb-4">
+                                                    {venueNodes.length === 0 ? (
+                                                        <p className="text-white/40 text-xs text-center py-8">No hay barras/mesas configuradas</p>
+                                                    ) : (
+                                                        venueNodes.map((node, idx) => (
+                                                            <label
+                                                                key={node.id}
+                                                                className="flex items-center gap-4 p-4 bg-white/[0.03] border border-white/10 rounded-2xl cursor-pointer hover:bg-white/[0.06] hover:border-white/20 transition-all"
+                                                                style={{ animationDelay: `${idx * 30}ms` }}
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="w-5 h-5 accent-[#4ADE80] rounded"
+                                                                    onChange={e => {
+                                                                        if (e.target.checked) {
+                                                                            handleAddRule('tables', { table_ids: [node.id] });
+                                                                            setShowNodeSelector(false);
+                                                                        }
+                                                                    }}
+                                                                />
+                                                                <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center">
+                                                                    <MapPin size={16} className="text-orange-400" />
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                    <p className="text-sm font-bold text-white">{node.label}</p>
+                                                                    <p className="text-[10px] text-white/40 uppercase">{node.node_type}</p>
+                                                                </div>
+                                                            </label>
+                                                        ))
+                                                    )}
+                                                </div>
+                                                <button onClick={() => setShowNodeSelector(false)} className="w-full py-3 bg-white/5 text-white/60 rounded-xl text-xs font-bold hover:bg-white/10 transition-all">Cerrar</button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Rules List */}
+                                    {selectedMenu.rules?.map((rule, idx) => (
+                                        <div
+                                            key={rule.id}
+                                            className="flex items-center gap-4 p-4 bg-gradient-to-r from-white/[0.03] to-transparent border border-white/10 rounded-2xl group hover:border-white/20 transition-all"
+                                            style={{ animationDelay: `${idx * 30}ms` }}
+                                        >
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-1">{getRuleBadge(rule)}</div>
+                                                <p className="text-[10px] text-white/30 font-mono bg-black/30 px-2 py-1 rounded-lg inline-block">{JSON.stringify(rule.rule_config)}</p>
+                                            </div>
+                                            <button onClick={() => handleDeleteRule(rule.id)} className="p-2 text-red-400/40 hover:text-red-400 hover:bg-red-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={14} /></button>
+                                        </div>
+                                    ))}
+
+                                    {(!selectedMenu.rules || selectedMenu.rules.length === 0) && (
+                                        <div className="text-center py-12">
+                                            <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                                <Clock size={24} className="text-white/20" />
+                                            </div>
+                                            <p className="text-white/30 text-sm mb-2">Sin reglas de activación</p>
+                                            <p className="text-white/20 text-xs">Este menú aplica solo por prioridad</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+                        <div className="w-20 h-20 bg-white/5 rounded-3xl flex items-center justify-center mb-6">
+                            <Package size={32} className="text-white/20" />
+                        </div>
+                        <p className="text-white/40 text-sm mb-2">Seleccioná un menú</p>
+                        <p className="text-white/20 text-xs">o creá uno nuevo con el botón +</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// ==========================================
+// MAIN COMPONENT
+// ==========================================
 const MenuDesign: React.FC = () => {
     const { profile } = useAuth();
     const [items, setItems] = useState<InventoryItem[]>([]);
     const [loading, setLoading] = useState(true);
 
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'ESTÉTICA' | 'LÓGICA' | 'INVENTARIO'>('ESTÉTICA');
+    const [activeTab, setActiveTab] = useState<'ESTÉTICA' | 'LÓGICA' | 'INVENTARIO' | 'MENÚS'>('ESTÉTICA');
     const [searchTerm, setSearchTerm] = useState('');
     const [isGeneratingAI, setIsGeneratingAI] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -122,6 +620,19 @@ const MenuDesign: React.FC = () => {
             enforceStock: false,
             showCalories: false,
             showAllergens: true
+        },
+        // 5. Horarios de Operación
+        businessHours: {
+            autoClose: true,
+            schedules: [
+                { day: 0, label: 'Dom', open: '10:00', close: '22:00', enabled: true },
+                { day: 1, label: 'Lun', open: '09:00', close: '23:00', enabled: true },
+                { day: 2, label: 'Mar', open: '09:00', close: '23:00', enabled: true },
+                { day: 3, label: 'Mié', open: '09:00', close: '23:00', enabled: true },
+                { day: 4, label: 'Jue', open: '09:00', close: '23:00', enabled: true },
+                { day: 5, label: 'Vie', open: '09:00', close: '00:00', enabled: true },
+                { day: 6, label: 'Sáb', open: '10:00', close: '00:00', enabled: true }
+            ]
         }
     });
 
@@ -641,7 +1152,7 @@ const MenuDesign: React.FC = () => {
                 return;
             }
             const ai = new GoogleGenerativeAI(apiKey);
-            const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
             const prompt = `Eres un experto redactor gourmet para cafeterías de especialidad. Escribe una descripción corta (máximo 120 caracteres), sensorial e irresistible para el producto: "${selectedItem.name}". Si el producto es café, menciona notas de cata. No uses comillas.`;
             const result = await model.generateContent(prompt);
             const response = await result.response;
@@ -649,7 +1160,7 @@ const MenuDesign: React.FC = () => {
             if (text) updateItem(selectedItem.id, { description: text.trim() });
         } catch (e) {
             console.error("AI Error:", e);
-            alert('Error al contactar con SquadAI');
+            alert(`Error al contactar con SquadAI: ${(e as Error).message}`);
         } finally {
             setIsGeneratingAI(false);
         }
@@ -764,6 +1275,40 @@ const MenuDesign: React.FC = () => {
         }
     };
 
+    const handleCoverSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0] && profile?.store_id) {
+            const file = e.target.files[0];
+            addToast('Subiendo portada...', 'info');
+
+            try {
+                const fileExt = file.name.split('.').pop();
+                const fileName = `cover-${Date.now()}.${fileExt}`;
+                const filePath = `${profile.store_id}/${fileName}`;
+
+                // Use Supabase SDK for proper auth handling
+                const { error: uploadError } = await supabase.storage
+                    .from('store-covers')
+                    .upload(filePath, file, {
+                        upsert: true,
+                        contentType: file.type
+                    });
+
+                if (uploadError) throw uploadError;
+
+                const { data: urlData } = supabase.storage
+                    .from('store-covers')
+                    .getPublicUrl(filePath);
+
+                const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+                setTheme(prev => ({ ...prev, headerImage: publicUrl }));
+                addToast('Portada subida correctamente', 'success');
+            } catch (err: any) {
+                console.error('Error uploading cover:', err);
+                addToast(`Error al subir portada: ${err.message || 'Verifica que el bucket "store-covers" exista y tenga permisos públicos'}`, 'error');
+            }
+        }
+    };
+
     // Helper para obtener clases basadas en el tema
     const getPreviewClasses = () => {
         const rounded = theme.borderRadius === 'none' ? 'rounded-none' : theme.borderRadius === 'md' ? 'rounded-md' : theme.borderRadius === 'full' ? 'rounded-[2rem]' : 'rounded-xl';
@@ -797,7 +1342,7 @@ const MenuDesign: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-3 bg-black/40 p-1 rounded-xl border border-white/5 backdrop-blur-xl">
-                        {(['ESTÉTICA', 'LÓGICA', 'INVENTARIO'] as const).map(tab => (
+                        {(['ESTÉTICA', 'LÓGICA', 'INVENTARIO', 'MENÚS'] as const).map(tab => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
@@ -845,6 +1390,12 @@ const MenuDesign: React.FC = () => {
 
             <div className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 <div className="lg:col-span-5 space-y-4">
+                    {/* VISTA: GESTIÓN DE MENÚS DINÁMICOS */}
+                    {activeTab === 'MENÚS' && (
+                        <div className="bg-[#141714] border border-white/5 rounded-2xl overflow-hidden shadow-xl h-[calc(100vh-220px)] animate-in fade-in slide-in-from-bottom-4 duration-700">
+                            <MenusPanel storeId={profile?.store_id} />
+                        </div>
+                    )}
                     {activeTab === 'ESTÉTICA' && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
                             {/* SECCIÓN: IDENTIDAD */}
@@ -863,16 +1414,64 @@ const MenuDesign: React.FC = () => {
                                             className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs focus:border-[#4ADE80]/50 transition-all outline-none"
                                         />
                                     </div>
+                                    {/* COVER IMAGE UPLOAD */}
                                     <div>
-                                        <label className="text-[9px] font-black text-[#52525B] uppercase tracking-widest mb-1.5 block">Cabecera (URL)</label>
-                                        <div className="relative">
+                                        <label className="text-[9px] font-black text-[#52525B] uppercase tracking-widest mb-1.5 block">Imagen de Portada</label>
+                                        <div className="relative group">
+                                            <div
+                                                className="w-full h-24 rounded-xl bg-black/40 border border-white/10 overflow-hidden cursor-pointer hover:border-[#4ADE80]/50 transition-all"
+                                                onClick={() => document.getElementById('cover-input')?.click()}
+                                            >
+                                                {theme.headerImage ? (
+                                                    <img src={theme.headerImage} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="flex items-center justify-center h-full text-[#52525B]">
+                                                        <Image className="w-6 h-6" />
+                                                    </div>
+                                                )}
+                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <span className="text-[10px] font-bold text-white uppercase">Subir imagen</span>
+                                                </div>
+                                            </div>
                                             <input
-                                                type="text"
-                                                value={theme.headerImage}
-                                                onChange={e => setTheme({ ...theme, headerImage: e.target.value })}
-                                                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs focus:border-[#4ADE80]/50 transition-all outline-none pr-8"
+                                                id="cover-input"
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleCoverSelect}
+                                                className="hidden"
                                             />
-                                            <Image className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#52525B]" />
+                                        </div>
+                                    </div>
+                                    {/* LOGO UPLOAD */}
+                                    <div>
+                                        <label className="text-[9px] font-black text-[#52525B] uppercase tracking-widest mb-1.5 block">Logo del Local</label>
+                                        <div className="flex items-center gap-3">
+                                            <div
+                                                className="size-14 rounded-full bg-black/40 border border-white/10 overflow-hidden cursor-pointer hover:border-[#4ADE80]/50 transition-all flex items-center justify-center"
+                                                onClick={() => document.getElementById('logo-input')?.click()}
+                                            >
+                                                {theme.logoUrl ? (
+                                                    <img src={theme.logoUrl} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="material-symbols-outlined text-[#52525B] text-xl">add_photo_alternate</span>
+                                                )}
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-[10px] text-white/40">Se mostrará en el header del menú</p>
+                                                <button
+                                                    onClick={() => document.getElementById('logo-input')?.click()}
+                                                    className="mt-1 px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-[9px] font-bold uppercase hover:bg-white/10 transition-all"
+                                                >
+                                                    Subir logo
+                                                </button>
+                                            </div>
+                                            <input
+                                                id="logo-input"
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleLogoSelect}
+                                                className="hidden"
+                                            />
                                         </div>
                                     </div>
                                     <div>
@@ -979,6 +1578,76 @@ const MenuDesign: React.FC = () => {
                                 </div>
                             </div>
 
+                            {/* 1.5 HORARIOS DE OPERACIÓN */}
+                            <div className="bg-[#141714] border border-white/5 rounded-2xl p-4 shadow-xl">
+                                <h3 className="text-[10px] font-black text-[#52525B] tracking-widest uppercase mb-4 flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full opacity-50" />
+                                    Horarios de Operación
+                                </h3>
+                                <div className="space-y-2">
+                                    <Toggle
+                                        label="Cerrar automáticamente fuera de horario"
+                                        active={logicConfig.businessHours.autoClose}
+                                        onChange={v => setLogicConfig({
+                                            ...logicConfig,
+                                            businessHours: { ...logicConfig.businessHours, autoClose: v }
+                                        })}
+                                    />
+                                    <div className="mt-3 space-y-1.5">
+                                        {logicConfig.businessHours.schedules.map((s, idx) => (
+                                            <div key={s.day} className="flex items-center gap-2 p-2 bg-black/20 rounded-lg">
+                                                <button
+                                                    onClick={() => {
+                                                        const updated = [...logicConfig.businessHours.schedules];
+                                                        updated[idx] = { ...updated[idx], enabled: !updated[idx].enabled };
+                                                        setLogicConfig({
+                                                            ...logicConfig,
+                                                            businessHours: { ...logicConfig.businessHours, schedules: updated }
+                                                        });
+                                                    }}
+                                                    className={`w-10 text-[9px] font-black ${s.enabled ? 'text-[#4ADE80]' : 'text-white/30'}`}
+                                                >
+                                                    {s.label}
+                                                </button>
+                                                {s.enabled ? (
+                                                    <>
+                                                        <input
+                                                            type="time"
+                                                            value={s.open}
+                                                            onChange={e => {
+                                                                const updated = [...logicConfig.businessHours.schedules];
+                                                                updated[idx] = { ...updated[idx], open: e.target.value };
+                                                                setLogicConfig({
+                                                                    ...logicConfig,
+                                                                    businessHours: { ...logicConfig.businessHours, schedules: updated }
+                                                                });
+                                                            }}
+                                                            className="flex-1 bg-black/30 border border-white/10 rounded px-2 py-1 text-[10px] text-white outline-none focus:border-[#4ADE80]/50"
+                                                        />
+                                                        <span className="text-white/20 text-[10px]">a</span>
+                                                        <input
+                                                            type="time"
+                                                            value={s.close}
+                                                            onChange={e => {
+                                                                const updated = [...logicConfig.businessHours.schedules];
+                                                                updated[idx] = { ...updated[idx], close: e.target.value };
+                                                                setLogicConfig({
+                                                                    ...logicConfig,
+                                                                    businessHours: { ...logicConfig.businessHours, schedules: updated }
+                                                                });
+                                                            }}
+                                                            className="flex-1 bg-black/30 border border-white/10 rounded px-2 py-1 text-[10px] text-white outline-none focus:border-[#4ADE80]/50"
+                                                        />
+                                                    </>
+                                                ) : (
+                                                    <span className="flex-1 text-[10px] text-white/20 text-center">Cerrado</span>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* 2. CANALES */}
                             <div className="bg-[#141714] border border-white/5 rounded-2xl p-4 shadow-xl">
                                 <h3 className="text-[10px] font-black text-[#52525B] tracking-widest uppercase mb-4 flex items-center gap-2">
@@ -1063,7 +1732,11 @@ const MenuDesign: React.FC = () => {
 
                                 <div className="space-y-3 lg:max-h-[calc(100vh-300px)] overflow-y-auto pr-2 custom-scrollbar">
                                     {items.map(item => (
-                                        <div key={item.id} className="bg-black/30 border border-white/5 rounded-xl p-3 hover:border-[#4ADE80]/30 transition-all group">
+                                        <div
+                                            key={item.id}
+                                            onClick={() => { setEditingId(item.id); setLinkType(null); }}
+                                            className="bg-black/30 border border-white/5 rounded-xl p-3 hover:border-[#4ADE80]/30 transition-all group cursor-pointer"
+                                        >
                                             <div className="flex items-start justify-between mb-3">
                                                 <div className="flex gap-3">
                                                     <div className="w-10 h-10 bg-white/5 rounded-lg overflow-hidden border border-white/10 group-hover:border-[#4ADE80]/50 transition-colors">
@@ -1083,7 +1756,7 @@ const MenuDesign: React.FC = () => {
                                                 <div className="flex items-center justify-between p-1.5 bg-white/5 rounded-lg border border-white/5">
                                                     <span className="text-[8px] font-medium text-white/60">Visible</span>
                                                     <button
-                                                        onClick={() => updateItem(item.id, { is_menu_visible: !item.is_menu_visible })}
+                                                        onClick={(e) => { e.stopPropagation(); updateItem(item.id, { is_menu_visible: !item.is_menu_visible }); }}
                                                         className={`w-6 h-3 rounded-full transition-colors relative ${item.is_menu_visible ? 'bg-[#4ADE80]' : 'bg-white/10'}`}
                                                     >
                                                         <div className={`absolute top-0.5 left-0.5 w-2 h-2 bg-white rounded-full transition-transform ${item.is_menu_visible ? 'translate-x-3' : ''}`} />
@@ -1092,13 +1765,13 @@ const MenuDesign: React.FC = () => {
 
                                                 <div className="grid grid-cols-2 gap-1.5">
                                                     <button
-                                                        onClick={() => { setEditingId(item.id); setLinkType('variant'); }}
+                                                        onClick={(e) => { e.stopPropagation(); setEditingId(item.id); setLinkType('variant'); }}
                                                         className={`py-1.5 rounded-lg border ${item.variants && item.variants.length > 0 ? 'bg-purple-500/10 border-purple-500/30 text-purple-400' : 'bg-white/5 border-white/10 text-white/40'} text-[8px] font-black uppercase tracking-widest hover:border-white/30 transition-all text-center`}
                                                     >
                                                         {item.variants?.length || 0} VAR
                                                     </button>
                                                     <button
-                                                        onClick={() => { setEditingId(item.id); setLinkType('addon'); }}
+                                                        onClick={(e) => { e.stopPropagation(); setEditingId(item.id); setLinkType('addon'); }}
                                                         className={`py-1.5 rounded-lg border ${item.addon_links && item.addon_links.length > 0 ? 'bg-orange-500/10 border-orange-500/30 text-orange-400' : 'bg-white/5 border-white/10 text-white/40'} text-[8px] font-black uppercase tracking-widest hover:border-white/30 transition-all text-center`}
                                                     >
                                                         {item.addon_links?.length || 0} EXT
@@ -1120,7 +1793,7 @@ const MenuDesign: React.FC = () => {
                         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-[#1A1C19] rounded-b-3xl z-50 pointer-events-none" />
 
                         {/* Content Wrapper for MenuRenderer */}
-                        <div className="flex-1 flex flex-col relative overflow-hidden bg-black">
+                        <div className="flex-1 flex flex-col relative overflow-y-auto overflow-x-hidden bg-black">
                             {previewTab === 'menu' && (
                                 <MenuRenderer
                                     theme={theme}
@@ -1168,49 +1841,49 @@ const MenuDesign: React.FC = () => {
                                     </div>
                                 </div>
                             )}
+                        </div>
 
-                            {/* Bottom Nav Simulation (Exact Replica) */}
-                            <div className="shrink-0 relative z-40">
-                                <nav className="absolute bottom-0 left-0 right-0 bg-black/90 backdrop-blur-2xl border-t border-white/5 pb-6 pt-2 px-8">
-                                    <div className="flex justify-between items-center h-16">
-                                        {[
-                                            { id: 'menu', icon: 'restaurant_menu', label: 'Menú' },
-                                            { id: 'club', icon: 'stars', label: 'Club' },
-                                            { id: 'profile', icon: 'person', label: 'Perfil' }
-                                        ].map((item) => {
-                                            const isActive = previewTab === item.id;
-                                            return (
-                                                <button
-                                                    key={item.id}
-                                                    onClick={() => setPreviewTab(item.id as any)}
-                                                    className="relative flex flex-col items-center justify-center gap-1 group transition-all duration-300"
-                                                    style={{ color: isActive ? theme.accentColor : '#64748b', transform: isActive ? 'scale(1.1)' : 'scale(1)' }}
-                                                >
+                        {/* Bottom Nav Simulation - OUTSIDE scroll container, ABSOLUTE positioned */}
+                        <div className="absolute bottom-0 left-0 right-0 z-40">
+                            <nav className="bg-black/95 backdrop-blur-2xl border-t border-white/5 pb-6 pt-2 px-8">
+                                <div className="flex justify-between items-center h-16">
+                                    {[
+                                        { id: 'menu', icon: 'restaurant_menu', label: 'Menú' },
+                                        { id: 'club', icon: 'stars', label: 'Club' },
+                                        { id: 'profile', icon: 'person', label: 'Perfil' }
+                                    ].map((item) => {
+                                        const isActive = previewTab === item.id;
+                                        return (
+                                            <button
+                                                key={item.id}
+                                                onClick={() => setPreviewTab(item.id as any)}
+                                                className="relative flex flex-col items-center justify-center gap-1 group transition-all duration-300"
+                                                style={{ color: isActive ? theme.accentColor : '#64748b', transform: isActive ? 'scale(1.1)' : 'scale(1)' }}
+                                            >
+                                                <div
+                                                    className="absolute inset-0 -mx-4 -my-1 rounded-2xl transition-all duration-500"
+                                                    style={{ backgroundColor: isActive ? `${theme.accentColor}10` : 'transparent', opacity: isActive ? 1 : 0 }}
+                                                />
+
+                                                <span className={`material-symbols-outlined transition-all duration-300 ${isActive ? 'fill-icon' : 'scale-90'}`}>
+                                                    {item.icon}
+                                                </span>
+
+                                                <span className={`text-[9px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${isActive ? 'opacity-100' : 'opacity-60'}`}>
+                                                    {item.label}
+                                                </span>
+
+                                                {isActive && (
                                                     <div
-                                                        className="absolute inset-0 -mx-4 -my-1 rounded-2xl transition-all duration-500"
-                                                        style={{ backgroundColor: isActive ? `${theme.accentColor}10` : 'transparent', opacity: isActive ? 1 : 0 }}
+                                                        className="absolute -top-3 left-1/2 -translate-x-1/2 w-4 h-[2px] rounded-full animate-in fade-in slide-in-from-top-1"
+                                                        style={{ backgroundColor: theme.accentColor, boxShadow: `0 0 12px ${theme.accentColor}` }}
                                                     />
-
-                                                    <span className={`material-symbols-outlined transition-all duration-300 ${isActive ? 'fill-icon' : 'scale-90'}`}>
-                                                        {item.icon}
-                                                    </span>
-
-                                                    <span className={`text-[9px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${isActive ? 'opacity-100' : 'opacity-60'}`}>
-                                                        {item.label}
-                                                    </span>
-
-                                                    {isActive && (
-                                                        <div
-                                                            className="absolute -top-3 left-1/2 -translate-x-1/2 w-4 h-[2px] rounded-full animate-in fade-in slide-in-from-top-1"
-                                                            style={{ backgroundColor: theme.accentColor, boxShadow: `0 0 12px ${theme.accentColor}` }}
-                                                        />
-                                                    )}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </nav>
-                            </div>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </nav>
                         </div>
                     </div>
                 </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useToast } from './ToastSystem';
+import { SupplierSelect } from './SupplierSelect';
 import type { InventoryItem, StorageLocation } from '../types';
 
 interface StockAdjustmentModalProps {
@@ -9,6 +10,7 @@ interface StockAdjustmentModalProps {
     item: InventoryItem;
     onSuccess: () => void;
     type: 'WASTE' | 'ADJUSTMENT' | 'PURCHASE';
+    initialQuantity?: number;
 }
 
 export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
@@ -16,7 +18,8 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
     onClose,
     item,
     onSuccess,
-    type
+    type,
+    initialQuantity
 }) => {
     const { addToast } = useToast();
     const [loading, setLoading] = useState(false);
@@ -24,9 +27,15 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
     const [stockLevels, setStockLevels] = useState<Record<string, number>>({});
 
     const [locationId, setLocationId] = useState('');
-    const [quantity, setQuantity] = useState('');
+    const [quantity, setQuantity] = useState(initialQuantity ? initialQuantity.toString() : '');
     const [reason, setReason] = useState('');
     const [notes, setNotes] = useState('');
+    const [adjustmentType, setAdjustmentType] = useState<'ADDR' | 'REMOVE'>('ADDR'); // Nuevo estado para tipo de ajuste
+
+    // New fields for enhanced audit
+    const [supplierId, setSupplierId] = useState<string | null>(null);
+    const [invoiceRef, setInvoiceRef] = useState('');
+    const [unitCost, setUnitCost] = useState('');
 
     const reasons = {
         WASTE: ['Vencimiento', 'Rotura/Daño', 'Preparación fallida', 'Robo/Faltante', 'Pérdida operativa', 'Otro'],
@@ -38,10 +47,14 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
         if (isOpen) {
             fetchLocationsAndStock();
             // Reset form
-            setQuantity('');
+            setQuantity(initialQuantity ? initialQuantity.toString() : '');
             setReason('');
             setNotes('');
             setLocationId('');
+            setSupplierId(item.last_supplier_id || null);
+            setInvoiceRef('');
+            setUnitCost(item.last_purchase_price?.toString() || '');
+            setAdjustmentType('ADDR'); // Reset default
         }
     }, [isOpen, item.id]);
 
@@ -51,9 +64,9 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
             const { data: locs } = await supabase.from('storage_locations').select('*').order('name');
             setLocations(locs || []);
 
-            const { data: levels } = await supabase.from('item_stock_levels').select('location_id, quantity').eq('inventory_item_id', item.id);
+            const { data: levels } = await supabase.from('inventory_location_stock').select('location_id, closed_units').eq('item_id', item.id);
             const levelsMap: Record<string, number> = {};
-            levels?.forEach((l: any) => { levelsMap[l.location_id] = Number(l.quantity); });
+            levels?.forEach((l: any) => { levelsMap[l.location_id] = Number(l.closed_units); });
             setStockLevels(levelsMap);
 
             if (locs && locs.length > 0) {
@@ -71,15 +84,43 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
             return;
         }
 
+        // Supplier required for purchases
+        if (type === 'PURCHASE' && !supplierId) {
+            addToast('Selecciona un proveedor para registrar la compra', 'error');
+            return;
+        }
+
         setLoading(true);
         try {
             const parsedQty = parseFloat(quantity);
+            const parsedCost = unitCost ? parseFloat(unitCost) : null;
             const { data: { user } } = await supabase.auth.getUser();
 
+            // Determine Source/Dest based on Operation Type
+            let fromLocation = null;
+            let toLocation = null;
+
+            if (type === 'PURCHASE') {
+                fromLocation = null; // Vendors are outside system
+                toLocation = locationId;
+            } else if (type === 'WASTE') {
+                fromLocation = locationId;
+                toLocation = null; // Waste disappears
+            } else if (type === 'ADJUSTMENT') {
+                if (adjustmentType === 'ADDR') {
+                    fromLocation = null; // Created from thin air / correction
+                    toLocation = locationId;
+                } else {
+                    fromLocation = locationId; // Removed from existence
+                    toLocation = null;
+                }
+            }
+
+            // Use transfer_stock RPC with extended params (Version 3 signature)
             const { data, error } = await supabase.rpc('transfer_stock', {
                 p_item_id: item.id,
-                p_from_location_id: type === 'PURCHASE' ? null : locationId,
-                p_to_location_id: type === 'PURCHASE' ? locationId : (type === 'ADJUSTMENT' ? locationId : null),
+                p_from_location_id: fromLocation,
+                p_to_location_id: toLocation,
                 p_quantity: parsedQty,
                 p_user_id: user?.id || '',
                 p_notes: notes,
@@ -90,6 +131,25 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
             if (error) throw error;
             const result = data as any;
             if (result?.success === false) throw new Error(result.error);
+
+            // Log to inventory_audit_logs for full traceability
+            const actionTypeMap: Record<string, string> = { PURCHASE: 'purchase', WASTE: 'loss', ADJUSTMENT: 'adjustment' };
+            const { error: logError } = await supabase.rpc('log_inventory_action' as any, {
+                p_item_id: item.id,
+                p_action_type: actionTypeMap[type],
+                p_quantity_delta: type === 'PURCHASE' ? parsedQty : -parsedQty,
+                p_reason: `${reason}${notes ? ': ' + notes : ''}`,
+                p_supplier_id: type === 'PURCHASE' ? supplierId : null,
+                p_location_from: type === 'PURCHASE' ? null : locationId,
+                p_location_to: type === 'PURCHASE' ? locationId : null,
+                p_source_ui: 'quick_action',
+                p_invoice_ref: type === 'PURCHASE' ? invoiceRef || null : null,
+                p_unit_cost: type === 'PURCHASE' ? parsedCost : null
+            });
+
+            if (logError) {
+                console.warn('Audit log failed (non-blocking):', logError);
+            }
 
             addToast(`✓ Movimiento registrado: ${type}`, 'success');
             onSuccess();
@@ -143,6 +203,30 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                         </select>
                     </div>
 
+                    {/* Selector de Tipo de Operación para Ajustes */}
+                    {type === 'ADJUSTMENT' && (
+                        <div className="flex gap-2 p-1 bg-white/5 rounded-xl">
+                            <button
+                                onClick={() => setAdjustmentType('ADDR')}
+                                className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${adjustmentType === 'ADDR'
+                                    ? 'bg-neon/20 text-neon border border-neon/50'
+                                    : 'text-white/40 hover:bg-white/5'
+                                    }`}
+                            >
+                                <span className="mr-1">+</span> Agregar Stock
+                            </button>
+                            <button
+                                onClick={() => setAdjustmentType('REMOVE')}
+                                className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${adjustmentType === 'REMOVE'
+                                    ? 'bg-red-500/20 text-red-500 border border-red-500/50'
+                                    : 'text-white/40 hover:bg-white/5'
+                                    }`}
+                            >
+                                <span className="mr-1">-</span> Quitar Stock
+                            </button>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-2 gap-4">
                         {/* Quantity */}
                         <div className="space-y-2">
@@ -184,12 +268,58 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                             className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-[10px] font-bold text-white uppercase tracking-widest outline-none focus:border-neon transition-all"
                         />
                     </div>
+
+                    {/* Purchase-specific fields */}
+                    {type === 'PURCHASE' && (
+                        <>
+                            {/* Supplier */}
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">
+                                    Proveedor <span className="text-red-500">*</span>
+                                </label>
+                                <SupplierSelect
+                                    value={supplierId}
+                                    onChange={(id) => setSupplierId(id)}
+                                    required={true}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                {/* Unit Cost */}
+                                <div className="space-y-2">
+                                    <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Costo Unit.</label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/20">$</span>
+                                        <input
+                                            type="number"
+                                            value={unitCost}
+                                            onChange={(e) => setUnitCost(e.target.value)}
+                                            placeholder="0"
+                                            className="w-full bg-black border border-white/10 rounded-xl pl-8 pr-4 py-3 text-xs font-black text-white italic-black outline-none focus:border-neon transition-all"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Invoice Ref */}
+                                <div className="space-y-2">
+                                    <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Factura</label>
+                                    <input
+                                        type="text"
+                                        value={invoiceRef}
+                                        onChange={(e) => setInvoiceRef(e.target.value)}
+                                        placeholder="Opcional"
+                                        className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-[10px] font-bold text-white uppercase tracking-widest outline-none focus:border-neon transition-all"
+                                    />
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 <div className="p-6 bg-white/[0.02] border-t border-white/5">
                     <button
                         onClick={handleConfirm}
-                        disabled={loading || !quantity || !reason || !locationId}
+                        disabled={loading || !quantity || !reason || !locationId || (type === 'PURCHASE' && !supplierId)}
                         className={`w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all shadow-xl shadow-neon/5 active:scale-95 disabled:opacity-50 ${type === 'WASTE' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
                             type === 'PURCHASE' ? 'bg-neon text-black' :
                                 'bg-orange-500 text-black'

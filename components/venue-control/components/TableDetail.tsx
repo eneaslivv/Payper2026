@@ -24,6 +24,7 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'qr'>('card');
   const [isProcessing, setIsProcessing] = useState(false);
   const [qrHash, setQrHash] = useState<string | null>(null);
+  const [qrStats, setQrStats] = useState<{ scan_count: number; last_scanned_at: string | null; is_active: boolean } | null>(null);
   const [loadingQr, setLoadingQr] = useState(false);
   const [pax, setPax] = useState(2); // Default 2 people
   const [customerName, setCustomerName] = useState('');
@@ -63,6 +64,46 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
 
+  // Multi-Order State
+  const [activeOrdersList, setActiveOrdersList] = useState<any[]>([]);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(table.activeOrderId || null);
+
+  // Fetch all active orders for this table
+  const fetchActiveOrders = async () => {
+    if (!profile?.store_id || !table.id) return;
+    try {
+      const { data } = await supabase
+        .from('orders' as any)
+        .select('id, order_number, total_amount, status, created_at, customer_name')
+        .eq('store_id', profile.store_id)
+        .eq('node_id', table.id)
+        .in('status', ['pending', 'preparing', 'in_progress', 'bill_requested'])
+        .order('created_at', { ascending: false });
+
+      if (data) {
+        setActiveOrdersList(data);
+        // If selectedOrderId is not in the list (or null), select the newest one
+        if (!selectedOrderId || !data.find(o => o.id === selectedOrderId)) {
+          if (data.length > 0) setSelectedOrderId(data[0].id);
+          else setSelectedOrderId(null);
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching active orders:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchActiveOrders();
+    // Subscribe to new orders for this table
+    const channel = supabase.channel(`table-orders-${table.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `node_id=eq.${table.id}` },
+        () => fetchActiveOrders()
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [table.id]);
+
   // Add Order State
   const [products, setProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
@@ -74,9 +115,9 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
   const [historyOrders, setHistoryOrders] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Fetch Items when activeOrderId changes
+  // Fetch Items when selectedOrderId changes
   useEffect(() => {
-    if (!table.activeOrderId) {
+    if (!selectedOrderId) {
       setOrderItems([]);
       return;
     }
@@ -86,7 +127,7 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
       const { data } = await supabase
         .from('order_items' as any)
         .select('*')
-        .eq('order_id', table.activeOrderId);
+        .eq('order_id', selectedOrderId);
       if (data) setOrderItems(data);
       setIsLoadingItems(false);
     };
@@ -94,15 +135,15 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
     fetchItems();
 
     // Subscribe to item updates
-    const channel = supabase.channel(`order-${table.activeOrderId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items', filter: `order_id=eq.${table.activeOrderId}` },
+    const channel = supabase.channel(`order-${selectedOrderId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items', filter: `order_id=eq.${selectedOrderId}` },
         () => fetchItems()
       )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
 
-  }, [table.activeOrderId]);
+  }, [selectedOrderId]);
 
   // Fetch products when addOrder view opens
   const fetchProducts = async () => {
@@ -132,16 +173,17 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
   const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
 
   // Add item to active order
+  // Add item to active order
   const handleAddItem = async (product: any) => {
-    if (!table.activeOrderId || !profile?.store_id) {
-      addToast('No hay orden activa', 'error');
+    if (!selectedOrderId || !profile?.store_id) {
+      addToast('No hay orden seleccionada', 'error');
       return;
     }
 
     setAddingItemId(product.id);
     try {
       const { error } = await supabase.from('order_items' as any).insert({
-        order_id: table.activeOrderId,
+        order_id: selectedOrderId,
         product_id: product.id,
         price_at_time: product.base_price || product.price || 0,
         quantity: 1,
@@ -226,12 +268,14 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
   const activeOrders = orderItems.filter(o => o.status !== 'delivered');
   const deliveredOrders = orderItems.filter(o => o.status === 'delivered');
 
-  const subtotal = table.totalAmount;
-  const serviceCharge = subtotal * 0.1;
-  const total = subtotal + serviceCharge;
+  const subtotal = table.totalAmount; // This might be aggregate from view, but we are paying specific order.
+  // Actually, we should calculate subtotal from orderItems of SELECTED order
+  const currentOrderTotal = orderItems.reduce((sum, item) => sum + ((item.quantity * item.price_at_time) || 0), 0);
+  const currentServiceCharge = currentOrderTotal * 0.1;
+  const currentTotal = currentOrderTotal + currentServiceCharge;
 
   const handleProcessPayment = async () => {
-    if (!table.activeOrderId) return;
+    if (!selectedOrderId) return;
     setIsProcessing(true);
 
     try {
@@ -243,9 +287,12 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
           payment_method: paymentMethod,
           paid_at: new Date().toISOString()
         })
-        .eq('id', table.activeOrderId);
+        .eq('id', selectedOrderId);
 
       if (error) throw error;
+
+      // ALSO UPDATE NODE TO FREE (Fixes "Timer continues" issue)
+      await onUpdateStatus(table.id, 'free');
 
       addToast('Pago Procesado', 'success');
       onClose();
@@ -266,14 +313,18 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
     }
 
     // Force close (Cancel order?)
-    if (!table.activeOrderId) return;
+    if (!selectedOrderId) return;
     try {
       const { error } = await supabase
         .from('orders' as any)
         .update({ status: 'cancelled' })
-        .eq('id', table.activeOrderId);
+        .eq('id', selectedOrderId);
 
       if (error) throw error;
+
+      // ALSO UPDATE NODE TO FREE
+      await onUpdateStatus(table.id, 'free');
+
       addToast('Mesa Cerrada', 'info');
       onClose();
     } catch (e) {
@@ -292,41 +343,44 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
     setView('qr');
 
     try {
-      // Generate hash
-      const newHash = btoa(`${profile.store_id}-${table.id}-${Date.now()}`).replace(/[^a-zA-Z0-9]/g, '').substring(0, 12);
+      // First try to fetch from new qr_codes table
+      const { data: existingQR, error: fetchError } = await supabase
+        .from('qr_codes' as any)
+        .select('id, code_hash, scan_count, last_scanned_at, is_active')
+        .eq('store_id', profile.store_id)
+        .eq('table_id', table.id)
+        .maybeSingle();
 
-      // Upsert: insert or update if exists
-      const { data, error: upsertError } = await supabase
-        .from('qr_links' as any)
-        .upsert({
-          store_id: profile.store_id,
-          target_node_id: table.id,
-          code_hash: newHash,
-          target_type: 'table',
-          is_active: true
-        }, {
-          onConflict: 'store_id,target_node_id',
-          ignoreDuplicates: false
-        })
-        .select('code_hash')
-        .single();
-
-      if (upsertError) {
-        // If upsert fails, try to fetch existing
-        const { data: existing } = await supabase
-          .from('qr_links' as any)
-          .select('code_hash')
-          .eq('store_id', profile.store_id)
-          .eq('target_node_id', table.id)
-          .maybeSingle();
-
-        if (existing) {
-          setQrHash((existing as any).code_hash);
-        } else {
-          throw upsertError;
-        }
+      if (existingQR) {
+        // QR exists - use it and show stats
+        setQrHash((existingQR as any).code_hash);
+        setQrStats({
+          scan_count: (existingQR as any).scan_count || 0,
+          last_scanned_at: (existingQR as any).last_scanned_at,
+          is_active: (existingQR as any).is_active
+        });
       } else {
-        setQrHash((data as any).code_hash);
+        // Create new QR in qr_codes table
+        const newHash = btoa(`${profile.store_id}-${table.id}-${Date.now()}`)
+          .replace(/[^a-zA-Z0-9]/g, '')
+          .substring(0, 12);
+
+        const { data: newQR, error: insertError } = await supabase
+          .from('qr_codes' as any)
+          .insert({
+            store_id: profile.store_id,
+            qr_type: 'table',
+            table_id: table.id,
+            code_hash: newHash,
+            label: table.name,
+            is_active: true
+          })
+          .select('code_hash')
+          .single();
+
+        if (insertError) throw insertError;
+        setQrHash((newQR as any).code_hash);
+        setQrStats({ scan_count: 0, last_scanned_at: null, is_active: true });
       }
     } catch (e: any) {
       console.error('QR Error:', e);
@@ -521,15 +575,15 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
           <div className="space-y-4">
             <div className="flex justify-between items-end border-b border-zinc-900/50 pb-4">
               <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Subtotal Consumo</span>
-              <span className="text-xl font-black text-white italic tabular-nums">${subtotal.toLocaleString()}</span>
+              <span className="text-xl font-black text-white italic tabular-nums">${currentOrderTotal.toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-end border-b border-zinc-900/50 pb-4">
               <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Servicio (10%)</span>
-              <span className="text-xl font-black text-white italic tabular-nums">${serviceCharge.toLocaleString()}</span>
+              <span className="text-xl font-black text-white italic tabular-nums">${currentServiceCharge.toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center pt-2">
               <span className="text-[10px] font-black text-[#36e27b] uppercase tracking-[0.3em]">Total a Cobrar</span>
-              <span className="text-4xl font-black text-[#36e27b] tracking-tighter tabular-nums italic">${total.toLocaleString()}</span>
+              <span className="text-4xl font-black text-[#36e27b] tracking-tighter tabular-nums italic">${currentTotal.toLocaleString()}</span>
             </div>
           </div>
 
@@ -733,6 +787,30 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
                 )}
               </div>
 
+              {/* QR STATS */}
+              {qrStats && (
+                <div className="grid grid-cols-3 gap-3 w-full max-w-[320px]">
+                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 text-center">
+                    <p className="text-xl font-black text-white tabular-nums">{qrStats.scan_count}</p>
+                    <p className="text-[7px] font-black uppercase tracking-widest text-zinc-500">Escaneos</p>
+                  </div>
+                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 text-center">
+                    <p className="text-xs font-bold text-white">
+                      {qrStats.last_scanned_at
+                        ? new Date(qrStats.last_scanned_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })
+                        : 'Nunca'}
+                    </p>
+                    <p className="text-[7px] font-black uppercase tracking-widest text-zinc-500">Último</p>
+                  </div>
+                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 text-center">
+                    <div className={`w-3 h-3 rounded-full mx-auto mb-1 ${qrStats.is_active ? 'bg-[#36e27b]' : 'bg-rose-500'}`} />
+                    <p className="text-[7px] font-black uppercase tracking-widest text-zinc-500">
+                      {qrStats.is_active ? 'Activo' : 'Inactivo'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <p className="text-zinc-500 text-[9px] font-black uppercase tracking-[0.2em]">Enlace Permanente</p>
                 <div className="p-3 bg-zinc-900 rounded-xl border border-zinc-800 text-[9px] font-mono text-zinc-400 break-all max-w-[280px]">
@@ -820,6 +898,21 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
             <X size={18} />
           </button>
         </div>
+
+        {/* MULTIPLE ORDERS SELECTOR */}
+        {activeOrdersList.length > 1 && (
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+            {activeOrdersList.map(order => (
+              <button
+                key={order.id}
+                onClick={() => setSelectedOrderId(order.id)}
+                className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all whitespace-nowrap flex-shrink-0 ${selectedOrderId === order.id ? 'bg-[#36e27b] text-black border-[#36e27b]' : 'bg-black text-zinc-500 border-zinc-900 hover:border-zinc-700'}`}
+              >
+                #{order.order_number || order.id.slice(0, 4)} • ${order.total_amount?.toLocaleString()}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="flex bg-black p-1 rounded-2xl border border-zinc-900">
           {[

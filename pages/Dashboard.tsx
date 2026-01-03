@@ -109,7 +109,7 @@ const Dashboard: React.FC = () => {
         return;
       }
       const ai = new GoogleGenerativeAI(apiKey);
-      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
       const prompt = "Analiza KPIs de cafetería: Facturación $" + metrics.revenue + ", " + metrics.ordersCount + " pedidos. Ticket $" + metrics.avgTicket + ". Dame un briefing táctico corto.";
       const result = await model.generateContent(prompt);
       const response = await result.response;

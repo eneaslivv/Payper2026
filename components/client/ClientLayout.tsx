@@ -7,7 +7,7 @@ import ActiveOrderWidget from './ActiveOrderWidget';
 import { AuthPromptModal } from '../AuthPromptModal';
 
 const ClientLayoutContent: React.FC = () => {
-    const { store, loadingStore, error, hasActiveOrder, isHubOpen, setIsHubOpen, showAuthModal, setShowAuthModal, activeOrderId, orderStatus, activeOrders } = useClient();
+    const { store, loadingStore, error, hasActiveOrder, isHubOpen, setIsHubOpen, showAuthModal, setShowAuthModal, activeOrderId, orderStatus, activeOrders, tableLabel } = useClient();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -59,7 +59,7 @@ const ClientLayoutContent: React.FC = () => {
                     status={orderStatus || 'received'}
                     isHubOpen={isHubOpen}
                     setIsHubOpen={setIsHubOpen}
-                    tableNumber="05"
+                    tableNumber={tableLabel}
                     accentColor={accentColor}
                     activeOrderId={activeOrderId}
                     activeOrders={activeOrders}

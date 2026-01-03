@@ -153,10 +153,12 @@ const OrderBoard: React.FC = () => {
 
       // Payment Filter: Hide Unpaid MercadoPago Orders
       // If provider is 'mercadopago' and it's NOT paid, hide it completely.
+      /*
       const isMP = (o as any).payment_provider === 'mercadopago' || (o as any).payment_method === 'mercadopago';
       const isPaid = (o as any).is_paid === true || (o as any).payment_status === 'approved' || (o as any).payment_status === 'paid';
 
       if (isMP && !isPaid) return false;
+      */
 
       return matchesSearch && matchesStatus;
     });

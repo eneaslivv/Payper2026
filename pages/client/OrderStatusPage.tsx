@@ -39,9 +39,15 @@ export default function OrderStatusPage() {
         console.log("⚡ Triggering Active Payment Verification...");
 
         try {
-            const { data, error } = await supabase.functions.invoke('verify-payment-status', {
-                body: { order_id: oid }
+            // Updated to use Vercel Serverless Function instead of Edge Function
+            const res = await fetch('/api/verify-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_id: oid })
             });
+            const data = await res.json();
+
+            if (!res.ok) throw new Error(data.error || 'Verification failed');
 
             if (error) throw error;
 

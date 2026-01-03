@@ -281,6 +281,11 @@ export interface InventoryItem {
   is_promo?: boolean;
   sort_order?: number;
   variants?: ProductVariant[];
+  // Phase 4 & Locations fields
+  last_supplier_id?: string | null;
+  last_purchase_price?: number | null;
+  package_size?: number;
+  unit_size?: number; // Legacy or Alias
   // Consolidated relationships
   addon_links?: ProductAddon[];
   combo_links?: { id: string, component_item_id: string, quantity: number }[];

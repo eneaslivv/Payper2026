@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 };
 
 serve(async (req) => {
@@ -12,11 +13,11 @@ serve(async (req) => {
         return new Response('ok', { headers: corsHeaders });
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
     try {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
         const { order_id } = await req.json();
 
         if (!order_id) {
@@ -98,6 +99,7 @@ serve(async (req) => {
 
         console.log(`[Verify] Found Payment ID: ${payment.id}, Status: ${payment.status}`);
 
+        // CALL RPC TO UPDATE ORDER
         const { data: verifyResult, error: verifyError } = await supabase.rpc('verify_payment', {
             p_mp_payment_id: payment.id.toString(),
             p_order_id: order_id,
@@ -111,6 +113,7 @@ serve(async (req) => {
         });
 
         if (verifyError) {
+            console.error('[RPC Error]', verifyError);
             throw verifyError;
         }
 
