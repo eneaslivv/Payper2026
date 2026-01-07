@@ -225,6 +225,29 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose }) => {
                 }
             }
 
+            // --- ENRICH ITEMS WITH PRODUCT NAMES ---
+            if (data.order_items && data.order_items.length > 0) {
+                const productIds = data.order_items.map((i: any) => i.product_id).filter(Boolean);
+
+                if (productIds.length > 0) {
+                    // Fetch from both tables to be safe
+                    const [productsRes, inventoryRes] = await Promise.all([
+                        supabase.from('products').select('id, name').in('id', productIds),
+                        supabase.from('inventory_items').select('id, name').in('id', productIds)
+                    ]);
+
+                    const productMap = new Map();
+                    productsRes.data?.forEach((p: any) => productMap.set(p.id, p.name));
+                    inventoryRes.data?.forEach((p: any) => productMap.set(p.id, p.name));
+
+                    // Attach names
+                    data.order_items = data.order_items.map((item: any) => ({
+                        ...item,
+                        enriched_name: productMap.get(item.product_id) || item.name || 'Producto desconocido'
+                    }));
+                }
+            }
+
             // Check current store ownership
             if (profile?.store_id && data.store_id !== profile.store_id) {
                 console.warn("⛔ Store Mismatch:", data.store_id, profile.store_id);
@@ -538,7 +561,7 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose }) => {
                                             <div className="flex items-center gap-2 flex-1">
                                                 <span className="size-5 rounded bg-white/10 flex items-center justify-center text-[10px] font-black text-white">{item.quantity}</span>
                                                 <span className="text-white/80 font-medium text-xs truncate max-w-[180px]">
-                                                    {item.name || 'Producto desconocido'}
+                                                    {(item as any).enriched_name || item.name || 'Producto desconocido'}
                                                 </span>
                                             </div>
                                         </div>

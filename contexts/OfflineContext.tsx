@@ -61,7 +61,9 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
               payment_provider,
               is_paid,
               order_number, 
-              table_number, 
+              table_number,
+              archived_at,
+              dispatch_station,
               client:clients(name, email), 
               items, 
               order_items(
@@ -112,6 +114,9 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
               payment_status: ro.payment_status,
               is_paid: ro.is_paid,
               order_number: ro.order_number,
+              table_number: ro.table_number,
+              archived_at: ro.archived_at,
+              dispatch_station: ro.dispatch_station,
               created_at: ro.created_at,
               syncStatus: 'synced',
               lastModified: new Date(ro.created_at).getTime()

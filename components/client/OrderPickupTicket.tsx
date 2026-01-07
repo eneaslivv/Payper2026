@@ -19,10 +19,23 @@ interface OrderPickupTicketProps {
         }>;
     };
     storeSlug?: string;
+    theme?: {
+        backgroundColor?: string;
+        textColor?: string;
+        accentColor?: string;
+        surfaceColor?: string;
+    };
 }
 
-export const OrderPickupTicket = ({ order, storeSlug }: OrderPickupTicketProps) => {
+export const OrderPickupTicket = ({ order, storeSlug, theme }: OrderPickupTicketProps) => {
     const isDelivered = order.delivery_status === 'delivered' || order.delivery_status === 'burned';
+
+    const backgroundColor = theme?.backgroundColor || '#000000';
+    const textColor = theme?.textColor || '#FFFFFF';
+    const accentColor = theme?.accentColor || '#36e27b';
+    // surfaceColor fallback logic
+    const isLight = backgroundColor.toLowerCase() === '#ffffff' || backgroundColor.toLowerCase() === '#fff';
+    const surfaceColor = theme?.surfaceColor || (isLight ? '#f4f4f5' : '#141714');
 
     // Timer Logic
     const [timeLeft, setTimeLeft] = useState({ minutes: 5, seconds: 0 });
@@ -66,40 +79,40 @@ export const OrderPickupTicket = ({ order, storeSlug }: OrderPickupTicketProps) 
 
     if (isDelivered) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen text-center p-8 bg-black relative overflow-hidden animate-in fade-in duration-1000">
+            <div className="flex flex-col items-center justify-center min-h-screen text-center p-8 relative overflow-hidden animate-in fade-in duration-1000" style={{ backgroundColor, color: textColor }}>
                 {/* Background Decorations 🎨 */}
-                <div className="absolute top-[-10%] left-[-20%] w-[60%] h-[40%] bg-[#36e27b]/10 blur-[120px] rounded-full" />
-                <div className="absolute bottom-[-10%] right-[-20%] w-[60%] h-[40%] bg-[#36e27b]/10 blur-[120px] rounded-full" />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(54,226,123,0.05)_0%,transparent_70%)]" />
+                <div className="absolute top-[-10%] left-[-20%] w-[60%] h-[40%] blur-[120px] rounded-full" style={{ backgroundColor: `${accentColor}1A` }} />
+                <div className="absolute bottom-[-10%] right-[-20%] w-[60%] h-[40%] blur-[120px] rounded-full" style={{ backgroundColor: `${accentColor}1A` }} />
+                <div className="absolute inset-0" style={{ background: `radial-gradient(circle at center, ${accentColor}0D 0%, transparent 70%)` }} />
 
                 {/* Main Success Icon 🏆 */}
                 <div className="relative mb-12 z-10">
-                    <div className="absolute inset-0 bg-[#36e27b] blur-[60px] rounded-full opacity-20 animate-pulse" />
-                    <div className="relative w-32 h-32 rounded-[2.5rem] bg-gradient-to-br from-[#111] to-black border border-white/10 flex items-center justify-center shadow-2xl rotate-3">
+                    <div className="absolute inset-0 blur-[60px] rounded-full opacity-20 animate-pulse" style={{ backgroundColor: accentColor }} />
+                    <div className="relative w-32 h-32 rounded-[2.5rem] border flex items-center justify-center shadow-2xl rotate-3" style={{ backgroundColor: surfaceColor, borderColor: `${textColor}1A` }}>
                         <div className="absolute inset-px rounded-[2.4rem] bg-gradient-to-br from-white/5 to-transparent" />
-                        <span className="material-symbols-outlined text-7xl text-[#36e27b] drop-shadow-[0_0_15px_rgba(54,226,123,0.5)] animate-in zoom-in duration-700 delay-300">verified</span>
+                        <span className="material-symbols-outlined text-7xl drop-shadow-[0_0_15px_rgba(54,226,123,0.5)] animate-in zoom-in duration-700 delay-300" style={{ color: accentColor }}>verified</span>
                     </div>
                 </div>
 
                 {/* Text Content 📝 */}
                 <div className="relative z-10 mb-16">
-                    <h2 className="text-5xl font-black text-white italic uppercase tracking-[-0.05em] mb-4 leading-[0.85]">
+                    <h2 className="text-5xl font-black italic uppercase tracking-[-0.05em] mb-4 leading-[0.85]" style={{ color: textColor }}>
                         ¡DISFRUTA<br />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#36e27b] to-white"
-                            style={{ textShadow: '0 0 30px rgba(54,226,123,0.3)' }}>
+                            style={{ backgroundImage: `linear-gradient(to right, ${accentColor}, ${textColor})`, textShadow: `0 0 30px ${accentColor}4D` }}>
                             TU CAFÉ!
                         </span>
                     </h2>
                     <div className="flex items-center justify-center gap-2 mb-2">
                         <div className="h-px w-8 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-                        <p className="text-gray-400 font-black uppercase tracking-[0.3em] text-[10px]">Pedido Finalizado</p>
+                        <p className="font-black uppercase tracking-[0.3em] text-[10px]" style={{ color: `${textColor}99` }}>Pedido Finalizado</p>
                         <div className="h-px w-8 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
                     </div>
                 </div>
 
                 {/* Action Button 🚀 */}
                 <div className="relative z-10 w-full max-w-[280px]">
-                    <div className="absolute inset-0 bg-[#36e27b]/20 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute inset-0 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: `${accentColor}33` }} />
                     <button
                         onClick={() => {
                             if (storeSlug) {
@@ -110,16 +123,18 @@ export const OrderPickupTicket = ({ order, storeSlug }: OrderPickupTicketProps) 
                                 window.location.hash = currentHash.split('/order/')[0];
                             }
                         }}
-                        className="group relative w-full py-5 bg-[#36e27b] text-black rounded-[2rem] overflow-hidden active:scale-[0.97] transition-all shadow-[0_20px_40px_rgba(54,226,123,0.25)] flex items-center justify-center gap-3"
+                        className="group relative w-full py-5 text-black rounded-[2rem] overflow-hidden active:scale-[0.97] transition-all shadow-xl flex items-center justify-center gap-3"
+                        style={{ backgroundColor: accentColor, boxShadow: `0 20px 40px ${accentColor}40` }}
                     >
                         <div className="absolute inset-0 bg-white/30 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
-                        <span className="relative text-xs font-black uppercase tracking-[0.15em] italic">Pedir algo más</span>
-                        <span className="material-symbols-outlined relative text-xl font-black group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                        <span className="relative text-xs font-black uppercase tracking-[0.15em] italic" style={{ color: '#000' }}>Pedir algo más</span>
+                        <span className="material-symbols-outlined relative text-xl font-black group-hover:translate-x-1 transition-transform" style={{ color: '#000' }}>arrow_forward</span>
                     </button>
 
                     <button
                         onClick={() => window.location.reload()}
-                        className="mt-6 w-full py-4 text-white/30 hover:text-white/60 text-[10px] font-black uppercase tracking-[0.4em] transition-all"
+                        className="mt-6 w-full py-4 text-[10px] font-black uppercase tracking-[0.4em] transition-all"
+                        style={{ color: `${textColor}4D` }}
                     >
                         Ver Detalle del Ticket
                     </button>
@@ -127,8 +142,8 @@ export const OrderPickupTicket = ({ order, storeSlug }: OrderPickupTicketProps) 
 
                 {/* Bottom Brand Detail */}
                 <div className="absolute bottom-12 flex flex-col items-center gap-2 opacity-20">
-                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-white">Coffee Squad</p>
-                    <div className="h-1 w-1 rounded-full bg-[#36e27b]" />
+                    <p className="text-[10px] font-black uppercase tracking-[0.5em]" style={{ color: textColor }}>Coffee Squad</p>
+                    <div className="h-1 w-1 rounded-full" style={{ backgroundColor: accentColor }} />
                 </div>
             </div>
         );
@@ -174,25 +189,26 @@ export const OrderPickupTicket = ({ order, storeSlug }: OrderPickupTicketProps) 
     };
 
     const currentStatus = statusConfig[order.delivery_status] || statusConfig.pending;
-    const accentColor = currentStatus.color;
+    // Status color overrides theme accent color for the status logic specifically
+    const statusColor = currentStatus.color;
 
     return (
-        <div className="w-full max-w-sm mx-auto flex flex-col items-center relative min-h-screen bg-black text-white font-sans selection:bg-[#36e27b] selection:text-black pt-8">
+        <div className="w-full max-w-sm mx-auto flex flex-col items-center relative min-h-screen font-sans pt-8 transition-colors duration-500" style={{ backgroundColor, color: textColor }}>
 
             {/* Header / Order Status */}
             <div className="flex flex-col items-center mb-10 z-10 w-full px-6">
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 mb-6 backdrop-blur-md"
-                    style={{ borderColor: `${accentColor}40`, backgroundColor: `${accentColor}10` }}>
-                    <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: accentColor, boxShadow: `0 0 8px ${accentColor}` }} />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: accentColor }}>
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border mb-6 backdrop-blur-md"
+                    style={{ borderColor: `${statusColor}40`, backgroundColor: `${statusColor}10` }}>
+                    <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: statusColor, boxShadow: `0 0 8px ${statusColor}` }} />
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: statusColor }}>
                         {currentStatus.label} {' • '} Est. {estimatedMinutes} min
                     </span>
                 </div>
 
-                <h1 className="text-4xl font-black italic uppercase tracking-tighter text-center leading-[0.9] mb-1">
+                <h1 className="text-4xl font-black italic uppercase tracking-tighter text-center leading-[0.9] mb-1" style={{ color: textColor }}>
                     {currentStatus.title[0]}<br />
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400"
-                        style={{ backgroundImage: `linear-gradient(to right, white, ${accentColor})` }}>
+                    <span className="text-transparent bg-clip-text"
+                        style={{ backgroundImage: `linear-gradient(to right, ${textColor}, ${statusColor})` }}>
                         {currentStatus.title[1]}
                     </span>
                 </h1>
@@ -206,12 +222,16 @@ export const OrderPickupTicket = ({ order, storeSlug }: OrderPickupTicketProps) 
                         return (
                             <div key={s} className="flex-1 flex flex-col gap-2">
                                 <div
-                                    className={`h-1.5 rounded-full transition-all duration-700 ${isActive ? 'shadow-2xl' : 'bg-white/10'}`}
-                                    style={isActive ? { backgroundColor: accentColor, boxShadow: `0 0 15px ${accentColor}` } : {}}
+                                    className={`h-1.5 rounded-full transition-all duration-700 ${isActive ? 'shadow-2xl' : ''}`}
+                                    style={isActive
+                                        ? { backgroundColor: statusColor, boxShadow: `0 0 15px ${statusColor}` }
+                                        : { backgroundColor: `${textColor}1A` }}
                                 ></div>
                                 <span
-                                    className={`text-[9px] font-black uppercase tracking-[0.2em] text-center transition-colors duration-500 ${isActive ? '' : 'text-slate-800'}`}
-                                    style={isActive ? { color: accentColor, textShadow: isCurrent ? `0 0 8px ${accentColor}40` : 'none' } : {}}
+                                    className={`text-[9px] font-black uppercase tracking-[0.2em] text-center transition-colors duration-500`}
+                                    style={isActive
+                                        ? { color: statusColor, textShadow: isCurrent ? `0 0 8px ${statusColor}40` : 'none' }
+                                        : { color: `${textColor}40` }}
                                 >
                                     {s}
                                 </span>
@@ -225,25 +245,25 @@ export const OrderPickupTicket = ({ order, storeSlug }: OrderPickupTicketProps) 
             <div className="flex items-center gap-4 mb-12">
                 {timeLeft.minutes === 0 && timeLeft.seconds === 0 ? (
                     <div className="flex flex-col items-center animate-pulse">
-                        <span className="material-symbols-outlined text-5xl text-[#36e27b] mb-2">hourglass_top</span>
-                        <p className="text-sm font-bold text-gray-400 uppercase tracking-widest text-center">
+                        <span className="material-symbols-outlined text-5xl mb-2" style={{ color: statusColor }}>hourglass_top</span>
+                        <p className="text-sm font-bold uppercase tracking-widest text-center" style={{ color: `${textColor}66` }}>
                             Ultimando<br />Detalles
                         </p>
                     </div>
                 ) : (
                     <>
                         <div className="text-center">
-                            <span className="text-6xl font-black italic tracking-tighter leading-none" style={{ textShadow: '0 0 20px rgba(54,226,123,0.3)' }}>
+                            <span className="text-6xl font-black italic tracking-tighter leading-none" style={{ color: textColor, textShadow: `0 0 20px ${statusColor}33` }}>
                                 {String(timeLeft.minutes).padStart(2, '0')}
                             </span>
-                            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-500 mt-2">Minutos</p>
+                            <p className="text-[10px] font-black uppercase tracking-[0.4em] mt-2" style={{ color: `${textColor}66` }}>Minutos</p>
                         </div>
-                        <span className="text-4xl font-black text-gray-700 -mt-6">:</span>
+                        <span className="text-4xl font-black -mt-6" style={{ color: `${textColor}40` }}>:</span>
                         <div className="text-center">
-                            <span className="text-6xl font-black italic tracking-tighter leading-none text-[#36e27b]" style={{ textShadow: '0 0 20px rgba(54,226,123,0.5)' }}>
+                            <span className="text-6xl font-black italic tracking-tighter leading-none" style={{ color: statusColor, textShadow: `0 0 20px ${statusColor}80` }}>
                                 {String(timeLeft.seconds).padStart(2, '0')}
                             </span>
-                            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-500 mt-2">Segundos</p>
+                            <p className="text-[10px] font-black uppercase tracking-[0.4em] mt-2" style={{ color: `${textColor}66` }}>Segundos</p>
                         </div>
                     </>
                 )}
@@ -251,9 +271,9 @@ export const OrderPickupTicket = ({ order, storeSlug }: OrderPickupTicketProps) 
 
             {/* QR Card */}
             <div className="relative group w-full px-6 mb-8">
-                <div className="absolute inset-0 bg-gradient-to-b from-[#36e27b]/20 to-transparent rounded-[2.5rem] blur-xl opacity-50 group-hover:opacity-75 transition-opacity" />
-                <div className="relative bg-[#111] border border-white/10 rounded-[2.5rem] p-8 flex flex-col items-center shadow-2xl overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#36e27b] to-transparent opacity-50" />
+                <div className="absolute inset-0 rounded-[2.5rem] blur-xl opacity-50 group-hover:opacity-75 transition-opacity" style={{ background: `linear-gradient(to bottom, ${statusColor}33, transparent)` }} />
+                <div className="relative border rounded-[2.5rem] p-8 flex flex-col items-center shadow-2xl overflow-hidden" style={{ backgroundColor: surfaceColor, borderColor: `${textColor}1A` }}>
+                    <div className="absolute top-0 left-0 w-full h-1 opacity-50" style={{ background: `linear-gradient(to right, transparent, ${statusColor}, transparent)` }} />
 
                     {/* QR Code Container */}
                     <div className="bg-white p-4 rounded-3xl mb-6 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
@@ -265,31 +285,31 @@ export const OrderPickupTicket = ({ order, storeSlug }: OrderPickupTicketProps) 
                         />
                     </div>
 
-                    <h2 className="text-2xl font-black italic uppercase tracking-tighter mb-1">Escanea para retirar</h2>
-                    <p className="text-[10px] font-medium text-gray-500 text-center uppercase tracking-widest max-w-[200px] leading-relaxed">
+                    <h2 className="text-2xl font-black italic uppercase tracking-tighter mb-1" style={{ color: textColor }}>Escanea para retirar</h2>
+                    <p className="text-[10px] font-medium text-center uppercase tracking-widest max-w-[200px] leading-relaxed" style={{ color: `${textColor}80` }}>
                         Presenta este código al barista para recibir tu dosis diaria.
                     </p>
 
-                    <div className="mt-6 pt-6 border-t border-white/5 w-full">
+                    <div className="mt-6 pt-6 w-full" style={{ borderTop: `1px solid ${textColor}1A` }}>
                         <div className="flex flex-col gap-3">
                             {order.order_items?.map((item, idx) => (
                                 <div key={idx} className="flex justify-between items-center text-sm">
-                                    <span className="font-bold text-gray-300">{item.quantity}x <span className="text-white">{item.product?.name || 'Producto'}</span></span>
+                                    <span className="font-bold" style={{ color: `${textColor}99` }}>{item.quantity}x <span style={{ color: textColor }}>{item.product?.name || 'Producto'}</span></span>
                                 </div>
                             ))}
-                            {!order.order_items?.length && <p className="text-xs text-gray-600 italic">Cafe de especialidad</p>}
+                            {!order.order_items?.length && <p className="text-xs italic" style={{ color: `${textColor}80` }}>Cafe de especialidad</p>}
                         </div>
                     </div>
 
-                    <div className="mt-6 w-full bg-[#36e27b]/5 border border-[#36e27b]/20 rounded-xl p-3 flex items-center justify-center gap-2">
-                        <span className="material-symbols-outlined text-[#36e27b] text-base">stars</span>
-                        <span className="text-[10px] font-black uppercase tracking-wider text-[#36e27b]">
+                    <div className="mt-6 w-full rounded-xl p-3 flex items-center justify-center gap-2" style={{ backgroundColor: `${statusColor}10`, borderColor: `${statusColor}33`, borderWidth: 1 }}>
+                        <span className="material-symbols-outlined text-base" style={{ color: statusColor }}>stars</span>
+                        <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: statusColor }}>
                             +{Math.floor((order.total_amount || 0) * 0.1)} Granos Sumados
                         </span>
                     </div>
 
                     <div className="mt-4">
-                        <p className="text-[10px] font-black text-gray-700 uppercase tracking-widest">Orden #{getDisplayId(order)}</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: `${textColor}80` }}>Orden #{getDisplayId(order)}</p>
                     </div>
                 </div>
             </div>

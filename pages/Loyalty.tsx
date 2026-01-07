@@ -385,15 +385,22 @@ const Loyalty: React.FC = () => {
                {/* CATALOGO DE CANJE (REWARDS) */}
                {activeSubTab === 'rewards' && (
                   <div className="space-y-6 animate-in slide-in-from-left-4">
-                     <div className="flex justify-between items-center">
-                        <h3 className="text-lg font-black italic-black uppercase text-white tracking-tighter">Productos <span className="text-neon">Disponibles</span></h3>
+                     {/* Header with explanation */}
+                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                           <h3 className="text-lg font-black uppercase text-white tracking-tight mb-1 flex items-center gap-2">
+                              <span className="material-symbols-outlined text-neon">redeem</span>
+                              Catálogo de Premios
+                           </h3>
+                           <p className="text-[11px] text-white/40">¿Qué productos puede canjear el cliente con sus puntos?</p>
+                        </div>
                         <button
                            onClick={() => setShowRewardModal(true)}
                            disabled={products.length === 0}
-                           className="px-5 py-2.5 bg-neon text-black rounded-xl font-black text-[9px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-neon-soft flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed"
+                           className="px-5 py-3 bg-neon text-black rounded-xl font-black text-[10px] uppercase tracking-wider hover:scale-105 active:scale-95 transition-all shadow-neon-soft flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed"
                         >
-                           <span className="material-symbols-outlined text-base">add_circle</span>
-                           Nueva Recompensa
+                           <span className="material-symbols-outlined text-base">add</span>
+                           Agregar Premio
                         </button>
                      </div>
 
@@ -441,39 +448,68 @@ const Loyalty: React.FC = () => {
 
                {activeSubTab === 'config' && (
                   <div className="bg-[#141714] p-8 rounded-3xl border border-white/5 space-y-8 animate-in slide-in-from-left-4">
+                     {/* Header with toggle */}
                      <div className="flex items-center justify-between border-b border-white/5 pb-6">
                         <div className="flex items-center gap-4">
                            <div className={`size-12 rounded-2xl flex items-center justify-center border transition-all ${config.isActive ? 'bg-neon/10 text-neon border-neon/20' : 'bg-white/5 text-white/20 border-white/5'}`}>
-                              <span className="material-symbols-outlined text-2xl">verified</span>
+                              <span className="material-symbols-outlined text-2xl">loyalty</span>
                            </div>
                            <div>
-                              <h3 className="text-sm font-black uppercase tracking-widest text-white leading-none mb-1.5">Estado del Programa</h3>
-                              <p className="text-[9px] font-bold text-text-secondary uppercase opacity-40">{config.isActive ? 'Activo y emitiendo puntos tácticos.' : 'Sistema en modo pausa.'}</p>
+                              <h3 className="text-sm font-black uppercase tracking-widest text-white leading-none mb-1.5">Programa de Puntos</h3>
+                              <p className="text-[10px] font-bold text-white/40">{config.isActive ? '✓ Activo - Los clientes ganan puntos con cada compra' : 'Desactivado - No se acumulan puntos'}</p>
                            </div>
                         </div>
                         <Toggle active={config.isActive} onToggle={() => setConfig({ ...config, isActive: !config.isActive })} />
                      </div>
 
-                     <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${!config.isActive && 'opacity-20 pointer-events-none'}`}>
-                        <div className="p-6 bg-white/[0.02] rounded-3xl border border-white/5 space-y-6">
-                           <h4 className="text-[9px] font-black uppercase tracking-widest text-text-secondary italic">Conversión Base</h4>
-                           <div className="flex items-center gap-4">
-                              <div className="flex-1 space-y-1.5">
-                                 <label className="text-[7px] font-black uppercase text-text-secondary opacity-60 ml-1">Monto ($)</label>
-                                 <input type="number" value={config.baseAmount} onChange={e => setConfig({ ...config, baseAmount: parseInt(e.target.value) || 0 })} className="w-full h-10 px-4 rounded-xl bg-black/40 border border-white/10 text-sm font-black text-white outline-none focus:ring-1 focus:ring-neon/20" />
+                     {/* Main config */}
+                     <div className={`space-y-6 ${!config.isActive && 'opacity-20 pointer-events-none'}`}>
+                        {/* Conversion explanation */}
+                        <div className="p-6 bg-gradient-to-r from-neon/5 to-transparent rounded-2xl border border-neon/10">
+                           <h4 className="text-xs font-black uppercase text-white mb-4 flex items-center gap-2">
+                              <span className="material-symbols-outlined text-neon text-base">calculate</span>
+                              ¿Cuántos puntos gana el cliente?
+                           </h4>
+                           <div className="flex items-center gap-4 mb-4">
+                              <div className="flex-1 space-y-2">
+                                 <label className="text-[10px] font-bold text-white/60">Por cada</label>
+                                 <div className="flex items-center gap-2">
+                                    <span className="text-white/40 font-bold">$</span>
+                                    <input type="number" value={config.baseAmount} onChange={e => setConfig({ ...config, baseAmount: parseInt(e.target.value) || 0 })} className="w-24 h-12 px-4 rounded-xl bg-black/40 border border-white/10 text-xl font-black text-white outline-none focus:ring-2 focus:ring-neon/30 text-center" />
+                                 </div>
                               </div>
-                              <span className="material-symbols-outlined text-white/10 pt-4">arrow_forward</span>
-                              <div className="flex-1 space-y-1.5">
-                                 <label className="text-[7px] font-black uppercase text-text-secondary opacity-60 ml-1">Puntos</label>
-                                 <input type="number" value={config.basePoints} onChange={e => setConfig({ ...config, basePoints: parseInt(e.target.value) || 0 })} className="w-full h-10 px-4 rounded-xl bg-black/40 border border-white/10 text-sm font-black text-neon outline-none focus:ring-1 focus:ring-neon/20" />
+                              <span className="material-symbols-outlined text-neon/50 text-2xl pt-6">arrow_forward</span>
+                              <div className="flex-1 space-y-2">
+                                 <label className="text-[10px] font-bold text-white/60">Gana</label>
+                                 <div className="flex items-center gap-2">
+                                    <input type="number" value={config.basePoints} onChange={e => setConfig({ ...config, basePoints: parseInt(e.target.value) || 0 })} className="w-24 h-12 px-4 rounded-xl bg-black/40 border border-neon/30 text-xl font-black text-neon outline-none focus:ring-2 focus:ring-neon/30 text-center" />
+                                    <span className="text-neon font-bold">pts</span>
+                                 </div>
+                              </div>
+                           </div>
+                           {/* Visual example */}
+                           <div className="p-4 bg-black/30 rounded-xl flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                 <span className="material-symbols-outlined text-white/30">shopping_cart</span>
+                                 <span className="text-sm text-white/60">Ejemplo: Compra de <strong className="text-white">${config.baseAmount * 5}</strong></span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                 <span className="text-2xl font-black text-neon">{config.basePoints * 5}</span>
+                                 <span className="text-[10px] text-neon/60 font-bold uppercase">puntos</span>
                               </div>
                            </div>
                         </div>
-                        <div className="p-6 bg-white/[0.02] rounded-3xl border border-white/5 space-y-6">
-                           <h4 className="text-[9px] font-black uppercase tracking-widest text-text-secondary italic">Modo Redondeo</h4>
-                           <div className="flex bg-black/40 p-1 rounded-xl h-10">
-                              <button onClick={() => setConfig({ ...config, rounding: 'down' })} className={`flex-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${config.rounding === 'down' ? 'bg-white/10 text-white' : 'text-white/20'}`}>Suelo (1.9=1)</button>
-                              <button onClick={() => setConfig({ ...config, rounding: 'normal' })} className={`flex-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${config.rounding === 'normal' ? 'bg-white/10 text-white' : 'text-white/20'}`}>Cercano (1.9=2)</button>
+
+                        {/* Rounding */}
+                        <div className="p-5 bg-white/[0.02] rounded-2xl border border-white/5">
+                           <h4 className="text-[10px] font-black uppercase text-white/50 mb-3">Redondeo de puntos</h4>
+                           <div className="flex bg-black/40 p-1 rounded-xl">
+                              <button onClick={() => setConfig({ ...config, rounding: 'down' })} className={`flex-1 py-2.5 rounded-lg text-[10px] font-bold transition-all ${config.rounding === 'down' ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/50'}`}>
+                                 Hacia abajo (1.9 → 1)
+                              </button>
+                              <button onClick={() => setConfig({ ...config, rounding: 'normal' })} className={`flex-1 py-2.5 rounded-lg text-[10px] font-bold transition-all ${config.rounding === 'normal' ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/50'}`}>
+                                 Al más cercano (1.5 → 2)
+                              </button>
                            </div>
                         </div>
                      </div>
@@ -482,11 +518,19 @@ const Loyalty: React.FC = () => {
 
                {activeSubTab === 'products' && (
                   <div className="bg-[#141714] rounded-3xl border border-white/5 overflow-hidden animate-in slide-in-from-right-4">
-                     <div className="p-6 border-b border-white/5 flex justify-between items-center">
-                        <h3 className="text-lg font-black italic-black uppercase text-white tracking-tighter">Matriz <span className="text-neon">Insumos</span></h3>
-                        <div className="relative group">
-                           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/20 text-sm">search</span>
-                           <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="h-9 w-48 pl-9 pr-3 rounded-lg bg-black/40 border border-white/10 text-[9px] font-bold text-white uppercase outline-none focus:ring-1 focus:ring-neon/20" placeholder="BUSCAR..." />
+                     <div className="p-6 border-b border-white/5">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                           <div>
+                              <h3 className="text-lg font-black uppercase text-white tracking-tight mb-1 flex items-center gap-2">
+                                 <span className="material-symbols-outlined text-neon">tune</span>
+                                 Multiplicadores por Producto
+                              </h3>
+                              <p className="text-[11px] text-white/40">Algunos productos pueden dar más puntos que otros (ej: x2 = el doble)</p>
+                           </div>
+                           <div className="relative">
+                              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">search</span>
+                              <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="h-10 w-52 pl-10 pr-4 rounded-xl bg-black/40 border border-white/10 text-[10px] font-bold text-white outline-none focus:ring-2 focus:ring-neon/20" placeholder="Buscar producto..." />
+                           </div>
                         </div>
                      </div>
                      <div className="overflow-x-auto">

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Table, AppMode, TableStatus, OrderStatus, NotificationType } from '../types';
-import { STATUS_COLORS } from '../constants';
+import { STATUS_COLORS, STATUS_BG_COLORS } from '../constants';
 import { Hand, Receipt, Clock, Beer } from 'lucide-react';
 import TableActions from './TableActions';
 import EditControls from './EditControls'; // Need to export this from TableMap or create new file
@@ -56,8 +56,8 @@ const VenueItem: React.FC<VenueItemProps> = ({
         absolute node-element flex flex-col items-center justify-center
         shadow-2xl transition-all group
         ${table.shape === 'circle' ? 'rounded-full' : 'rounded-[24px]'}
-        bg-[#080808] border
-        ${isSelected ? 'border-[#36e27b] ring-4 ring-[#36e27b]/10' : 'border-zinc-900'}
+        ${STATUS_BG_COLORS[table.status] || 'bg-[#080808] border-zinc-900'}
+        ${isSelected ? 'ring-4 ring-[#36e27b]/20 !border-[#36e27b]' : ''}
         ${mode === AppMode.EDIT ? 'cursor-move hover:border-[#36e27b]/40' : 'cursor-pointer hover:scale-105 active:scale-95'}
       `}
         >

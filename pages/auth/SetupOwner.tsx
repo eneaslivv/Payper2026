@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../components/ToastSystem';
+import payperLogo from '../../src/assets/payper-logo.png';
 
 const SetupOwner: React.FC = () => {
     const [searchParams] = useSearchParams();
@@ -223,12 +224,12 @@ const SetupOwner: React.FC = () => {
             <div className="relative bg-[#0D0F0D] border border-white/10 rounded-[3rem] p-12 w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95 duration-500">
                 {/* Header */}
                 <div className="text-center space-y-4 mb-10">
-                    <div className="size-20 bg-accent/10 border border-accent/30 rounded-2xl flex items-center justify-center mx-auto">
-                        <span className="material-symbols-outlined text-4xl text-accent">storefront</span>
+                    <div className="mx-auto">
+                        <img src={payperLogo} alt="Payper" className="h-12 mx-auto" />
                     </div>
                     <div className="space-y-2">
                         <h1 className="text-3xl font-black text-white uppercase italic tracking-tight leading-none">
-                            Bienvenido a <span className="text-accent">SQUAD</span>
+                            Activar <span className="text-accent">Cuenta</span>
                         </h1>
                         <p className="text-[11px] text-white/40 font-bold uppercase tracking-widest">
                             Se te ha asignado la gestión de
@@ -296,7 +297,7 @@ const SetupOwner: React.FC = () => {
                 {/* Footer */}
                 <div className="mt-8 pt-6 border-t border-white/5 text-center">
                     <p className="text-[8px] text-white/20 font-bold uppercase tracking-[0.3em]">
-                        Protocolo de Activación Seguro • SQUAD HQ
+                        Activación Segura • Payper
                     </p>
                 </div>
             </div>

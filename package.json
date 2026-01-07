@@ -11,6 +11,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.89.0",
+    "@testsprite/testsprite-mcp": "^0.0.18",
     "framer-motion": "^11.18.2",
     "jspdf": "^3.0.4",
     "jsqr": "^1.4.0",

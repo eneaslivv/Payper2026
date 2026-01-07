@@ -22,7 +22,7 @@ serve(async (req) => {
         }
 
         const { data, error } = await resend.emails.send({
-            from: "CoffeeSquad <onboarding@resend.dev>", // Update this with your verified domain in production
+            from: "Payper <no-reply@payperapp.io>",
             to: Array.isArray(to) ? to : [to],
             subject: subject,
             html: html,

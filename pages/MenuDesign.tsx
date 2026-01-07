@@ -111,6 +111,7 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState({ name: '', description: '', priority: 100 });
     const [activeSubTab, setActiveSubTab] = useState<'products' | 'rules'>('products');
+    const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
 
     useEffect(() => {
         if (storeId) { fetchMenus(); fetchAllProducts(); fetchVenueNodes(); }
@@ -204,24 +205,55 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId }) => {
 
     const hasFallback = menus.some(m => m.is_fallback);
 
+    // Human-readable rule description
+    const getRuleDescription = (rule: MenuRule): string => {
+        const config = rule.rule_config || {};
+        switch (rule.rule_type) {
+            case 'time_range':
+                return `${config.from || '00:00'} - ${config.to || '23:59'}`;
+            case 'weekdays':
+                if (config.days && Array.isArray(config.days)) {
+                    return config.days.map((d: number) => WEEKDAY_LABELS[d] || d).join(', ');
+                }
+                return 'Días no configurados';
+            case 'session_type':
+                const types: Record<string, string> = { table: 'Mesa', takeaway: 'Para llevar', delivery: 'Delivery' };
+                return (config.values || []).map((v: string) => types[v] || v).join(', ');
+            case 'tables':
+                const count = (config.table_ids || []).length;
+                return `${count} ubicación${count !== 1 ? 'es' : ''} asignada${count !== 1 ? 's' : ''}`;
+            case 'manual_override':
+                return 'Activo manualmente';
+            default:
+                return JSON.stringify(config);
+        }
+    };
+
     const getRuleBadge = (rule: MenuRule) => {
         const icons: Record<string, React.ReactNode> = {
             time_range: <Clock size={10} />,
             weekdays: <Calendar size={10} />,
             session_type: <MapPin size={10} />,
-            tables: <MapPin size={10} />,
+            tables: <StoreIcon size={10} />,
             manual_override: <Star size={10} />
         };
         const colors: Record<string, string> = {
             time_range: 'bg-purple-500/20 text-purple-400',
             weekdays: 'bg-blue-500/20 text-blue-400',
             session_type: 'bg-green-500/20 text-green-400',
-            tables: 'bg-yellow-500/20 text-yellow-400',
+            tables: 'bg-orange-500/20 text-orange-400',
             manual_override: 'bg-red-500/20 text-red-400'
         };
+        const labels: Record<string, string> = {
+            time_range: 'Horario',
+            weekdays: 'Días',
+            session_type: 'Tipo',
+            tables: 'Ubicaciones',
+            manual_override: 'Override'
+        };
         return (
-            <span key={rule.id} className={`px-2 py-0.5 ${colors[rule.rule_type] || 'bg-white/10 text-white/40'} text-[9px] rounded-full flex items-center gap-1`}>
-                {icons[rule.rule_type]}{rule.rule_type.replace('_', ' ')}
+            <span key={rule.id} className={`px-2.5 py-1 ${colors[rule.rule_type] || 'bg-white/10 text-white/40'} text-[10px] rounded-lg flex items-center gap-1.5`}>
+                {icons[rule.rule_type]}{labels[rule.rule_type] || rule.rule_type}
             </span>
         );
     };
@@ -464,46 +496,115 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId }) => {
                                         <button onClick={() => handleAddRule('manual_override', { enabled: true })} className="px-4 py-2.5 bg-gradient-to-r from-red-500/20 to-red-500/10 text-red-400 rounded-xl text-[11px] font-bold flex items-center gap-2 hover:from-red-500/30 hover:to-red-500/15 transition-all shadow-lg shadow-red-500/10"><Star size={14} /> Override</button>
                                     </div>
 
-                                    {/* Node Selector Modal */}
+                                    {/* Node Selector Modal - IMPROVED */}
                                     {showNodeSelector && (
-                                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center animate-in fade-in duration-200" onClick={() => setShowNodeSelector(false)}>
-                                            <div className="bg-gradient-to-b from-[#1a1d1a] to-[#141714] border border-white/10 rounded-3xl p-6 max-w-md w-full mx-4 max-h-[70vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
-                                                <h3 className="text-lg font-black text-white mb-4 flex items-center gap-2">
+                                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center animate-in fade-in duration-200" onClick={() => { setShowNodeSelector(false); setSelectedNodeIds([]); }}>
+                                            <div className="bg-gradient-to-b from-[#1a1d1a] to-[#141714] border border-white/10 rounded-3xl p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+                                                <h3 className="text-lg font-black text-white mb-2 flex items-center gap-2">
                                                     <StoreIcon size={20} className="text-orange-400" />
-                                                    Seleccionar Barras/Mesas
+                                                    Asignar Mesas/Barras a este Menú
                                                 </h3>
-                                                <div className="flex-1 overflow-y-auto space-y-2 mb-4">
-                                                    {venueNodes.length === 0 ? (
-                                                        <p className="text-white/40 text-xs text-center py-8">No hay barras/mesas configuradas</p>
-                                                    ) : (
-                                                        venueNodes.map((node, idx) => (
-                                                            <label
-                                                                key={node.id}
-                                                                className="flex items-center gap-4 p-4 bg-white/[0.03] border border-white/10 rounded-2xl cursor-pointer hover:bg-white/[0.06] hover:border-white/20 transition-all"
-                                                                style={{ animationDelay: `${idx * 30}ms` }}
+                                                <p className="text-[11px] text-white/40 mb-4">Seleccioná las ubicaciones donde se va a mostrar este menú</p>
+
+                                                {/* Quick Actions */}
+                                                {venueNodes.length > 0 && (
+                                                    <div className="flex gap-2 mb-4">
+                                                        <button
+                                                            onClick={() => setSelectedNodeIds(venueNodes.map(n => n.id))}
+                                                            className="flex-1 py-2 px-3 bg-[#4ADE80]/10 text-[#4ADE80] rounded-xl text-[10px] font-bold hover:bg-[#4ADE80]/20 transition-all"
+                                                        >
+                                                            ✓ Seleccionar Todas
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setSelectedNodeIds(venueNodes.filter(n => n.node_type === 'table').map(n => n.id))}
+                                                            className="flex-1 py-2 px-3 bg-blue-500/10 text-blue-400 rounded-xl text-[10px] font-bold hover:bg-blue-500/20 transition-all"
+                                                        >
+                                                            Solo Mesas
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setSelectedNodeIds(venueNodes.filter(n => n.node_type === 'bar').map(n => n.id))}
+                                                            className="flex-1 py-2 px-3 bg-purple-500/10 text-purple-400 rounded-xl text-[10px] font-bold hover:bg-purple-500/20 transition-all"
+                                                        >
+                                                            Solo Barras
+                                                        </button>
+                                                        {selectedNodeIds.length > 0 && (
+                                                            <button
+                                                                onClick={() => setSelectedNodeIds([])}
+                                                                className="py-2 px-3 bg-white/5 text-white/40 rounded-xl text-[10px] font-bold hover:bg-white/10 transition-all"
                                                             >
-                                                                <input
-                                                                    type="checkbox"
-                                                                    className="w-5 h-5 accent-[#4ADE80] rounded"
-                                                                    onChange={e => {
-                                                                        if (e.target.checked) {
-                                                                            handleAddRule('tables', { table_ids: [node.id] });
-                                                                            setShowNodeSelector(false);
-                                                                        }
-                                                                    }}
-                                                                />
-                                                                <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center">
-                                                                    <MapPin size={16} className="text-orange-400" />
-                                                                </div>
-                                                                <div className="flex-1">
-                                                                    <p className="text-sm font-bold text-white">{node.label}</p>
-                                                                    <p className="text-[10px] text-white/40 uppercase">{node.node_type}</p>
-                                                                </div>
-                                                            </label>
-                                                        ))
+                                                                Limpiar
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {/* Nodes List */}
+                                                <div className="flex-1 overflow-y-auto space-y-2 mb-4 max-h-[40vh]">
+                                                    {venueNodes.length === 0 ? (
+                                                        <p className="text-white/40 text-xs text-center py-8">No hay barras/mesas configuradas.<br />Andá a Mesas y Salones para crear.</p>
+                                                    ) : (
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            {venueNodes.map((node) => {
+                                                                const isSelected = selectedNodeIds.includes(node.id);
+                                                                const isTable = node.node_type === 'table';
+                                                                return (
+                                                                    <button
+                                                                        key={node.id}
+                                                                        onClick={() => {
+                                                                            setSelectedNodeIds(prev =>
+                                                                                isSelected ? prev.filter(id => id !== node.id) : [...prev, node.id]
+                                                                            );
+                                                                        }}
+                                                                        className={`
+                                                                            p-3 rounded-xl border text-left transition-all flex items-center gap-3
+                                                                            ${isSelected
+                                                                                ? 'bg-[#4ADE80]/20 border-[#4ADE80]/50 ring-1 ring-[#4ADE80]/30'
+                                                                                : 'bg-white/[0.03] border-white/10 hover:bg-white/[0.06] hover:border-white/20'}
+                                                                        `}
+                                                                    >
+                                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isTable ? 'bg-blue-500/20' : 'bg-purple-500/20'}`}>
+                                                                            {isTable ? (
+                                                                                <span className="text-blue-400 text-xs font-black">M</span>
+                                                                            ) : (
+                                                                                <span className="text-purple-400 text-xs font-black">B</span>
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <p className="text-[11px] font-bold text-white truncate">{node.label}</p>
+                                                                            <p className="text-[9px] text-white/30 uppercase">{node.node_type}</p>
+                                                                        </div>
+                                                                        {isSelected && (
+                                                                            <Check size={14} className="text-[#4ADE80] shrink-0" />
+                                                                        )}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
                                                     )}
                                                 </div>
-                                                <button onClick={() => setShowNodeSelector(false)} className="w-full py-3 bg-white/5 text-white/60 rounded-xl text-xs font-bold hover:bg-white/10 transition-all">Cerrar</button>
+
+                                                {/* Footer */}
+                                                <div className="flex gap-2 pt-4 border-t border-white/10">
+                                                    <button
+                                                        onClick={() => { setShowNodeSelector(false); setSelectedNodeIds([]); }}
+                                                        className="flex-1 py-3 bg-white/5 text-white/60 rounded-xl text-xs font-bold hover:bg-white/10 transition-all"
+                                                    >
+                                                        Cancelar
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (selectedNodeIds.length > 0) {
+                                                                handleAddRule('tables', { table_ids: selectedNodeIds });
+                                                            }
+                                                            setShowNodeSelector(false);
+                                                            setSelectedNodeIds([]);
+                                                        }}
+                                                        disabled={selectedNodeIds.length === 0}
+                                                        className="flex-1 py-3 bg-[#4ADE80] text-black rounded-xl text-xs font-black hover:bg-[#3dd06e] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                                    >
+                                                        Confirmar ({selectedNodeIds.length})
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     )}
@@ -516,10 +617,10 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId }) => {
                                             style={{ animationDelay: `${idx * 30}ms` }}
                                         >
                                             <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-1">{getRuleBadge(rule)}</div>
-                                                <p className="text-[10px] text-white/30 font-mono bg-black/30 px-2 py-1 rounded-lg inline-block">{JSON.stringify(rule.rule_config)}</p>
+                                                <div className="flex items-center gap-2 mb-2">{getRuleBadge(rule)}</div>
+                                                <p className="text-sm text-white font-medium">{getRuleDescription(rule)}</p>
                                             </div>
-                                            <button onClick={() => handleDeleteRule(rule.id)} className="p-2 text-red-400/40 hover:text-red-400 hover:bg-red-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={14} /></button>
+                                            <button onClick={() => handleDeleteRule(rule.id)} className="p-2.5 text-red-400/40 hover:text-red-400 hover:bg-red-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={16} /></button>
                                         </div>
                                     ))}
 
@@ -529,7 +630,7 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId }) => {
                                                 <Clock size={24} className="text-white/20" />
                                             </div>
                                             <p className="text-white/30 text-sm mb-2">Sin reglas de activación</p>
-                                            <p className="text-white/20 text-xs">Este menú aplica solo por prioridad</p>
+                                            <p className="text-white/20 text-xs">Agregá reglas para que este menú aparezca<br />según horario, días o ubicaciones específicas</p>
                                         </div>
                                     )}
                                 </div>

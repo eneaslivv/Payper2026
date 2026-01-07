@@ -13,6 +13,7 @@ import { INITIAL_ZONES } from './constants';
 import { ZoomIn, ZoomOut, Zap, MousePointer2, Plus, Beer, Circle, QrCode, Check, Trash2, Edit3, X as XIcon, Users, Layers, Bell, Timer, Clock, Hand, Receipt, AlertCircle, ChevronRight, ClipboardList } from 'lucide-react';
 import { useToast } from '../../components/ToastSystem';
 import { TransferStockModal } from '../../components/TransferStockModal';
+import StationManager from './components/StationManager';
 
 const App: React.FC = () => {
   const { profile } = useAuth();
@@ -45,6 +46,9 @@ const App: React.FC = () => {
   // Transfer Modal State
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [transferSourceLocationId, setTransferSourceLocationId] = useState<string | undefined>(undefined);
+
+  // Station Manager State
+  const [showStationManager, setShowStationManager] = useState(false);
 
   // --- DATA FETCHING ---
 
@@ -742,6 +746,14 @@ const App: React.FC = () => {
                   </div>
                   <span className="text-xs font-bold text-zinc-300 uppercase tracking-widest">Punto QR (Standalone)</span>
                 </button>
+
+                <div className="col-span-2 border-t border-zinc-800 pt-4 mt-2">
+                  <p className="text-[8px] text-zinc-500 uppercase tracking-widest text-center mb-4">Configuración</p>
+                  <button onClick={() => { setShowAddMenu(false); setShowStationManager(true); }} className="w-full p-4 bg-amber-500/10 border border-amber-500/20 hover:border-amber-500/40 hover:bg-amber-500/20 rounded-2xl flex items-center justify-center gap-3 transition-all group">
+                    <Layers size={20} className="text-amber-400" />
+                    <span className="text-xs font-bold text-amber-400 uppercase tracking-widest">Estaciones de Despacho</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -757,6 +769,10 @@ const App: React.FC = () => {
           />
         )
       }
+
+      {showStationManager && (
+        <StationManager onClose={() => setShowStationManager(false)} />
+      )}
     </div >
   );
 };

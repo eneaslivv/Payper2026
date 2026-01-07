@@ -19,6 +19,30 @@ const OrderBoard: React.FC = () => {
   const [activeColumn, setActiveColumn] = useState<OrderStatus | null>(null);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'TODOS'>('TODOS');
   const [showHistory, setShowHistory] = useState(false);
+  const [dateFilter, setDateFilter] = useState({
+    start: new Date(new Date().setHours(0, 0, 0, 0)).toISOString(),
+    end: new Date(new Date().setHours(23, 59, 59, 999)).toISOString()
+  });
+
+  // Location/Bar Filter
+  const [locationFilter, setLocationFilter] = useState<string>('ALL');
+
+  // Dispatch stations from database
+  const [availableStations, setAvailableStations] = useState<string[]>([]);
+
+  // Fetch dispatch stations on mount
+  useEffect(() => {
+    if (!profile?.store_id) return;
+    supabase
+      .from('dispatch_stations' as any)
+      .select('name')
+      .eq('store_id', profile.store_id)
+      .eq('is_visible', true)
+      .order('sort_order', { ascending: true })
+      .then(({ data }) => {
+        if (data) setAvailableStations(data.map((s: any) => s.name));
+      });
+  }, [profile?.store_id]);
 
   // New State for Cancellation Confirmation
   const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
@@ -132,13 +156,68 @@ const OrderBoard: React.FC = () => {
     setActiveColumn(null);
   };
 
+  // Shift Closing - Archive completed orders
+  const [showCloseShiftConfirm, setShowCloseShiftConfirm] = useState(false);
+  const [isClosingShift, setIsClosingShift] = useState(false);
+
+  const handleCloseShift = async () => {
+    setIsClosingShift(true);
+    try {
+      // Get IDs of all completed orders (Entregado or Cancelado) that are not already archived
+      const completedOrderIds = orders
+        .filter(o => (o.status === 'Entregado' || o.status === 'Cancelado') && !(o as any).archived_at)
+        .map(o => o.id);
+
+      if (completedOrderIds.length === 0) {
+        addToast('NO HAY PEDIDOS', 'info', 'No hay pedidos completados para archivar');
+        setShowCloseShiftConfirm(false);
+        return;
+      }
+
+      const { error } = await (supabase
+        .from('orders')
+        .update({ archived_at: new Date().toISOString() } as any)
+        .in('id', completedOrderIds) as any);
+
+      if (error) throw error;
+
+      addToast('TURNO CERRADO', 'success', `${completedOrderIds.length} pedidos archivados`);
+      refreshOrders();
+      setShowCloseShiftConfirm(false);
+    } catch (err: any) {
+      console.error('Close shift failed:', err);
+      addToast('ERROR', 'error', 'No se pudo cerrar el turno');
+    } finally {
+      setIsClosingShift(false);
+    }
+  };
+
   const filteredOrders = useMemo(() => {
     return orders.filter(o => {
       const isHistoryStatus = o.status === 'Entregado' || o.status === 'Cancelado';
+      const isArchived = !!(o as any).archived_at;
 
-      // Mode Filter
+      // Mode Filter - In active mode, exclude archived and history orders
+      if (!showHistory) {
+        if (isHistoryStatus || isArchived) return false;
+      }
+
+      // In history mode, show completed orders (both archived and non-archived)
       if (showHistory && !isHistoryStatus) return false;
-      if (!showHistory && isHistoryStatus) return false;
+
+      // History Date Filter
+      if (showHistory) {
+        const orderDate = new Date(o.created_at).getTime();
+        const start = new Date(dateFilter.start).getTime();
+        const end = new Date(dateFilter.end).getTime();
+        if (orderDate < start || orderDate > end) return false;
+      }
+
+      // Station Filter (only in active mode)
+      if (!showHistory && locationFilter !== 'ALL') {
+        const orderStation = (o as any).dispatch_station;
+        if (!orderStation || orderStation.trim() !== locationFilter) return false;
+      }
 
       const term = searchTerm.toLowerCase();
       const cleanNumber = term.replace(/\D/g, ''); // Extract only digits
@@ -152,7 +231,8 @@ const OrderBoard: React.FC = () => {
       const matchesStatus = showHistory ? true : (statusFilter === 'TODOS' ? true : o.status === statusFilter);
 
       // Payment Filter: Hide Unpaid MercadoPago Orders
-      // If provider is 'mercadopago' and it's NOT paid, hide it completely.
+      // TEMPORARILY DISABLED FOR DEBUGGING - uncomment when payment verification works
+      // If provider is 'mercadopago' and it's NOT paid, hide it from the board.
       /*
       const isMP = (o as any).payment_provider === 'mercadopago' || (o as any).payment_method === 'mercadopago';
       const isPaid = (o as any).is_paid === true || (o as any).payment_status === 'approved' || (o as any).payment_status === 'paid';
@@ -162,7 +242,7 @@ const OrderBoard: React.FC = () => {
 
       return matchesSearch && matchesStatus;
     });
-  }, [orders, searchTerm, statusFilter, showHistory]);
+  }, [orders, searchTerm, statusFilter, showHistory, locationFilter, dateFilter]);
 
   const formattedDate = now.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase();
   const formattedTime = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -189,6 +269,23 @@ const OrderBoard: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3 w-full xl:w-auto">
+            {/* LOCATION/BAR FILTER */}
+            {availableStations.length > 0 && !showHistory && (
+              <div className="relative">
+                <select
+                  value={locationFilter}
+                  onChange={(e) => setLocationFilter(e.target.value)}
+                  className="h-9 pl-3 pr-8 rounded-lg border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-widest text-white appearance-none cursor-pointer hover:border-white/20 transition-all outline-none focus:ring-1 focus:ring-neon/30"
+                >
+                  <option value="ALL">TODAS LAS BARRAS</option>
+                  {availableStations.map(loc => (
+                    <option key={loc} value={loc}>{loc}</option>
+                  ))}
+                </select>
+                <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-white/30 text-sm pointer-events-none">expand_more</span>
+              </div>
+            )}
+
             {/* HISTORY TOGGLE */}
             <button
               onClick={() => setShowHistory(!showHistory)}
@@ -197,6 +294,17 @@ const OrderBoard: React.FC = () => {
               <span className="material-symbols-outlined text-lg">{showHistory ? 'history_toggle_off' : 'history'}</span>
               <span className="text-[9px] font-black uppercase tracking-widest hidden sm:inline">{showHistory ? 'VOLVER A ACTIVO' : 'HISTORIAL'}</span>
             </button>
+
+            {/* CLOSE SHIFT BUTTON - Only visible when not in history */}
+            {!showHistory && (
+              <button
+                onClick={() => setShowCloseShiftConfirm(true)}
+                className="h-9 px-4 rounded-lg border border-orange-500/20 bg-orange-500/10 text-orange-400 flex items-center gap-2 transition-all hover:bg-orange-500/20"
+              >
+                <span className="material-symbols-outlined text-lg">event_busy</span>
+                <span className="text-[9px] font-black uppercase tracking-widest hidden sm:inline">CERRAR TURNO</span>
+              </button>
+            )}
 
             <div className="w-px h-6 bg-white/10 mx-1"></div>
 
@@ -227,9 +335,60 @@ const OrderBoard: React.FC = () => {
           ) : (
             <>
               <KpiBox label="TOTAL FINALIZADOS" value={stats.entregados + stats.cancelados} onClick={() => { }} active={true} border="border-white/20" textColor="text-white" />
-              <div className="hidden lg:block"></div>
-              <KpiBox label="ENTREGADOS" value={stats.entregados} onClick={() => { }} active={false} textColor="text-green-500" />
-              <KpiBox label="CANCELADOS" value={stats.cancelados} onClick={() => { }} active={false} textColor="text-red-500" />
+              <div className="lg:col-span-3 bg-white/[0.02] border border-white/5 rounded-[1.2rem] p-4 flex items-center justify-between gap-4">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setDateFilter({
+                      start: new Date(new Date().setHours(0, 0, 0, 0)).toISOString(),
+                      end: new Date(new Date().setHours(23, 59, 59, 999)).toISOString()
+                    })}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${new Date(dateFilter.start).getDate() === new Date().getDate() ? 'bg-neon text-black' : 'bg-white/5 text-white/40 hover:text-white'}`}
+                  >
+                    Hoy
+                  </button>
+                  <button
+                    onClick={() => {
+                      const yesterday = new Date();
+                      yesterday.setDate(yesterday.getDate() - 1);
+                      setDateFilter({
+                        start: new Date(yesterday.setHours(0, 0, 0, 0)).toISOString(),
+                        end: new Date(yesterday.setHours(23, 59, 59, 999)).toISOString()
+                      });
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${new Date(dateFilter.start).getDate() === new Date().getDate() - 1 ? 'bg-neon text-black' : 'bg-white/5 text-white/40 hover:text-white'}`}
+                  >
+                    Ayer
+                  </button>
+                  <button
+                    onClick={() => {
+                      const startOfMonth = new Date();
+                      startOfMonth.setDate(1);
+                      setDateFilter({
+                        start: new Date(startOfMonth.setHours(0, 0, 0, 0)).toISOString(),
+                        end: new Date(new Date().setHours(23, 59, 59, 999)).toISOString()
+                      });
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${new Date(dateFilter.start).getDate() === 1 ? 'bg-neon text-black' : 'bg-white/5 text-white/40 hover:text-white'}`}
+                  >
+                    Mes
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={dateFilter.start.split('T')[0]}
+                    onChange={(e) => setDateFilter(prev => ({ ...prev, start: new Date(e.target.value + 'T00:00:00').toISOString() }))}
+                    className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] font-bold text-white uppercase outline-none focus:border-neon/50"
+                  />
+                  <span className="text-white/20 text-[10px] font-black">A</span>
+                  <input
+                    type="date"
+                    value={dateFilter.end.split('T')[0]}
+                    onChange={(e) => setDateFilter(prev => ({ ...prev, end: new Date(e.target.value + 'T23:59:59').toISOString() }))}
+                    className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] font-bold text-white uppercase outline-none focus:border-neon/50"
+                  />
+                </div>
+              </div>
             </>
           )}
         </div>
@@ -296,7 +455,15 @@ const OrderBoard: React.FC = () => {
           <>
             <div className="p-8 border-b border-white/5 flex justify-between items-center bg-[#0D0F0D]">
               <div>
-                <h2 className="text-3xl font-black italic-black text-white tracking-tighter uppercase leading-none">PEDIDO <span className="text-neon">#{getDisplayId(selectedOrder)}</span></h2>
+                <div className="flex flex-col">
+                  <h2 className="text-3xl font-black italic-black text-white tracking-tighter uppercase leading-none">PEDIDO <span className="text-neon">#{getDisplayId(selectedOrder)}</span></h2>
+                  <div className="flex items-center gap-2 mt-2 text-white/70">
+                    <span className="material-symbols-outlined text-[12px]">calendar_today</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest">
+                      {new Date(selectedOrder.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })} • {new Date(selectedOrder.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}hs
+                    </span>
+                  </div>
+                </div>
               </div>
               <button onClick={() => setSelectedOrder(null)} className="size-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-colors">
                 <span className="material-symbols-outlined">close</span>
@@ -400,6 +567,50 @@ const OrderBoard: React.FC = () => {
         )}
       </AnimatePresence>
 
+      {/* CLOSE SHIFT CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {showCloseShiftConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowCloseShiftConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              className="bg-[#1a1c1a] border border-orange-500/30 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-orange-500 rounded-b-full shadow-[0_0_40px_rgba(249,115,22,0.5)]"></div>
+              <div className="size-16 rounded-full bg-orange-500/10 flex items-center justify-center mx-auto mb-6">
+                <span className="material-symbols-outlined text-3xl text-orange-500">event_busy</span>
+              </div>
+              <h3 className="text-2xl font-black italic-black text-white uppercase tracking-tighter mb-2">¿Cerrar Turno?</h3>
+              <p className="text-white/60 text-sm mb-4">Los pedidos completados serán archivados y no aparecerán en la vista principal.</p>
+              <div className="bg-white/5 rounded-xl p-4 mb-6 text-left">
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-white/40">Entregados</span>
+                  <span className="text-neon font-bold">{stats.entregados}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-white/40">Cancelados</span>
+                  <span className="text-red-400 font-bold">{stats.cancelados}</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <button onClick={() => setShowCloseShiftConfirm(false)} className="py-4 rounded-xl border border-white/10 text-white/60 hover:text-white hover:bg-white/5 font-bold uppercase tracking-widest text-xs transition-colors">Volver</button>
+                <button onClick={handleCloseShift} disabled={isClosingShift} className="py-4 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-black uppercase tracking-widest text-xs shadow-lg transition-colors disabled:opacity-50">
+                  {isClosingShift ? 'Archivando...' : 'Cerrar Turno'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {incomingOrder && (
           <NewOrderAlert
@@ -449,10 +660,10 @@ const PaymentBadge: React.FC<{ order: Order }> = ({ order }) => {
     } else {
       badge = { label: 'PENDIENTE', bg: 'bg-red-500', border: 'border-red-500/30', icon: '⏳' };
     }
-  } else if (provider === 'mercadopago') {
-    badge = { label: 'MERCADO PAGO', bg: 'bg-[#009ee3]', border: 'border-[#009ee3]/30', icon: '💳' };
-  } else if (provider === 'wallet' || order.payment_method === 'wallet') {
+  } else if (order.payment_method === 'wallet' || provider === 'wallet') {
     badge = { label: 'SALDO', bg: 'bg-violet-500', border: 'border-violet-500/30', icon: '💜' };
+  } else if (provider === 'mercadopago' || order.payment_method === 'qr') {
+    badge = { label: 'MERCADO PAGO', bg: 'bg-[#009ee3]', border: 'border-[#009ee3]/30', icon: '💳' };
   }
 
   return (

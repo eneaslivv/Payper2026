@@ -16,82 +16,174 @@ export default async function handler(req, res) {
         return;
     }
 
+    console.log('[verify-payment] ===== START =====');
+    console.log('[verify-payment] Method:', req.method);
+    console.log('[verify-payment] Body:', JSON.stringify(req.body));
+    console.log('[verify-payment] Query:', JSON.stringify(req.query));
+
     try {
-        const { order_id } = req.body;
-        if (!order_id) throw new Error('Missing order_id');
+        // Accept order_id from body OR external_reference from query (MP redirect)
+        // Also accept payment_id for direct payment verification
+        const order_id = req.body?.order_id || req.query?.external_reference;
+        const payment_id = req.body?.payment_id || req.query?.payment_id;
 
-        // Initialize Supabase (Using ANON key - the RPC is SECURITY DEFINER)
-        const supabaseUrl = process.env.VITE_SUPABASE_URL;
-        const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+        console.log('[verify-payment] Parsed - order_id:', order_id, 'payment_id:', payment_id);
 
-        if (!supabaseUrl || !supabaseKey) {
-            throw new Error('Server Misconfiguration: Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY');
+        if (!order_id && !payment_id) {
+            throw new Error('Missing order_id or payment_id');
         }
 
-        const supabase = createClient(supabaseUrl, supabaseKey);
+        // Initialize Supabase with SERVICE ROLE KEY (bypasses RLS for backend operations)
+        const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+        console.log('[verify-payment] Supabase URL:', supabaseUrl ? 'SET' : 'MISSING');
+        console.log('[verify-payment] Service Key:', supabaseKey ? 'SET' : 'MISSING (will fallback to ANON)');
+
+        // Fallback to anon key but log warning
+        const finalKey = supabaseKey || process.env.VITE_SUPABASE_ANON_KEY;
+
+        if (!supabaseUrl || !finalKey) {
+            console.error('[verify-payment] CRITICAL: Missing env vars');
+            throw new Error('Server Misconfiguration: Missing Supabase credentials');
+        }
+
+        const supabase = createClient(supabaseUrl, finalKey);
 
         // 1. Get Order & Store Info
+        console.log('[verify-payment] Step 1: Fetching order...');
         const { data: order, error: orderError } = await supabase
             .from('orders')
-            .select('store_id, status, payment_status, total_amount')
+            .select('id, store_id, status, payment_status, total_amount')
             .eq('id', order_id)
             .single();
 
-        if (orderError || !order) throw new Error('Order not found');
+        if (orderError) {
+            console.error('[verify-payment] Order fetch error:', JSON.stringify(orderError));
+            throw new Error('Order not found: ' + (orderError.message || orderError.code));
+        }
+
+        if (!order) {
+            console.error('[verify-payment] Order is null for id:', order_id);
+            throw new Error('Order not found (null result)');
+        }
+
+        console.log('[verify-payment] Order found:', JSON.stringify(order));
 
         // 2. Already Paid Check
-        if (order.status === 'paid' || order.payment_status === 'approved') {
+        if (order.payment_status === 'approved' || order.payment_status === 'paid') {
+            console.log('[verify-payment] Already paid, returning early');
             return res.status(200).json({ success: true, status: 'approved', message: 'Already paid' });
         }
 
         // 3. Get Store Token
+        console.log('[verify-payment] Step 2: Fetching store MP token for store:', order.store_id);
         const { data: store, error: storeError } = await supabase
             .from('stores')
-            .select('mp_access_token')
+            .select('id, name, mp_access_token')
             .eq('id', order.store_id)
             .single();
 
-        if (storeError || !store?.mp_access_token) throw new Error('Store MP Token not found');
-
-        // 4. Verify with Mercado Pago
-        const searchUrl = new URL('https://api.mercadopago.com/v1/payments/search');
-        searchUrl.searchParams.append('external_reference', order_id);
-        searchUrl.searchParams.append('status', 'approved');
-
-        const mpRes = await fetch(searchUrl.toString(), {
-            headers: { 'Authorization': `Bearer ${store.mp_access_token}` }
-        });
-
-        if (!mpRes.ok) throw new Error(`MP API Error: ${mpRes.statusText}`);
-
-        const mpData = await mpRes.json();
-        const payments = mpData.results || [];
-
-        if (payments.length === 0) {
-            return res.status(200).json({ success: false, status: 'pending', message: 'Payment not found' });
+        if (storeError) {
+            console.error('[verify-payment] Store fetch error:', JSON.stringify(storeError));
+            throw new Error('Store not found: ' + (storeError.message || storeError.code));
         }
 
-        const payment = payments[payments.length - 1];
+        if (!store) {
+            console.error('[verify-payment] Store is null for id:', order.store_id);
+            throw new Error('Store not found (null result)');
+        }
+
+        console.log('[verify-payment] Store found:', store.name);
+
+        if (!store.mp_access_token) {
+            console.error('[verify-payment] Store has no MP token configured');
+            throw new Error('Store MP Token not configured');
+        }
+
+        console.log('[verify-payment] MP Token found (length:', store.mp_access_token.length, ')');
+
+        // 4. Verify with Mercado Pago
+        // Option A: If we have payment_id, fetch that specific payment
+        // Option B: Search by external_reference (order_id)
+        let payment = null;
+
+        if (payment_id) {
+            console.log('[verify-payment] Step 3A: Fetching specific payment:', payment_id);
+            const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${payment_id}`, {
+                headers: { 'Authorization': `Bearer ${store.mp_access_token}` }
+            });
+
+            if (mpRes.ok) {
+                payment = await mpRes.json();
+                console.log('[verify-payment] Payment fetched:', payment.id, 'status:', payment.status);
+            } else {
+                const errorText = await mpRes.text();
+                console.error('[verify-payment] MP fetch error:', mpRes.status, errorText);
+            }
+        }
+
+        // Fallback: Search by external_reference
+        if (!payment || payment.status !== 'approved') {
+            console.log('[verify-payment] Step 3B: Searching MP by external_reference:', order_id);
+            const searchUrl = new URL('https://api.mercadopago.com/v1/payments/search');
+            searchUrl.searchParams.append('external_reference', order_id);
+            searchUrl.searchParams.append('status', 'approved');
+
+            const mpRes = await fetch(searchUrl.toString(), {
+                headers: { 'Authorization': `Bearer ${store.mp_access_token}` }
+            });
+
+            if (!mpRes.ok) {
+                const mpError = await mpRes.text();
+                console.error('[verify-payment] MP Search Error:', mpRes.status, mpError);
+                throw new Error(`MP API Error: ${mpRes.status}`);
+            }
+
+            const mpData = await mpRes.json();
+            const payments = mpData.results || [];
+            console.log('[verify-payment] MP search returned', payments.length, 'approved payments');
+
+            if (payments.length > 0) {
+                payment = payments[payments.length - 1];
+            }
+        }
+
+        if (!payment || payment.status !== 'approved') {
+            console.log('[verify-payment] No approved payment found');
+            return res.status(200).json({ success: false, status: 'pending', message: 'Payment not approved yet' });
+        }
+
+        console.log('[verify-payment] Using payment:', payment.id, 'amount:', payment.transaction_amount);
 
         // 5. Update Database via RPC
+        console.log('[verify-payment] Step 4: Calling verify_payment RPC...');
         const { data: verifyResult, error: verifyError } = await supabase.rpc('verify_payment', {
             p_mp_payment_id: payment.id.toString(),
             p_order_id: order_id,
             p_amount: payment.transaction_amount,
             p_status: payment.status,
-            p_status_detail: payment.status_detail,
-            p_payment_method: payment.payment_method_id,
-            p_payment_type: payment.payment_type_id,
-            p_payer_email: payment.payer?.email,
-            p_date_approved: payment.date_approved
+            p_status_detail: payment.status_detail || 'accredited',
+            p_payment_method: payment.payment_method_id || 'unknown',
+            p_payment_type: payment.payment_type_id || 'unknown',
+            p_payer_email: payment.payer?.email || '',
+            p_date_approved: payment.date_approved || new Date().toISOString()
         });
 
-        if (verifyError) throw verifyError;
+        if (verifyError) {
+            console.error('[verify-payment] RPC error:', JSON.stringify(verifyError));
+            throw new Error('RPC failed: ' + (verifyError.message || verifyError.code));
+        }
 
-        return res.status(200).json({ success: true, status: payment.status, data: verifyResult });
+        console.log('[verify-payment] RPC result:', JSON.stringify(verifyResult));
+        console.log('[verify-payment] ===== SUCCESS =====');
+
+        return res.status(200).json({ success: true, status: 'approved', data: verifyResult });
 
     } catch (error) {
-        console.error('Verify Payment Error:', error.message);
+        console.error('[verify-payment] ===== ERROR =====');
+        console.error('[verify-payment] Error:', error.message);
+        console.error('[verify-payment] Stack:', error.stack);
         return res.status(400).json({ error: error.message });
     }
 }

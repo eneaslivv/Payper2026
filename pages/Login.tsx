@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../components/ToastSystem';
 import { useAuth } from '../contexts/AuthContext';
+import payperLogo from '../src/assets/payper-logo.png';
 
 interface LoginProps {
   onLogin?: (user: any, type: any) => void;
@@ -50,7 +51,20 @@ const Login: React.FC<LoginProps> = () => {
 
     checkUrl();
     window.addEventListener('hashchange', checkUrl);
-    return () => window.removeEventListener('hashchange', checkUrl);
+
+    // Cargar script de Contra
+    const script = document.createElement('script');
+    script.src = "https://contra.com/static/embed/sdk.js";
+    script.async = true;
+    script.charset = "utf-8";
+    document.body.appendChild(script);
+
+    return () => {
+      window.removeEventListener('hashchange', checkUrl);
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
   }, [isRecovery]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -128,12 +142,9 @@ const Login: React.FC<LoginProps> = () => {
 
       <div className="z-10 w-full max-w-[420px] space-y-8 animate-in fade-in zoom-in-95 duration-500">
         <div className="text-center group">
-          <div className="inline-flex items-center justify-center size-12 rounded-2xl bg-white/5 border border-white/10 text-neon mb-4 group-hover:scale-110 transition-transform">
-            <span className="material-symbols-outlined">shield_lock</span>
+          <div className="inline-flex items-center justify-center mb-4">
+            <img src={payperLogo} alt="Payper" className="h-12" />
           </div>
-          <h1 className="text-4xl italic font-black tracking-tighter text-white uppercase leading-none">
-            SQUAD<span className="text-neon">ACCESS</span>
-          </h1>
         </div>
 
         <div className="bg-[#0A0C0A] border border-white/5 rounded-[2.5rem] p-10 shadow-2xl relative overflow-hidden ring-1 ring-white/5">
@@ -160,10 +171,10 @@ const Login: React.FC<LoginProps> = () => {
             <form onSubmit={handleUpdatePassword} className="space-y-6">
               <div className="space-y-1">
                 <h2 className="text-2xl font-black italic text-white uppercase leading-tight">Activar<br /><span className="text-neon">Cuenta Nueva</span></h2>
-                <p className="text-[9px] font-bold text-white/30 uppercase tracking-[0.2em] animate-pulse">Autenticación de Nodo Validada</p>
+                <p className="text-[9px] font-bold text-white/30 uppercase tracking-[0.2em] animate-pulse">Configuración de acceso</p>
               </div>
               <div className="bg-neon/10 border border-neon/20 p-5 rounded-2xl">
-                <p className="text-[10px] text-neon font-bold leading-relaxed uppercase">Bienvenido a la red SQUAD. Definí tu contraseña maestra para tomar control operativo del local.</p>
+                <p className="text-[10px] text-neon font-bold leading-relaxed uppercase">Bienvenido a Payper. Definí tu contraseña para acceder al panel de tu local.</p>
               </div>
               <div className="space-y-2">
                 <label className="text-[9px] font-black uppercase text-white/30 ml-2">Definir Contraseña</label>
@@ -262,6 +273,16 @@ const Login: React.FC<LoginProps> = () => {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Contra Hire Me Button */}
+      <div className="absolute bottom-6 left-0 right-0 flex justify-center z-50 pointer-events-auto opacity-80 hover:opacity-100 transition-opacity">
+        <div
+          className="contra-hire-me-button"
+          data-analyticsuserid="451cfc1e-e897-46ed-a701-9dd0533e7ec6"
+          data-theme="dark"
+          data-username="eneas_aldabe"
+        ></div>
       </div>
     </div>
   );

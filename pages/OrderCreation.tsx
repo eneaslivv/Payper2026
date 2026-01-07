@@ -8,10 +8,13 @@ import { useOffline } from '../contexts/OfflineContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
+type PaymentMethod = 'cash' | 'card' | 'qr' | 'wallet';
+
 const OrderCreation: React.FC = () => {
   const navigate = useNavigate();
   const { addToast } = useToast();
-  const { createOrder, products } = useOffline(); // Use offline context
+  const { createOrder } = useOffline();
+  const [menuProducts, setMenuProducts] = useState<any[]>([]); // Real menu items from inventory
   const { profile } = useAuth();
   const [activeCategory, setActiveCategory] = useState('Todo');
   const [search, setSearch] = useState('');
@@ -34,37 +37,39 @@ const OrderCreation: React.FC = () => {
 
   // Submission States
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [showOrderSuccess, setShowOrderSuccess] = useState(false);
   const [lastOrderTotal, setLastOrderTotal] = useState(0);
   const [showMultipleOrderWarning, setShowMultipleOrderWarning] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
 
   // Camera Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // Dynamic Categories from Products
+  // Dynamic Categories from Menu Products
   const categories = useMemo(() => {
-    const cats = Array.from(new Set(products.map(p => p.category).filter(Boolean)));
+    const cats = Array.from(new Set(menuProducts.map(p => p.category).filter(Boolean)));
     return ['Todo', ...cats.sort()];
-  }, [products]);
+  }, [menuProducts]);
 
   // Fetch Real Data
   useEffect(() => {
     if (!profile?.store_id) return;
 
     const fetchData = async () => {
-      // 1. Fetch Clients
+      // 1. Fetch Clients (using is_active instead of status)
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
         .select('*')
         .eq('store_id', profile.store_id)
-        .eq('status', 'active')
+        .eq('is_active', true)
         .limit(50);
 
       if (clientsData) {
-        // Map to Client interface to satisfy TS
+        // Map to Client interface - handle both name and full_name
         const mappedClients: Client[] = clientsData.map((c: any) => ({
           ...c,
+          name: c.full_name || c.name || 'Sin nombre',
           orders_count: c.orders_count || 0,
           total_spent: c.total_spent || 0,
           points_balance: c.points_balance || 0,
@@ -75,15 +80,63 @@ const OrderCreation: React.FC = () => {
         setClients(mappedClients);
       }
 
-      // 2. Fetch Venue Nodes (Tables)
+      // 2. Fetch Venue Nodes (Tables) - all tables, not filtered by status
       const { data: nodesData } = await supabase
         .from('venue_nodes')
         .select('*')
         .eq('store_id', profile.store_id)
-        .eq('status', 'active'); // Only fetch active nodes if that's the intention, or all
+        .in('type', ['table', 'bar']);
 
       if (nodesData) {
         setTables(nodesData);
+      }
+
+      // 3. Fetch Menu Products from inventory_items with categories
+      const { data: menuData, error: menuError } = await supabase
+        .from('inventory_items')
+        .select(`
+          id,
+          name,
+          price,
+          image_url,
+          description,
+          category_id
+        `)
+        .eq('store_id', profile.store_id)
+        .eq('is_menu_visible', true)
+        .gt('price', 0)
+        .order('name');
+
+      console.log('[OrderCreation] Menu fetch result:', menuData?.length, menuError);
+
+      if (menuData && menuData.length > 0) {
+        // Fetch categories separately
+        const categoryIds = [...new Set(menuData.map((item: any) => item.category_id).filter(Boolean))];
+        let categoriesMap: Record<string, string> = {};
+
+        if (categoryIds.length > 0) {
+          const { data: catsData } = await supabase
+            .from('categories' as any)
+            .select('id, name')
+            .in('id', categoryIds);
+
+          if (catsData) {
+            catsData.forEach((cat: any) => {
+              categoriesMap[cat.id] = cat.name;
+            });
+          }
+        }
+
+        const mappedProducts = menuData.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          price: parseFloat(item.price) || 0,
+          image: item.image_url || '',
+          category: categoriesMap[item.category_id] || 'General',
+          description: item.description
+        }));
+        console.log('[OrderCreation] Mapped products:', mappedProducts);
+        setMenuProducts(mappedProducts);
       }
     };
 
@@ -91,12 +144,13 @@ const OrderCreation: React.FC = () => {
   }, [profile?.store_id]);
 
   const filteredProducts = useMemo(() => {
-    return products.filter(p => {
-      const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
+    return menuProducts.filter(p => {
+      if (!p || !p.name) return false; // Skip invalid products
+      const matchesSearch = (p.name || '').toLowerCase().includes(search.toLowerCase());
       const matchesCategory = activeCategory === 'Todo' || p.category === activeCategory;
       return matchesSearch && matchesCategory;
     });
-  }, [search, activeCategory, products]);
+  }, [search, activeCategory, menuProducts]);
 
   useEffect(() => {
     setActiveIndex(0);
@@ -143,17 +197,18 @@ const OrderCreation: React.FC = () => {
   };
 
 
+
   const filteredClients = useMemo(() => {
-    return clients.filter(c =>
-      c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
-      c.email.toLowerCase().includes(clientSearch.toLowerCase())
-    );
+    return clients.filter(c => {
+      const name = c.name || '';
+      const email = c.email || '';
+      return name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+        email.toLowerCase().includes(clientSearch.toLowerCase());
+    });
   }, [clients, clientSearch]);
 
   const filteredTables = useMemo(() => {
-    return tables.filter(t =>
-      t.name.toLowerCase().includes('') // Simple filter if needed
-    );
+    return tables.filter(t => t && (t.label || t.name)); // Only show tables with valid labels
   }, [tables]);
 
   const total = cart.reduce((acc, item) => acc + (item.price_unit * item.quantity), 0);
@@ -205,13 +260,15 @@ const OrderCreation: React.FC = () => {
         .from('orders')
         .insert({
           store_id: profile.store_id,
-          customer_name: selectedClient ? selectedClient.name : 'Cliente General',
-          client_id: selectedClient?.id || null, // Link to real client
+          client_id: selectedClient?.id || null,
           total_amount: total,
+          subtotal: total,
           status: 'pending',
-          is_paid: true, // Manual salon orders are usually paid or marked as such
-          channel: 'table',
-          table_number: tableNum
+          is_paid: true,
+          channel: selectedTable ? 'table' : 'takeaway',
+          table_number: tableNum,
+          node_id: selectedTable?.id || null,
+          payment_method: paymentMethod
         })
         .select()
         .single();
@@ -241,7 +298,7 @@ const OrderCreation: React.FC = () => {
       addToast(`PEDIDO CONFIRMADO`, 'success', `Orden #${orderData.order_number || ''} creada`);
 
       setLastOrderTotal(total);
-      setShowSuccess(true);
+      setShowOrderSuccess(true);
       setShowMultipleOrderWarning(false);
       setIsCartOpenMobile(false);
 
@@ -257,7 +314,7 @@ const OrderCreation: React.FC = () => {
     setCart([]);
     setSelectedClient(null);
     setSelectedTable(null);
-    setShowSuccess(false);
+    setShowOrderSuccess(false);
     setSearch('');
     if (searchInputRef.current) searchInputRef.current.focus();
   };
@@ -266,7 +323,7 @@ const OrderCreation: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Prevent interference with modals
-      if (showSuccess || showClientPicker || showTablePicker || isScanningUser) return;
+      if (showOrderSuccess || showClientPicker || showTablePicker || isScanningUser) return;
 
       // Navigation in Product Grid
       if (['ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft'].includes(e.key)) {
@@ -336,7 +393,7 @@ const OrderCreation: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [filteredProducts, activeIndex, cart, search, showSuccess, showClientPicker, showTablePicker]);
+  }, [filteredProducts, activeIndex, cart, search, showOrderSuccess, showClientPicker, showTablePicker]);
 
 
   const startScanner = async () => {
@@ -380,10 +437,63 @@ const OrderCreation: React.FC = () => {
         >
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-lg">deck</span>
-            <span className="text-[11px] font-black uppercase italic tracking-wider">{selectedTable ? selectedTable.name : 'ASIGNAR MESA'}</span>
+            <span className="text-[11px] font-black uppercase italic tracking-wider">{selectedTable ? (selectedTable.label || selectedTable.name) : 'ASIGNAR MESA'}</span>
           </div>
           <span className="material-symbols-outlined text-sm opacity-40">expand_more</span>
         </button>
+
+        {/* Quick Actions - Modo de Venta */}
+        <div className="flex gap-2 pt-3">
+          <button
+            type="button"
+            onClick={() => { setSelectedClient(null); setSelectedTable(null); }}
+            className={`flex-1 py-3 rounded-xl border text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2 ${!selectedClient && !selectedTable ? 'bg-neon text-black border-neon' : 'bg-white/5 border-white/10 text-white/40 hover:border-white/30'}`}
+          >
+            {!selectedClient && !selectedTable && <span className="material-symbols-outlined text-sm">check</span>}
+            ANÓNIMO
+          </button>
+          <button
+            type="button"
+            onClick={() => { setSelectedTable(null); }}
+            className={`flex-1 py-3 rounded-xl border text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2 ${!selectedTable ? 'bg-blue-500 text-white border-blue-500' : 'bg-white/5 border-white/10 text-white/40 hover:border-white/30'}`}
+          >
+            {!selectedTable && <span className="material-symbols-outlined text-sm">check</span>}
+            PARA LLEVAR
+          </button>
+        </div>
+
+        {/* Payment Method Selector */}
+        <div className="pt-4 grid grid-cols-4 gap-2">
+          <button
+            onClick={() => setPaymentMethod('cash')}
+            className={`py-3 rounded-xl border flex flex-col items-center justify-center transition-all ${paymentMethod === 'cash' ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}
+          >
+            <span className="material-symbols-outlined text-lg mb-1">payments</span>
+            <span className="text-[8px] font-black uppercase">Efectivo</span>
+          </button>
+          <button
+            onClick={() => setPaymentMethod('card')}
+            className={`py-3 rounded-xl border flex flex-col items-center justify-center transition-all ${paymentMethod === 'card' ? 'bg-blue-500/20 border-blue-500 text-blue-400' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}
+          >
+            <span className="material-symbols-outlined text-lg mb-1">credit_card</span>
+            <span className="text-[8px] font-black uppercase">Tarjeta</span>
+          </button>
+          <button
+            onClick={() => setPaymentMethod('qr')}
+            className={`py-3 rounded-xl border flex flex-col items-center justify-center transition-all ${paymentMethod === 'qr' ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}
+          >
+            <span className="material-symbols-outlined text-lg mb-1">qr_code_2</span>
+            <span className="text-[8px] font-black uppercase">QR</span>
+          </button>
+          <button
+            onClick={() => setPaymentMethod('wallet')}
+            disabled={!selectedClient}
+            className={`py-3 rounded-xl border flex flex-col items-center justify-center transition-all ${!selectedClient ? 'opacity-30 cursor-not-allowed bg-white/5 border-white/5' : paymentMethod === 'wallet' ? 'bg-purple-500/20 border-purple-500 text-purple-400' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}
+          >
+            <span className="material-symbols-outlined text-lg mb-1">account_balance_wallet</span>
+            <span className="text-[8px] font-black uppercase">Saldo</span>
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-3 no-scrollbar">
@@ -493,27 +603,33 @@ const OrderCreation: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto no-scrollbar p-4 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 pb-32">
+          <div className="flex-1 overflow-y-auto no-scrollbar p-4 grid grid-cols-3 sm:grid-cols-4 xl:grid-cols-5 gap-3 pb-32">
             {filteredProducts.map((p, idx) => (
               <div
                 key={p.id}
                 onClick={() => handleAddToCart(p)}
-                className={`group rounded-[2.2rem] p-3 border transition-all cursor-pointer active:scale-95 flex flex-col shadow-xl ${activeIndex === idx
-                  ? 'bg-neon/5 border-neon ring-2 ring-neon/20 scale-[1.02]'
-                  : 'bg-surface-dark border-white/5 hover:border-neon/30'
+                className={`group rounded-2xl p-2 border transition-all cursor-pointer active:scale-95 flex flex-col ${activeIndex === idx
+                  ? 'bg-neon/10 border-neon ring-1 ring-neon/30'
+                  : 'bg-surface-dark border-white/10 hover:border-neon/30'
                   }`}
               >
-                <div className="relative aspect-square rounded-[1.8rem] overflow-hidden mb-3">
-                  <img src={p.image} className="size-full object-cover transition-transform group-hover:scale-110 duration-500" />
-                  <div className={`absolute top-3 right-3 transition-colors ${activeIndex === idx ? 'text-neon' : 'text-white'}`}>
-                    <div className="size-8 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center border border-white/10">
-                      <span className="material-symbols-outlined text-lg font-black">add</span>
+                <div className="relative aspect-[4/3] rounded-xl overflow-hidden mb-2 bg-black/30">
+                  {p.image ? (
+                    <img src={p.image} className="size-full object-cover transition-transform group-hover:scale-105 duration-300" alt={p.name} />
+                  ) : (
+                    <div className="size-full flex items-center justify-center text-white/20">
+                      <span className="material-symbols-outlined text-3xl">inventory_2</span>
+                    </div>
+                  )}
+                  <div className={`absolute top-1.5 right-1.5 transition-colors ${activeIndex === idx ? 'text-neon' : 'text-white/70'}`}>
+                    <div className="size-6 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center">
+                      <span className="material-symbols-outlined text-sm font-black">add</span>
                     </div>
                   </div>
                 </div>
-                <div className="px-1">
-                  <h4 className={`text-[10px] font-black uppercase italic tracking-tight leading-tight line-clamp-2 ${activeIndex === idx ? 'text-neon' : 'text-white'}`}>{p.name}</h4>
-                  <p className="text-xs font-black text-white/50 mt-1.5 leading-none">${(p.price || 0).toFixed(1)}</p>
+                <div className="px-1 flex-1 flex flex-col justify-between">
+                  <h4 className={`text-[9px] font-bold uppercase tracking-tight leading-tight line-clamp-2 ${activeIndex === idx ? 'text-neon' : 'text-white/80'}`}>{p.name}</h4>
+                  <p className="text-sm font-black text-neon mt-1">${(p.price || 0).toFixed(0)}</p>
                 </div>
               </div>
             ))}
@@ -537,25 +653,42 @@ const OrderCreation: React.FC = () => {
       </main>
 
       {/* SUCCESS OVERLAY */}
-      {showSuccess && (
+      {showOrderSuccess && (
         <div className="fixed inset-0 z-[600] flex items-center justify-center p-6 animate-in fade-in duration-300">
           <div className="absolute inset-0 bg-background-dark/95 backdrop-blur-xl"></div>
           <div className="relative w-full max-w-sm bg-surface-dark rounded-[3.5rem] border border-white/10 p-10 text-center shadow-[0_0_100px_rgba(74,222,128,0.1)] animate-in zoom-in-95 duration-300">
             <div className="size-24 rounded-full bg-neon/10 border border-neon/20 flex items-center justify-center text-neon mx-auto mb-8 shadow-neon-soft animate-bounce">
-              <span className="material-symbols-outlined text-5xl font-black">check_circle</span>
+              <span className="material-symbols-outlined text-5xl">check_circle</span>
             </div>
-            <h2 className="text-3xl font-black italic-black text-white uppercase tracking-tighter mb-2">MISIÓN <span className="text-neon">CUMPLIDA</span></h2>
-            <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.3em] mb-10">VENTA REGISTRADA CON ÉXITO</p>
 
-            <div className="bg-black/20 rounded-3xl p-6 mb-10 space-y-3 border border-white/5">
-              <div className="flex justify-between items-center text-[9px] font-black uppercase text-white/40 tracking-widest">
-                <span>Monto Total</span>
-                <span className="text-white text-sm">${lastOrderTotal.toFixed(2)}</span>
+            <h2 className="text-3xl font-black uppercase italic tracking-tighter text-white mb-2">Misión <span className="text-neon">Cumplida</span></h2>
+            <p className="text-xs font-bold uppercase tracking-widest text-white/50 mb-6">Venta registrada con éxito</p>
+
+            <div className="w-full bg-white/5 rounded-xl p-4 mb-6 border border-white/10">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-[10px] font-black uppercase text-white/50">Monto Total</span>
+                <span className="text-xl font-black text-white">${lastOrderTotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-black uppercase text-white/50">Método de Pago</span>
+                <span className="text-xs font-black uppercase text-neon flex items-center gap-1">
+                  {paymentMethod === 'cash' && <span className="material-symbols-outlined text-sm">payments</span>}
+                  {paymentMethod === 'card' && <span className="material-symbols-outlined text-sm">credit_card</span>}
+                  {paymentMethod === 'qr' && <span className="material-symbols-outlined text-sm">qr_code_2</span>}
+                  {paymentMethod === 'wallet' && <span className="material-symbols-outlined text-sm">account_balance_wallet</span>}
+
+                  {paymentMethod === 'cash' && 'Efectivo'}
+                  {paymentMethod === 'card' && 'Tarjeta'}
+                  {paymentMethod === 'qr' && 'Mercado Pago'}
+                  {paymentMethod === 'wallet' && 'Saldo'}
+                </span>
               </div>
             </div>
 
             <div className="space-y-3">
-              <button autoFocus onClick={resetOrder} className="w-full py-5 bg-neon text-black rounded-2xl font-black text-xs uppercase tracking-[0.3em] shadow-neon-soft active:scale-95 transition-all">NUEVA OPERACIÓN [ENTER]</button>
+              <button autoFocus onClick={() => window.location.reload()} className="w-full py-4 bg-neon text-black font-black uppercase tracking-widest rounded-xl hover:bg-neon/90 transition-all shadow-neon-soft active:scale-95">
+                Nueva Operación [ENTER]
+              </button>
               <button onClick={() => navigate('/orders')} className="w-full py-4 border border-white/10 text-white/40 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:text-white transition-all">VER TABLERO DESPACHO</button>
             </div>
           </div>
@@ -663,20 +796,22 @@ const OrderCreation: React.FC = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 p-1">
-              {tables.map(table => (
+              {filteredTables.map(table => (
                 <button
                   key={table.id}
                   onClick={() => { setSelectedTable(table); setShowTablePicker(false); }}
                   className={`aspect-square rounded-2xl border flex flex-col items-center justify-center p-4 transition-all active:scale-95 ${selectedTable?.id === table.id
-                    ? 'bg-accent/20 border-accent text-accent shadow-soft'
-                    : table.status === 'active'
-                      ? 'bg-black/20 border-red-500/30 text-red-400 opacity-60' // Occupied usually 'active' means occupied/open in some contexts, check logic. Assuming status 'active' means 'occupied' or 'enabled'? 
-                      : 'bg-white/5 border-white/5 text-white/60 hover:bg-white/10' // Assuming 'free' or other status
-                    } ${table.status === 'free' ? 'border-green-500/30 text-green-400' : ''}`}
+                    ? 'bg-neon/20 border-neon text-neon shadow-neon-soft'
+                    : table.status === 'occupied'
+                      ? 'bg-red-500/10 border-red-500/30 text-red-400'
+                      : 'bg-white/5 border-white/5 text-white/60 hover:bg-white/10 hover:border-neon/30'
+                    }`}
                 >
                   <span className="material-symbols-outlined text-3xl mb-2">{table.type === 'bar' ? 'local_bar' : 'table_restaurant'}</span>
-                  <span className="text-xs font-black uppercase">{table.name}</span>
-                  <span className="text-[9px] font-bold opacity-60 mt-1 uppercase">{table.status === 'active' ? 'Ocupada' : 'Libre'}</span>
+                  <span className="text-sm font-black uppercase tracking-tight">{table.label || table.name || 'Sin nombre'}</span>
+                  <span className={`text-[9px] font-bold mt-1 uppercase ${table.status === 'occupied' ? 'text-red-400' : 'text-green-400'}`}>
+                    {table.status === 'occupied' ? 'Ocupada' : 'Libre'}
+                  </span>
                 </button>
               ))}
             </div>

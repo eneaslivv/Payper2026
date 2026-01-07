@@ -36,6 +36,23 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
+  // Dispatch Stations for dropdown
+  const [dispatchStations, setDispatchStations] = useState<{ id: string; name: string }[]>([]);
+
+  // Fetch dispatch stations on mount
+  useEffect(() => {
+    if (!profile?.store_id) return;
+    supabase
+      .from('dispatch_stations' as any)
+      .select('id, name')
+      .eq('store_id', profile.store_id)
+      .eq('is_visible', true)
+      .order('sort_order', { ascending: true })
+      .then(({ data }) => {
+        if (data) setDispatchStations(data);
+      });
+  }, [profile?.store_id]);
+
   // Fetch customers for syncing
   useEffect(() => {
     if (customerSearch.length < 2) {
@@ -77,7 +94,7 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
         .select('id, order_number, total_amount, status, created_at, customer_name')
         .eq('store_id', profile.store_id)
         .eq('node_id', table.id)
-        .in('status', ['pending', 'preparing', 'in_progress', 'bill_requested'])
+        .in('status', ['draft', 'pending', 'preparing', 'ready', 'served', 'delivered', 'bill_requested'])
         .order('created_at', { ascending: false });
 
       if (data) {
@@ -312,13 +329,13 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
       return;
     }
 
-    // Force close (Cancel order?)
-    if (!selectedOrderId) return;
+    // Force close (Cancel ALL active orders)
     try {
       const { error } = await supabase
         .from('orders' as any)
         .update({ status: 'cancelled' })
-        .eq('id', selectedOrderId);
+        .eq('node_id', table.id)
+        .in('status', ['draft', 'pending', 'preparing', 'ready', 'served', 'delivered', 'bill_requested']);
 
       if (error) throw error;
 
@@ -875,13 +892,26 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
             <div className={`w-3 h-3 rounded-full ${STATUS_COLORS[table.status]} shadow-[0_0_15px_#36e27b]/30`}></div>
             <div className="flex-1">
               {isEditMode ? (
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-2">
                   <input
                     type="text"
                     value={table.name}
                     onChange={(e) => onUpdateProperty('name', e.target.value)}
                     className="bg-black border border-zinc-800 rounded-lg px-2 py-1 text-xl font-black text-[#36e27b] uppercase focus:border-[#36e27b] outline-none w-full"
                   />
+                  <div className="flex items-center gap-2">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Estación:</span>
+                    <select
+                      value={(table as any).dispatch_station || ''}
+                      onChange={(e) => onUpdateProperty('dispatch_station', e.target.value || null)}
+                      className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1.5 text-[10px] font-black text-white uppercase outline-none focus:border-[#36e27b] transition-all cursor-pointer"
+                    >
+                      <option value="">Sin asignar</option>
+                      {dispatchStations.map(s => (
+                        <option key={s.id} value={s.name}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
                   {editButton}
                 </div>
               ) : (

@@ -22,13 +22,21 @@ const LoyaltyPage: React.FC = () => {
 
   // Get accent color from store theme
   const accentColor = store?.menu_theme?.accentColor || '#4ADE80';
+  const backgroundColor = store?.menu_theme?.backgroundColor || '#000000';
+  const textColor = store?.menu_theme?.textColor || '#FFFFFF';
   const storeName = store?.name || 'Brew Club';
+
+  // Simple check for light mode
+  const isLight = backgroundColor.toLowerCase() === '#ffffff' || backgroundColor.toLowerCase() === '#fff';
+  const surfaceColor = isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)';
+  const borderColor = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
+  const headerBg = isLight ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)';
 
   if (!user) {
     return (
-      <div className="flex flex-col min-h-screen pb-32 bg-background-dark font-display">
-        <header className="sticky top-0 z-50 bg-background-dark/80 backdrop-blur-xl px-6 pt-[calc(1rem+env(safe-area-inset-top))] pb-4 border-b border-white/5">
-          <h1 className="text-xl font-black tracking-tight uppercase">Brew Club</h1>
+      <div className="flex flex-col min-h-screen pb-32 font-display" style={{ backgroundColor, color: textColor }}>
+        <header className="sticky top-0 z-50 backdrop-blur-xl px-6 pt-[calc(1rem+env(safe-area-inset-top))] pb-4 border-b" style={{ backgroundColor: headerBg, borderColor }}>
+          <h1 className="text-xl font-black tracking-tight uppercase">{storeName}</h1>
         </header>
         <LoyaltyLockedView title="Puntos y Recompensas" icon="stars" />
       </div>
@@ -89,8 +97,8 @@ const LoyaltyPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen pb-32 bg-background-light dark:bg-background-dark font-display overflow-x-hidden">
-      <header className="sticky top-0 z-50 px-6 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-6 flex justify-between items-center border-b border-white/5 bg-black/80 backdrop-blur-xl">
+    <div className="flex flex-col min-h-screen pb-32 font-display overflow-x-hidden transition-colors duration-500" style={{ backgroundColor, color: textColor }}>
+      <header className="sticky top-0 z-50 px-6 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-6 flex justify-between items-center border-b backdrop-blur-xl" style={{ backgroundColor: headerBg, borderColor }}>
         <div className="flex items-center gap-3">
           <div
             className="w-10 h-10 rounded-full flex items-center justify-center ring-1"
@@ -98,12 +106,12 @@ const LoyaltyPage: React.FC = () => {
           >
             <span className="material-symbols-outlined fill-icon">loyalty</span>
           </div>
-          <h1 className="text-xl font-black tracking-tight uppercase italic text-white">{storeName} Club</h1>
+          <h1 className="text-xl font-black tracking-tight uppercase italic" style={{ color: textColor }}>{storeName} Club</h1>
         </div>
         <button
           onClick={() => setShowQR({ isOpen: true, data: user.id, title: 'Miembro del Club' })}
-          className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center active:scale-90 transition-transform border border-white/5 shadow-xl"
-          style={{ color: accentColor }}
+          className="w-12 h-12 rounded-2xl flex items-center justify-center active:scale-90 transition-transform border shadow-xl"
+          style={{ color: accentColor, backgroundColor: surfaceColor, borderColor }}
         >
           <span className="material-symbols-outlined">qr_code</span>
         </button>

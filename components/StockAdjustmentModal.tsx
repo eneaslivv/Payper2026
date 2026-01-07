@@ -64,7 +64,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
             const { data: locs } = await supabase.from('storage_locations').select('*').order('name');
             setLocations(locs || []);
 
-            const { data: levels } = await supabase.from('inventory_location_stock').select('location_id, closed_units').eq('item_id', item.id);
+            const { data: levels } = await supabase.from('inventory_location_stock' as any).select('location_id, closed_units').eq('item_id', item.id);
             const levelsMap: Record<string, number> = {};
             levels?.forEach((l: any) => { levelsMap[l.location_id] = Number(l.closed_units); });
             setStockLevels(levelsMap);
@@ -116,7 +116,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                 }
             }
 
-            // Use transfer_stock RPC with extended params (Version 3 signature)
+            // Use transfer_stock RPC with unified signature
             const { data, error } = await supabase.rpc('transfer_stock', {
                 p_item_id: item.id,
                 p_from_location_id: fromLocation,

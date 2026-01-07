@@ -93,7 +93,7 @@ function LocationStockBreakdown({ itemId, unitType, packageSize }: { itemId: str
     const fetchLocations = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase.rpc('get_item_stock_by_locations', { p_item_id: itemId });
+        const { data, error } = await (supabase.rpc as any)('get_item_stock_by_locations', { p_item_id: itemId });
         if (error) throw error;
         setLocations(data || []);
       } catch (err) {
@@ -140,9 +140,7 @@ function LocationStockBreakdown({ itemId, unitType, packageSize }: { itemId: str
           </div>
           <div className="flex items-baseline gap-1 pl-6">
             <span className="text-lg font-black text-neon">{loc.closed_units || 0}</span>
-            <span className="text-[8px] font-bold text-white/30 uppercase">
-              {unitType === 'gram' ? 'KG' : unitType === 'ml' ? 'L' : 'un'}
-            </span>
+            <span className="text-[8px] font-bold text-white/30">un</span>
           </div>
         </div>
       ))}
@@ -154,6 +152,7 @@ import { StockTransferModal } from '../components/StockTransferModal';
 import { StockAdjustmentModal } from '../components/StockAdjustmentModal';
 import { AIStockInsight } from '../components/AIStockInsight';
 import { LogisticsView } from '../components/LogisticsView';
+import { EditPriceModal } from '../components/EditPriceModal';
 
 const InventoryManagement: React.FC = () => {
   const { profile } = useAuth();
@@ -254,6 +253,9 @@ const InventoryManagement: React.FC = () => {
   // Open Package Modal
   const [showOpenPackageModal, setShowOpenPackageModal] = useState(false);
   const [newPackageCapacity, setNewPackageCapacity] = useState<number>(1000);
+
+  // Edit Price Modal
+  const [showEditPriceModal, setShowEditPriceModal] = useState(false);
 
 
 
@@ -746,7 +748,7 @@ const InventoryManagement: React.FC = () => {
             min_stock_alert: newItemForm.min_stock,
             store_id: storeId,
             category_id: newItemForm.category_id || null,
-            item_type: newItemForm.price > 0 ? 'sellable' : 'ingredient',
+            is_menu_visible: newItemForm.price > 0, // Map 'sellable' to boolean flag
             price: newItemForm.price || 0
           })
         }
@@ -1530,12 +1532,9 @@ const InventoryManagement: React.FC = () => {
                                 })()
                               ) : (
                                 <>
-                                  {/* SIMPLIFIED: Show closed_stock directly */}
+                                  {/* Stock cerrado: solo el número de paquetes/unidades selladas */}
                                   <span className="font-black italic text-[14px] text-neon">
                                     {item.closed_stock || 0}
-                                    <span className="text-[8px] uppercase opacity-30 ml-1">
-                                      {item.unit_type === 'gram' ? 'KG' : item.unit_type === 'ml' ? 'L' : item.unit_type || 'un'}
-                                    </span>
                                   </span>
                                   {(item.closed_stock || 0) <= (item.min_stock || 0) && (
                                     <span className="text-[6px] font-black text-white/40 uppercase tracking-widest mt-1">CRÍTICO</span>
@@ -1714,32 +1713,29 @@ const InventoryManagement: React.FC = () => {
       <div className={`fixed inset-y-0 right-0 z-[5000] h-screen w-full max-w-[420px] bg-[#0D0F0D] border-l border-white/10 shadow-3xl transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col ${selectedItem ? 'translate-x-0' : 'translate-x-full opacity-0 pointer-events-none invisible'}`}>
         {selectedItem && (
           <>
-            <div className="p-4 flex justify-between items-center border-b border-white/5 bg-black/40">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="size-11 rounded-xl bg-black border border-white/10 overflow-hidden shadow-lg shrink-0">
-                  <img src={selectedItem.image_url} className="size-full object-cover" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <h3 className="text-base font-black text-white uppercase tracking-tight leading-none truncate">{selectedItem.name}</h3>
-                    {selectedItem.category_ids?.[0] && (() => {
-                      const cat = categories.find(c => c.id === selectedItem.category_ids?.[0]);
-                      return cat ? (
-                        <span className="shrink-0 px-2 py-0.5 rounded-md bg-neon/10 border border-neon/20 text-[7px] font-black text-neon uppercase tracking-widest">
-                          {cat.name}
-                        </span>
-                      ) : null;
-                    })()}
-                  </div>
-                  <p className="text-[7px] font-bold text-white/30 uppercase tracking-widest">{selectedItem.item_type === 'sellable' ? 'Producto' : 'Insumo'} · {selectedItem.sku || 'SKU'}</p>
-                </div>
-              </div>
-              <button onClick={() => setSelectedItem(null)} className="size-8 rounded-lg bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all shrink-0 ml-2">
+            <div className="relative h-64 w-full shrink-0">
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0D0F0D] via-transparent to-transparent z-10" />
+              <img src={selectedItem.image_url} className="w-full h-full object-cover" />
+              <button onClick={() => setSelectedItem(null)} className="absolute top-4 right-4 z-20 size-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white/60 hover:text-white transition-all">
                 <span className="material-symbols-outlined text-lg">close</span>
               </button>
+              <div className="absolute bottom-4 left-6 z-20 right-6">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-2xl font-light text-white uppercase tracking-tight leading-none">{selectedItem.name}</h3>
+                  {selectedItem.category_ids?.[0] && (() => {
+                    const cat = categories.find(c => c.id === selectedItem.category_ids?.[0]);
+                    return cat ? (
+                      <span className="shrink-0 px-2 py-0.5 rounded-full bg-cream/10 border border-cream/20 text-[9px] font-medium text-cream uppercase tracking-widest">
+                        {cat.name}
+                      </span>
+                    ) : null;
+                  })()}
+                </div>
+                <p className="text-[9px] font-medium text-white/50 uppercase tracking-[0.2em]">{selectedItem.item_type === 'sellable' ? 'Producto' : 'Insumo'} · {selectedItem.sku || 'SKU'}</p>
+              </div>
             </div>
 
-            <div className="flex border-b border-white/5 bg-black/40 px-2">
+            <div className="flex border-b border-white/5 px-6 gap-6">
               <DrawerTabBtn active={drawerTab === 'details'} onClick={() => setDrawerTab('details')} label="FICHA" icon="analytics" />
               {selectedItem.item_type === 'sellable' && (
                 <DrawerTabBtn active={drawerTab === 'recipe'} onClick={() => setDrawerTab('recipe')} label="RECETA" icon="biotech" />
@@ -1817,16 +1813,20 @@ const InventoryManagement: React.FC = () => {
                           />
                           <div className="relative">
                             <select
-                              // Bind to content_unit (DB) or fallback to unit_measure
-                              value={selectedItem.content_unit || selectedItem.unit_measure || 'ml'}
-                              onChange={(e) => setSelectedItem(prev => prev ? { ...prev, content_unit: e.target.value, unit_measure: e.target.value } : null)}
-                              className="appearance-none bg-[#111] border border-white/10 rounded-lg h-9 pl-2 pr-5 text-[10px] font-bold text-white/60 outline-none cursor-pointer hover:border-white/20 transition-all"
+                              // Bind to unit_type (used for stock display) and sync with content_unit
+                              value={selectedItem.unit_type || 'unit'}
+                              onChange={(e) => setSelectedItem(prev => prev ? {
+                                ...prev,
+                                unit_type: e.target.value,
+                                content_unit: e.target.value === 'gram' ? 'g' : e.target.value === 'ml' ? 'ml' : e.target.value === 'kilo' ? 'kg' : 'un'
+                              } : null)}
+                              className="appearance-none bg-[#111] border border-white/10 rounded-lg h-9 pl-2 pr-6 text-[10px] font-bold text-white outline-none cursor-pointer hover:border-white/20 transition-all"
                             >
-                              <option value="ml">ml</option>
-                              <option value="g">g</option>
-                              <option value="kg">kg</option>
-                              <option value="L">L</option>
-                              <option value="un">un</option>
+                              <option value="unit">Unidades</option>
+                              <option value="gram">Gramos</option>
+                              <option value="kilo">Kilos</option>
+                              <option value="ml">Mililitros</option>
+                              <option value="liter">Litros</option>
                             </select>
                             <span className="absolute right-1 top-1/2 -translate-y-1/2 material-symbols-outlined text-white/30 text-[10px] pointer-events-none">expand_more</span>
                           </div>
@@ -1838,14 +1838,17 @@ const InventoryManagement: React.FC = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <label className="text-[9px] font-black uppercase text-white/40 tracking-[0.2em] ml-1"> Costo Unit. </label>
-                        <div className="relative">
+                        <div
+                          onClick={() => setShowEditPriceModal(true)}
+                          className="relative cursor-pointer group"
+                        >
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20 text-xs">$</span>
-                          <input
-                            type="number"
-                            value={selectedItem.cost || ''}
-                            onChange={(e) => setSelectedItem(prev => prev ? { ...prev, cost: parseFloat(e.target.value) || 0 } : null)}
-                            className="w-full bg-black border border-white/10 rounded-2xl h-12 pl-6 pr-4 font-black text-white text-lg outline-none focus:border-neon/50 text-right"
-                          />
+                          <div className="w-full bg-black border border-white/10 rounded-2xl h-12 pl-6 pr-10 font-black text-white text-lg flex items-center justify-end group-hover:border-amber-500/30 transition-all">
+                            {selectedItem.cost || 0}
+                          </div>
+                          <button className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 group-hover:text-amber-500 transition-colors">
+                            <span className="material-symbols-outlined text-base">edit</span>
+                          </button>
                         </div>
                       </div>
 
@@ -1860,14 +1863,15 @@ const InventoryManagement: React.FC = () => {
                     {selectedItem.item_type === 'sellable' && (
                       <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
                         <div className="space-y-2">
-                          <label className="text-[8px] font-black uppercase text-white/40 tracking-[0.2em]">Precio Venta</label>
-                          <div className="h-12 bg-black border border-white/10 rounded-2xl flex items-center justify-center font-black text-lg text-neon">
+                          <label className="text-[8px] font-medium uppercase text-white/40 tracking-[0.2em]">Precio Venta</label>
+                          <div className="h-12 bg-black/40 border border-white/10 rounded-xl flex items-center justify-center font-light text-lg text-rose-300">
                             ${selectedItem.price?.toFixed(2) || '0.00'}
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <label className="text-[8px] font-black uppercase text-white/40 tracking-[0.2em]">Margen Neto</label>
-                          <div className="h-12 bg-black border border-white/10 rounded-2xl flex items-center justify-center font-black text-lg text-neon">
+                          <label className="text-[8px] font-medium uppercase text-white/40 tracking-[0.2em]">Margen Neto</label>
+                          <div className={`h-12 bg-black/40 border border-white/10 rounded-xl flex items-center justify-center font-light text-lg ${selectedItem.price && ((selectedItem.price - selectedItem.cost) / selectedItem.cost) > 0.5 ? 'text-green-400' : 'text-rose-300'
+                            }`}>
                             {selectedItem.price ? `${(((selectedItem.price - selectedItem.cost) / selectedItem.cost) * 100).toFixed(0)}%` : '0%'}
                           </div>
                         </div>
@@ -1886,7 +1890,7 @@ const InventoryManagement: React.FC = () => {
                     </button>
                     <button
                       onClick={() => setAdjustmentModal({ open: true, type: 'PURCHASE' })}
-                      className="flex-1 py-3 rounded-xl bg-neon/10 text-neon border border-neon/20 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-neon/20 transition-all"
+                      className="flex-1 py-3 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-rose-500/20 transition-all"
                     >
                       <span className="material-symbols-outlined text-sm">shopping_cart</span>
                       Compra
@@ -1902,28 +1906,61 @@ const InventoryManagement: React.FC = () => {
 
                   {/* METRICS & DETAILS */}
                   {drawerTab === 'details' && (
-                    <div className="bg-white/5 rounded-2xl p-4 border border-white/5 space-y-4">
+                    <div className="bg-white/[0.02] rounded-2xl p-6 border border-white/5 space-y-6">
+                      {/* STOCK CERRADO - Principal */}
                       <div className="flex justify-between items-start">
                         <div>
-                          <p className="text-[9px] font-black text-[#71766F] uppercase tracking-[0.2em] mb-1">STOCK TOTAL</p>
-                          <p className="text-3xl font-black text-white tracking-tighter">{selectedItem.current_stock} <span className="text-sm text-white/40">{selectedItem.unit_type}</span></p>
+                          <p className="text-[10px] font-medium text-cream/70 uppercase tracking-[0.2em] mb-2">STOCK CERRADO</p>
+                          <div className="flex items-baseline gap-3">
+                            <p className="text-5xl font-light text-cream tracking-tighter">{selectedItem.closed_stock || 0}</p>
+                            <p className="text-sm font-medium text-white/30">unidades</p>
+                          </div>
+                          {/* Clarificación de qué contiene cada unidad */}
+                          {selectedItem.package_size && selectedItem.package_size > 1 && (
+                            <p className="text-[11px] font-light text-white/30 mt-2">
+                              1 unidad = <span className="text-cream/50 font-medium">{selectedItem.package_size}{selectedItem.unit_type === 'gram' ? 'g' : selectedItem.unit_type === 'ml' ? 'ml' : ''}</span>
+                            </p>
+                          )}
                         </div>
                         <button
                           onClick={() => setIsTransferModalOpen(true)}
-                          className="px-4 py-2 bg-neon/10 border border-neon/20 rounded-xl flex items-center gap-2 hover:bg-neon/20 transition-all group"
+                          className="px-5 py-2.5 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-2 hover:bg-rose-500/20 transition-all group"
                         >
-                          <span className="material-symbols-outlined text-neon text-lg group-hover:scale-110 transition-transform">swap_horiz</span>
-                          <span className="text-[9px] font-black text-neon uppercase tracking-widest">TRANSFERIR</span>
+                          <span className="material-symbols-outlined text-rose-400 text-lg group-hover:scale-110 transition-transform">swap_horiz</span>
+                          <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest">TRANSFERIR</span>
                         </button>
                       </div>
 
-                      {/* STOCK POR UBICACIÓN - New Section */}
+                      <div className="h-px bg-white/5 w-full"></div>
+
+                      {/* STOCK TOTAL - Secundario */}
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-baseline">
+                          <p className="text-[9px] font-medium text-white/30 uppercase tracking-widest">Stock Total (calculado)</p>
+                          <div className="text-[9px] text-white/20 italic">cerrados × tamaño + abiertos</div>
+                        </div>
+
+                        <div className="flex items-baseline gap-2">
+                          <p className="text-2xl font-light text-white/60 tracking-tight">
+                            {selectedItem.current_stock}
+                          </p>
+                          <span className="text-xs font-medium text-white/30">
+                            {selectedItem.unit_type === 'unit' ? 'unidades' :
+                              selectedItem.unit_type === 'gram' ? 'gramos' :
+                                selectedItem.unit_type === 'ml' ? 'ml' :
+                                  selectedItem.unit_type === 'kilo' ? 'kilos' :
+                                    selectedItem.unit_type === 'liter' ? 'litros' : 'unidades'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* STOCK POR UBICACIÓN */}
                       {selectedItem.item_type === 'ingredient' && (
-                        <div className="mt-4 space-y-3">
-                          <div className="flex items-center gap-2">
-                            <span className="material-symbols-outlined text-white/40 text-sm">location_on</span>
-                            <span className="text-[8px] font-black uppercase text-white/40 tracking-[0.2em]">Stock por Ubicación</span>
-                            <div className="flex-1 h-px bg-white/10"></div>
+                        <div className="pt-4 space-y-4">
+                          <div className="flex items-center gap-3">
+                            <span className="material-symbols-outlined text-white/30 text-sm">location_on</span>
+                            <span className="text-[9px] font-medium uppercase text-white/30 tracking-[0.2em]">Ubicaciones</span>
+                            <div className="flex-1 h-px bg-white/5"></div>
                           </div>
                           <LocationStockBreakdown itemId={selectedItem.id} unitType={selectedItem.unit_type} packageSize={selectedItem.package_size || 1} />
                         </div>
@@ -1939,12 +1976,12 @@ const InventoryManagement: React.FC = () => {
 
                   {/* PAQUETES ABIERTOS - Sección Detallada */}
                   {(selectedItem.open_packages?.length > 0 || selectedItem.open_count > 0) && (
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-neon text-sm">inventory_2</span>
-                        <span className="text-[9px] font-black uppercase text-white/60 tracking-[0.2em]">Paquetes Abiertos</span>
-                        <div className="flex-1 h-px bg-white/10"></div>
-                        <span className="text-xs font-black text-neon">{selectedItem.open_packages?.length || selectedItem.open_count}</span>
+                    <div className="space-y-4 mt-6">
+                      <div className="flex items-center gap-3">
+                        <span className="material-symbols-outlined text-cream text-sm">inventory_2</span>
+                        <span className="text-[9px] font-medium uppercase text-cream/60 tracking-[0.2em]">Paquetes Abiertos</span>
+                        <div className="flex-1 h-px bg-white/5"></div>
+                        <span className="text-xs font-bold text-cream bg-white/5 px-2 py-1 rounded-md">{selectedItem.open_packages?.length || selectedItem.open_count}</span>
                       </div>
 
                       <div className="space-y-3">
@@ -3190,6 +3227,19 @@ const InventoryManagement: React.FC = () => {
           onClose={() => setAdjustmentModal({ ...adjustmentModal, open: false })}
           item={selectedItem}
           type={adjustmentModal.type}
+          onSuccess={() => fetchData(false)}
+        />
+      )}
+
+      {/* EDIT PRICE MODAL */}
+      {selectedItem && (
+        <EditPriceModal
+          isOpen={showEditPriceModal}
+          onClose={() => setShowEditPriceModal(false)}
+          itemId={selectedItem.id}
+          itemName={selectedItem.name}
+          currentCost={selectedItem.cost || 0}
+          currentPrice={selectedItem.price || 0}
           onSuccess={() => fetchData(false)}
         />
       )}

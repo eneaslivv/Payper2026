@@ -7,7 +7,6 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-    // 1. Manejo de CORS preflight
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
@@ -17,21 +16,53 @@ serve(async (req) => {
         const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
         if (!supabaseUrl || !supabaseServiceKey) {
-            return new Response(JSON.stringify({ error: 'Falta configuración en el servidor (URL/KEY)' }), {
+            return new Response(JSON.stringify({ error: 'Server configuration missing' }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 200, // Devolvemos 200 para evitar el bloqueo del cliente y mostrar el error real
+                status: 500,
             });
         }
 
         const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-        const { email: rawEmail, storeName, ownerName, storeId, action } = await req.json();
+        const { email: rawEmail, ownerName, storeId } = await req.json();
 
         const email = rawEmail?.trim().toLowerCase();
         if (!email) throw new Error('Email es obligatorio');
+        if (!storeId) throw new Error('storeId es obligatorio');
 
-        console.log(`[HQ] Procesando ${action || 'invite'} para: ${email}`);
+        console.log(`[INVITE-OWNER] Processing for: ${email}, storeId: ${storeId}`);
 
-        // 2. Asegurar que el usuario existe en Auth
+        // 1. AUTHORIZATION: Check if caller can manage this store
+        // For owner invites, we allow service-level calls (no user context) OR superadmin
+        // If there's an Authorization header, validate it
+        const authHeader = req.headers.get('Authorization');
+        if (authHeader && !authHeader.includes(supabaseServiceKey)) {
+            // User-initiated call - validate they can manage this store
+            const supabaseUser = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') || '', {
+                global: { headers: { Authorization: authHeader } }
+            });
+            const { data: canManage } = await supabaseUser.rpc('can_manage_store', { p_store_id: storeId });
+            if (!canManage) {
+                console.log(`[INVITE-OWNER] Unauthorized attempt for store ${storeId}`);
+                return new Response(JSON.stringify({ error: 'No tienes permisos para este local' }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 403,
+                });
+            }
+        }
+
+        // 2. FETCH STORE BRANDING FROM DB (secure - don't trust client input)
+        const { data: store, error: storeError } = await supabaseAdmin
+            .from('stores')
+            .select('name, logo_url, slug')
+            .eq('id', storeId)
+            .single();
+
+        if (storeError || !store) {
+            throw new Error(`Store not found: ${storeId}`);
+        }
+        const storeName = store.name;
+
+        // 3. Create or update Auth user
         const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
         if (listError) throw listError;
 
@@ -39,7 +70,7 @@ serve(async (req) => {
         let targetUser = existingUser;
 
         if (!existingUser) {
-            console.log(`[HQ] Creando nuevo usuario...`);
+            console.log(`[INVITE-OWNER] Creating new user...`);
             const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
                 email,
                 email_confirm: true,
@@ -48,71 +79,99 @@ serve(async (req) => {
             if (createError) throw createError;
             targetUser = newUser.user;
         } else {
-            console.log(`[HQ] Actualizando usuario...`);
+            console.log(`[INVITE-OWNER] Updating existing user...`);
             const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
                 user_metadata: { full_name: ownerName || '', role: 'store_owner', store_id: storeId }
             });
             if (updateError) throw updateError;
         }
 
-        // 3. Generar el Link de "Recuperación" (que sirve para poner clave por primera vez)
-        // Usamos 'recovery' porque permite establecer password sin haber confirmado el mail anterior
+        // 4. Generate recovery link (for setting password)
+        const origin = req.headers.get('origin') || 'https://www.payperapp.io';
         const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
             type: 'recovery',
             email: email,
-            options: { redirectTo: `${req.headers.get('origin') || ''}/#/setup-owner` }
+            options: { redirectTo: `${origin}/setup-owner` }
         });
-
         if (linkError) throw linkError;
-
         const inviteLink = linkData.properties.action_link;
 
-        // 4. Enviar mail vía Resend si tenemos la API KEY
-        const resendKey = Deno.env.get('RESEND_API_KEY') || '';
-        if (resendKey) {
-            console.log(`[HQ] Enviando invitación por email a ${email}...`);
-            await fetch('https://api.resend.com/emails', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${resendKey}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    from: 'SQUAD <onboarding@resend.dev>',
-                    to: email,
-                    subject: `Activación de Cuenta - ${storeName}`,
-                    html: `
-                        <div style="font-family:sans-serif; background:#000; color:#fff; padding:50px; border-radius:30px; border: 1px solid #4ADE80; max-width: 600px; margin: auto;">
-                            <h1 style="color:#4ADE80; font-style:italic; font-weight: 900; text-transform: uppercase; margin-bottom: 20px;">SQUAD ACCESS</h1>
-                            <p style="font-size: 16px; margin-bottom: 20px;">Te damos la bienvenida a la red SQUAD, <b>${ownerName}</b>.</p>
-                            <p style="margin-bottom: 20px;">Se ha configurado tu instancia operativa para el local: <b style="color:#4ADE80;">${storeName}</b>.</p>
-                            <p style="margin-bottom: 30px;">Para comenzar a operar y acceder a tu dashboard, definí tu contraseña maestra en el siguiente link:</p>
-                            <a href="${inviteLink}" style="display:inline-block; background:#4ADE80; color:#000; padding:20px 40px; text-decoration:none; border-radius:15px; font-weight:900; letter-spacing:1px; text-transform:uppercase; margin-bottom: 30px;">ACTIVAR CUENTA MAESTRA</a>
-                            <div style="border-top: 1px solid #222; padding-top: 20px; font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 2px;">
-                                PROTOCOLO DE CONEXIÓN SEGURO • SQUAD HQ
+        // 5. IDEMPOTENT EMAIL: Log and send via Resend
+        const idempotencyKey = `owner_invite_${storeId}_${email}`;
+        const { data: emailLogResult } = await supabaseAdmin.rpc('create_email_log', {
+            p_store_id: storeId,
+            p_recipient_email: email,
+            p_recipient_name: ownerName || null,
+            p_recipient_type: 'staff',
+            p_event_type: 'owner.invited',
+            p_event_id: storeId,
+            p_event_entity: 'store',
+            p_template_key: 'owner_invite',
+            p_payload_core: { store_name: storeName, owner_name: ownerName, accept_url: inviteLink },
+            p_idempotency_key: idempotencyKey,
+            p_triggered_by: 'api',
+            p_trigger_source: 'invite-owner'
+        });
+
+        const logRow = emailLogResult?.[0];
+        let emailSent = false;
+
+        if (logRow && !logRow.already_exists) {
+            const resendKey = Deno.env.get('RESEND_API_KEY') || '';
+            if (resendKey) {
+                console.log(`[INVITE-OWNER] Sending email to ${email}...`);
+                const resendRes = await fetch('https://api.resend.com/emails', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        from: `${storeName} <no-reply@payperapp.io>`,
+                        to: email,
+                        subject: `Activación de Cuenta - ${storeName}`,
+                        html: `
+                            <div style="font-family:sans-serif; background:#000; color:#fff; padding:50px; border-radius:30px; border: 1px solid #4ADE80; max-width: 600px; margin: auto;">
+                                <h1 style="color:#4ADE80; font-style:italic; font-weight: 900; text-transform: uppercase; margin-bottom: 20px;">${storeName}</h1>
+                                <p style="font-size: 16px; margin-bottom: 20px;">Te damos la bienvenida, <b>${ownerName || 'Propietario'}</b>.</p>
+                                <p style="margin-bottom: 20px;">Se ha configurado tu cuenta para: <b style="color:#4ADE80;">${storeName}</b>.</p>
+                                <p style="margin-bottom: 30px;">Para comenzar, definí tu contraseña:</p>
+                                <a href="${inviteLink}" style="display:inline-block; background:#4ADE80; color:#000; padding:20px 40px; text-decoration:none; border-radius:15px; font-weight:900; text-transform:uppercase;">ACTIVAR CUENTA</a>
+                                <div style="border-top: 1px solid #222; padding-top: 20px; margin-top: 30px; font-size: 10px; color: #444; text-transform: uppercase;">
+                                    Enlace válido por 24 horas
+                                </div>
                             </div>
-                        </div>
-                    `
-                })
-            });
+                        `
+                    })
+                });
+                const resendResult = await resendRes.json();
+
+                await supabaseAdmin.rpc('update_email_log_status', {
+                    p_log_id: logRow.log_id,
+                    p_status: resendRes.ok ? 'sent' : 'failed',
+                    p_resend_id: resendResult?.id || null,
+                    p_resend_response: resendResult
+                });
+                emailSent = resendRes.ok;
+            }
+        } else {
+            console.log(`[INVITE-OWNER] Email already sent (idempotency), skipping.`);
         }
 
-        console.log(`[HQ] Proceso completado con éxito para ${email}`);
+        console.log(`[INVITE-OWNER] Completed for ${email}`);
 
         return new Response(JSON.stringify({
             success: true,
             link: inviteLink,
-            message: 'Usuario creado y mail enviado correctamente'
+            emailSent,
+            message: emailSent ? 'Invitación enviada por email' : 'Invitación creada (email omitido)'
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200,
         });
 
-    } catch (error) {
-        console.error('[EDGE ERROR]', error.message);
+    } catch (error: any) {
+        console.error('[INVITE-OWNER ERROR]', error.message);
         return new Response(JSON.stringify({ error: error.message }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200,
+            status: 400,
         });
     }
 })

@@ -15,6 +15,21 @@ const ClientLayoutContent: React.FC = () => {
     const accentColor = store?.menu_theme?.accentColor || '#4ADE80';
     const theme = store?.menu_theme || { accentColor };
 
+    // Get background color from store theme (fallback to white to avoid black bars)
+    const backgroundColor = store?.menu_theme?.backgroundColor || '#ffffff';
+
+    // Dynamically set body background to match theme (prevents black bleed-through)
+    React.useEffect(() => {
+        const originalBg = document.body.style.backgroundColor;
+        document.body.style.backgroundColor = backgroundColor;
+        document.documentElement.style.backgroundColor = backgroundColor;
+        return () => {
+            // Restore original on unmount (e.g., navigating to admin)
+            document.body.style.backgroundColor = originalBg || '';
+            document.documentElement.style.backgroundColor = originalBg || '';
+        };
+    }, [backgroundColor]);
+
     // Hide nav logic - Updated for new routes
     const isHiddenRoute = () => {
         const path = location.pathname;
@@ -44,11 +59,14 @@ const ClientLayoutContent: React.FC = () => {
 
     return (
         <div
-            className="relative h-[100dvh] w-full max-w-md mx-auto bg-black shadow-2xl overflow-hidden flex flex-col font-display"
-            style={{ '--accent-color': accentColor } as React.CSSProperties}
+            className="relative h-[100dvh] w-full max-w-md mx-auto shadow-2xl overflow-hidden flex flex-col font-display transition-colors duration-500"
+            style={{
+                '--accent-color': accentColor,
+                backgroundColor: backgroundColor
+            } as React.CSSProperties}
         >
             {/* Main Content Area */}
-            <div className="flex-1 overflow-y-auto no-scrollbar pb-24 relative z-10">
+            <div className="flex-1 overflow-y-auto no-scrollbar pb-48 relative z-10">
                 <Outlet />
             </div>
 

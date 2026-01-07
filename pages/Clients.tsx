@@ -63,7 +63,7 @@ const Clients: React.FC = () => {
       console.log('[Clients] Current session user:', session?.user?.email);
 
       // 1. Fetch all clients for this store
-      const { data: clientsData, error: clientsError } = await supabase
+      const { data: clientsData, error: clientsError } = await (supabase as any)
         .from('clients')
         .select('*')
         .eq('store_id', profile?.store_id as string);
@@ -138,6 +138,8 @@ const Clients: React.FC = () => {
   const [walletDescription, setWalletDescription] = useState('');
   const [isLoadingWallet, setIsLoadingWallet] = useState(false);
   const [walletTransactions, setWalletTransactions] = useState<any[]>([]);
+  const [walletSource, setWalletSource] = useState<'cash' | 'digital' | 'system'>('cash');
+  const [walletPaymentMethod, setWalletPaymentMethod] = useState('cash');
 
   // Points Modal State
   const [showPointsModal, setShowPointsModal] = useState(false);
@@ -172,7 +174,7 @@ const Clients: React.FC = () => {
         const events: TimelineEvent[] = [];
 
         // 1. Fetch Orders
-        const { data: orders } = await supabase
+        const { data: orders } = await (supabase as any)
           .from('orders')
           .select('id, created_at, total_amount, status, payment_method, order_number')
           .eq('client_id', selectedClientId)
@@ -192,7 +194,7 @@ const Clients: React.FC = () => {
         }
 
         // 2. Fetch Wallet Transactions
-        const { data: walletTx } = await supabase
+        const { data: walletTx } = await (supabase as any)
           .from('wallet_transactions')
           .select('*')
           .eq('wallet_id', selectedClientId)
@@ -212,7 +214,8 @@ const Clients: React.FC = () => {
         }
 
         // 3. Fetch Loyalty Transactions (NEW - from ledger)
-        const { data: loyaltyTx } = await (supabase.from('loyalty_transactions' as any) as any)
+        const { data: loyaltyTx } = await (supabase as any)
+          .from('loyalty_transactions')
           .select('*')
           .eq('client_id', selectedClientId)
           .eq('is_rolled_back', false)
@@ -348,30 +351,32 @@ const Clients: React.FC = () => {
 
     setIsLoadingWallet(true);
     try {
-      const { data, error } = await (supabase.rpc as any)('admin_add_client_balance', {
-        target_client_id: walletClient.id,
-        amount: parseFloat(walletAmount),
-        staff_id: profile?.id,
-        description: walletDescription || 'Carga de saldo desde panel admin'
+      const { data, error } = await (supabase.rpc as any)('admin_add_balance', {
+        p_user_id: walletClient.id,
+        p_amount: parseFloat(walletAmount),
+        p_description: walletDescription || 'Carga de saldo desde panel admin',
+        p_source: walletSource,
+        p_payment_method: walletPaymentMethod
       });
 
       if (error) throw error;
 
-      setWalletBalance(data);
+      const newBalance = data.new_balance;
+      setWalletBalance(newBalance);
 
       // Actualizar el cliente en la lista local
       setClients(prev => prev.map(c =>
-        c.id === walletClient.id ? { ...c, wallet_balance: data } : c
+        c.id === walletClient.id ? { ...c, wallet_balance: newBalance } : c
       ));
-      setWalletClient({ ...walletClient, wallet_balance: data });
+      setWalletClient({ ...walletClient, wallet_balance: newBalance });
       setWalletAmount('');
       setWalletDescription('');
 
-      // Refresh transactions
-      const { data: txData } = await supabase
-        .from('wallet_transactions' as any)
-        .select('*, staff:staff_id(full_name)')
-        .eq('wallet_id', walletClient.id)
+      // Refresh transactions (from wallet_ledger now)
+      const { data: txData } = await (supabase as any)
+        .from('wallet_ledger')
+        .select('*, performer:profiles!performed_by(full_name)')
+        .eq('wallet_id', (walletClient as any).wallet_id || walletClient.id) // Fallback if wallet_id isn't directly the client_id
         .order('created_at', { ascending: false })
         .limit(10);
 
@@ -804,6 +809,30 @@ const Clients: React.FC = () => {
                   className="w-full h-14 px-6 rounded-2xl bg-white/[0.03] border border-white/10 text-xl font-black text-accent text-center outline-none focus:ring-1 focus:ring-accent/30 placeholder:text-white/10 transition-all"
                   placeholder="0.00"
                 />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest ml-1">Origen y Método</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <select
+                    value={walletSource}
+                    onChange={(e) => setWalletSource(e.target.value as any)}
+                    className="h-12 px-4 rounded-xl bg-white/[0.03] border border-white/10 text-[10px] font-bold text-white uppercase outline-none focus:ring-1 focus:ring-accent/30"
+                  >
+                    <option value="cash">Efectivo (Local)</option>
+                    <option value="digital">Digital (App)</option>
+                    <option value="system">Sistema (Ajuste)</option>
+                  </select>
+                  <select
+                    value={walletPaymentMethod}
+                    onChange={(e) => setWalletPaymentMethod(e.target.value)}
+                    className="h-12 px-4 rounded-xl bg-white/[0.03] border border-white/10 text-[10px] font-bold text-white uppercase outline-none focus:ring-1 focus:ring-accent/30"
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="card">Tarjeta</option>
+                    <option value="qr">QR</option>
+                    <option value="transfer">Transferencia</option>
+                  </select>
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest ml-1">Motivo / Referencia (Opcional)</label>

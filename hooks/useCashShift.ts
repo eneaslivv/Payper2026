@@ -32,21 +32,29 @@ export const useCashShift = () => {
         if (!profile?.store_id) return;
         setLoading(true);
         try {
-            // Fetch Zones
+            // Fetch Zones from venue_zones (Real Table)
+            // Note: venue_zones might not have 'type' or 'is_active', so we default them if missing or use description
             const { data: zonesData } = await supabase
-                .from('zones')
+                .from('venue_zones' as any)
                 .select('*')
-                .eq('store_id', profile.store_id)
-                .eq('is_active', true);
+                .eq('store_id', profile.store_id);
 
-            setZones(zonesData || []);
+            // Map venue_zones to Zone interface
+            const mappedZones: Zone[] = (zonesData || []).map((z: any) => ({
+                id: z.id,
+                name: z.name,
+                type: 'bar', // Default since venue_zones doesn't have type yet
+                is_active: true // venue_zones exists, so it's active
+            }));
+
+            setZones(mappedZones);
 
             // Fetch Active Sessions
             const { data: sessionsData } = await supabase
                 .from('cash_sessions')
                 .select(`
           *,
-          zone:zones(name, type),
+          zone:venue_zones(name),
           opener:profiles!opened_by(full_name)
         `)
                 .eq('store_id', profile.store_id)

@@ -180,7 +180,7 @@ const Finance: React.FC = () => {
           </div>
         </>
       ) : (
-        <FinanceCashManager />
+        <FinanceCashManager dateRange={dateRange} />
       )}
     </div>
   );
@@ -191,8 +191,12 @@ const Finance: React.FC = () => {
 /* Cash Manager Component */
 import { useCashShift, Zone } from '../hooks/useCashShift';
 
-const FinanceCashManager: React.FC = () => {
+const FinanceCashManager: React.FC<{
+  dateRange: { start: string | Date; end: string | Date };
+  onUpdate?: () => void;
+}> = ({ dateRange, onUpdate }) => {
   const { zones, activeSessions, loading, openSession, closeSession } = useCashShift();
+
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
   const [isClosing, setIsClosing] = useState<string | null>(null); // sessionId being closed
@@ -201,19 +205,24 @@ const FinanceCashManager: React.FC = () => {
     try {
       if (isClosing) {
         // Close Logic
-        // TODO: Calculate expected cash based on orders linked to this session (Future Step)
-        const expected = 0;
+        // Calculate expected cash from backend
+        // @ts-ignore
+        const { data: expectedData } = await supabase.rpc('get_session_expected_cash', { query_session_id: isClosing });
+        const expected = Number(expectedData) || 0;
+
         await closeSession(isClosing, Number(amount), expected, "Cierre manual");
         setIsClosing(null);
+        if (onUpdate) onUpdate(); // Trigger refresh
       } else if (selectedZone) {
         // Open Logic
         await openSession(selectedZone, Number(amount));
         setSelectedZone(null);
+        if (onUpdate) onUpdate(); // Trigger refresh
       }
       setAmount('');
-    } catch (e) {
-      console.error(e);
-      alert('Error al procesar la acción');
+    } catch (err) {
+      console.error('Action failed:', err);
+      // alert('Error al procesar la acción');
     }
   };
 
@@ -319,49 +328,28 @@ const FinanceCashManager: React.FC = () => {
       {/* 2. ACTION MODAL (Simple Inline for now) */}
       {
         (selectedZone || isClosing) && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-[#141414] border border-white/10 p-8 rounded-2xl w-full max-w-md shadow-2xl relative">
-              <button onClick={() => { setSelectedZone(null); setIsClosing(null); }} className="absolute top-4 right-4 text-white/20 hover:text-white"><span className="material-symbols-outlined">close</span></button>
-
-              <h3 className="text-xl font-black uppercase italic text-white mb-2">
-                {isClosing ? 'Cierre de Caja' : 'Apertura de Caja'}
-              </h3>
-              <p className="text-[11px] text-white/50 mb-6 uppercase tracking-wider">
-                {isClosing ? 'Ingrese el monto real en efectivo contado.' : 'Ingrese el monto inicial de apertura.'}
-              </p>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="text-[9px] font-bold text-neon uppercase tracking-widest block mb-2">Monto ({isClosing ? 'Real' : 'Inicial'})</label>
-                  <input
-                    type="number"
-                    value={amount}
-                    onChange={e => setAmount(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold outline-none focus:border-neon/50 text-lg"
-                    placeholder="0.00"
-                    autoFocus
-                  />
-                </div>
-
-                <button
-                  onClick={handleAction}
-                  className="w-full py-4 rounded-xl bg-neon text-black font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-neon-soft mt-4"
-                >
-                  {isClosing ? 'Confirmar Cierre' : 'Confirmar Apertura'}
-                </button>
-              </div>
-            </div>
-          </div>
+          <CashShiftModal
+            isClosing={!!isClosing}
+            sessionId={isClosing}
+            zoneId={selectedZone}
+            onClose={() => { setSelectedZone(null); setIsClosing(null); }}
+            onConfirm={async (amount, expected, notes) => {
+              if (isClosing) {
+                await closeSession(isClosing, amount, expected || 0, notes);
+                setIsClosing(null);
+                if (onUpdate) onUpdate();
+              } else if (selectedZone) {
+                await openSession(selectedZone, amount);
+                setSelectedZone(null);
+                if (onUpdate) onUpdate();
+              }
+            }}
+          />
         )
       }
 
-      {/* 3. SHIFTS HISTORY (Existing table, reused) */}
-      <div className="bg-white dark:bg-surface-dark rounded-2xl subtle-border shadow-soft overflow-hidden opacity-50 pointer-events-none grayscale">
-        <div className="p-6 border-b border-white/5 flex justify-between items-center bg-black/50">
-          <h3 className="text-xs font-bold uppercase tracking-[0.2em] dark:text-white">Historial Auditado (Próximamente)</h3>
-          <span className="text-[9px] font-black text-neon/40 uppercase tracking-widest">Requiere Cierres Reales</span>
-        </div>
-      </div>
+      {/* 3. SHIFTS HISTORY */}
+      <CashAuditTable dateRange={dateRange} />
 
 
     </div >
@@ -408,5 +396,251 @@ const FinanceCard: React.FC<{ label: string, value: string, trend: string, type:
     </div>
   </div>
 );
+
+const CashShiftModal: React.FC<{
+  isClosing: boolean;
+  sessionId: string | null;
+  zoneId: string | null;
+  onClose: () => void;
+  onConfirm: (amount: number, expected?: number, notes?: string) => void;
+}> = ({ isClosing, sessionId, zoneId, onClose, onConfirm }) => {
+  const [amount, setAmount] = useState('');
+  const [notes, setNotes] = useState('');
+  const [expectedCash, setExpectedCash] = useState<number | null>(null);
+  const [loadingExpected, setLoadingExpected] = useState(false);
+
+  useEffect(() => {
+    if (isClosing && sessionId) {
+      const fetchExpected = async () => {
+        setLoadingExpected(true);
+        // @ts-ignore
+        const { data } = await supabase.rpc('get_session_expected_cash', { query_session_id: sessionId });
+        setExpectedCash(data || 0);
+        setLoadingExpected(false);
+      };
+      fetchExpected();
+    }
+  }, [isClosing, sessionId]);
+
+  const realAmount = Number(amount) || 0;
+  const expected = expectedCash || 0;
+  const difference = realAmount - expected;
+  const diffColor = difference === 0 ? 'text-white' : difference > 0 ? 'text-neon' : 'text-red-500';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in">
+      <div className="bg-[#141414] border border-white/10 p-8 rounded-2xl w-full max-w-md shadow-2xl relative">
+        <button onClick={onClose} className="absolute top-4 right-4 text-white/20 hover:text-white transition-colors">
+          <span className="material-symbols-outlined">close</span>
+        </button>
+
+        <h3 className="text-xl font-black uppercase italic text-white mb-2">
+          {isClosing ? 'Cierre de Caja' : 'Apertura de Caja'}
+        </h3>
+        <p className="text-[11px] text-white/50 mb-6 uppercase tracking-wider">
+          {isClosing ? 'Verifique el efectivo físico contra el sistema.' : 'Ingrese el monto inicial (Fondo).'}
+        </p>
+
+        <div className="space-y-6">
+          {/* Comparison Display (Only for Closing) */}
+          {isClosing && (
+            <div className="grid grid-cols-2 gap-4 bg-white/5 p-4 rounded-xl border border-white/5">
+              <div>
+                <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest block mb-1">Esperado (Sistema)</span>
+                {loadingExpected ? (
+                  <span className="text-sm text-white/20 animate-pulse">Calculando...</span>
+                ) : (
+                  <span className="text-xl font-black text-white/80">${expected.toLocaleString('es-AR')}</span>
+                )}
+              </div>
+              <div className="text-right">
+                <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest block mb-1">Diferencia</span>
+                <span className={`text-xl font-black ${diffColor}`}>
+                  {difference > 0 ? '+' : ''}${difference.toLocaleString('es-AR')}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="text-[9px] font-bold text-neon uppercase tracking-widest block mb-2">
+              Monto {isClosing ? 'Real (Físico)' : 'Inicial'}
+            </label>
+            <input
+              type="number"
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-white font-bold outline-none focus:border-neon/50 text-2xl"
+              placeholder="0.00"
+              autoFocus
+            />
+          </div>
+
+          {isClosing && (
+            <div>
+              <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest block mb-2">Notas / Observaciones</label>
+              <textarea
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-white/20 min-h-[80px]"
+                placeholder="Ej. Falta cambio, retiro parcial..."
+              />
+            </div>
+          )}
+
+          <button
+            onClick={() => onConfirm(realAmount, expected, notes)}
+            className="w-full py-4 rounded-xl bg-neon text-black font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-neon-soft group flex items-center justify-center gap-2"
+          >
+            {isClosing ? 'Confirmar Cierre' : 'Confirmar Apertura'}
+            <span className="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const CashAuditTable: React.FC<{ dateRange: { start: string | Date; end: string | Date } }> = ({ dateRange }) => {
+  const [closures, setClosures] = useState<any[]>([]);
+  const { profile } = useAuth();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchClosures = async () => {
+      if (!profile?.store_id) return;
+      setLoading(true);
+
+      const start = new Date(dateRange.start).toISOString();
+      const end = new Date(dateRange.end).toISOString();
+
+      try {
+        const { data, error } = await supabase
+          .from('cash_closures')
+          .select(`
+            *,
+            session:cash_sessions (
+              opened_at,
+              zone:venue_zones(name),
+              opener:profiles!opened_by(full_name),
+              closer:profiles!closed_by(full_name)
+            )
+          `)
+          .eq('store_id', profile.store_id)
+          .gte('created_at', start)
+          .lte('created_at', end)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setClosures(data || []);
+      } catch (err) {
+        console.error('Error loading audit:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClosures();
+  }, [profile?.store_id, dateRange]);
+
+  if (loading) return <div className="p-8 text-center text-xs uppercase tracking-widest opacity-50 text-white">Cargando auditoría...</div>;
+
+  if (closures.length === 0) {
+    return (
+      <div className="bg-white dark:bg-surface-dark rounded-2xl subtle-border shadow-soft p-8 text-center">
+        <div className="flex flex-col items-center gap-3 opacity-50">
+          <span className="material-symbols-outlined text-4xl">inbox</span>
+          <p className="text-xs font-bold uppercase tracking-widest">No hay registros de cierre en este periodo</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white dark:bg-surface-dark rounded-2xl subtle-border shadow-soft overflow-hidden">
+      <div className="p-6 border-b border-white/5 flex justify-between items-center bg-black/20">
+        <div>
+          <h3 className="text-xs font-bold uppercase tracking-[0.2em] dark:text-white mb-1">Registro de Cierres de Caja</h3>
+          <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">Auditoría Financiera</span>
+        </div>
+        <button className="px-4 py-2 rounded-lg bg-white/5 text-[9px] font-black uppercase tracking-widest hover:bg-white/10 transition-colors text-white">
+          Exportar CSV
+        </button>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-left">
+          <thead className="bg-black/40 text-[9px] font-black uppercase tracking-widest text-white/40">
+            <tr>
+              <th className="px-6 py-4">Fecha / Hora</th>
+              <th className="px-6 py-4">Zona / Caja</th>
+              <th className="px-6 py-4">Responsables</th>
+              <th className="px-6 py-4 text-right">Sistema (Esp)</th>
+              <th className="px-6 py-4 text-right">Real (Físico)</th>
+              <th className="px-6 py-4 text-right">Diferencia</th>
+              <th className="px-6 py-4">Notas</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-[11px] font-medium text-white/70">
+            {closures.map((record) => {
+              // Difference calculation is stored in DB generated column, but we can compute or use it.
+              // Assuming record.difference is available or we compute it.
+              const diff = record.difference ?? (record.real_cash - record.expected_cash);
+              const isPositive = diff >= 0;
+              const isPerfect = diff === 0;
+
+              return (
+                <tr key={record.id} className="hover:bg-white/5 transition-colors group">
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col">
+                      <span className="text-white font-bold">
+                        {new Date(record.created_at).toLocaleDateString()}
+                      </span>
+                      <span className="text-[9px] opacity-50">
+                        {new Date(record.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-white/20"></span>
+                      <span className="font-bold text-white">{record.session?.zone?.name || 'Zona Eliminada'}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[10px] text-neon">lock_open</span>
+                        <span className="text-[10px]">{record.session?.opener?.full_name?.split(' ')[0]}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                        <span className="material-symbols-outlined text-[10px] text-red-400">lock</span>
+                        <span className="text-[10px]">{record.session?.closer?.full_name?.split(' ')[0] || 'Auto'}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-right font-mono text-white/50">
+                    ${record.expected_cash?.toLocaleString('es-AR')}
+                  </td>
+                  <td className="px-6 py-4 text-right font-mono font-bold text-white">
+                    ${record.real_cash?.toLocaleString('es-AR')}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <span className={`font-mono font-black px-2 py-1 rounded-md text-[10px] ${isPerfect ? 'bg-white/5 text-white/50' : isPositive ? 'bg-neon/10 text-neon' : 'bg-red-500/10 text-red-500'}`}>
+                      {diff > 0 ? '+' : ''}${diff?.toLocaleString('es-AR')}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 max-w-[200px] truncate opacity-50 italic">
+                    {record.notes || '-'}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
 
 export default Finance;

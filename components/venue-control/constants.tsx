@@ -89,6 +89,17 @@ export const STATUS_COLORS = {
   [TableStatus.CLOSED]: 'bg-zinc-600'           // Gris - Cerrada
 };
 
+// Background colors for table CARDS (subtle tints)
+export const STATUS_BG_COLORS = {
+  [TableStatus.FREE]: 'bg-emerald-950/50 border-emerald-500/30',            // Verde sutil
+  [TableStatus.RESERVED]: 'bg-indigo-950/50 border-indigo-500/30',          // Azul/Índigo sutil
+  [TableStatus.OCCUPIED]: 'bg-rose-950/50 border-rose-500/30',              // Rojo sutil
+  [TableStatus.PENDING_ORDER]: 'bg-amber-950/50 border-amber-500/30',       // Ámbar sutil
+  [TableStatus.BILL_REQUESTED]: 'bg-cyan-950/50 border-cyan-400/30',        // Cyan sutil
+  [TableStatus.PAYING]: 'bg-violet-950/50 border-violet-500/30',            // Violeta sutil
+  [TableStatus.CLOSED]: 'bg-zinc-900/50 border-zinc-700/30'                 // Gris sutil
+};
+
 export const ORDER_STATUS_COLORS = {
   [OrderStatus.PENDING]: 'text-rose-400 border-rose-500/30',
   [OrderStatus.PREPARING]: 'text-amber-400 border-amber-500/30',

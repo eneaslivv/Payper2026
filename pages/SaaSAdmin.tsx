@@ -6,6 +6,7 @@ import { Store } from '../types';
 import { useMercadoPagoConnect } from '../hooks/useMercadoPagoConnect';
 import { PaymentSettings } from '../components/PaymentSettings';
 import { getAppUrl } from '../lib/urlUtils';
+import payperLogo from '../src/assets/payper-logo.png';
 
 type SaasTab = 'dashboard' | 'tenants' | 'users' | 'plans' | 'audit' | 'metrics';
 
@@ -313,6 +314,12 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
 
    return (
       <div className="p-8 max-w-7xl mx-auto space-y-8 font-display pb-32">
+         {/* LOGO HEADER */}
+         <div className="flex items-center justify-between">
+            <img src={payperLogo} alt="Payper" className="h-10" />
+            <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">Admin Panel</span>
+         </div>
+
          {/* HEADER METRICS */}
          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="col-span-1 p-6 rounded-3xl bg-white/[0.02] border border-white/5 flex flex-col gap-2">
@@ -407,6 +414,32 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                      Nuevo Local
                   </button>
                </div>
+
+               {/* GENERATED LINK DISPLAY - ARRIBA */}
+               {generatedLink && (
+                  <div className="p-4 rounded-xl bg-accent/5 border border-accent/30">
+                     <div className="flex items-center justify-between gap-4">
+                        <div className="flex-1 space-y-2">
+                           <p className="text-[9px] font-bold text-accent uppercase tracking-wider flex items-center gap-1">
+                              <span className="material-symbols-outlined text-sm">verified_user</span>
+                              Link de Acceso Generado
+                           </p>
+                           <div className="p-3 bg-black/80 rounded-lg border border-white/10 font-mono text-[10px] text-white/90 break-all">
+                              {generatedLink}
+                           </div>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                           <button
+                              onClick={() => { navigator.clipboard.writeText(generatedLink); addToast('Copiado', 'success'); }}
+                              className="px-4 py-2 bg-accent text-black font-bold text-[9px] uppercase rounded-lg hover:scale-105 transition-all"
+                           >
+                              COPIAR
+                           </button>
+                           <button onClick={() => setGeneratedLink('')} className="text-[8px] text-white/30 font-bold uppercase hover:text-white transition-all text-center">Cerrar</button>
+                        </div>
+                     </div>
+                  </div>
+               )}
 
                <div className="rounded-3xl border border-white/5 overflow-hidden bg-[#0A0C0A]">
                   <table className="w-full text-left">
@@ -602,32 +635,6 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                         No se encontraron usuarios registrados
                      </div>
                   )}
-               </div>
-            </div>
-         )}
-
-         {/* GENERATED LINK DISPLAY */}
-         {generatedLink && (
-            <div className="mb-5 p-4 rounded-xl bg-accent/5 border border-accent/30">
-               <div className="flex items-center justify-between gap-4">
-                  <div className="flex-1 space-y-2">
-                     <p className="text-[9px] font-bold text-accent uppercase tracking-wider flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm">verified_user</span>
-                        Link de Acceso
-                     </p>
-                     <div className="p-3 bg-black/80 rounded-lg border border-white/10 font-mono text-[10px] text-white/90 break-all">
-                        {generatedLink}
-                     </div>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                     <button
-                        onClick={() => { navigator.clipboard.writeText(generatedLink); addToast('Copiado', 'success'); }}
-                        className="px-4 py-2 bg-accent text-black font-bold text-[9px] uppercase rounded-lg hover:scale-105 transition-all"
-                     >
-                        COPIAR
-                     </button>
-                     <button onClick={() => setGeneratedLink('')} className="text-[8px] text-white/30 font-bold uppercase hover:text-white transition-all text-center">Cerrar</button>
-                  </div>
                </div>
             </div>
          )}

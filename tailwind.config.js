@@ -14,7 +14,9 @@ export default {
                 'text-secondary': '#71766F',
                 'primary': '#D63C5E',
                 'accent': '#B4965C',
-                'neon': '#4ADE80',
+                'cream': '#F3EFE9', // Crema suave para textos
+                'rose-soft': '#E8B4BC', // Rosa suave
+                'neon': '#D63C5E', // Fallback temporal para no romper todo, mapeado al rosa
             },
             fontFamily: {
                 sans: ['Outfit', 'system-ui', 'sans-serif'],

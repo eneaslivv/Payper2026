@@ -33,13 +33,36 @@ export const mapStatusFromSupabase = (status: string): OrderStatus => {
     }
 };
 
-export const mapOrderToSupabase = (order: Order, storeId: string): SupabaseOrder => {
+export const mapOrderToSupabase = (order: Order, storeId: string): any => {
+    // Try to get node_id and session_id from QR context
+    let nodeId = null;
+    let sessionId = null;
+
+    try {
+        const qrContextStr = localStorage.getItem('qr_context');
+        if (qrContextStr) {
+            const qrContext = JSON.parse(qrContextStr);
+            if (qrContext.node_id) {
+                nodeId = qrContext.node_id;
+            }
+        }
+        // Also check for session_id
+        const clientSessionId = localStorage.getItem('client_session_id');
+        if (clientSessionId) {
+            sessionId = clientSessionId;
+        }
+    } catch (e) {
+        console.warn('[mapOrderToSupabase] Error reading QR context:', e);
+    }
+
     return {
         id: order.id,
         store_id: storeId,
         // customer_name column does not exist in DB
         total_amount: order.amount,
         status: mapStatusToSupabase(order.status),
+        node_id: nodeId,
+        session_id: sessionId,
     };
 };
 

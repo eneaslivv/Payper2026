@@ -156,11 +156,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     const fetchProfile = async (userId: string, emailArg?: string) => {
-        // 🚨 GOD MODE BYPASS: Si es el Super Admin, entra SI O SI.
+        // 🚨 GOD MODE BYPASS: Via Environment Variable
         const currentUserEmail = emailArg || session?.user?.email || user?.email;
-        const superAdmins = ['livvadm@gmail.com'];
+        const superAdminEmail = import.meta.env.VITE_SUPER_ADMIN_EMAIL;
 
-        if (currentUserEmail && superAdmins.includes(currentUserEmail)) {
+        if (currentUserEmail && superAdminEmail && currentUserEmail === superAdminEmail) {
             console.log('👑 GOD MODE ACTIVATED: Bypassing database completely for', currentUserEmail);
             setProfile({
                 id: userId,
@@ -175,31 +175,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return; // 🛑 NEVER query DB for this user
         }
 
-        // 🚨 SPECIAL BYPASS FOR ENEAS (Store Owner)
-        // Ensure immediate access regardless of DB state
-        if (currentUserEmail === 'livveneas@gmail.com') {
-            console.log('[AUTH] 👑 SPECIAL BYPASS ACTIVATED for Eneas');
-            const targetStoreId = 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533'; // Store: "ciro"
+        // 🚨 STORE OWNER BYPASS: Via Environment Variables
+        const ownerBypassEmail = import.meta.env.VITE_OWNER_BYPASS_EMAIL;
+        const ownerBypassStoreId = import.meta.env.VITE_OWNER_BYPASS_STORE_ID;
+
+        if (currentUserEmail && ownerBypassEmail && currentUserEmail === ownerBypassEmail && ownerBypassStoreId) {
+            console.log('[AUTH] 👑 OWNER BYPASS ACTIVATED via env vars');
 
             setProfile({
                 id: userId,
                 email: currentUserEmail,
-                full_name: 'Eneas Owner',
+                full_name: 'Store Owner',
                 role: 'store_owner',
                 is_active: true,
-                store_id: targetStoreId
+                store_id: ownerBypassStoreId
             });
             setPermissions(null);
             setIsLoading(false);
 
-            // Attempt background DB repair/sync without blocking UI
+            // Background DB sync
             supabase.from('profiles').upsert({
                 id: userId,
-                email: currentUserEmail || 'livveneas@gmail.com',
-                full_name: 'Eneas Owner',
+                email: currentUserEmail,
+                full_name: 'Store Owner',
                 role: 'store_owner',
                 is_active: true,
-                store_id: targetStoreId
+                store_id: ownerBypassStoreId
             }).then(({ error }) => {
                 if (error) console.error('[AUTH] Background DB Repair failed:', error);
                 else console.log('[AUTH] Background DB Repair SUCCESS');
@@ -297,15 +298,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const userEmail = session?.user?.email || user?.email;
         console.log('[AUTH] DB fetch failed. Checking emergency fallback for:', userEmail);
 
-        // EMERGENCY ADMIN ONLY - This should be the one account that can always access the system
-        // Do NOT add regular users here - they should always come from the DB
-        // EMERGENCY ADMIN ONLY
-        const emergencyAdmin = 'livvadm@gmail.com';
-        if (userEmail === emergencyAdmin) {
-            console.log('[AUTH] 🚨 EMERGENCY GOD MODE ACTIVATED for Super Admin');
+        // EMERGENCY ADMIN ONLY - Via Environment Variable
+        const emergencyAdminEmail = import.meta.env.VITE_SUPER_ADMIN_EMAIL;
+        if (userEmail && emergencyAdminEmail && userEmail === emergencyAdminEmail) {
+            console.log('[AUTH] 🚨 EMERGENCY GOD MODE ACTIVATED via env var');
             setProfile({
                 id: session?.user?.id || 'emergency-id',
-                email: 'livvadm@gmail.com',
+                email: userEmail,
                 full_name: 'GOD MODE ADMIN',
                 role: 'super_admin',
                 is_active: true,
@@ -317,32 +316,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
 
-        // 🚨 AUTO-HEALING FOR ENEAS (Store Owner)
-        // If DB fetch failed but this is the owner, force entry and repair DB.
-        if (userEmail === 'livveneas@gmail.com') {
-            console.log('[AUTH] 🩹 AUTO-HEALING Eneas Profile');
-            const targetStoreId = 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
+        // 🚨 AUTO-HEALING FOR STORE OWNER - Via Environment Variables
+        if (userEmail && ownerBypassEmail && userEmail === ownerBypassEmail && ownerBypassStoreId) {
+            console.log('[AUTH] 🩹 AUTO-HEALING Owner Profile via env vars');
 
-            // 1. Force UI Access immediately
             setProfile({
                 id: userId,
                 email: userEmail,
-                full_name: 'Eneas Owner',
+                full_name: 'Store Owner',
                 role: 'store_owner',
                 is_active: true,
-                store_id: targetStoreId // Ensure Store ID is set in fallback
+                store_id: ownerBypassStoreId
             });
             setPermissions(null);
             setIsLoading(false);
 
-            // 2. Try to repair DB in background
             supabase.from('profiles').upsert({
                 id: userId,
                 email: userEmail,
-                full_name: 'Eneas Owner',
+                full_name: 'Store Owner',
                 role: 'store_owner',
                 is_active: true,
-                store_id: targetStoreId
+                store_id: ownerBypassStoreId
             }).then(({ error }) => {
                 if (error) console.error('[AUTH] Background DB Repair failed:', error);
                 else console.log('[AUTH] Background DB Repair SUCCESS');
@@ -405,9 +400,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const signOut = async () => {
         console.log("AuthProvider: Iniciando proceso de cierre de sesión...");
         try {
-            // Limpiamos todo ANTES de llamar a Supabase por si la red falla
-            localStorage.clear();
+            // Solo borramos datos de autenticación, preservando datos offline
+            const keysToRemove = Object.keys(localStorage).filter(key =>
+                key.startsWith('sb-') || key.includes('supabase') || key === 'impersonated_store_id'
+            );
+            keysToRemove.forEach(key => localStorage.removeItem(key));
             sessionStorage.clear();
+
             setProfile(null);
             setUser(null);
             setSession(null);
@@ -417,15 +416,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (e) {
             console.error("AuthProvider: Error en signOut:", e);
         } finally {
-            // Forzamos reseteo total
             window.location.href = '#/';
             window.location.reload();
         }
     };
 
-    // --- SUPER ADMIN CHECK (STRICT - ROLE ONLY + GOD MODE) ---
-    // GOD MODE: livvadm@gmail.com is ALWAYS admin, no questions asked
-    const isGodMode = user?.email === 'livvadm@gmail.com';
+    // --- SUPER ADMIN CHECK (STRICT - ROLE ONLY + GOD MODE via ENV) ---
+    const superAdminEnv = import.meta.env.VITE_SUPER_ADMIN_EMAIL;
+    const isGodMode = !!(superAdminEnv && user?.email === superAdminEnv);
     const isAdmin = isGodMode || !!(user && profile && profile.id === user.id && profile.role === 'super_admin');
 
     return (

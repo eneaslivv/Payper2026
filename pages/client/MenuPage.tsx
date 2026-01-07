@@ -213,6 +213,8 @@ const MenuPage: React.FC = () => {
           onClose={() => setShowSessionSelector(false)}
         />
       )}
+      {/* EXPLICIT SPACER FOR SCROLL CLEARANCE */}
+      <div className="h-64 w-full shrink-0" />
     </div>
   );
 };

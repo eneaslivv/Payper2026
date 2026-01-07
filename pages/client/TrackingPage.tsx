@@ -10,6 +10,11 @@ const TrackingPage: React.FC = () => {
 
   // Theme support
   const accentColor = store?.menu_theme?.accentColor || '#36e27b';
+  const backgroundColor = store?.menu_theme?.backgroundColor || '#000000';
+  const textColor = store?.menu_theme?.textColor || '#FFFFFF';
+
+  const isLight = backgroundColor.toLowerCase() === '#ffffff' || backgroundColor.toLowerCase() === '#fff';
+  const surfaceColor = store?.menu_theme?.surfaceColor || (isLight ? '#f4f4f5' : '#141714');
 
   // UI State for Timer (Estimated)
   const [seconds, setSeconds] = useState(0);
@@ -100,12 +105,12 @@ const TrackingPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-black font-display pb-[env(safe-area-inset-bottom)]">
-      <header className="sticky top-0 z-30 flex items-center justify-between pt-[calc(1.5rem+env(safe-area-inset-top))] px-6 pb-6 bg-black/95 backdrop-blur-xl border-b border-white/5">
-        <button onClick={handleReturn} className="flex items-center justify-center w-12 h-12 rounded-full bg-white/5 hover:bg-white/10 transition-colors active:scale-90 shadow-xl border border-white/5">
-          <span className="material-symbols-outlined text-xl text-slate-400">arrow_back</span>
+    <div className="flex flex-col min-h-screen font-display pb-[env(safe-area-inset-bottom)] transition-colors duration-500" style={{ backgroundColor, color: textColor }}>
+      <header className="sticky top-0 z-30 flex items-center justify-between pt-[calc(1.5rem+env(safe-area-inset-top))] px-6 pb-6 backdrop-blur-xl border-b" style={{ backgroundColor: `${backgroundColor}F2`, borderColor: `${textColor}0D` }}>
+        <button onClick={handleReturn} className="flex items-center justify-center w-12 h-12 rounded-full transition-colors active:scale-90 shadow-xl border" style={{ backgroundColor: `${textColor}0D`, borderColor: `${textColor}0D` }}>
+          <span className="material-symbols-outlined text-xl" style={{ color: `${textColor}99` }}>arrow_back</span>
         </button>
-        <h2 className="text-[11px] font-black tracking-[0.4em] uppercase italic text-white/50">Orden #{orderNumber || '...'}</h2>
+        <h2 className="text-[11px] font-black tracking-[0.4em] uppercase italic" style={{ color: `${textColor}80` }}>Orden #{orderNumber || '...'}</h2>
         <div className="w-12"></div>
       </header>
 
@@ -121,26 +126,26 @@ const TrackingPage: React.FC = () => {
             ></span>
             {getStatusDisplay()}
           </div>
-          <h1 className="text-[36px] font-black tracking-tighter text-white uppercase italic leading-[0.9] mb-4">
+          <h1 className="text-[36px] font-black tracking-tighter uppercase italic leading-[0.9] mb-4" style={{ color: textColor }}>
             {status === 'ready' ? '¡Tu café te\nespera!' : 'Tu café se está\ncreando'}
           </h1>
         </div>
 
         <div className="w-full px-6 mb-12 flex justify-center gap-8">
           <div className="flex flex-col items-center">
-            <span className="text-5xl font-black text-white italic tabular-nums">{String(minutes).padStart(2, '0')}</span>
-            <span className="text-[9px] font-black text-slate-700 uppercase tracking-[0.4em] mt-3">Minutos</span>
+            <span className="text-5xl font-black italic tabular-nums" style={{ color: textColor }}>{String(minutes).padStart(2, '0')}</span>
+            <span className="text-[9px] font-black uppercase tracking-[0.4em] mt-3" style={{ color: `${textColor}99` }}>Minutos</span>
           </div>
-          <div className="text-4xl font-black text-slate-800 animate-pulse">:</div>
+          <div className="text-4xl font-black animate-pulse" style={{ color: `${textColor}CC` }}>:</div>
           <div className="flex flex-col items-center">
             <span className="text-5xl font-black italic tabular-nums" style={{ color: accentColor }}>{String(seconds).padStart(2, '0')}</span>
-            <span className="text-[9px] font-black text-slate-700 uppercase tracking-[0.4em] mt-3">Segundos</span>
+            <span className="text-[9px] font-black uppercase tracking-[0.4em] mt-3" style={{ color: `${textColor}99` }}>Segundos</span>
           </div>
         </div>
 
         <div className="w-full mb-12">
-          <div className="bg-white/[0.02] rounded-[3.5rem] p-10 shadow-2xl flex flex-col items-center gap-10 border border-white/5 relative overflow-hidden">
-            <div className="relative p-6 bg-white rounded-[3rem] shadow-[0_30px_80px_rgba(0,0,0,0.8)]">
+          <div className="rounded-[3.5rem] p-10 shadow-2xl flex flex-col items-center gap-10 border relative overflow-hidden" style={{ backgroundColor: surfaceColor, borderColor: `${textColor}0D` }}>
+            <div className="relative p-6 bg-white rounded-[3rem] shadow-[0_30px_80px_rgba(0,0,0,0.2)]">
               <div className="w-36 h-36 bg-white">
                 {orderNumber && (
                   <img
@@ -153,18 +158,18 @@ const TrackingPage: React.FC = () => {
             </div>
 
             <div className="flex flex-col items-center text-center">
-              <h3 className="text-2xl font-black text-white uppercase tracking-tighter italic mb-2">Escanea para Retirar</h3>
-              <p className="text-[10px] text-slate-600 font-black uppercase tracking-widest leading-relaxed max-w-[220px]">Presenta este código al barista para recibir tu dosis diaria.</p>
+              <h3 className="text-2xl font-black uppercase tracking-tighter italic mb-2" style={{ color: textColor }}>Escanea para Retirar</h3>
+              <p className="text-[10px] font-black uppercase tracking-widest leading-relaxed max-w-[220px]" style={{ color: `${textColor}80` }}>Presenta este código al barista para recibir tu dosis diaria.</p>
             </div>
 
-            <div className="w-full bg-white/[0.03] border border-white/5 rounded-[2rem] p-6 flex flex-col items-center gap-2">
+            <div className="w-full border rounded-[2rem] p-6 flex flex-col items-center gap-2" style={{ backgroundColor: `${textColor}08`, borderColor: `${textColor}0D` }}>
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-xl fill-icon" style={{ color: accentColor }}>stars</span>
-                <span className="text-[13px] font-black text-white italic uppercase tracking-tight">+{pointsEarned} Granos sumados</span>
+                <span className="text-[13px] font-black italic uppercase tracking-tight" style={{ color: textColor }}>+{pointsEarned} Granos sumados</span>
               </div>
               <div className="flex items-center gap-1.5 opacity-50">
-                <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.3em]">Motivo:</span>
-                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Compra Miembro (Plata)</span>
+                <span className="text-[8px] font-black uppercase tracking-[0.3em]" style={{ color: `${textColor}80` }}>Motivo:</span>
+                <span className="text-[8px] font-black uppercase tracking-widest" style={{ color: `${textColor}60` }}>Compra Miembro (Plata)</span>
               </div>
             </div>
           </div>
@@ -172,10 +177,12 @@ const TrackingPage: React.FC = () => {
       </main>
 
       {/* FOOTER ACTIONS REDESIGNED (ALTA PRECISIÓN) */}
-      <footer className="fixed bottom-0 left-0 right-0 z-[60] bg-black/95 backdrop-blur-3xl border-t border-white/5 p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] max-w-md mx-auto flex gap-4 shadow-[0_-25px_80px_rgba(0,0,0,1)]">
+      <footer className="fixed bottom-0 left-0 right-0 z-[60] backdrop-blur-3xl border-t p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] max-w-md mx-auto flex gap-4 shadow-2xl"
+        style={{ backgroundColor: `${backgroundColor}F2`, borderColor: `${textColor}0D` }}>
         <button
           onClick={handleReturn}
-          className="flex-1 h-20 rounded-full bg-white/[0.03] border border-white/5 text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] active:scale-95 transition-all"
+          className="flex-1 h-20 rounded-full border text-[10px] font-black uppercase tracking-[0.2em] active:scale-95 transition-all"
+          style={{ backgroundColor: `${textColor}08`, borderColor: `${textColor}0D`, color: `${textColor}80` }}
         >
           MENÚ
         </button>
@@ -188,8 +195,8 @@ const TrackingPage: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
           <div className="flex flex-col items-start leading-none relative z-10">
-            <span className="text-[10px] font-black uppercase tracking-tight">SEGUIR</span>
-            <span className="text-[10px] font-black uppercase tracking-tight opacity-40 italic">EXPLORANDO</span>
+            <span className="text-[10px] font-black uppercase tracking-tight" style={{ color: '#000' }}>SEGUIR</span>
+            <span className="text-[10px] font-black uppercase tracking-tight opacity-40 italic" style={{ color: '#000' }}>EXPLORANDO</span>
           </div>
 
           <div className="flex items-center gap-4 relative z-10">
@@ -207,6 +214,7 @@ const TrackingPage: React.FC = () => {
       <button
         onClick={handleFinishAndClear}
         className="fixed bottom-40 left-1/2 -translate-x-1/2 opacity-20 text-[8px] font-black uppercase tracking-widest pointer-events-auto"
+        style={{ color: textColor }}
       >
         Limpiar Orden (Simulación)
       </button>

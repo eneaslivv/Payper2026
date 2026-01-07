@@ -10,6 +10,9 @@ type AuthMode = 'login' | 'register' | 'forgot' | 'reset';
 const AuthPage: React.FC = () => {
   const { setUser, store } = useClient();
   const accentColor = store?.menu_theme?.accentColor || '#36e27b';
+  const backgroundColor = store?.menu_theme?.backgroundColor || '#000000';
+  const textColor = store?.menu_theme?.textColor || '#FFFFFF';
+
   const { slug } = useParams();
   const navigate = useNavigate();
   const [mode, setMode] = useState<AuthMode>('login');
@@ -58,9 +61,6 @@ const AuthPage: React.FC = () => {
         }
 
         if (authData.user) {
-          // 🚀 Trigger 'handle_new_user' in DB will create the client record automatically
-          // based on the metadata we just sent. No manual insert needed.
-
           setSuccessMsg('¡Cuenta creada! Revisa tu correo si es necesario.');
           navigate(`/m/${slug}`);
         }
@@ -91,27 +91,27 @@ const AuthPage: React.FC = () => {
   };
 
   return (
-    <div className="relative flex flex-col min-h-screen bg-black animate-in fade-in duration-1000 overflow-x-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+    <div className="relative flex flex-col min-h-screen animate-in fade-in duration-1000 overflow-x-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] transition-colors duration-500" style={{ backgroundColor, color: textColor }}>
 
       {/* --- REFINED TECHNICAL HERO --- */}
       <div className="relative w-full h-[35vh] flex flex-col items-center justify-center overflow-hidden shrink-0 mt-4">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(54,226,123,0.04)_0%,transparent_70%)] z-10"></div>
+        <div className="absolute inset-0 z-10" style={{ background: `radial-gradient(circle at center, ${accentColor}0A 0%, transparent 70%)` }}></div>
 
         {/* --- BREW DRIPPER SCHEMATIC --- */}
         <div className="relative z-20 scale-90">
-          <svg width="220" height="220" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-[0_0_15px_rgba(54,226,123,0.1)]">
+          <svg width="220" height="220" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-xl" style={{ filter: `drop-shadow(0 0 15px ${accentColor}1A)` }}>
             {/* Isometric Base Plate */}
-            <path d="M110 180L180 145L110 110L40 145L110 180Z" stroke="white" strokeWidth="0.5" strokeOpacity="0.1" />
+            <path d="M110 180L180 145L110 110L40 145L110 180Z" stroke={textColor} strokeWidth="0.5" strokeOpacity="0.1" />
 
             {/* Dripper Stand (V60 Style) */}
             <g className="animate-float-pro">
               {/* Top Ring of Dripper */}
-              <ellipse cx="110" cy="70" rx="35" ry="15" stroke="white" strokeWidth="1" strokeOpacity="0.6" />
+              <ellipse cx="110" cy="70" rx="35" ry="15" stroke={textColor} strokeWidth="1" strokeOpacity="0.6" />
               {/* Conical Body */}
-              <path d="M75 70L100 120H120L145 70" stroke="white" strokeWidth="1" strokeOpacity="0.4" />
+              <path d="M75 70L100 120H120L145 70" stroke={textColor} strokeWidth="1" strokeOpacity="0.4" />
               {/* Server (Bottom Glass) */}
-              <path d="M90 125V145C90 155 130 155 130 145V125" stroke="white" strokeWidth="0.5" strokeOpacity="0.2" />
-              <path d="M90 125C90 125 100 130 110 130C120 130 130 125 130 125" stroke="white" strokeWidth="0.5" strokeOpacity="0.2" />
+              <path d="M90 125V145C90 155 130 155 130 145V125" stroke={textColor} strokeWidth="0.5" strokeOpacity="0.2" />
+              <path d="M90 125C90 125 100 130 110 130C120 130 130 125 130 125" stroke={textColor} strokeWidth="0.5" strokeOpacity="0.2" />
 
               {/* Liquid Level Indicator */}
               <path d="M95 138C95 138 102 142 110 142C118 142 125 138 125 138" stroke={accentColor} strokeWidth="1.5" strokeOpacity="0.6" className="animate-pulse" />
@@ -124,7 +124,7 @@ const AuthPage: React.FC = () => {
 
             {/* Floating Technical Tag */}
             <g className="animate-card-sync">
-              <rect x="145" y="85" width="45" height="18" rx="4" fill="black" fillOpacity="0.6" stroke={accentColor} strokeWidth="0.5" />
+              <rect x="145" y="85" width="45" height="18" rx="4" fill={textColor} fillOpacity="0.1" stroke={accentColor} strokeWidth="0.5" />
               <text x="151" y="97" fill={accentColor} fontSize="5" fontWeight="900" letterSpacing="0.1em" fontFamily="monospace">BREW-CONF</text>
             </g>
 
@@ -140,11 +140,11 @@ const AuthPage: React.FC = () => {
         {/* Refined Status Indicators */}
         <div className="absolute bottom-4 flex gap-8 opacity-30">
           <div className="flex flex-col items-center gap-1.5">
-            <span className="text-[6px] font-black uppercase tracking-[0.4em] text-white/50">LINK_SECURE</span>
+            <span className="text-[6px] font-black uppercase tracking-[0.4em]" style={{ color: `${textColor}80` }}>LINK_SECURE</span>
             <div className="w-1 h-1 rounded-full animate-ping" style={{ backgroundColor: accentColor }}></div>
           </div>
           <div className="flex flex-col items-center gap-1.5">
-            <span className="text-[6px] font-black uppercase tracking-[0.4em] text-white/50">SYSTEM_FLOW</span>
+            <span className="text-[6px] font-black uppercase tracking-[0.4em]" style={{ color: `${textColor}80` }}>SYSTEM_FLOW</span>
             <div className="w-3 h-0.5 rounded-full overflow-hidden" style={{ backgroundColor: `${accentColor}33` }}>
               <div className="h-full w-full animate-data-stream" style={{ backgroundColor: accentColor }}></div>
             </div>
@@ -155,10 +155,10 @@ const AuthPage: React.FC = () => {
       {/* --- FORM SECTION --- */}
       <div className="flex-1 flex flex-col px-8 pb-10 relative z-20">
         <div className="mb-8 text-center">
-          <h1 className="text-white tracking-tighter text-[34px] font-black leading-[0.9] uppercase italic mb-3 whitespace-pre-line">
+          <h1 className="tracking-tighter text-[34px] font-black leading-[0.9] uppercase italic mb-3 whitespace-pre-line" style={{ color: textColor }}>
             {getTitle()}
           </h1>
-          <p className="text-white/30 text-[9px] font-black uppercase tracking-[0.5em] italic">
+          <p className="text-[9px] font-black uppercase tracking-[0.5em] italic" style={{ color: `${textColor}4D` }}>
             Acceso Seguro de Miembros
           </p>
           {errorMsg && (
@@ -179,10 +179,15 @@ const AuthPage: React.FC = () => {
         <form onSubmit={handleSubmit} className="flex flex-col gap-6 w-full max-w-[320px] mx-auto">
           {(mode !== 'reset') && (
             <div className="flex flex-col gap-2.5">
-              <label className="text-white/20 text-[8px] font-black uppercase tracking-[0.5em] ml-6">Identificador</label>
+              <label className="text-[8px] font-black uppercase tracking-[0.5em] ml-6" style={{ color: `${textColor}33` }}>Identificador</label>
               <input
-                className="w-full rounded-[1.6rem] border border-white/5 bg-white/[0.03] h-16 px-8 text-[14px] font-bold transition-all outline-none text-white placeholder:text-white/10 shadow-inner"
-                style={{ '--focus-border': accentColor } as any}
+                className="w-full rounded-[1.6rem] border h-16 px-8 text-[14px] font-bold transition-all outline-none shadow-inner"
+                style={{
+                  backgroundColor: `${textColor}05`,
+                  borderColor: `${textColor}0D`,
+                  color: textColor,
+                  '--focus-border': accentColor
+                } as any}
                 placeholder="usuario@morningbrew.co"
                 type="email"
                 value={email}
@@ -194,11 +199,16 @@ const AuthPage: React.FC = () => {
 
           {(mode === 'login' || mode === 'register' || mode === 'reset') && (
             <div className="flex flex-col gap-2.5">
-              <label className="text-white/20 text-[8px] font-black uppercase tracking-[0.5em] ml-6">Token Secreto</label>
+              <label className="text-[8px] font-black uppercase tracking-[0.5em] ml-6" style={{ color: `${textColor}33` }}>Token Secreto</label>
               <div className="relative">
                 <input
-                  className="w-full rounded-[1.6rem] border border-white/5 bg-white/[0.03] h-16 pl-8 pr-12 text-[14px] font-bold transition-all outline-none text-white placeholder:text-white/10 shadow-inner"
-                  style={{ '--focus-border': accentColor } as any}
+                  className="w-full rounded-[1.6rem] border h-16 pl-8 pr-12 text-[14px] font-bold transition-all outline-none shadow-inner"
+                  style={{
+                    backgroundColor: `${textColor}05`,
+                    borderColor: `${textColor}0D`,
+                    color: textColor,
+                    '--focus-border': accentColor
+                  } as any}
                   placeholder="••••••••"
                   type={showPassword ? "text" : "password"}
                   value={password}
@@ -208,7 +218,8 @@ const AuthPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors outline-none flex items-center justify-center"
+                  className="absolute right-5 top-1/2 -translate-y-1/2 transition-colors outline-none flex items-center justify-center"
+                  style={{ color: `${textColor}66` }}
                 >
                   <span className="material-symbols-outlined text-xl">
                     {showPassword ? 'visibility' : 'visibility_off'}
@@ -222,8 +233,8 @@ const AuthPage: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="group relative flex w-full items-center justify-between rounded-full h-20 text-black pl-10 pr-4 shadow-2xl active:scale-[0.97] transition-all duration-500 disabled:opacity-50 overflow-hidden mt-4 border border-white/20"
-            style={{ backgroundColor: accentColor, boxShadow: `0 20px 50px ${accentColor}40` }}
+            className="group relative flex w-full items-center justify-between rounded-full h-20 pl-10 pr-4 shadow-2xl active:scale-[0.97] transition-all duration-500 disabled:opacity-50 overflow-hidden mt-4 border border-white/20"
+            style={{ backgroundColor: accentColor, boxShadow: `0 20px 50px ${accentColor}40`, color: '#000000' }}
           >
             <div className="flex flex-col items-start leading-none text-left relative z-10">
               <span className="text-[13px] font-black uppercase tracking-tight">Autorizar</span>
@@ -251,13 +262,13 @@ const AuthPage: React.FC = () => {
         <div className="mt-auto pt-8 flex flex-col items-center gap-2">
           <button
             onClick={() => setMode(mode === 'register' ? 'login' : 'register')}
-            className="text-[9px] font-black text-white/20 uppercase tracking-[0.5em] transition-all active:scale-95 py-3 px-6 italic"
-            style={{ '--hover-color': accentColor } as any}
+            className="text-[9px] font-black uppercase tracking-[0.5em] transition-all active:scale-95 py-3 px-6 italic"
+            style={{ color: `${textColor}33`, '--hover-color': accentColor } as any}
           >
             {mode === 'register' ? '¿Ya eres miembro?' : 'Solicitar Membresía'}
           </button>
-          <div className="w-12 h-[1px] bg-white/5"></div>
-          <span className="text-[7px] font-black text-white/10 tracking-[1em] uppercase">Morning Brew v2.4</span>
+          <div className="w-12 h-[1px]" style={{ backgroundColor: `${textColor}0D` }}></div>
+          <span className="text-[7px] font-black tracking-[1em] uppercase" style={{ color: `${textColor}1A` }}>Morning Brew v2.4</span>
         </div>
       </div>
 

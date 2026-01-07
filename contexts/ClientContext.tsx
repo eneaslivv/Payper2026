@@ -96,10 +96,18 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Auth Listener & User Data Fetching
     useEffect(() => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('[ClientContext] Auth state changed:', event);
             if (session?.user) {
                 fetchUserProfile(session.user.id);
             } else {
+                // 🧹 IMPORTANT: Clear ALL user-specific state on logout
+                console.log('[ClientContext] User signed out, clearing state');
                 setUser(null);
+                setActiveOrders([]);
+                setHasActiveOrder(false);
+                setActiveOrderId(null);
+                setOrderStatus('received');
+                setCart([]); // Clear cart on logout
             }
         });
 
@@ -115,6 +123,9 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (!store?.id) return;
 
         try {
+            const { data: userData } = await supabase.auth.getUser();
+            if (!userData.user) throw new Error('Usuario no autenticado');
+
             // 1. Fetch from 'clients'
             let clientDataWrapper = await supabase
                 .from('clients')
@@ -137,20 +148,16 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     return;
                 }
 
-                // Auto-create client for any non-staff user accessing the menu
-                // This is more permissive than before - we create clients for anyone who
-                // is not staff, regardless of their metadata role
-                const { data: userData } = await supabase.auth.getUser();
-                if (!userData.user) throw new Error('Usuario no autenticado');
-
                 console.log('[ClientContext] Auto-creating client record for user:', store.id);
 
-                const newProfile = {
+                const newProfile: any = {
                     id: userId,
                     email: userData.user.email || '',
                     name: userData.user.user_metadata?.full_name || (userData.user.email || '').split('@')[0],
+                    full_name: userData.user.user_metadata?.full_name || (userData.user.email || '').split('@')[0],
                     store_id: store.id,
-                    loyalty_points: 0
+                    loyalty_points: 0,
+                    is_active: true
                 };
 
                 const { error: createError } = await supabase
@@ -171,9 +178,10 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
             const clientData = clientDataWrapper.data || {
                 id: userId,
-                name: user?.user_metadata?.full_name || 'Cliente Nuevo',
-                email: user?.email || '',
-                phone: user?.user_metadata?.phone || '',
+                name: userData.user?.user_metadata?.full_name || 'Cliente Nuevo',
+                full_name: userData.user?.user_metadata?.full_name || 'Cliente Nuevo',
+                email: userData.user?.email || '',
+                phone: userData.user?.user_metadata?.phone || '',
                 points_balance: 0,
                 wallet_balance: 0,
                 store_id: store.id,
@@ -224,12 +232,12 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             // 5. Map to UserProfile
             const mappedUser: UserProfile = {
                 id: clientData.id,
-                name: clientData.name || 'Invitado',
+                name: clientData.name || (clientData as any).full_name || 'Invitado',
                 email: clientData.email || '',
                 // Phone not currently in clients table
-                points: clientData.points_balance || 0,
+                points: (clientData as any).loyalty_points || clientData.points_balance || 0,
                 balance: clientData.wallet_balance || 0,
-                status: (clientData.points_balance || 0) < 500 ? 'Bronce' : (clientData.points_balance || 0) < 1200 ? 'Plata' : 'Oro',
+                status: ((clientData as any).loyalty_points || clientData.points_balance || 0) < 500 ? 'Bronce' : ((clientData as any).loyalty_points || clientData.points_balance || 0) < 1200 ? 'Plata' : 'Oro',
                 vouchers: (vouchersData || []).map((v: any) => ({
                     id: v.id,
                     name: 'Cupón de Regalo', // Should be linked to rewards table

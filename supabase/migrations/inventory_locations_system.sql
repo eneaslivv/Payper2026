@@ -103,14 +103,16 @@ BEGIN
 END;
 $$;
 
--- 5. FUNCION: transfer_stock
+-- 5. FUNCION: transfer_stock (Updated to handle NULL locations for Purchases/Audit)
 CREATE OR REPLACE FUNCTION public.transfer_stock(
-    p_from_location uuid,
-    p_to_location uuid,
+    p_from_location_id uuid,
+    p_to_location_id uuid,
     p_item_id uuid,
-    p_quantity integer,
-    p_reason text,
-    p_source_ui text DEFAULT 'locations'
+    p_quantity numeric,
+    p_user_id uuid DEFAULT NULL,
+    p_notes text DEFAULT '',
+    p_movement_type text DEFAULT 'ADJUSTMENT',
+    p_reason text DEFAULT 'Sin motivo'
 )
 RETURNS json
 LANGUAGE plpgsql
@@ -119,55 +121,65 @@ AS $$
 DECLARE
     v_from_stock record;
     v_store_id uuid;
-    v_user_id uuid;
+    v_eff_user_id uuid;
     v_log_id uuid;
     v_item_package_size numeric;
+    v_package_delta integer;
 BEGIN
     IF p_reason IS NULL OR p_reason = '' THEN
-        RAISE EXCEPTION 'Motivo obligatorio para transferencia';
+        RAISE EXCEPTION 'Motivo obligatorio para movimiento de stock';
     END IF;
     
-    IF p_from_location = p_to_location THEN
+    IF p_from_location_id IS NOT NULL AND p_from_location_id = p_to_location_id THEN
         RAISE EXCEPTION 'Origen y destino no pueden ser iguales';
     END IF;
     
-    v_user_id := auth.uid();
+    v_eff_user_id := COALESCE(p_user_id, auth.uid());
     
-    SELECT store_id, package_size INTO v_store_id, v_item_package_size
+    SELECT store_id, COALESCE(package_size, 1) INTO v_store_id, v_item_package_size
     FROM public.inventory_items WHERE id = p_item_id;
+
+    v_package_delta := p_quantity::integer;
     
-    SELECT * INTO v_from_stock FROM public.inventory_location_stock
-    WHERE location_id = p_from_location AND item_id = p_item_id;
-    
-    IF v_from_stock IS NULL OR v_from_stock.closed_units < p_quantity THEN
-        RAISE EXCEPTION 'Stock insuficiente en origen. Disponible: %', COALESCE(v_from_stock.closed_units, 0);
+    -- 1. DECREMENT ORIGIN (if exists)
+    IF p_from_location_id IS NOT NULL THEN
+        SELECT * INTO v_from_stock FROM public.inventory_location_stock
+        WHERE location_id = p_from_location_id AND item_id = p_item_id;
+        
+        IF v_from_stock IS NULL OR v_from_stock.closed_units < v_package_delta THEN
+            RAISE EXCEPTION 'Stock insuficiente en origen. Disponible: %', COALESCE(v_from_stock.closed_units, 0);
+        END IF;
+        
+        UPDATE public.inventory_location_stock
+        SET closed_units = closed_units - v_package_delta, updated_at = now()
+        WHERE location_id = p_from_location_id AND item_id = p_item_id;
     END IF;
     
-    UPDATE public.inventory_location_stock
-    SET closed_units = closed_units - p_quantity, updated_at = now()
-    WHERE location_id = p_from_location AND item_id = p_item_id;
+    -- 2. INCREMENT DESTINATION (if exists)
+    IF p_to_location_id IS NOT NULL THEN
+        INSERT INTO public.inventory_location_stock (store_id, item_id, location_id, closed_units)
+        VALUES (v_store_id, p_item_id, p_to_location_id, v_package_delta)
+        ON CONFLICT (store_id, item_id, location_id)
+        DO UPDATE SET closed_units = inventory_location_stock.closed_units + v_package_delta, updated_at = now();
+    END IF;
     
-    INSERT INTO public.inventory_location_stock (store_id, item_id, location_id, closed_units)
-    VALUES (v_store_id, p_item_id, p_to_location, p_quantity)
-    ON CONFLICT (store_id, item_id, location_id)
-    DO UPDATE SET closed_units = inventory_location_stock.closed_units + p_quantity, updated_at = now();
-    
+    -- 3. AUDIT LOG
     v_log_id := public.log_inventory_action(
         p_item_id := p_item_id,
-        p_action_type := 'transfer',
-        p_quantity_delta := p_quantity * COALESCE(v_item_package_size, 1),
-        p_package_delta := p_quantity,
-        p_reason := p_reason,
-        p_location_from := p_from_location,
-        p_location_to := p_to_location,
-        p_source_ui := p_source_ui
+        p_action_type := LOWER(COALESCE(p_movement_type, 'adjustment')),
+        p_quantity_delta := p_quantity * v_item_package_size,
+        p_package_delta := v_package_delta,
+        p_reason := p_reason || (CASE WHEN p_notes <> '' THEN ': ' || p_notes ELSE '' END),
+        p_location_from := p_from_location_id,
+        p_location_to := p_to_location_id,
+        p_source_ui := 'quick_action'
     );
     
     RETURN json_build_object(
         'success', true,
-        'transferred_units', p_quantity,
-        'from_location', p_from_location,
-        'to_location', p_to_location,
+        'packages_moved', v_package_delta,
+        'from_location', p_from_location_id,
+        'to_location', p_to_location_id,
         'audit_log_id', v_log_id
     );
 END;

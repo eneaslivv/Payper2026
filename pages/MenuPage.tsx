@@ -223,6 +223,9 @@ export function MenuPage() {
                 onAddToCart={addToCart}
             />
 
+            {/* EXPLICIT SPACER FOR SCROLL CLEARANCE */}
+            <div className="h-64 w-full shrink-0" />
+
             {/* CART FLOATING BAR */}
             {cart.length > 0 && (
                 <div className="fixed bottom-16 left-0 right-0 p-4 pt-12 z-40 pointer-events-none"> {/* bottom-16 to sit above nav */}

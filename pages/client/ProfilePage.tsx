@@ -14,7 +14,16 @@ const ProfilePage: React.FC = () => {
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState<Partial<typeof user>>(user || {});
 
+  // Determine theme colors
   const accentColor = store?.menu_theme?.accentColor || '#4ADE80';
+  const backgroundColor = store?.menu_theme?.backgroundColor || '#000000';
+  const textColor = store?.menu_theme?.textColor || '#FFFFFF';
+
+  // Simple check for light mode (assuming white background implies light mode)
+  const isLight = backgroundColor.toLowerCase() === '#ffffff' || backgroundColor.toLowerCase() === '#fff';
+  const surfaceColor = isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)';
+  const borderColor = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
+  const headerBg = isLight ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)';
 
   const [showTopUp, setShowTopUp] = useState(false);
   const [showQR, setShowQR] = useState<{ isOpen: boolean; data: string; title: string }>({ isOpen: false, data: '', title: '' });
@@ -27,8 +36,8 @@ const ProfilePage: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="flex flex-col min-h-screen pb-32 bg-black font-display text-white">
-        <header className="sticky top-0 z-50 bg-black/95 backdrop-blur-3xl px-6 pt-[calc(1.2rem+env(safe-area-inset-top))] pb-6 border-b border-white/5">
+      <div className="flex flex-col min-h-screen pb-32 font-display" style={{ backgroundColor, color: textColor }}>
+        <header className="sticky top-0 z-50 backdrop-blur-3xl px-6 pt-[calc(1.2rem+env(safe-area-inset-top))] pb-6 border-b" style={{ backgroundColor: headerBg, borderColor }}>
           <h1 className="text-xl font-black tracking-tight uppercase italic text-center">Tu Perfil</h1>
         </header>
         <LoyaltyLockedView title="Tu Perfil Personal" icon="person" />
@@ -76,7 +85,9 @@ const ProfilePage: React.FC = () => {
       const { data, error } = await (supabase.rpc as any)('admin_add_balance', {
         p_user_id: user.id,
         p_amount: amount,
-        p_description: 'Recarga de Saldo (Cliente)'
+        p_description: 'Recarga de Saldo (Cliente)',
+        p_source: 'digital',
+        p_payment_method: 'card' // placeholder for future real payment integration
       });
 
       if (error) throw error;
@@ -126,41 +137,47 @@ const ProfilePage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen pb-40 bg-black font-display text-white overflow-x-hidden">
+    <div className="flex flex-col min-h-screen pb-40 font-display overflow-x-hidden transition-colors duration-500" style={{ backgroundColor, color: textColor }}>
       {/* HEADER OPTIMIZADO PARA IPHONE */}
-      <div className="flex items-center justify-between px-6 pt-[calc(1.2rem+env(safe-area-inset-top))] pb-6 sticky top-0 bg-black/95 backdrop-blur-3xl z-30 border-b border-white/5">
+      <div
+        className="flex items-center justify-between px-6 pt-[calc(1.2rem+env(safe-area-inset-top))] pb-6 sticky top-0 z-30 backdrop-blur-3xl border-b transition-colors duration-500"
+        style={{ backgroundColor: headerBg, borderColor }}
+      >
         <div className="w-12"></div>
         <h2 className="text-xl font-black flex-1 text-center tracking-tight uppercase italic leading-none">Tu Perfil</h2>
         <div className="flex w-12 items-center justify-end">
-          <button onClick={() => setUser(null)} className="flex items-center justify-center h-12 w-12 text-slate-700 hover:text-red-500 transition-colors active:scale-90">
+          <button onClick={() => setUser(null)} className="flex items-center justify-center h-12 w-12 hover:text-red-500 transition-colors active:scale-90" style={{ color: textColor }}>
             <span className="material-symbols-outlined text-2xl">logout</span>
           </button>
         </div>
       </div>
 
       <main className="p-4 flex flex-col gap-10">
-        <div className="flex flex-col items-center bg-white/[0.02] rounded-[3rem] p-12 shadow-2xl border border-white/5 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-48 h-48 bg-primary/5 rounded-full blur-[100px] -mr-20 -mt-20"></div>
+        <div
+          className="flex flex-col items-center rounded-[3rem] p-12 shadow-2xl border relative overflow-hidden"
+          style={{ backgroundColor: surfaceColor, borderColor }}
+        >
+          <div className="absolute top-0 right-0 w-48 h-48 rounded-full blur-[100px] -mr-20 -mt-20" style={{ backgroundColor: `${accentColor}10` }}></div>
           <div className="relative group cursor-pointer" onClick={() => setShowQR({ isOpen: true, data: user.id, title: 'Tu ID de Miembro' })}>
             <div
-              className="rounded-[2.2rem] h-40 w-40 shadow-2xl ring-2 ring-white/10 bg-cover bg-center overflow-hidden transition-transform duration-700 group-hover:scale-105"
-              style={{ backgroundImage: `url(${user.avatar})` }}
+              className="rounded-[2.2rem] h-40 w-40 shadow-2xl ring-2 bg-cover bg-center overflow-hidden transition-transform duration-700 group-hover:scale-105"
+              style={{ backgroundImage: `url(${user.avatar})`, ringColor: borderColor }}
             ></div>
-            <div className="absolute bottom-3 right-3 h-12 w-12 rounded-[1rem] flex items-center justify-center border-4 border-[#000] shadow-xl" style={{ backgroundColor: accentColor }}>
+            <div className="absolute bottom-3 right-3 h-12 w-12 rounded-[1rem] flex items-center justify-center border-4 shadow-xl" style={{ backgroundColor: accentColor, borderColor: isLight ? '#fff' : '#000' }}>
               <span className="material-symbols-outlined text-black text-2xl font-black fill-icon">qr_code_2</span>
             </div>
           </div>
           <div className="mt-8 text-center">
             <h1 className="text-[34px] font-black tracking-tighter uppercase italic leading-none">{user.name}</h1>
-            <p className="text-white/30 text-[10px] font-black uppercase tracking-[0.4em] mt-4 italic">{user.email}</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] mt-4 italic opacity-40">{user.email}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-5">
           {isFeatureEnabled('wallet') && (
-            <div className="bg-white/[0.02] rounded-[2.5rem] p-8 border border-white/5 flex flex-col items-center justify-center gap-2 shadow-xl">
-              <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20 mb-2">Saldo</span>
-              <span className="text-[32px] font-black text-white tracking-tighter italic leading-none">${user.balance.toFixed(2)}</span>
+            <div className="rounded-[2.5rem] p-8 border flex flex-col items-center justify-center gap-2 shadow-xl" style={{ backgroundColor: surfaceColor, borderColor }}>
+              <span className="text-[9px] font-black uppercase tracking-[0.4em] opacity-30 mb-2">Saldo</span>
+              <span className="text-[32px] font-black tracking-tighter italic leading-none">${user.balance.toFixed(2)}</span>
               <button
                 onClick={() => setShowTopUp(true)}
                 className="mt-6 h-14 flex items-center justify-center text-black px-10 rounded-full text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl border border-white/20"
@@ -172,12 +189,13 @@ const ProfilePage: React.FC = () => {
           )}
 
           {isFeatureEnabled('loyalty') && (
-            <div className="bg-white/[0.02] rounded-[2.5rem] p-8 border border-white/5 flex flex-col items-center justify-center gap-2 shadow-xl">
-              <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20 mb-2">Puntos</span>
-              <span className="text-[32px] font-black text-white tracking-tighter italic leading-none">{user.points}</span>
+            <div className="rounded-[2.5rem] p-8 border flex flex-col items-center justify-center gap-2 shadow-xl" style={{ backgroundColor: surfaceColor, borderColor }}>
+              <span className="text-[9px] font-black uppercase tracking-[0.4em] opacity-30 mb-2">Puntos</span>
+              <span className="text-[32px] font-black tracking-tighter italic leading-none">{user.points}</span>
               <button
                 onClick={() => navigate(`/m/${slug}/loyalty`)}
-                className="mt-6 h-14 flex items-center justify-center bg-white/5 text-slate-300 px-10 rounded-full text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all border border-white/10"
+                className="mt-6 h-14 flex items-center justify-center px-10 rounded-full text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all border"
+                style={{ backgroundColor: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)', borderColor }}
               >
                 Canjear
               </button>
@@ -187,49 +205,67 @@ const ProfilePage: React.FC = () => {
 
         <div className="flex flex-col gap-6">
           <div className="flex items-center justify-between px-3">
-            <h3 className="text-[11px] font-black uppercase tracking-[0.5em] text-white/30 italic">Información Personal</h3>
+            <h3 className="text-[11px] font-black uppercase tracking-[0.5em] opacity-30 italic">Información Personal</h3>
             <button onClick={() => editMode ? handleSave() : setEditMode(true)} className="text-[10px] font-black uppercase tracking-[0.3em] active:scale-90 transition-transform" style={{ color: accentColor }}>
               {editMode ? 'Guardar' : 'Editar'}
             </button>
           </div>
-          <div className="bg-white/[0.02] rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/5 flex flex-col divide-y divide-white/5">
-            <EditableInfoItem icon="person" label="Nombre" value={formData.name || ''} editMode={editMode} onChange={(v) => setFormData({ ...formData, name: v })} accentColor={accentColor} />
-            <EditableInfoItem icon="call" label="Teléfono" value={formData.phone || ''} editMode={editMode} onChange={(v) => setFormData({ ...formData, phone: v })} accentColor={accentColor} />
+          <div className="rounded-[2.5rem] overflow-hidden shadow-2xl border flex flex-col" style={{ backgroundColor: surfaceColor, borderColor }}>
+            <EditableInfoItem
+              icon="person"
+              label="Nombre"
+              value={formData.name || ''}
+              editMode={editMode}
+              onChange={(v) => setFormData({ ...formData, name: v })}
+              accentColor={accentColor}
+              textColor={textColor}
+            />
+            {/* Divider manual since divide-y might assume color */}
+            <div style={{ height: 1, backgroundColor: borderColor }}></div>
+            <EditableInfoItem
+              icon="call"
+              label="Teléfono"
+              value={formData.phone || ''}
+              editMode={editMode}
+              onChange={(v) => setFormData({ ...formData, phone: v })}
+              accentColor={accentColor}
+              textColor={textColor}
+            />
           </div>
         </div>
 
         {/* HISTORIAL DE PEDIDOS */}
         <div className="flex flex-col gap-6 mt-4">
           <div className="flex items-center justify-between px-3">
-            <h3 className="text-[11px] font-black uppercase tracking-[0.5em] text-white/30 italic">Historial de Actividad</h3>
+            <h3 className="text-[11px] font-black uppercase tracking-[0.5em] opacity-30 italic">Historial de Actividad</h3>
           </div>
           <div className="flex flex-col gap-4">
             {user.orderHistory.map(order => (
-              <div key={order.id} className="bg-white/[0.02] rounded-[2.2rem] p-7 border border-white/5 shadow-xl flex flex-col gap-5 relative overflow-hidden group">
+              <div key={order.id} className="rounded-[2.2rem] p-7 border shadow-xl flex flex-col gap-5 relative overflow-hidden group" style={{ backgroundColor: surfaceColor, borderColor }}>
                 <div className="flex justify-between items-start">
                   <div className="flex flex-col gap-1">
-                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] italic">{order.date} • {order.id}</span>
-                    <p className="text-[13px] font-black text-white/90 italic tracking-tight leading-tight max-w-[200px]">{order.items}</p>
+                    <span className="text-[8px] font-black opacity-30 uppercase tracking-[0.3em] italic">{order.date} • {order.id}</span>
+                    <p className="text-[13px] font-black italic tracking-tight leading-tight max-w-[200px] opacity-90">{order.items}</p>
                   </div>
                   <div className="flex flex-col items-end">
-                    <span className="text-[18px] font-black text-white italic tracking-tighter leading-none">${order.total.toFixed(2)}</span>
+                    <span className="text-[18px] font-black italic tracking-tighter leading-none">${order.total.toFixed(2)}</span>
                     <span className="text-[7px] font-black uppercase tracking-widest mt-2" style={{ color: accentColor }}>Completado</span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between mt-2 pt-5 border-t border-white/[0.03]">
+                <div className="flex items-center justify-between mt-2 pt-5 border-t" style={{ borderColor: borderColor }}>
                   <div className="flex items-center gap-2">
                     {isFeatureEnabled('loyalty') && (
                       <div className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-[14px] fill-icon" style={{ color: accentColor }}>stars</span>
-                        <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">+{order.pointsEarned || 0} Granos</span>
+                        <span className="text-[8px] font-black opacity-30 uppercase tracking-widest">+{order.pointsEarned || 0} Granos</span>
                       </div>
                     )}
                   </div>
                   <button
                     onClick={() => handleOrderAgain(order)}
-                    className="flex items-center gap-3 h-11 px-6 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all group/btn"
-                    style={{ color: accentColor }}
+                    className="flex items-center gap-3 h-11 px-6 rounded-full border text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all group/btn"
+                    style={{ color: accentColor, backgroundColor: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)', borderColor }}
                   >
                     <span>Repetir</span>
                     <span className="material-symbols-outlined text-[16px] group-hover/btn:translate-x-0.5 transition-transform">refresh</span>
@@ -243,11 +279,14 @@ const ProfilePage: React.FC = () => {
 
       {/* MODAL DE RECARGA */}
       {showTopUp && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/90 backdrop-blur-2xl animate-in fade-in duration-500">
-          <div className="bg-[#080808] w-full max-w-sm rounded-[3rem] p-10 shadow-[0_40px_100px_rgba(0,0,0,1)] animate-in zoom-in-95 duration-300 border border-white/5">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-2xl animate-in fade-in duration-500" style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}>
+          <div
+            className="w-full max-w-sm rounded-[3rem] p-10 shadow-[0_40px_100px_rgba(0,0,0,1)] animate-in zoom-in-95 duration-300 border"
+            style={{ backgroundColor: surfaceColor, borderColor, color: textColor }}
+          >
             <div className="flex justify-between items-center mb-10">
-              <h2 className="text-[26px] font-black uppercase tracking-tighter italic text-white leading-none">Recargar</h2>
-              <button onClick={() => setShowTopUp(false)} className="h-12 w-12 rounded-xl bg-white/5 flex items-center justify-center text-white/20 active:scale-90">
+              <h2 className="text-[26px] font-black uppercase tracking-tighter italic leading-none">Recargar</h2>
+              <button onClick={() => setShowTopUp(false)} className="h-12 w-12 rounded-xl flex items-center justify-center active:scale-90" style={{ backgroundColor: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)', color: textColor }}>
                 <span className="material-symbols-outlined text-xl">close</span>
               </button>
             </div>
@@ -260,35 +299,40 @@ const ProfilePage: React.FC = () => {
                     onClick={() => selectPreset(amount)}
                     className={`h-20 rounded-2xl font-black text-[20px] italic transition-all duration-500 border ${selectedAmount === amount
                       ? 'text-black'
-                      : 'bg-white/[0.02] text-white/20 border-white/5'
+                      : ''
                       }`}
-                    style={selectedAmount === amount ? { backgroundColor: accentColor, borderColor: accentColor } : {}}
+                    style={selectedAmount === amount
+                      ? { backgroundColor: accentColor, borderColor: accentColor, color: '#000' }
+                      : { backgroundColor: 'rgba(255,255,255,0.02)', borderColor: borderColor, color: textColor }}
                   >
                     ${amount}
                   </button>
                 ))}
               </div>
               <div className="relative group">
-                <label className="text-[8px] font-black uppercase tracking-[0.4em] text-white/20 ml-5 mb-2 block italic">Monto Personalizado</label>
-                <div className="flex items-center h-20 px-8 rounded-2xl border bg-white/[0.01] border-white/5">
-                  <span className="text-xl font-black italic mr-3 text-white/10">$</span>
+                <label className="text-[8px] font-black uppercase tracking-[0.4em] ml-5 mb-2 block italic opacity-50">Monto Personalizado</label>
+                <div className="flex items-center h-20 px-8 rounded-2xl border" style={{ backgroundColor: 'rgba(255,255,255,0.01)', borderColor }}>
+                  <span className="text-xl font-black italic mr-3 opacity-30">$</span>
                   <input
                     type="number"
                     value={customAmount}
                     onChange={(e) => handleCustomInput(e.target.value)}
                     placeholder="OTRO MONTO..."
-                    className="bg-transparent border-none p-0 text-xl font-black italic text-white placeholder:text-white/5 focus:ring-0 w-full tracking-tighter"
+                    className="bg-transparent border-none p-0 text-xl font-black italic placeholder:opacity-30 focus:ring-0 w-full tracking-tighter"
+                    style={{ color: textColor }}
                   />
                 </div>
               </div>
               <button
                 onClick={handleConfirmTopUp}
                 disabled={isProcessing || (!selectedAmount && !customAmount)}
-                className={`w-full h-24 rounded-full font-black uppercase text-[14px] tracking-[0.15em] active:scale-[0.97] transition-all duration-700 flex items-center justify-center gap-4 border border-white/20 ${(selectedAmount || customAmount)
+                className={`w-full h-24 rounded-full font-black uppercase text-[14px] tracking-[0.15em] active:scale-[0.97] transition-all duration-700 flex items-center justify-center gap-4 border ${(selectedAmount || customAmount)
                   ? 'text-black'
-                  : 'bg-white/5 text-white/10 grayscale cursor-not-allowed'
+                  : 'grayscale cursor-not-allowed'
                   }`}
-                style={(selectedAmount || customAmount) ? { backgroundColor: accentColor, boxShadow: `0 25px 60px -10px ${accentColor}4D` } : {}}
+                style={(selectedAmount || customAmount)
+                  ? { backgroundColor: accentColor, borderColor: 'transparent', boxShadow: `0 25px 60px -10px ${accentColor}4D` }
+                  : { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: borderColor, color: `${textColor}40` }}
               >
                 {isProcessing ? (
                   <span className="material-symbols-outlined animate-spin text-[32px]">refresh</span>
@@ -308,14 +352,15 @@ const ProfilePage: React.FC = () => {
       )}
 
       {showQR.isOpen && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/98 backdrop-blur-2xl animate-in fade-in duration-500" onClick={() => setShowQR({ ...showQR, isOpen: false })}>
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 backdrop-blur-2xl animate-in fade-in duration-500" style={{ backgroundColor: 'rgba(0,0,0,0.9)' }} onClick={() => setShowQR({ ...showQR, isOpen: false })}>
           <div className="w-full max-w-sm flex flex-col items-center" onClick={e => e.stopPropagation()}>
             {/* User Identity QR Component */}
             <UserIdentityQR userCode={showQR.data} userName={user?.name || 'Cliente'} />
 
             <button
               onClick={() => setShowQR({ ...showQR, isOpen: false })}
-              className="mt-8 w-20 h-20 rounded-full bg-white/5 text-white flex items-center justify-center border border-white/10 active:scale-90 transition-transform"
+              className="mt-8 w-20 h-20 rounded-full flex items-center justify-center border active:scale-90 transition-transform"
+              style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)', color: '#fff' }}
             >
               <span className="material-symbols-outlined text-4xl">close</span>
             </button>
@@ -334,24 +379,24 @@ const ProfilePage: React.FC = () => {
   );
 };
 
-const EditableInfoItem: React.FC<{ icon: string, label: string, value: string, editMode: boolean, onChange: (v: string) => void, accentColor: string }> = ({ icon, label, value, editMode, onChange, accentColor }) => (
+const EditableInfoItem: React.FC<{ icon: string, label: string, value: string, editMode: boolean, onChange: (v: string) => void, accentColor: string, textColor: string }> = ({ icon, label, value, editMode, onChange, accentColor, textColor }) => (
   <div className="flex items-center gap-8 px-10 py-8 transition-colors">
-    <div className="flex h-14 w-14 items-center justify-center rounded-[1.2rem] bg-white/5 text-slate-700 shrink-0">
+    <div className="flex h-14 w-14 items-center justify-center rounded-[1.2rem] shrink-0" style={{ backgroundColor: `${textColor}0D`, color: `${textColor}80` }}>
       <span className="material-symbols-outlined text-[28px]">{icon}</span>
     </div>
     <div className="flex flex-col flex-1 min-w-0">
-      <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 mb-2">{label}</span>
+      <span className="text-[10px] font-black uppercase tracking-[0.4em] mb-2" style={{ color: `${textColor}40` }}>{label}</span>
       {editMode ? (
         <input
           autoFocus
-          className="bg-white/5 rounded-[1rem] border border-white/10 p-3 text-lg font-black w-full text-white tracking-tight focus:ring-0 transition-all"
-          style={{ focusBorderColor: accentColor }}
+          className="rounded-[1rem] border p-3 text-lg font-black w-full tracking-tight focus:ring-0 transition-all"
+          style={{ backgroundColor: `${textColor}0D`, borderColor: `${textColor}1A`, color: textColor }}
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
       ) : (
-        <span className="text-xl font-black tracking-tight truncate italic">{value}</span>
+        <span className="text-xl font-black tracking-tight truncate italic" style={{ color: textColor }}>{value}</span>
       )}
     </div>
   </div>

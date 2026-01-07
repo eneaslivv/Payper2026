@@ -2,6 +2,9 @@
  * Utility to get the base URL of the application.
  * Adapts to environment (localhost vs production) to ensure generated links are valid.
  */
+
+const PRODUCTION_URL = 'https://www.payperapp.io';
+
 export const getAppUrl = (): string => {
     // If explicitly set in environment (e.g. Vercel env var), use it
     if (import.meta.env.VITE_APP_BASE_URL) {
@@ -10,21 +13,19 @@ export const getAppUrl = (): string => {
 
     // If in browser context
     if (typeof window !== 'undefined') {
-        const origin = window.location.origin;
+        const hostname = window.location.hostname;
 
-        // If running locally, you might still want to generate production links for QR codes
-        // that need to be scanned by phones (which can't access localhost).
-        // However, for testing the flow locally, localhost is fine.
-        // Uncomment the below if you WANT local dev to generate prod links.
-        /*
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-           return 'https://payper2026.vercel.app'; // Production URL fallback
+        // Always use production URL for generated links (except for local testing)
+        // This ensures QR codes and email links work on real devices
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            // For local development, use production URL so links work on phones
+            return PRODUCTION_URL;
         }
-        */
 
-        return origin;
+        // Use current origin (works for payperapp.io, www.payperapp.io, etc)
+        return window.location.origin;
     }
 
-    // Fallback for non-browser environments (though this app is client-side)
-    return 'https://payper2026.vercel.app';
+    // Fallback for non-browser environments
+    return PRODUCTION_URL;
 };

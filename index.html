@@ -126,7 +126,7 @@
     <link rel="stylesheet" href="/index.css">
 </head>
 
-<body class="bg-[#0D0F0D] text-[#E0E2DF] font-display selection:bg-neon/30">
+<body className="font-sans antialiased selection:bg-neon selection:text-black overflow-hidden">
     <div id="root">
         <!-- Fallback content while JS loads -->
         <div id="loading-fallback"
@@ -153,61 +153,67 @@
     </div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
-            // DYNAMIC PWA MANIFEST GENERATION
-            // This ensures that if a user installs the app from a Client Menu,
-            // the PWA opens directly to that menu, not the Admin Login.
-            (function () {
-                try {
-                    const isClientMenu = window.location.hash.includes('#/m/');
-                    const hasSlug = window.location.hash.match(/#\/m\/([^\/]+)/);
+        // Initialize global state for animations
+        window.globalState = {
+            isNavigating: false
+        };
+    </script>
+    <script>
+        // DYNAMIC PWA MANIFEST GENERATION
+        // This ensures that if a user installs the app from a Client Menu,
+        // the PWA opens directly to that menu, not the Admin Login.
+        (function () {
+            try {
+                const isClientMenu = window.location.hash.includes('#/m/');
+                const hasSlug = window.location.hash.match(/#\/m\/([^\/]+)/);
 
-                    if (isClientMenu && hasSlug) {
-                        console.log('📱 Client Mode Detected: Injecting Custom Manifest');
-                        const slug = hasSlug[1];
-                        const currentUrl = window.location.href; // Captures full URL including hash
+                if (isClientMenu && hasSlug) {
+                    console.log('📱 Client Mode Detected: Injecting Custom Manifest');
+                    const slug = hasSlug[1];
+                    const currentUrl = window.location.href; // Captures full URL including hash
 
-                        const manifest = {
-                            "name": "Carta Digital",
-                            "short_name": "Carta",
-                            "description": "Pide desde tu mesa",
-                            "start_url": currentUrl,
-                            "display": "standalone",
-                            "background_color": "#0D0F0D",
-                            "theme_color": "#000000",
-                            "orientation": "portrait",
-                            "icons": [
-                                {
-                                    "src": "https://cdn-icons-png.flaticon.com/512/924/924514.png",
-                                    "sizes": "192x192",
-                                    "type": "image/png",
-                                    "purpose": "any maskable"
-                                },
-                                {
-                                    "src": "https://cdn-icons-png.flaticon.com/512/924/924514.png",
-                                    "sizes": "512x512",
-                                    "type": "image/png"
-                                }
-                            ]
-                        };
+                    const manifest = {
+                        "name": "Carta Digital",
+                        "short_name": "Carta",
+                        "description": "Pide desde tu mesa",
+                        "start_url": currentUrl,
+                        "display": "standalone",
+                        "background_color": "#0D0F0D",
+                        "theme_color": "#000000",
+                        "orientation": "portrait",
+                        "icons": [
+                            {
+                                "src": "https://cdn-icons-png.flaticon.com/512/924/924514.png",
+                                "sizes": "192x192",
+                                "type": "image/png",
+                                "purpose": "any maskable"
+                            },
+                            {
+                                "src": "https://cdn-icons-png.flaticon.com/512/924/924514.png",
+                                "sizes": "512x512",
+                                "type": "image/png"
+                            }
+                        ]
+                    };
 
-                        const stringManifest = JSON.stringify(manifest);
-                        const blob = new Blob([stringManifest], { type: 'application/json' });
-                        const manifestURL = URL.createObjectURL(blob);
+                    const stringManifest = JSON.stringify(manifest);
+                    const blob = new Blob([stringManifest], { type: 'application/json' });
+                    const manifestURL = URL.createObjectURL(blob);
 
-                        const link = document.querySelector('link[rel="manifest"]');
-                        if (link) {
-                            link.setAttribute('href', manifestURL);
-                        } else {
-                            const newLink = document.createElement('link');
-                            newLink.rel = 'manifest';
-                            newLink.href = manifestURL;
-                            document.head.appendChild(newLink);
-                        }
+                    const link = document.querySelector('link[rel="manifest"]');
+                    if (link) {
+                        link.setAttribute('href', manifestURL);
+                    } else {
+                        const newLink = document.createElement('link');
+                        newLink.rel = 'manifest';
+                        newLink.href = manifestURL;
+                        document.head.appendChild(newLink);
                     }
-                } catch (e) {
-                    console.error('Error injecting manifest:', e);
                 }
-            })();
+            } catch (e) {
+                console.error('Error injecting manifest:', e);
+            }
+        })();
     </script>
 </body>
 

@@ -1,19 +1,50 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { OrderPickupTicket } from "../../components/client/OrderPickupTicket";
 import { useToast } from "../../components/ToastSystem";
+import { useAuth } from "../../contexts/AuthContext";
+import { useClient } from "../../contexts/ClientContext";
 
 export default function OrderStatusPage() {
     const { orderId, slug } = useParams();
+    const location = useLocation();
     const { addToast } = useToast();
+    const { isLoading: authLoading } = useAuth();
+    // Use Client Context for theme
+    const { store } = useClient();
+
     const [order, setOrder] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
     const [isVerifying, setIsVerifying] = useState(false);
 
+    // Determine theme colors
+    const accentColor = store?.menu_theme?.accentColor || '#36e27b';
+    const backgroundColor = store?.menu_theme?.backgroundColor || '#000000';
+    const textColor = store?.menu_theme?.textColor || '#FFFFFF';
+
+    // Extract MP params from URL (payment_id, status, external_reference)
+    const getMPParams = () => {
+        const searchParams = new URLSearchParams(location.search);
+        // Also check hash for SPA routing
+        const hashSearch = window.location.hash.split('?')[1];
+        const hashParams = hashSearch ? new URLSearchParams(hashSearch) : null;
+
+        return {
+            payment_id: searchParams.get('payment_id') || hashParams?.get('payment_id'),
+            status: searchParams.get('status') || hashParams?.get('status'),
+            external_reference: searchParams.get('external_reference') || hashParams?.get('external_reference')
+        };
+    };
+
     const fetchOrder = async () => {
         if (!orderId) return;
-        console.log("Fetching order:", orderId);
+        // 🛡️ GUARD: Wait for auth to stabilize before fetching
+        if (authLoading) {
+            console.log("[OrderStatusPage] Auth still loading, deferring fetch...");
+            return;
+        }
+        console.log("[OrderStatusPage] Fetching order:", orderId);
         const { data, error } = await supabase
             .from('orders')
             .select('*, order_items(*, product:inventory_items(*))')
@@ -28,42 +59,74 @@ export default function OrderStatusPage() {
 
             // ⚡ ACTIVE VERIFICATION: If order is pending, ask server to double check MP status
             if (data.status === 'pending' || data.payment_status === 'pending') {
-                verifyPaymentStatus(orderId);
+                const mpParams = getMPParams();
+                verifyPaymentStatus(orderId, mpParams.payment_id || undefined);
             }
         }
     };
 
-    const verifyPaymentStatus = async (oid: string) => {
+    const verifyPaymentStatus = async (oid: string, paymentId?: string) => {
         if (isVerifying) return;
         setIsVerifying(true);
-        console.log("⚡ Triggering Active Payment Verification...");
+        console.log("⚡ [OrderStatusPage] Triggering Active Payment Verification for:", oid, "payment_id:", paymentId);
 
         try {
-            // Updated to use Vercel Serverless Function instead of Edge Function
-            const res = await fetch('/api/verify-payment', {
+            let data;
+            let res;
+
+            // Try Vercel API first (works in production)
+            const vercelApiUrl = '/api/verify-payment';
+            console.log("[OrderStatusPage] Attempting Vercel API:", vercelApiUrl);
+
+            // Include payment_id if available (from MP redirect)
+            const requestBody = {
+                order_id: oid,
+                ...(paymentId && { payment_id: paymentId })
+            };
+            console.log("[OrderStatusPage] Request body:", JSON.stringify(requestBody));
+
+            res = await fetch(vercelApiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ order_id: oid })
+                body: JSON.stringify(requestBody)
             });
-            const data = await res.json();
 
-            if (!res.ok) throw new Error(data.error || 'Verification failed');
+            // If Vercel API fails (404 in local dev), try Supabase Edge Function
+            if (!res.ok && res.status === 404) {
+                console.log("[OrderStatusPage] Vercel API not available, trying Supabase Edge Function...");
+                const edgeFunctionRes = await supabase.functions.invoke('verify-payment-status', {
+                    body: requestBody
+                });
 
-            if (error) throw error;
+                if (edgeFunctionRes.error) {
+                    throw new Error(edgeFunctionRes.error.message || 'Edge function failed');
+                }
+                data = edgeFunctionRes.data;
+            } else {
+                data = await res.json();
+                console.log("[OrderStatusPage] API Response:", res.status, JSON.stringify(data));
+                if (!res.ok) throw new Error(data.error || 'Verification failed');
+            }
 
-            console.log("Verification Result:", data);
+            console.log("[OrderStatusPage] Verification Result:", data);
+
             if (data?.success && data?.status === 'approved') {
                 addToast("¡Pago confirmado! Tu pedido está en marcha.", "success");
                 // Re-fetch immediately
                 const { data: refreshedOrder } = await supabase
                     .from('orders')
-                    .select('*, order_items(*, product:products(*))')
+                    .select('*, order_items(*, product:inventory_items(*))')
                     .eq('id', oid)
                     .single();
-                if (refreshedOrder) setOrder(refreshedOrder);
+                if (refreshedOrder) {
+                    console.log("[OrderStatusPage] Order refreshed after payment approval");
+                    setOrder(refreshedOrder);
+                }
+            } else if (data?.status === 'pending') {
+                console.log("[OrderStatusPage] Payment still pending in MP");
             }
         } catch (e) {
-            console.error("Verification failed:", e);
+            console.error("[OrderStatusPage] Verification failed:", e);
             // Don't show error to user, just log it. Maybe it's just really pending.
         } finally {
             setIsVerifying(false);
@@ -71,6 +134,9 @@ export default function OrderStatusPage() {
     };
 
     useEffect(() => {
+        // 🛡️ Don't fetch until auth is ready
+        if (authLoading) return;
+
         // 1. Carga inicial
         fetchOrder();
 
@@ -123,16 +189,16 @@ export default function OrderStatusPage() {
             });
 
         return () => { supabase.removeChannel(subscription); };
-    }, [orderId]);
+    }, [orderId, authLoading]);
 
     // UI: Clean Error State
     if (error) return (
-        <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center font-display">
-            <div className="size-16 rounded-full bg-white/5 flex items-center justify-center mb-6 animate-pulse">
-                <span className="material-symbols-outlined text-3xl text-white/40">search_off</span>
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center font-display transition-colors duration-500" style={{ backgroundColor, color: textColor }}>
+            <div className="size-16 rounded-full flex items-center justify-center mb-6 animate-pulse" style={{ backgroundColor: `${textColor}0D` }}>
+                <span className="material-symbols-outlined text-3xl" style={{ color: `${textColor}66` }}>search_off</span>
             </div>
-            <h1 className="text-white text-lg font-black uppercase tracking-widest mb-2">Pedido No Encontrado</h1>
-            <p className="text-zinc-500 font-medium text-xs max-w-xs leading-relaxed mb-8">
+            <h1 className="text-lg font-black uppercase tracking-widest mb-2" style={{ color: textColor }}>Pedido No Encontrado</h1>
+            <p className="font-medium text-xs max-w-xs leading-relaxed mb-8" style={{ color: `${textColor}80` }}>
                 {error}
                 <br />
                 <span className="text-[9px] opacity-50 font-mono mt-2 block">{JSON.stringify(error)}</span>
@@ -140,13 +206,15 @@ export default function OrderStatusPage() {
             <div className="flex gap-4">
                 <button
                     onClick={() => window.location.reload()}
-                    className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-full transition-all"
+                    className="px-6 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-full transition-all"
+                    style={{ backgroundColor: `${textColor}1A`, color: textColor }}
                 >
                     Reintentar
                 </button>
                 <button
                     onClick={() => window.history.back()}
-                    className="px-6 py-3 bg-neon text-black hover:scale-105 text-[10px] font-black uppercase tracking-[0.2em] rounded-full transition-all shadow-[0_0_20px_rgba(54,226,123,0.3)]"
+                    className="px-6 py-3 hover:scale-105 text-[10px] font-black uppercase tracking-[0.2em] rounded-full transition-all"
+                    style={{ backgroundColor: accentColor, color: '#000', boxShadow: `0 0 20px ${accentColor}4D` }}
                 >
                     Volver
                 </button>
@@ -156,14 +224,14 @@ export default function OrderStatusPage() {
 
     // UI: Loading State
     if (!order) return (
-        <div className="min-h-screen bg-black flex flex-col items-center justify-center font-display">
+        <div className="min-h-screen flex flex-col items-center justify-center font-display transition-colors duration-500" style={{ backgroundColor, color: textColor }}>
             <div className="relative mb-8">
-                <div className="size-16 rounded-full border-2 border-white/10 border-t-neon animate-spin"></div>
+                <div className="size-16 rounded-full border-2 animate-spin" style={{ borderColor: `${textColor}1A`, borderTopColor: accentColor }}></div>
                 <div className="absolute inset-0 flex items-center justify-center">
                     <span className="text-xl">☕</span>
                 </div>
             </div>
-            <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Confirmando Pedido...</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] animate-pulse" style={{ color: `${textColor}66` }}>Confirmando Pedido...</p>
         </div>
     );
 
@@ -204,21 +272,22 @@ export default function OrderStatusPage() {
     };
 
     return (
-        <div className="min-h-screen bg-black p-4 flex flex-col items-center justify-center">
+        <div className="min-h-screen p-4 flex flex-col items-center justify-center transition-colors duration-500" style={{ backgroundColor }}>
             {/* Show a subtle "Verifying" indicator if manual check is running */}
             {isVerifying && (
-                <div className="fixed top-0 left-0 right-0 h-1 bg-white/10 overflow-hidden z-[60]">
-                    <div className="h-full bg-neon w-1/3 animate-[loading_1s_ease-in-out_infinite]"></div>
+                <div className="fixed top-0 left-0 right-0 h-1 overflow-hidden z-[60]" style={{ backgroundColor: `${textColor}1A` }}>
+                    <div className="h-full w-1/3 animate-[loading_1s_ease-in-out_infinite]" style={{ backgroundColor: accentColor }}></div>
                 </div>
             )}
-            <OrderPickupTicket order={mappedOrder} storeSlug={slug} />
+            <OrderPickupTicket order={mappedOrder} storeSlug={slug} theme={store?.menu_theme} />
 
             {/* Manual Verify Button (Only if pending for > 5s? Or always visible small?) */}
             {/* Only show if pending and not verifying */}
             {(order.status === 'pending' || order.payment_status === 'pending') && !isVerifying && (
                 <button
                     onClick={() => verifyPaymentStatus(order.id)}
-                    className="mt-8 text-white/30 text-[10px] font-bold uppercase tracking-widest hover:text-white transition-colors flex items-center gap-2"
+                    className="mt-8 text-[10px] font-bold uppercase tracking-widest hover:opacity-100 opacity-30 transition-all flex items-center gap-2"
+                    style={{ color: textColor }}
                 >
                     <span className="material-symbols-outlined text-sm">sync</span>
                     Actualizar Estado
