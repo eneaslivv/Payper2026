@@ -1,0 +1,18 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3005",
+  "loginUser": "livveneas@gmail.com",
+  "loginPassword": "test124",
+  "executionArgs": {
+    "projectName": "coffe payper",
+    "projectPath": "c:\\Users\\eneas\\Downloads\\livv\\Payper\\coffe payper",
+    "testIds": [],
+    "additionalInstruction": "",
+    "envs": {
+      "API_KEY": "sk-user-Ra2i_qjeFdDrOonlttFj6yRNbSaN8TaPSUKAK2o1oTHClPuib9qqlXVSoboYt2tPqsBJWbXP2Imz1DnSl7B3yoc3y16jZxsyC7r6_6Ar1VVVw8aquqju22JsKKIn1QUgbJA"
+    }
+  },
+  "proxy": "http://69e20d1a-8a4d-4102-9192-cb8f6d83fa85:dPMdcOu1t5vHk031ENsTyORficmSI62B@tun.testsprite.com:8080"
+}

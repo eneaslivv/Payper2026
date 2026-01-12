@@ -281,71 +281,136 @@ const ProfilePage: React.FC = () => {
       {showTopUp && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-2xl animate-in fade-in duration-500" style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}>
           <div
-            className="w-full max-w-sm rounded-[3rem] p-10 shadow-[0_40px_100px_rgba(0,0,0,1)] animate-in zoom-in-95 duration-300 border"
+            className="w-full max-w-sm rounded-[3rem] p-8 shadow-[0_40px_100px_rgba(0,0,0,1)] animate-in zoom-in-95 duration-300 border"
             style={{ backgroundColor: surfaceColor, borderColor, color: textColor }}
           >
-            <div className="flex justify-between items-center mb-10">
-              <h2 className="text-[26px] font-black uppercase tracking-tighter italic leading-none">Recargar</h2>
-              <button onClick={() => setShowTopUp(false)} className="h-12 w-12 rounded-xl flex items-center justify-center active:scale-90" style={{ backgroundColor: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)', color: textColor }}>
-                <span className="material-symbols-outlined text-xl">close</span>
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-[22px] font-black uppercase tracking-tighter italic leading-none">Cargar Saldo</h2>
+              <button onClick={() => setShowTopUp(false)} className="h-10 w-10 rounded-xl flex items-center justify-center active:scale-90" style={{ backgroundColor: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)', color: textColor }}>
+                <span className="material-symbols-outlined text-lg">close</span>
               </button>
             </div>
 
-            <div className="space-y-8">
-              <div className="grid grid-cols-3 gap-3">
-                {[10, 20, 50].map(amount => (
-                  <button
-                    key={amount}
-                    onClick={() => selectPreset(amount)}
-                    className={`h-20 rounded-2xl font-black text-[20px] italic transition-all duration-500 border ${selectedAmount === amount
-                      ? 'text-black'
-                      : ''
-                      }`}
-                    style={selectedAmount === amount
-                      ? { backgroundColor: accentColor, borderColor: accentColor, color: '#000' }
-                      : { backgroundColor: 'rgba(255,255,255,0.02)', borderColor: borderColor, color: textColor }}
-                  >
-                    ${amount}
-                  </button>
-                ))}
+            <div className="space-y-6">
+              {/* Montos rápidos */}
+              <div>
+                <label className="text-[8px] font-black uppercase tracking-[0.3em] ml-3 mb-3 block opacity-40">Montos Rápidos</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[500, 1000, 2000, 5000].map(amount => (
+                    <button
+                      key={amount}
+                      onClick={() => selectPreset(amount)}
+                      className={`h-14 rounded-xl font-black text-[13px] italic transition-all duration-300 border`}
+                      style={selectedAmount === amount
+                        ? { backgroundColor: accentColor, borderColor: accentColor, color: '#000' }
+                        : { backgroundColor: 'rgba(255,255,255,0.02)', borderColor: borderColor, color: textColor }}
+                    >
+                      ${amount >= 1000 ? `${amount / 1000}k` : amount}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="relative group">
-                <label className="text-[8px] font-black uppercase tracking-[0.4em] ml-5 mb-2 block italic opacity-50">Monto Personalizado</label>
-                <div className="flex items-center h-20 px-8 rounded-2xl border" style={{ backgroundColor: 'rgba(255,255,255,0.01)', borderColor }}>
-                  <span className="text-xl font-black italic mr-3 opacity-30">$</span>
+
+              {/* Monto personalizado */}
+              <div>
+                <label className="text-[8px] font-black uppercase tracking-[0.3em] ml-3 mb-2 block opacity-40">Otro Monto</label>
+                <div className="flex items-center h-14 px-5 rounded-xl border" style={{ backgroundColor: 'rgba(255,255,255,0.02)', borderColor }}>
+                  <span className="text-lg font-black italic mr-2 opacity-30">$</span>
                   <input
                     type="number"
                     value={customAmount}
                     onChange={(e) => handleCustomInput(e.target.value)}
-                    placeholder="OTRO MONTO..."
-                    className="bg-transparent border-none p-0 text-xl font-black italic placeholder:opacity-30 focus:ring-0 w-full tracking-tighter"
+                    placeholder="0"
+                    className="bg-transparent border-none p-0 text-xl font-black italic placeholder:opacity-20 focus:ring-0 w-full tracking-tighter outline-none"
                     style={{ color: textColor }}
                   />
                 </div>
               </div>
-              <button
-                onClick={handleConfirmTopUp}
-                disabled={isProcessing || (!selectedAmount && !customAmount)}
-                className={`w-full h-24 rounded-full font-black uppercase text-[14px] tracking-[0.15em] active:scale-[0.97] transition-all duration-700 flex items-center justify-center gap-4 border ${(selectedAmount || customAmount)
-                  ? 'text-black'
-                  : 'grayscale cursor-not-allowed'
-                  }`}
-                style={(selectedAmount || customAmount)
-                  ? { backgroundColor: accentColor, borderColor: 'transparent', boxShadow: `0 25px 60px -10px ${accentColor}4D` }
-                  : { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: borderColor, color: `${textColor}40` }}
-              >
-                {isProcessing ? (
-                  <span className="material-symbols-outlined animate-spin text-[32px]">refresh</span>
-                ) : (
-                  <>
-                    <div className="flex flex-col items-start leading-none text-left">
-                      <span>Confirmar</span>
-                      <span className="text-[10px] opacity-40 italic">Carga Segura</span>
-                    </div>
-                    <span className="material-symbols-outlined font-black text-[24px]">verified_user</span>
-                  </>
-                )}
-              </button>
+
+              {/* Monto seleccionado */}
+              {(selectedAmount || customAmount) && (
+                <div className="text-center py-4 border-t border-b" style={{ borderColor }}>
+                  <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Total a cargar</span>
+                  <p className="text-[36px] font-black italic tracking-tighter break-all text-center leading-none" style={{ color: accentColor }}>
+                    ${customAmount ? parseFloat(customAmount).toLocaleString() : selectedAmount?.toLocaleString()}
+                  </p>
+                </div>
+              )}
+
+              {/* Botones de pago */}
+              <div className="space-y-3">
+                {/* MercadoPago */}
+                <button
+                  onClick={async () => {
+                    const amount = customAmount ? parseFloat(customAmount) : (selectedAmount || 0);
+                    if (!amount || amount <= 0) {
+                      triggerToast('Seleccioná un monto');
+                      return;
+                    }
+                    setIsProcessing(true);
+                    try {
+                      // Create MP preference for client balance top-up
+                      const { data, error } = await supabase.functions.invoke('create-mp-preference', {
+                        body: {
+                          amount: amount,
+                          description: `Recarga de saldo - ${store?.name || 'Tienda'}`,
+                          client_id: user?.id,
+                          store_id: store?.id,
+                          type: 'balance_topup'
+                        }
+                      });
+                      if (error) throw error;
+                      if (data?.init_point) {
+                        window.location.href = data.init_point;
+                      } else {
+                        throw new Error('No se pudo crear el pago');
+                      }
+                    } catch (err: any) {
+                      console.error('MP Error:', err);
+                      triggerToast('Error al procesar pago: ' + err.message);
+                    } finally {
+                      setIsProcessing(false);
+                    }
+                  }}
+                  disabled={isProcessing || (!selectedAmount && !customAmount)}
+                  className="w-full h-16 rounded-2xl font-black uppercase text-[11px] tracking-widest active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: '#009ee3', color: '#fff' }}
+                >
+                  {isProcessing ? (
+                    <span className="material-symbols-outlined animate-spin">refresh</span>
+                  ) : (
+                    <>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z" />
+                      </svg>
+                      Pagar con MercadoPago
+                    </>
+                  )}
+                </button>
+
+                {/* Efectivo */}
+                <button
+                  onClick={() => {
+                    const amount = customAmount ? parseFloat(customAmount) : (selectedAmount || 0);
+                    if (!amount || amount <= 0) {
+                      triggerToast('Seleccioná un monto');
+                      return;
+                    }
+                    setShowTopUp(false);
+                    triggerToast(`Acercate a la caja para cargar $${amount.toLocaleString()}`);
+                  }}
+                  disabled={!selectedAmount && !customAmount}
+                  className="w-full h-14 rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-[0.98] transition-all flex items-center justify-center gap-3 border disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: 'transparent', borderColor, color: textColor }}
+                >
+                  <span className="material-symbols-outlined text-lg">payments</span>
+                  Pagar en Efectivo
+                </button>
+              </div>
+
+              <p className="text-center text-[9px] opacity-30 mt-2">
+                Para pagos en efectivo, acercate a la caja más cercana
+              </p>
             </div>
           </div>
         </div>

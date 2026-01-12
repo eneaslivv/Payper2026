@@ -7,6 +7,7 @@ const DB_VERSION = 2;
 export interface DBOrder extends Order {
   syncStatus: 'synced' | 'pending';
   lastModified: number;
+  store_id?: string;
 }
 
 export interface SyncEvent {

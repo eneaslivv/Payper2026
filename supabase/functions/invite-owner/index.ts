@@ -86,7 +86,30 @@ serve(async (req) => {
             if (updateError) throw updateError;
         }
 
-        // 4. Generate recovery link (for setting password)
+        // 4. CRITICAL: Create/Update profile in profiles table with correct role
+        // This prevents any trigger from defaulting to 'customer'
+        if (targetUser) {
+            console.log(`[INVITE-OWNER] Upserting profile for user ${targetUser.id}...`);
+            const { error: profileError } = await supabaseAdmin
+                .from('profiles')
+                .upsert({
+                    id: targetUser.id,
+                    email: email,
+                    full_name: ownerName || 'Propietario',
+                    role: 'store_owner',
+                    store_id: storeId,
+                    is_active: true
+                }, { onConflict: 'id' });
+
+            if (profileError) {
+                console.error(`[INVITE-OWNER] Profile upsert error:`, profileError);
+                // Don't throw - profile might be created by trigger, we'll update it
+            } else {
+                console.log(`[INVITE-OWNER] Profile upserted successfully`);
+            }
+        }
+
+        // 5. Generate recovery link (for setting password)
         const origin = req.headers.get('origin') || 'https://www.payperapp.io';
         const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
             type: 'recovery',

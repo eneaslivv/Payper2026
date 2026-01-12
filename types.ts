@@ -323,10 +323,13 @@ export interface ProductVariant {
   id: string;
   name: string;
   price_adjustment: number;
+  recipe_multiplier?: number; // NEW: Multiplies ALL base recipe ingredients (e.g., 1.5 for "Grande")
   // Permite definir que esta variante consume X cantidad más/menos de un ingrediente base
   recipe_overrides?: {
     ingredient_id: string;
-    quantity_delta: number; // Ej: +50 (ml de leche)
+    consumption_type?: 'fixed' | 'multiplier'; // NEW: 'fixed' (+50ml) or 'multiplier' (x1.5)
+    value?: number; // The amount to add or the multiplier factor
+    quantity_delta: number; // Legacy: kept for simple fixed deltas or mapped from value
   }[];
 }
 

@@ -52,18 +52,8 @@ const Login: React.FC<LoginProps> = () => {
     checkUrl();
     window.addEventListener('hashchange', checkUrl);
 
-    // Cargar script de Contra
-    const script = document.createElement('script');
-    script.src = "https://contra.com/static/embed/sdk.js";
-    script.async = true;
-    script.charset = "utf-8";
-    document.body.appendChild(script);
-
     return () => {
       window.removeEventListener('hashchange', checkUrl);
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
     };
   }, [isRecovery]);
 
@@ -275,15 +265,7 @@ const Login: React.FC<LoginProps> = () => {
         </div>
       </div>
 
-      {/* Contra Hire Me Button */}
-      <div className="absolute bottom-6 left-0 right-0 flex justify-center z-50 pointer-events-auto opacity-80 hover:opacity-100 transition-opacity">
-        <div
-          className="contra-hire-me-button"
-          data-analyticsuserid="451cfc1e-e897-46ed-a701-9dd0533e7ec6"
-          data-theme="dark"
-          data-username="eneas_aldabe"
-        ></div>
-      </div>
+
     </div>
   );
 };

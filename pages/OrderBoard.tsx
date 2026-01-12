@@ -24,8 +24,15 @@ const OrderBoard: React.FC = () => {
     end: new Date(new Date().setHours(23, 59, 59, 999)).toISOString()
   });
 
-  // Location/Bar Filter
-  const [locationFilter, setLocationFilter] = useState<string>('ALL');
+  // Location/Bar Filter - Persist to localStorage for ScanOrderModal to read
+  const [locationFilter, setLocationFilter] = useState<string>(() => {
+    return localStorage.getItem('payper_dispatch_station') || 'ALL';
+  });
+
+  // Persist filter changes to localStorage
+  useEffect(() => {
+    localStorage.setItem('payper_dispatch_station', locationFilter);
+  }, [locationFilter]);
 
   // Dispatch stations from database
   const [availableStations, setAvailableStations] = useState<string[]>([]);
@@ -214,9 +221,14 @@ const OrderBoard: React.FC = () => {
       }
 
       // Station Filter (only in active mode)
+      // In "ALL" view: show all orders
+      // In specific station view: ONLY show orders that have been scanned/assigned to that station
       if (!showHistory && locationFilter !== 'ALL') {
         const orderStation = (o as any).dispatch_station;
-        if (!orderStation || orderStation.trim() !== locationFilter) return false;
+        // Orders must have the exact matching station to appear in station-specific view
+        if (!orderStation || orderStation.trim() !== locationFilter) {
+          return false;
+        }
       }
 
       const term = searchTerm.toLowerCase();
@@ -271,18 +283,23 @@ const OrderBoard: React.FC = () => {
           <div className="flex items-center gap-3 w-full xl:w-auto">
             {/* LOCATION/BAR FILTER */}
             {availableStations.length > 0 && !showHistory && (
-              <div className="relative">
+              <div className="relative flex items-center">
+                <span className="material-symbols-outlined absolute left-3 text-neon text-base pointer-events-none">store</span>
                 <select
                   value={locationFilter}
                   onChange={(e) => setLocationFilter(e.target.value)}
-                  className="h-9 pl-3 pr-8 rounded-lg border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-widest text-white appearance-none cursor-pointer hover:border-white/20 transition-all outline-none focus:ring-1 focus:ring-neon/30"
+                  className={`h-10 pl-10 pr-10 rounded-xl border text-xs font-bold uppercase tracking-wide appearance-none cursor-pointer transition-all outline-none
+                    ${locationFilter !== 'ALL'
+                      ? 'bg-neon/10 border-neon/40 text-neon'
+                      : 'bg-white/5 border-white/10 text-white hover:border-white/20'
+                    } focus:ring-2 focus:ring-neon/30`}
                 >
-                  <option value="ALL">TODAS LAS BARRAS</option>
+                  <option value="ALL" className="bg-[#1a1a1a] text-white">🏪 Todas las estaciones</option>
                   {availableStations.map(loc => (
-                    <option key={loc} value={loc}>{loc}</option>
+                    <option key={loc} value={loc} className="bg-[#1a1a1a] text-white">📍 {loc}</option>
                   ))}
                 </select>
-                <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-white/30 text-sm pointer-events-none">expand_more</span>
+                <span className="material-symbols-outlined absolute right-3 text-white/40 text-base pointer-events-none">expand_more</span>
               </div>
             )}
 

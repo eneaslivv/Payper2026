@@ -85,7 +85,7 @@ function InputBlock({ label, children }: { label: string, children: React.ReactN
 }
 
 // Location Stock Breakdown Component
-function LocationStockBreakdown({ itemId, unitType, packageSize }: { itemId: string, unitType: string, packageSize: number }) {
+function LocationStockBreakdown({ itemId, unitType, packageSize, onLocationClick }: { itemId: string, unitType: string, packageSize: number, onLocationClick?: (locationName: string) => void }) {
   const [locations, setLocations] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
 
@@ -130,20 +130,63 @@ function LocationStockBreakdown({ itemId, unitType, packageSize }: { itemId: str
 
   return (
     <div className="grid grid-cols-2 gap-2">
-      {locations.map((loc) => (
-        <div key={loc.location_id} className="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-1 hover:bg-white/5 transition-all">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-neon/60 text-sm">
-              {locationTypeIcons[loc.location_type] || 'place'}
-            </span>
-            <span className="text-[10px] font-bold text-white/80 truncate">{loc.location_name}</span>
-          </div>
-          <div className="flex items-baseline gap-1 pl-6">
-            <span className="text-lg font-black text-neon">{loc.closed_units || 0}</span>
-            <span className="text-[8px] font-bold text-white/30">un</span>
-          </div>
-        </div>
-      ))}
+      {locations.map((loc) => {
+        // Calculate open package details
+        const closedUnits = Math.floor(Number(loc.closed_units || 0));
+        const openPackagesCount = Number(loc.open_packages_count || 0);
+        const effectiveStock = Number(loc.effective_stock || 0);
+        const totalCapacity = closedUnits * packageSize;
+        const openRemainingUnits = effectiveStock - totalCapacity;
+        // Calculate percentage of open package remaining
+        const openPackagePercentage = openPackagesCount > 0 && packageSize > 0
+          ? Math.round((openRemainingUnits / (openPackagesCount * packageSize)) * 100)
+          : 0;
+
+        return (
+          <button
+            key={loc.location_id}
+            onClick={() => onLocationClick?.(loc.location_name)}
+            className={`p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-1 hover:bg-white/5 transition-all text-left group ${onLocationClick ? 'cursor-pointer hover:border-neon/30 hover:shadow-lg hover:shadow-neon/5' : ''}`}
+          >
+            <div className="flex items-center gap-2">
+              <span className={`material-symbols-outlined text-sm ${onLocationClick ? 'text-neon/60 group-hover:text-neon' : 'text-neon/60'}`}>
+                {locationTypeIcons[loc.location_type] || 'place'}
+              </span>
+              <span className={`text-[10px] font-bold truncate ${onLocationClick ? 'text-white/80 group-hover:text-white' : 'text-white/80'}`}>{loc.location_name}</span>
+            </div>
+
+            {/* Closed units */}
+            <div className="flex items-baseline gap-1 pl-6">
+              <span className="text-lg font-black text-neon">{closedUnits}</span>
+              <span className="text-[8px] font-bold text-white/30">un cerrados</span>
+            </div>
+
+            {/* Open packages info */}
+            {openPackagesCount > 0 && (
+              <div className="pl-6 pt-1 border-t border-white/5 mt-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-amber-400">
+                    {openPackagesCount} abierto{openPackagesCount > 1 ? 's' : ''}
+                  </span>
+                  <span className="text-[10px] font-black text-amber-400/80">
+                    {openPackagePercentage}%
+                  </span>
+                </div>
+                {/* Mini progress bar */}
+                <div className="h-1 w-full bg-white/10 rounded-full mt-1 overflow-hidden">
+                  <div
+                    className="h-full bg-amber-400 rounded-full transition-all"
+                    style={{ width: `${Math.max(0, Math.min(100, openPackagePercentage))}%` }}
+                  />
+                </div>
+                <span className="text-[8px] text-white/20 mt-0.5 block">
+                  ~{Math.round(openRemainingUnits)} {unitType} restantes
+                </span>
+              </div>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -177,8 +220,17 @@ const InventoryManagement: React.FC = () => {
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [adjustmentModal, setAdjustmentModal] = useState<{ open: boolean, type: 'WASTE' | 'ADJUSTMENT' | 'PURCHASE' }>({ open: false, type: 'WASTE' });
   const [drawerTab, setDrawerTab] = useState<'details' | 'recipe' | 'history'>('details');
-  const [filter, setFilter] = useState<InventoryFilter>('all');
+
+  // Lazy init for persistence
+  const [filter, setFilter] = useState<InventoryFilter>(() => {
+    return (localStorage.getItem('inventory_filter_v1') as InventoryFilter) || 'all';
+  });
+
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string | 'special-open' | null>(null);
+
+  const [activeLocationFilter, setActiveLocationFilter] = useState<string | null>(() => {
+    return localStorage.getItem('inventory_location_filter_v1') || null;
+  });
   const [searchTerm, setSearchTerm] = useState('');
 
   // History State
@@ -206,6 +258,9 @@ const InventoryManagement: React.FC = () => {
 
   // Custom Price & Margin State
   const [customPrice, setCustomPrice] = useState<string>(''); // Allow empty string for clean input
+  // Fix for Margin Input Bug
+  const [marginInputValue, setMarginInputValue] = useState<string>('');
+  const [isEditingMargin, setIsEditingMargin] = useState(false);
 
   // Update custom price default when not set
   useEffect(() => {
@@ -234,6 +289,8 @@ const InventoryManagement: React.FC = () => {
     name: '',
     category_id: '',
     unit_type: 'unit' as UnitType,
+    package_size: 0,
+    content_unit: '',
     cost: 0,
     current_stock: 0,
     min_stock: 0,
@@ -264,6 +321,19 @@ const InventoryManagement: React.FC = () => {
     fetchData();
   }, []);
 
+  // Persist filters
+  useEffect(() => {
+    localStorage.setItem('inventory_filter_v1', filter);
+  }, [filter]);
+
+  useEffect(() => {
+    if (activeLocationFilter) {
+      localStorage.setItem('inventory_location_filter_v1', activeLocationFilter);
+    } else {
+      localStorage.removeItem('inventory_location_filter_v1');
+    }
+  }, [activeLocationFilter]);
+
   // REALTIME: Suscripción para actualización automática de inventario
   useEffect(() => {
     const storeId = profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
@@ -284,17 +354,23 @@ const InventoryManagement: React.FC = () => {
           // Solo procesar si pertenece a esta tienda
           if (payload.new && (payload.new as any).store_id === storeId) {
             const newStock = parseFloat((payload.new as any).current_stock);
+            const newClosedStock = parseFloat((payload.new as any).closed_stock || '0');
             const itemId = (payload.new as any).id;
 
             // Actualizar el estado directamente
             setItems(prev => {
               const updated = prev.map(item =>
                 item.id === itemId
-                  ? { ...item, current_stock: newStock, cost: (payload.new as any).cost || item.cost }
+                  ? {
+                    ...item,
+                    current_stock: newStock,
+                    closed_stock: newClosedStock,
+                    cost: (payload.new as any).cost || item.cost
+                  }
                   : item
               );
               // Invalidar cache para forzar refresh en próxima carga
-              localStorage.removeItem(`inventory_cache_v2_${storeId}`);
+              localStorage.removeItem(`inventory_cache_v5_${storeId}`);
               return updated;
             });
 
@@ -331,15 +407,36 @@ const InventoryManagement: React.FC = () => {
     return () => {
       supabase.removeChannel(channel);
     };
+
   }, [profile?.store_id]);
 
-  const fetchData = async (forceRefresh = false) => {
+  // SYNC DRAWER: Update selectedItem when main items list changes (Realtime/Fetch)
+  useEffect(() => {
+    if (selectedItem) {
+      const freshItem = items.find(i => i.id === selectedItem.id);
+      if (freshItem) {
+        // Only update if specific fields changed to avoid unnecessary renders
+        // We focus on stock fields which are the dynamic ones
+        const hasChanged =
+          freshItem.current_stock !== selectedItem.current_stock ||
+          freshItem.closed_stock !== selectedItem.closed_stock ||
+          JSON.stringify(freshItem.open_packages) !== JSON.stringify(selectedItem.open_packages);
+
+        if (hasChanged) {
+          console.log('[Sync] Refreshing selected item in drawer:', freshItem.name);
+          setSelectedItem(freshItem);
+        }
+      }
+    }
+  }, [items]);
+
+  const fetchData = async (forceRefresh = false, silent = false) => {
     const storeId = profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
     if (!storeId) return;
 
     // CACHE STRATEGY
     // CACHE STRATEGY
-    const CACHE_KEY = `inventory_cache_v4_${storeId}`; // Force refresh (v4 - added closed_stock)
+    const CACHE_KEY = `inventory_cache_v6_${storeId}`; // Force refresh (v6 - fix category corruption)
     const CACHE_DURATION = 5 * 60 * 1000; // 5 mins
 
     // 1. Check Cache
@@ -368,7 +465,10 @@ const InventoryManagement: React.FC = () => {
     }
 
     console.log('[Inventory] Fetching fresh data...');
-    setLoading(true);
+    // Only show loading spinner if not a silent background refresh
+    if (!silent) {
+      setLoading(true);
+    }
 
     try {
       const baseUrl = import.meta.env.VITE_SUPABASE_URL + '/rest/v1';
@@ -426,13 +526,14 @@ const InventoryManagement: React.FC = () => {
         }
       };
 
+      console.log('[Inventory] Fetching data for Store ID:', storeId);
+
       // 2. Fetch Fresh Data (including recipes)
       const [insumos, prods, cats, openPackages, recipesData] = await Promise.all([
         fetchWithTimeout(`${baseUrl}/inventory_items?store_id=eq.${storeId}`),
         fetchWithTimeout(`${baseUrl}/products?select=*,product_variants(*)&store_id=eq.${storeId}`),
         fetchWithTimeout(`${baseUrl}/categories?store_id=eq.${storeId}`),
         fetchWithTimeout(`${baseUrl}/open_packages?store_id=eq.${storeId}`),
-        // Load all product_recipes - will be filtered by product_id in frontend
         fetchWithTimeout(`${baseUrl}/product_recipes?select=*`)
       ]);
 
@@ -450,50 +551,56 @@ const InventoryManagement: React.FC = () => {
       setCategories(mappedCategories);
 
       // Transform Insumos
-      const transformedInsumos: InventoryItem[] = (insumos || []).map((i: any) => ({
-        id: i.id,
-        cafe_id: i.store_id,
-        name: i.name,
-        sku: i.sku || 'N/A',
-        item_type: 'ingredient' as const,
-        unit_type: (i.unit_type || 'unit') as UnitType,
-        image_url: i.image_url || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
-        is_active: true,
-        min_stock: i.min_stock_alert || 0,
-        current_stock: i.current_stock || 0,
-        closed_stock: i.closed_stock || 0, // ADDED: Map closed_stock from DB
-        package_size: i.package_size || 1, // ADDED: Map package_size
-        content_unit: i.content_unit || i.unit_type || 'un', // ADDED: Map content_unit
-        cost: i.cost || 0,
-        category_ids: i.category_id ? [i.category_id] : [],
-        presentations: [],
-        closed_packages: [],
-        // Use open_packages directly from inventory_items table (JSONB column)
-        open_packages: i.open_packages || [],
-        open_count: i.open_count || 0
-      }));
+      const transformedInsumos: InventoryItem[] = (insumos || [])
+        .filter((i: any) => !i.name?.startsWith('[ELIMINADO]')) // Client-side safety filter
+        .map((i: any) => ({
+          id: i.id,
+          cafe_id: i.store_id,
+          name: i.name,
+          sku: i.sku || 'N/A',
+          item_type: 'ingredient' as const,
+          unit_type: (i.unit_type || 'unit') as UnitType,
+          image_url: i.image_url || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
+          is_active: true,
+          is_menu_visible: i.is_menu_visible || false, // Map from 'is_menu_visible' column in inventory_items
+          min_stock: i.min_stock_alert || 0,
+          current_stock: parseFloat(i.current_stock || '0'),
+          closed_stock: parseFloat(i.closed_stock || '0'), // ADDED: Map closed_stock from DB (parseFloat for numeric)
+          package_size: i.package_size || 1, // ADDED: Map package_size
+          content_unit: i.content_unit || i.unit_type || 'un', // ADDED: Map content_unit
+          cost: i.cost || 0,
+          category_ids: i.category_id ? [i.category_id] : [],
+          presentations: [],
+          closed_packages: [],
+          // Use open_packages directly from inventory_items table (JSONB column)
+          open_packages: i.open_packages || [],
+          open_count: i.open_count || 0
+        }));
 
       // Transform Products
-      const transformedProducts: InventoryItem[] = (prods || []).map((p: any) => ({
-        id: p.id,
-        cafe_id: p.store_id,
-        name: p.name,
-        sku: 'SKU-' + (p.id || '').slice(0, 4).toUpperCase(),
-        item_type: 'sellable' as const,
-        unit_type: 'unit' as UnitType,
-        image_url: p.image_url || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
-        is_active: p.available,
-        min_stock: 0,
-        current_stock: 0,
-        cost: 0,
-        price: p.price || 0,
-        category_ids: p.category_id ? [p.category_id] : [],
-        description: p.description || '',
-        presentations: [],
-        closed_packages: [],
-        open_packages: [],
-        variants: p.product_variants || [] // Map variants from join
-      }));
+      const transformedProducts: InventoryItem[] = (prods || [])
+        .filter((p: any) => !p.name?.startsWith('[ELIMINADO]')) // Client-side safety filter
+        .map((p: any) => ({
+          id: p.id,
+          cafe_id: p.store_id,
+          name: p.name,
+          sku: 'SKU-' + (p.id || '').slice(0, 4).toUpperCase(),
+          item_type: 'sellable' as const,
+          unit_type: 'unit' as UnitType,
+          image_url: p.image_url || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
+          is_active: p.is_available, // Correctly mapped to DB column
+          is_menu_visible: p.is_visible, // Map from 'is_visible' column in products table
+          min_stock: 0,
+          current_stock: 0,
+          cost: 0,
+          price: p.price || 0,
+          category_ids: p.category_id ? [p.category_id] : [],
+          description: p.description || '',
+          presentations: [],
+          closed_packages: [],
+          open_packages: [],
+          variants: p.product_variants || [] // Map variants from join
+        }));
 
 
       // Map real open_packages to items (merge from separate table OR use JSONB column)
@@ -519,7 +626,11 @@ const InventoryManagement: React.FC = () => {
         return item;
       });
 
-      setItems(finalItems);
+      // Filter out deleted items (is_active=false or name starts with [ELIMINADO])
+      const activeItems = finalItems.filter((item: any) =>
+        item.is_active !== false && !item.name?.startsWith('[ELIMINADO]')
+      );
+      setItems(activeItems);
 
 
       // 4. Save to Cache (including productRecipes)
@@ -715,6 +826,7 @@ const InventoryManagement: React.FC = () => {
     }
 
     const storeId = profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
+    localStorage.removeItem(`inventory_cache_v4_${storeId}`);
 
     try {
       const storageKey = 'sb-yjxjyxhksedwfeueduwl-auth-token';
@@ -735,22 +847,42 @@ const InventoryManagement: React.FC = () => {
         'Prefer': 'return=representation'
       };
 
+      const isSellable = newItemForm.price > 0;
+      const endpoint = isSellable ? 'products' : 'inventory_items'; // Sellable = Product, Price=0 = Ingredient/Insumo
+
+      const payload = isSellable
+        ? {
+          // PRODUCT PAYLOAD
+          name: newItemForm.name,
+          store_id: storeId,
+          description: '', // Optional default
+          price: newItemForm.price,
+          base_price: newItemForm.price, // Ensure both price fields are set if schema varies
+          available: true, // Auto-active so it appears in Menu Design
+          category_id: newItemForm.category_id || null,
+          image_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=200' // Default placeholder
+        }
+        : {
+          // INVENTORY ITEM PAYLOAD
+          name: newItemForm.name,
+          unit_type: newItemForm.unit_type,
+          package_size: newItemForm.package_size || null,
+          content_unit: newItemForm.content_unit || (newItemForm.unit_type === 'gram' ? 'g' : newItemForm.unit_type === 'ml' ? 'ml' : newItemForm.unit_type === 'kg' ? 'kg' : newItemForm.unit_type === 'liter' ? 'L' : 'un'),
+          cost: newItemForm.cost,
+          current_stock: newItemForm.current_stock,
+          closed_stock: newItemForm.current_stock,
+          min_stock_alert: newItemForm.min_stock,
+          store_id: storeId,
+          category_id: newItemForm.category_id || null,
+          is_menu_visible: false, // Ingredients usually hidden from menu
+        };
+
       const response = await fetch(
-        'https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/inventory_items',
+        `https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/${endpoint}`,
         {
           method: 'POST',
           headers,
-          body: JSON.stringify({
-            name: newItemForm.name,
-            unit_type: newItemForm.unit_type,
-            cost: newItemForm.cost,
-            current_stock: newItemForm.current_stock,
-            min_stock_alert: newItemForm.min_stock,
-            store_id: storeId,
-            category_id: newItemForm.category_id || null,
-            is_menu_visible: newItemForm.price > 0, // Map 'sellable' to boolean flag
-            price: newItemForm.price || 0
-          })
+          body: JSON.stringify(payload)
         }
       );
 
@@ -761,8 +893,8 @@ const InventoryManagement: React.FC = () => {
 
       addToast('✅ Ítem creado correctamente', 'success');
       setShowInsumoWizard(false);
-      setNewItemForm({ name: '', category_id: '', unit_type: 'unit', cost: 0, current_stock: 0, min_stock: 0, price: 0 });
-      fetchData(true); // Force refresh to bypass cache
+      setNewItemForm({ name: '', category_id: '', unit_type: 'unit', package_size: 0, content_unit: '', cost: 0, current_stock: 0, min_stock: 0, price: 0 });
+      fetchData(true, true); // Force refresh silently to avoid scroll jump
 
     } catch (err: any) {
       console.error('Create item error:', err);
@@ -930,7 +1062,11 @@ const InventoryManagement: React.FC = () => {
         (activeCategoryFilter === 'special-open' && (item.open_packages?.length || 0) > 0) ||
         (item.category_ids && item.category_ids.includes(activeCategoryFilter as string));
 
-      return matchesSearch && matchesFilter && matchesCategory;
+      // Location filter (Enhanced Navigation)
+      const matchesLocation = activeLocationFilter === null ||
+        (item.open_packages?.some(pkg => pkg.location === activeLocationFilter));
+
+      return matchesSearch && matchesFilter && matchesCategory && matchesLocation;
     });
   }, [effectiveItems, searchTerm, filter, activeCategoryFilter]);
 
@@ -1061,8 +1197,102 @@ const InventoryManagement: React.FC = () => {
     return atRisk;
   }, [items, productRecipes]);
 
+  const handleDeleteItem = async () => {
+    if (!selectedItem) return;
+    const storeId = profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
+    localStorage.removeItem(`inventory_cache_v6_${storeId}`);
+    if (!confirm('¿Estás seguro de que deseas eliminar este ítem? Esta acción no se puede deshacer.')) return;
+
+    setIsProcessing(true);
+    try {
+      // FIX: Determine correct table based on item type
+      const table = selectedItem.item_type === 'sellable' ? 'products' : 'inventory_items';
+
+      const { error } = await supabase
+        .from(table)
+        .delete()
+        .eq('id', selectedItem.id);
+
+      if (error) {
+        // Check if foreign key violation (product has order history)
+        const isFKError = error.message?.toLowerCase().includes('foreign key') ||
+          error.message?.toLowerCase().includes('violates') ||
+          error.code === '23503';
+
+        if (isFKError) {
+          // Check if there are ACTIVE orders for this product
+          const activeStatuses = ['pending', 'preparing', 'ready', 'confirmed'];
+          const { data: activeOrders } = await supabase
+            .from('order_items')
+            .select('id, orders!inner(status)')
+            .eq('product_id', selectedItem.id)
+            .in('orders.status', activeStatuses)
+            .limit(1);
+
+          if (activeOrders && activeOrders.length > 0) {
+            // There are active orders, block deletion
+            addToast('⚠️ No se puede eliminar: hay pedidos activos con este producto', 'error');
+            return;
+          }
+
+          // No active orders, do soft delete
+          const { error: softDeleteError } = await supabase
+            .from(table)
+            .update({
+              is_active: false,
+              name: `[ELIMINADO] ${selectedItem.name}`,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', selectedItem.id);
+
+          // Log deletion in audit
+          const storeIdForLog = profile?.store_id;
+          if (storeIdForLog) {
+            await (supabase.from('inventory_audit_logs') as any).insert({
+              store_id: storeIdForLog,
+              item_id: selectedItem.id,
+              action_type: 'deletion',
+              quantity_delta: 0,
+              package_delta: 0,
+              reason: `Producto dado de baja: ${selectedItem.name}`,
+              user_id: (await supabase.auth.getUser()).data.user?.id,
+            });
+          }
+
+          if (softDeleteError) {
+            addToast('✓ Producto dado de baja (historial conservado)', 'success');
+          } else {
+            addToast('✓ Producto dado de baja correctamente', 'success');
+          }
+
+          // Update local state
+          setItems(prev => prev.filter(i => i.id !== selectedItem.id));
+          setSelectedItem(null);
+          setDrawerTab('details');
+          return;
+        }
+        throw error;
+      }
+
+      // Update local state by filtering out the deleted item
+      setItems(prev => prev.filter(i => i.id !== selectedItem.id));
+
+      // Close drawer and reset selection
+      setSelectedItem(null);
+      setDrawerTab('details'); // Reset tab for next time
+      addToast('Ítem eliminado correctamente', 'success');
+    } catch (e: any) {
+      console.error("Error deleting item:", e);
+      addToast('Error al eliminar el producto', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleUpdateItem = async () => {
     if (!selectedItem) return;
+    const storeId = profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
+    localStorage.removeItem(`inventory_cache_v4_${storeId}`);
     setIsProcessing(true);
 
     try {
@@ -1080,22 +1310,28 @@ const InventoryManagement: React.FC = () => {
       };
 
       // Map UI unit values to DB enum
-      let finalUnitType = selectedItem.unit_type;
+      // The UI dropdown in lines 1893-1908 uses: unit, gram, kilo, ml, liter
+      // The DB expects the same values, so we use selectedItem.unit_type directly
+      let finalUnitType = selectedItem.unit_type || 'unit';
 
-      // Use explicit content_unit if available, or map existing unit_measure logic
-      const rawUnit = selectedItem.content_unit || selectedItem.unit_measure;
-      if (rawUnit) {
-        const map: Record<string, string> = { 'un': 'unit', 'g': 'gram', 'L': 'liter', 'ml': 'ml', 'kg': 'kg' };
-        // If it's a known unit type key, use it, otherwise keep current
-        if (map[rawUnit]) finalUnitType = map[rawUnit];
-      }
+      // CRITICAL: Sync content_unit with unit_type to ensure display consistency
+      // Map unit_type to appropriate content_unit abbreviation
+      const unitTypeToContentUnit: Record<string, string> = {
+        'unit': 'un',
+        'gram': 'g',
+        'kilo': 'kg',
+        'ml': 'ml',
+        'liter': 'L'
+      };
+      const finalContentUnit = unitTypeToContentUnit[finalUnitType] || selectedItem.content_unit || 'un';
 
       // Prepare payload - prioritize DB column names
       const payload: any = {
+        name: selectedItem.name,
         category_id: selectedItem.category_ids?.[0] || null,
         cost: selectedItem.cost,
-        package_size: selectedItem.package_size || selectedItem.unit_size, // Support both during migration
-        content_unit: selectedItem.content_unit || selectedItem.unit_measure,
+        package_size: selectedItem.package_size || selectedItem.unit_size || 1,
+        content_unit: finalContentUnit, // Use synced value from unit_type
         unit_type: finalUnitType
       };
 
@@ -1171,7 +1407,7 @@ const InventoryManagement: React.FC = () => {
             onClick={() => {
               // Clear cache and force refresh
               const storeId = profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
-              localStorage.removeItem(`inventory_cache_v2_${storeId}`);
+              localStorage.removeItem(`inventory_cache_v6_${storeId}`);
               fetchData(true);
               addToast('Inventario actualizado', 'success');
             }}
@@ -1267,6 +1503,21 @@ const InventoryManagement: React.FC = () => {
             <span className="material-symbols-outlined text-base">add_circle</span>
           </button>
         </div>
+
+        {/* Active Location Filter Pill */}
+        {activeLocationFilter && (
+          <div className="flex items-center gap-2 mb-2 animate-in fade-in slide-in-from-left-4 duration-300">
+            <button
+              onClick={() => setActiveLocationFilter(null)}
+              className="px-3 py-1.5 rounded-lg bg-neon/10 border border-neon/30 text-neon font-bold text-[9px] uppercase tracking-widest flex items-center gap-2 hover:bg-neon/20 transition-all group"
+            >
+              <span className="material-symbols-outlined text-sm">location_on</span>
+              Ubicación: {activeLocationFilter}
+              <span className="material-symbols-outlined text-sm opacity-50 group-hover:opacity-100">close</span>
+            </button>
+            <span className="text-[9px] text-white/30 uppercase tracking-widest">Filtrando lista</span>
+          </div>
+        )}
       </div>
 
       {/* RECIPES VIEW - Shown when filter === 'recipes' */}
@@ -1424,7 +1675,7 @@ const InventoryManagement: React.FC = () => {
 
           {/* TABLA PRINCIPAL / LOGISTICS VIEW */}
           {filter === 'logistics' ? (
-            <LogisticsView />
+            <LogisticsView preselectedLocationName={activeLocationFilter} />
           ) : (
             <div className="bg-[#141714] rounded-2xl border border-white/[0.04] shadow-2xl overflow-hidden min-h-[400px]">
               {loading ? (
@@ -1534,7 +1785,7 @@ const InventoryManagement: React.FC = () => {
                                 <>
                                   {/* Stock cerrado: solo el número de paquetes/unidades selladas */}
                                   <span className="font-black italic text-[14px] text-neon">
-                                    {item.closed_stock || 0}
+                                    {Math.floor(item.closed_stock || 0)}
                                   </span>
                                   {(item.closed_stock || 0) <= (item.min_stock || 0) && (
                                     <span className="text-[6px] font-black text-white/40 uppercase tracking-widest mt-1">CRÍTICO</span>
@@ -1576,7 +1827,12 @@ const InventoryManagement: React.FC = () => {
                                   // Smart Unit Display - Standarized
                                   // Prioritize package_size/content_unit (DB columns)
                                   let rawSize = item.package_size || item.unit_size || 1;
-                                  let rawUnit = item.content_unit || item.unit_measure || item.unit_type || 'un';
+                                  // Fix: If content_unit is 'un' or empty, try to use unit_type if available and different
+                                  let initialUnit = item.content_unit || item.unit_measure || item.unit_type || 'un';
+                                  if ((!initialUnit || initialUnit === 'un' || initialUnit === 'unit') && item.unit_type && item.unit_type !== 'un' && item.unit_type !== 'unit') {
+                                    initialUnit = item.unit_type;
+                                  }
+                                  let rawUnit = initialUnit || 'un';
 
                                   // Normalize unit display
                                   if (rawUnit === 'unit') rawUnit = 'un';
@@ -1645,16 +1901,40 @@ const InventoryManagement: React.FC = () => {
                                 e.stopPropagation();
                                 const newValue = !item.is_menu_visible;
                                 // Optimistic update
-                                setItems(prev => prev.map(i => i.id === item.id ? { ...i, is_menu_visible: newValue } : i));
+                                const newItems = items.map(i => i.id === item.id ? { ...i, is_menu_visible: newValue } : i);
+                                setItems(newItems);
 
                                 try {
+                                  // Update LocalStorage Cache immediately to persist state across navigations
+                                  const storeId = profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
+                                  const cacheKey = `inventory_cache_v6_${storeId}`;
+
+                                  // Try to update existing cache to avoid reload spinner
+                                  try {
+                                    const cachedRaw = localStorage.getItem(cacheKey);
+                                    if (cachedRaw) {
+                                      const cached = JSON.parse(cachedRaw);
+                                      cached.items = newItems; // Update items in cache
+                                      cached.timestamp = Date.now(); // Refresh timestamp
+                                      localStorage.setItem(cacheKey, JSON.stringify(cached));
+                                    }
+                                  } catch (e) {
+                                    // If cache update fails, just clear it to force fresh fetch
+                                    localStorage.removeItem(cacheKey);
+                                  }
+
                                   const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
                                   const storageKey = 'sb-yjxjyxhksedwfeueduwl-auth-token';
                                   const storedData = localStorage.getItem(storageKey);
                                   let token = '';
                                   if (storedData) token = JSON.parse(storedData).access_token;
 
-                                  await fetch(`https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/inventory_items?id=eq.${item.id}`, {
+                                  // CONDITIONAL ENDPOINT based on type
+                                  const isProduct = item.item_type === 'sellable' || item.item_type === 'product'; // Robust check
+                                  const endpoint = isProduct ? 'products' : 'inventory_items';
+                                  const payload = isProduct ? { is_visible: newValue } : { is_menu_visible: newValue };
+
+                                  const response = await fetch(`https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/${endpoint}?id=eq.${item.id}`, {
                                     method: 'PATCH',
                                     headers: {
                                       'Content-Type': 'application/json',
@@ -1662,14 +1942,17 @@ const InventoryManagement: React.FC = () => {
                                       'Authorization': `Bearer ${token || apiKey}`,
                                       'Prefer': 'return=minimal'
                                     },
-                                    body: JSON.stringify({ is_menu_visible: newValue })
+                                    body: JSON.stringify(payload)
                                   });
+
+                                  if (!response.ok) throw new Error('API Error');
+
                                   addToast(newValue ? 'Item visible en menú' : 'Item oculto del menú', 'success');
                                 } catch (err) {
                                   console.error(err);
                                   addToast('Error al actualizar', 'error');
                                   // Revert
-                                  setItems(prev => prev.map(i => i.id === item.id ? { ...i, is_menu_visible: !newValue } : i));
+                                  setItems(prev => prev.map(i => i.id === item.id ? { ...i, is_menu_visible: !item.is_menu_visible } : i));
                                 }
                               }}
                               className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black ${item.is_menu_visible ? 'bg-neon' : 'bg-white/10'}`}
@@ -1721,7 +2004,13 @@ const InventoryManagement: React.FC = () => {
               </button>
               <div className="absolute bottom-4 left-6 z-20 right-6">
                 <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-2xl font-light text-white uppercase tracking-tight leading-none">{selectedItem.name}</h3>
+                  <input
+                    type="text"
+                    value={selectedItem.name}
+                    onChange={(e) => setSelectedItem(prev => prev ? { ...prev, name: e.target.value } : null)}
+                    className="text-2xl font-light text-white uppercase tracking-tight leading-none bg-transparent border-b border-transparent hover:border-white/20 focus:border-neon outline-none transition-all w-full max-w-[250px]"
+                    placeholder="Nombre del ítem"
+                  />
                   {selectedItem.category_ids?.[0] && (() => {
                     const cat = categories.find(c => c.id === selectedItem.category_ids?.[0]);
                     return cat ? (
@@ -1802,33 +2091,43 @@ const InventoryManagement: React.FC = () => {
                       </div>
 
                       {selectedItem.item_type !== 'sellable' && (
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="number"
-                            // Bind to package_size (DB) or fallback to unit_size
-                            value={selectedItem.package_size || selectedItem.unit_size || ''}
-                            onChange={(e) => setSelectedItem(prev => prev ? { ...prev, package_size: parseFloat(e.target.value) || 0, unit_size: parseFloat(e.target.value) || 0 } : null)}
-                            placeholder="750"
-                            className="w-16 h-9 rounded-lg bg-[#111] border border-white/10 px-2 text-center text-[11px] font-bold text-white outline-none focus:border-neon/50 hover:border-white/20 transition-all"
-                          />
-                          <div className="relative">
-                            <select
-                              // Bind to unit_type (used for stock display) and sync with content_unit
-                              value={selectedItem.unit_type || 'unit'}
-                              onChange={(e) => setSelectedItem(prev => prev ? {
-                                ...prev,
-                                unit_type: e.target.value,
-                                content_unit: e.target.value === 'gram' ? 'g' : e.target.value === 'ml' ? 'ml' : e.target.value === 'kilo' ? 'kg' : 'un'
-                              } : null)}
-                              className="appearance-none bg-[#111] border border-white/10 rounded-lg h-9 pl-2 pr-6 text-[10px] font-bold text-white outline-none cursor-pointer hover:border-white/20 transition-all"
-                            >
-                              <option value="unit">Unidades</option>
-                              <option value="gram">Gramos</option>
-                              <option value="kilo">Kilos</option>
-                              <option value="ml">Mililitros</option>
-                              <option value="liter">Litros</option>
-                            </select>
-                            <span className="absolute right-1 top-1/2 -translate-y-1/2 material-symbols-outlined text-white/30 text-[10px] pointer-events-none">expand_more</span>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[7px] font-black text-neon uppercase tracking-widest whitespace-nowrap">
+                            CONFIGURACIÓN DE ENVASE CERRADO
+                          </label>
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="number"
+                              // Bind to package_size (DB) or fallback to unit_size
+                              value={selectedItem.package_size || selectedItem.unit_size || ''}
+                              onChange={(e) => setSelectedItem(prev => prev ? { ...prev, package_size: parseFloat(e.target.value) || 0, unit_size: parseFloat(e.target.value) || 0 } : null)}
+                              placeholder="750"
+                              className="w-16 h-9 rounded-lg bg-[#111] border border-white/10 px-2 text-center text-[11px] font-bold text-white outline-none focus:border-neon/50 hover:border-white/20 transition-all"
+                            />
+                            <div className="relative">
+                              <select
+                                // Bind to unit_type (used for stock display) and sync with content_unit
+                                // Normalize DB values to dropdown values: kg→kilo, g→gram, L→liter
+                                value={(() => {
+                                  const dbValue = selectedItem.unit_type || 'unit';
+                                  const normalize: Record<string, string> = { 'kg': 'kilo', 'g': 'gram', 'L': 'liter', 'un': 'unit' };
+                                  return normalize[dbValue] || dbValue;
+                                })()}
+                                onChange={(e) => setSelectedItem(prev => prev ? {
+                                  ...prev,
+                                  unit_type: e.target.value,
+                                  content_unit: e.target.value === 'gram' ? 'g' : e.target.value === 'ml' ? 'ml' : e.target.value === 'kilo' ? 'kg' : e.target.value === 'liter' ? 'L' : 'un'
+                                } : null)}
+                                className="appearance-none bg-[#111] border border-white/10 rounded-lg h-9 pl-2 pr-6 text-[10px] font-bold text-white outline-none cursor-pointer hover:border-white/20 transition-all"
+                              >
+                                <option value="unit">Unidades</option>
+                                <option value="gram">Gramos</option>
+                                <option value="kilo">Kilos</option>
+                                <option value="ml">Mililitros</option>
+                                <option value="liter">Litros</option>
+                              </select>
+                              <span className="absolute right-1 top-1/2 -translate-y-1/2 material-symbols-outlined text-white/30 text-[10px] pointer-events-none">expand_more</span>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -1855,7 +2154,7 @@ const InventoryManagement: React.FC = () => {
                       <div className="space-y-1">
                         <label className="text-[9px] font-black uppercase text-white/40 tracking-[0.2em] ml-1"> Valor Stock </label>
                         <div className="h-12 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-end px-4 font-black text-white/40 text-lg">
-                          ${((selectedItem.current_stock || 0) * (selectedItem.cost || 0)).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                          ${(((selectedItem.current_stock || 0) / (selectedItem.package_size || 1)) * (selectedItem.cost || 0)).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </div>
                       </div>
                     </div>
@@ -1889,18 +2188,11 @@ const InventoryManagement: React.FC = () => {
                       Pérdida
                     </button>
                     <button
-                      onClick={() => setAdjustmentModal({ open: true, type: 'PURCHASE' })}
-                      className="flex-1 py-3 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-rose-500/20 transition-all"
+                      onClick={() => setAdjustmentModal({ open: true, type: 'RESTOCK' })}
+                      className="flex-1 py-3 rounded-xl bg-green-500/10 text-green-400 border border-green-500/20 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-green-500/20 transition-all"
                     >
-                      <span className="material-symbols-outlined text-sm">shopping_cart</span>
-                      Compra
-                    </button>
-                    <button
-                      onClick={() => setAdjustmentModal({ open: true, type: 'ADJUSTMENT' })}
-                      className="flex-1 py-3 rounded-xl bg-orange-500/10 text-orange-500 border border-orange-500/20 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-orange-500/20 transition-all"
-                    >
-                      <span className="material-symbols-outlined text-sm">tune</span>
-                      Ajuste
+                      <span className="material-symbols-outlined text-sm">add_box</span>
+                      Re-ingreso
                     </button>
                   </div>
 
@@ -1912,7 +2204,9 @@ const InventoryManagement: React.FC = () => {
                         <div>
                           <p className="text-[10px] font-medium text-cream/70 uppercase tracking-[0.2em] mb-2">STOCK CERRADO</p>
                           <div className="flex items-baseline gap-3">
-                            <p className="text-5xl font-light text-cream tracking-tighter">{selectedItem.closed_stock || 0}</p>
+                            <p className="text-5xl font-light text-cream tracking-tighter">
+                              {Math.floor(selectedItem.closed_stock || 0)}
+                            </p>
                             <p className="text-sm font-medium text-white/30">unidades</p>
                           </div>
                           {/* Clarificación de qué contiene cada unidad */}
@@ -1962,7 +2256,18 @@ const InventoryManagement: React.FC = () => {
                             <span className="text-[9px] font-medium uppercase text-white/30 tracking-[0.2em]">Ubicaciones</span>
                             <div className="flex-1 h-px bg-white/5"></div>
                           </div>
-                          <LocationStockBreakdown itemId={selectedItem.id} unitType={selectedItem.unit_type} packageSize={selectedItem.package_size || 1} />
+                          <LocationStockBreakdown
+                            itemId={selectedItem.id}
+                            unitType={selectedItem.unit_type}
+                            packageSize={selectedItem.package_size || 1}
+                            onLocationClick={(locName) => {
+                              console.log('📍 Navigating to Logistics:', locName);
+                              setActiveLocationFilter(locName);
+                              setFilter('logistics');
+                              setSelectedItem(null);
+                              addToast(`Navegando a: ${locName}`, 'info');
+                            }}
+                          />
                         </div>
                       )}
 
@@ -2047,10 +2352,22 @@ const InventoryManagement: React.FC = () => {
                               {/* Info adicional Footer */}
                               <div className="flex items-center justify-between text-[8px] pt-1 border-t border-white/5">
                                 {pkg.location ? (
-                                  <span className="text-white/40 flex items-center gap-1 hover:text-white/60 transition-colors cursor-default">
-                                    <span className="material-symbols-outlined text-[10px]">location_on</span>
-                                    {pkg.location}
-                                  </span>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation(); // Prevent row click or other bubbles
+                                      console.log('📍 Location Clicked (Open Pkg):', pkg.location);
+                                      setActiveLocationFilter(pkg.location);
+                                      setFilter('logistics'); // Switch to Logistics Tab
+                                      setSelectedItem(null); // Close drawer
+                                      addToast(`Navegando a: ${pkg.location}`, 'info');
+                                    }}
+                                    className="text-white/40 flex items-center gap-1 hover:text-neon transition-colors cursor-pointer group relative z-50 text-left"
+                                  >
+                                    <span className="material-symbols-outlined text-[10px] group-hover:text-neon">location_on</span>
+                                    <span className="underline decoration-transparent group-hover:decoration-neon/50 underline-offset-2 transition-all">
+                                      {pkg.location}
+                                    </span>
+                                  </button>
                                 ) : (
                                   <span className="text-white/20">Sin ubicación</span>
                                 )}
@@ -2344,7 +2661,11 @@ const InventoryManagement: React.FC = () => {
               >
                 {isProcessing ? 'GUARDANDO...' : 'ACTUALIZAR ÍTEM'}
               </button>
-              <button className="flex-1 py-4 rounded-2xl border border-white/10 bg-white/5 text-white/20 font-black text-[9px] uppercase tracking-widest hover:text-primary hover:border-primary/30 transition-all">BAJA</button>
+              <button
+                onClick={handleDeleteItem}
+                className="flex-1 py-4 rounded-2xl border border-white/10 bg-white/5 text-white/20 font-black text-[9px] uppercase tracking-widest hover:text-red-500 hover:border-red-500/30 hover:bg-red-500/10 transition-all">
+                BAJA
+              </button>
             </div>
           </>
         )
@@ -2455,24 +2776,83 @@ const InventoryManagement: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Unidad + Costo Unit. + Stock Inicial */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
+                {/* Unidad + Tamaño + Costo Unit. + Stock Inicial */}
+                {/* Unidad + Contenido/Tamaño */}
+                <div className="grid grid-cols-4 gap-3">
+                  <div className={newItemForm.unit_type === 'unit' ? 'col-span-1' : 'col-span-2'}>
                     <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block mb-2">
-                      Unidad
+                      Tipo de Unidad
                     </label>
                     <select
                       value={newItemForm.unit_type}
-                      onChange={(e) => setNewItemForm({ ...newItemForm, unit_type: e.target.value as UnitType })}
+                      onChange={(e) => {
+                        const type = e.target.value as UnitType;
+                        setNewItemForm({
+                          ...newItemForm,
+                          unit_type: type,
+                          content_unit: type === 'unit' ? (newItemForm.content_unit || 'ml') : '',
+                          package_size: 0
+                        });
+                      }}
                       className="w-full bg-black border border-white/10 rounded-xl h-12 px-3 text-sm font-bold text-white outline-none focus:border-white/50 appearance-none cursor-pointer"
                     >
-                      <option value="unit">UNIDAD</option>
-                      <option value="gram">GRAMOS</option>
-                      <option value="kg">KG</option>
-                      <option value="ml">ML</option>
-                      <option value="liter">LITROS</option>
+                      <option value="unit">UNIDAD (Envase)</option>
+                      <option value="kg">KILOGRAMOS (Granel)</option>
+                      <option value="liter">LITROS (Granel)</option>
+                      <option value="gram">GRAMOS (Granel)</option>
+                      <option value="ml">MILILITROS (Granel)</option>
                     </select>
                   </div>
+
+                  {newItemForm.unit_type === 'unit' ? (
+                    <>
+                      <div className="col-span-2">
+                        <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block mb-2">
+                          Contenido Neto
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            value={newItemForm.package_size || ''}
+                            onChange={(e) => setNewItemForm({ ...newItemForm, package_size: parseFloat(e.target.value) || 0 })}
+                            placeholder="Ej: 500"
+                            className="flex-1 bg-black border border-white/10 rounded-xl h-12 px-4 text-sm font-bold text-white outline-none focus:border-neon transition-all placeholder:text-white/20"
+                          />
+                          <select
+                            value={newItemForm.content_unit || 'ml'}
+                            onChange={(e) => setNewItemForm({ ...newItemForm, content_unit: e.target.value })}
+                            className="w-20 bg-black border border-white/10 rounded-xl h-12 px-2 text-sm font-bold text-white outline-none focus:border-neon appearance-none cursor-pointer text-center"
+                          >
+                            <option value="ml">ml</option>
+                            <option value="liter">L</option>
+                            <option value="gram">g</option>
+                            <option value="kg">kg</option>
+                          </select>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="col-span-2">
+                      <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block mb-2">
+                        {['kg', 'gram'].includes(newItemForm.unit_type) ? 'Tamaño Saco/Paquete' : 'Tamaño Bidón/Botella'}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={newItemForm.package_size || ''}
+                          onChange={(e) => setNewItemForm({ ...newItemForm, package_size: parseFloat(e.target.value) || 0 })}
+                          placeholder={newItemForm.unit_type === 'kg' ? 'Ej: 25' : 'Ej: 5'}
+                          className="w-full bg-black border border-white/10 rounded-xl h-12 px-4 text-sm font-bold text-white outline-none focus:border-neon transition-all placeholder:text-white/20"
+                        />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-white/30 uppercase">
+                          {newItemForm.unit_type === 'liter' ? 'L' : newItemForm.unit_type === 'ml' ? 'ml' : newItemForm.unit_type === 'kg' ? 'kg' : 'g'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Espacio vacío para alinear si es necesario, o dejar que el grid fluya */}
+                  <div className="hidden"></div>
                   <div>
                     <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block mb-2">
                       Costo Unit.
@@ -2550,7 +2930,7 @@ const InventoryManagement: React.FC = () => {
       {/* MODAL GESTIÓN DE CATEGORÍAS */}
       {
         showCategoryModal && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[6000] flex items-center justify-center p-4 animate-in fade-in duration-300">
             <div className="bg-[#141714] border border-white/10 rounded-3xl p-6 w-full max-w-lg animate-in zoom-in-95 duration-300 shadow-2xl max-h-[80vh] flex flex-col">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-black text-white uppercase tracking-tight">
@@ -2976,7 +3356,12 @@ const InventoryManagement: React.FC = () => {
                               const val = parseFloat(customPrice || '0');
                               if (!isNaN(val) && val > 0) {
                                 const rounded = Math.floor(val / 100) * 100;
-                                setCustomPrice(rounded.toString());
+                                // Smart Rounding: If already rounded, decrement by 100
+                                if (rounded === val) {
+                                  setCustomPrice(Math.max(0, val - 100).toString());
+                                } else {
+                                  setCustomPrice(rounded.toString());
+                                }
                               }
                             }}
                             className="flex items-center justify-center p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-neon transition-all border border-white/5 hover:border-white/20 active:scale-95"
@@ -2993,7 +3378,12 @@ const InventoryManagement: React.FC = () => {
                               const val = parseFloat(customPrice || '0');
                               if (!isNaN(val) && val > 0) {
                                 const rounded = Math.ceil(val / 100) * 100;
-                                setCustomPrice(rounded.toString());
+                                // Smart Rounding: If already rounded, increment by 100
+                                if (rounded === val) {
+                                  setCustomPrice((val + 100).toString());
+                                } else {
+                                  setCustomPrice(rounded.toString());
+                                }
                               }
                             }}
                             className="flex items-center justify-center p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-neon transition-all border border-white/5 hover:border-white/20 active:scale-95"
@@ -3016,7 +3406,8 @@ const InventoryManagement: React.FC = () => {
                         }, 0);
                         const priceVal = parseFloat(customPrice || '0');
                         const profit = priceVal - totalCost;
-                        const currentMargin = priceVal > 0 ? ((profit / priceVal) * 100) : 0;
+                        // CHANGED: Switch to Markup logic (Profit / Cost) instead of Margin (Profit / Price)
+                        const currentMargin = totalCost > 0 ? ((profit / totalCost) * 100) : 0;
 
                         let marginColor = 'text-white/30';
                         if (priceVal > 0) {
@@ -3038,12 +3429,25 @@ const InventoryManagement: React.FC = () => {
                                   type="number"
                                   className={`w-full bg-transparent text-right text-3xl font-light outline-none border-none focus:ring-0 p-0 m-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${marginColor} placeholder:text-white/10`}
                                   placeholder="0"
-                                  value={priceVal > 0 ? currentMargin.toFixed(1) : ''}
+                                  value={isEditingMargin ? marginInputValue : (priceVal > 0 ? currentMargin.toFixed(1) : '')}
+                                  onFocus={() => {
+                                    setIsEditingMargin(true);
+                                    // Initialize with current value
+                                    setMarginInputValue(priceVal > 0 ? currentMargin.toFixed(1) : '');
+                                  }}
+                                  onBlur={() => {
+                                    setIsEditingMargin(false);
+                                  }}
                                   onChange={(e) => {
-                                    const targetMargin = parseFloat(e.target.value);
-                                    if (!isNaN(targetMargin) && targetMargin < 100) {
-                                      if (targetMargin === 0) setCustomPrice(totalCost.toFixed(2));
-                                      else setCustomPrice((totalCost / (1 - (targetMargin / 100))).toFixed(2));
+                                    const val = e.target.value;
+                                    setMarginInputValue(val); // Always update local state immediately
+                                    const targetMargin = parseFloat(val);
+
+                                    // Only update price if valid number
+                                    if (!isNaN(targetMargin)) {
+                                      // CHANGED: Formula to Markup (Cost * (1 + Margin%))
+                                      const newPrice = totalCost * (1 + (targetMargin / 100));
+                                      setCustomPrice(newPrice.toFixed(2));
                                     }
                                   }}
                                 />
@@ -3212,7 +3616,7 @@ const InventoryManagement: React.FC = () => {
           isOpen={isTransferModalOpen}
           onClose={() => setIsTransferModalOpen(false)}
           item={selectedItem}
-          onSuccess={() => fetchData(false)}
+          onSuccess={() => fetchData(true)}
           onInitialStockClick={() => {
             setShowInsumoWizard(true);
             setWizardMethod('selector');
@@ -3227,7 +3631,7 @@ const InventoryManagement: React.FC = () => {
           onClose={() => setAdjustmentModal({ ...adjustmentModal, open: false })}
           item={selectedItem}
           type={adjustmentModal.type}
-          onSuccess={() => fetchData(false)}
+          onSuccess={() => fetchData(true)}
         />
       )}
 
@@ -3240,7 +3644,7 @@ const InventoryManagement: React.FC = () => {
           itemName={selectedItem.name}
           currentCost={selectedItem.cost || 0}
           currentPrice={selectedItem.price || 0}
-          onSuccess={() => fetchData(false)}
+          onSuccess={() => fetchData(true)}
         />
       )}
     </div >

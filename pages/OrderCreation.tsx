@@ -91,27 +91,47 @@ const OrderCreation: React.FC = () => {
         setTables(nodesData);
       }
 
-      // 3. Fetch Menu Products from inventory_items with categories
-      const { data: menuData, error: menuError } = await supabase
+      // 3. Fetch Menu Products from both products and inventory_items
+      const { data: productsData } = await supabase
+        .from('products')
+        .select(`id, name, base_price, image_url, description, category`)
+        .eq('store_id', profile.store_id)
+        .eq('is_visible', true)
+        // .eq('active', true) // TEMPORARILY DISABLED
+        .not('name', 'ilike', '[ELIMINADO]%');
+
+      const { data: inventoryData } = await supabase
         .from('inventory_items')
-        .select(`
-          id,
-          name,
-          price,
-          image_url,
-          description,
-          category_id
-        `)
+        .select(`id, name, price, image_url, description, category_id, current_stock`)
         .eq('store_id', profile.store_id)
         .eq('is_menu_visible', true)
-        .gt('price', 0)
-        .order('name');
+        // .eq('is_active', true) // TEMPORARILY DISABLED
+        .not('name', 'ilike', '[ELIMINADO]%'); // Double check to exclude soft-deleted
+      // Removed .gt('price', 0) so manual 'Menu ON' override works even for $0 items
 
-      console.log('[OrderCreation] Menu fetch result:', menuData?.length, menuError);
+      console.log('[OrderCreation] Data fetch results:', { products: productsData?.length, inventory: inventoryData?.length });
 
-      if (menuData && menuData.length > 0) {
-        // Fetch categories separately
-        const categoryIds = [...new Set(menuData.map((item: any) => item.category_id).filter(Boolean))];
+      let unifiedProducts: any[] = [];
+
+      // Process Products table items
+      if (productsData) {
+        unifiedProducts = [...unifiedProducts, ...productsData
+          .filter((p: any) => !p.name?.startsWith('[ELIMINADO]')) // Client-side filter
+          .map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            price: parseFloat(p.base_price) || 0,
+            image: p.image_url || '',
+            category: p.category || 'General',
+            description: p.description,
+            sellable_type: 'product'
+          }))];
+      }
+
+      // Process Inventory Items table items
+      if (inventoryData) {
+        // Fetch categories for inventory items
+        const categoryIds = [...new Set(inventoryData.map((item: any) => item.category_id).filter(Boolean))];
         let categoriesMap: Record<string, string> = {};
 
         if (categoryIds.length > 0) {
@@ -119,25 +139,25 @@ const OrderCreation: React.FC = () => {
             .from('categories' as any)
             .select('id, name')
             .in('id', categoryIds);
-
           if (catsData) {
-            catsData.forEach((cat: any) => {
-              categoriesMap[cat.id] = cat.name;
-            });
+            catsData.forEach((cat: any) => { categoriesMap[cat.id] = cat.name; });
           }
         }
 
-        const mappedProducts = menuData.map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          price: parseFloat(item.price) || 0,
-          image: item.image_url || '',
-          category: categoriesMap[item.category_id] || 'General',
-          description: item.description
-        }));
-        console.log('[OrderCreation] Mapped products:', mappedProducts);
-        setMenuProducts(mappedProducts);
+        unifiedProducts = [...unifiedProducts, ...inventoryData
+          .filter((item: any) => !item.name?.startsWith('[ELIMINADO]')) // Client-side filter
+          .map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            price: parseFloat(item.price) || 0,
+            image: item.image_url || '',
+            category: categoriesMap[item.category_id] || 'General',
+            description: item.description,
+            sellable_type: 'inventory_item'
+          }))];
       }
+
+      setMenuProducts(unifiedProducts);
     };
 
     fetchData();
@@ -170,7 +190,7 @@ const OrderCreation: React.FC = () => {
       name: product.name,
       quantity: quantity,
       price_unit: product.price,
-      inventory_items_to_deduct: []
+      sellable_type: (product as any).sellable_type || 'inventory_item'
     };
     setCart(prev => [...prev, newItem]);
     addToast(`${product.name} Agregado`, 'success', `$${product.price.toFixed(2)}`);
@@ -229,7 +249,7 @@ const OrderCreation: React.FC = () => {
           .from('orders')
           .select('id')
           .eq('table_number', tableNum)
-          .in('status', ['pending', 'in_progress', 'preparing'])
+          .in('status', ['pending', 'preparing'])
           .maybeSingle();
 
         if (existing) {
@@ -244,18 +264,14 @@ const OrderCreation: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      // Prepare order items for RPC
-      const orderItems = cart.map(item => ({
-        product_id: item.productId,
-        name: item.name,
+      // 1. Insert Order with items JSONB
+      const itemsPayload = cart.map(item => ({
+        id: item.productId,
         quantity: item.quantity,
-        price_unit: item.price_unit,
-        variant_name: null,
-        addons: [],
-        note: null
+        sellable_type: (item as any).sellable_type || 'inventory_item',
+        variant_id: null
       }));
 
-      // 1. Insert Order
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -268,14 +284,15 @@ const OrderCreation: React.FC = () => {
           channel: selectedTable ? 'table' : 'takeaway',
           table_number: tableNum,
           node_id: selectedTable?.id || null,
-          payment_method: paymentMethod
+          payment_method: paymentMethod,
+          items: itemsPayload // CRITICAL for stock deduction
         })
         .select()
         .single();
 
       if (orderError) throw orderError;
 
-      // 2. Insert Items
+      // 2. Insert Items (Legacy table sync)
       if (cart.length > 0 && orderData.id) {
         const orderItemsToInsert = cart.map(item => ({
           order_id: orderData.id,
@@ -293,6 +310,10 @@ const OrderCreation: React.FC = () => {
           .insert(orderItemsToInsert);
 
         if (itemsError) throw itemsError;
+
+        // 3. Stock Deduction is handled by Database Trigger (trigger_deduct_stock_on_payment)
+        // when is_paid = true. No manual RPC call needed here to avoid double deduction.
+        console.log('Order created. Stock deduction trigger should fire.');
       }
 
       addToast(`PEDIDO CONFIRMADO`, 'success', `Orden #${orderData.order_number || ''} creada`);

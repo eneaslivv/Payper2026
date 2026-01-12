@@ -9,6 +9,7 @@ import { PaymentCapabilityBadge } from '../components/PaymentCapabilityBadge';
 import { CheckoutButton } from '../components/CheckoutButton';
 import { MenuRenderer } from '../components/MenuRenderer';
 import { AuthPromptModal } from '../components/AuthPromptModal'; // Import Modal
+import { LoyaltyClientView } from '../components/LoyaltyClientView'; // Import Loyalty View
 import type { Product, CheckoutItem } from '../types/payment';
 
 interface CartItem {
@@ -213,15 +214,27 @@ export function MenuPage() {
         >
             {/* MENU RENDERER */}
             {/* We force 'menu' view locally, as profile/club would be separate pages or overlays */}
-            <MenuRenderer
-                theme={theme}
-                products={products as any[]}
-                storeName={store.name}
-                logoUrl={store.logo_url}
-                mpNickname={store.mp_nickname}
-                canProcessPayments={canProcessPayments}
-                onAddToCart={addToCart}
-            />
+            {/* CONTENT AREA: SWITCH VIEWS */}
+            {activeTab === 'menu' && (
+                <MenuRenderer
+                    theme={theme}
+                    products={products as any[]}
+                    storeName={store.name}
+                    logoUrl={store.logo_url}
+                    mpNickname={store.mp_nickname}
+                    canProcessPayments={canProcessPayments}
+                    onAddToCart={addToCart}
+                    isGuest={!user}
+                />
+            )}
+
+            {activeTab === 'club' && (
+                <LoyaltyClientView
+                    theme={theme}
+                    store={store}
+                    user={user}
+                />
+            )}
 
             {/* EXPLICIT SPACER FOR SCROLL CLEARANCE */}
             <div className="h-64 w-full shrink-0" />

@@ -910,6 +910,12 @@ const MenuDesign: React.FC = () => {
                 `${baseUrl}/inventory_items?store_id=eq.${storeId}&order=name.asc`
             );
 
+            // 2b. Fetch PRODUCTS (Recipes/Sellables)
+            console.log('[MenuDesign] Fetching products...');
+            const products = await fetchWithTimeout(
+                `${baseUrl}/products?store_id=eq.${storeId}&order=name.asc`
+            );
+
             // 3. Fetch CATEGORIES (New Sync)
             console.log('[MenuDesign] Fetching categories...');
             const categoriesData = await fetchWithTimeout(
@@ -918,16 +924,15 @@ const MenuDesign: React.FC = () => {
             setCategories(categoriesData || []);
 
             // Cast raw data and Map to InventoryItem
-            // Note: inventory_items table in Supabase does NOT have 'item_type' column (verified in supabaseTypes.ts)
-            // We must assign a default or infer it. 'InventoryManagement.tsx' assigns 'ingredient' by default.
-            // For Menu Design, we want to treat them as potential sellables.
-            const mappedItems: InventoryItem[] = (inventoryItems || []).map((item: any) => ({
+
+            // Map Inventory Items (Ingredients/Raw Material)
+            const mappedInventory: InventoryItem[] = (inventoryItems || []).map((item: any) => ({
                 id: item.id,
                 cafe_id: item.store_id, // Map store_id to cafe_id
                 name: item.name,
                 sku: item.sku,
-                // Assign default item_type since it's missing in DB. 
-                // We mark as 'sellable' if it has a price > 0, otherwise 'ingredient'
+                // These are typically ingredients since they are in inventory_items but not products
+                // However, we preserve the price check just in case
                 item_type: (item.cost > 0 || item.price > 0) ? 'sellable' : 'ingredient',
                 unit_type: item.unit_type as UnitType,
                 image_url: item.image_url || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
@@ -947,11 +952,52 @@ const MenuDesign: React.FC = () => {
                 variants: item.variants || [],
                 addon_links: item.addons || [],
                 combo_links: item.combo_items || [],
+
+                // EXPLICIT SOURCE FOR PERSISTENCE
+                id_source: 'inventory' as const
             }));
 
-            // No filtrar estrictamente ahora, mostramos todo para que el usuario pueda ver sus items
-            setItems(mappedItems);
-            console.log('[MenuDesign] fetchData complete. Mapped items:', mappedItems.length);
+            // Map Products (Recipes/Sellables) - Source of Truth for Menu
+            // We use 'sellable' type to distinguish them for persistence
+            const mappedProducts: InventoryItem[] = (products || []).map((p: any) => ({
+                id: p.id,
+                cafe_id: p.store_id,
+                name: p.name,
+                sku: 'SKU-' + (p.id || '').slice(0, 4).toUpperCase(),
+                item_type: 'sellable' as const,
+                unit_type: 'unit' as UnitType,
+                image_url: p.image_url || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
+                is_active: p.is_available,
+                is_menu_visible: p.is_visible, // Map from 'is_visible' column in products table
+                min_stock: 0,
+                current_stock: 0,
+                cost: 0,
+                price: p.price || 0,
+                category_ids: p.category_id ? [p.category_id] : [],
+                description: p.description || '',
+                presentations: [],
+                closed_packages: [],
+                open_packages: [],
+                variants: p.product_variants || [],
+                addon_links: [], // Logic for addons/combos might differ for products, keeping basic for now
+                combo_links: [],
+
+                // EXPLICIT SOURCE FOR PERSISTENCE
+                id_source: 'product' as const
+            }));
+
+            // DEDUPLICATION: Remove Inventory Item if a Product with same Name exists.
+            // This prevents "Double items" (one from inventory, one from product) and ensures we edit the proper Menu Item.
+            const productNames = new Set(mappedProducts.map(p => p.name.trim().toLowerCase()));
+            const filteredInventory = mappedInventory.filter(i => !productNames.has(i.name.trim().toLowerCase()));
+
+            // Merge and Sort by Name
+            const combinedItems = [...filteredInventory, ...mappedProducts].sort((a, b) => a.name.localeCompare(b.name));
+
+            setItems(combinedItems);
+
+            console.log('[MenuDesign] fetchData complete. Total items:', combinedItems.length);
+            console.log('[MenuDesign] (Inventory: ' + filteredInventory.length + ', Products: ' + mappedProducts.length + ')');
             console.log('[MenuDesign] fetchData complete');
         } catch (err: any) {
             console.error('[MenuDesign] Error fetching data:', err);
@@ -965,68 +1011,149 @@ const MenuDesign: React.FC = () => {
     // --- EDITOR HANDLERS ---
 
 
-    const updateItem = async (id: string, updates: Partial<InventoryItem>) => {
-        // Optimistic local update
+    // --- UPDATE LOGIC WITH DEBOUNCE ---
+    const updateTimeoutRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
+
+    // 1. Immediate Local Update (For UI responsiveness)
+    const updateItemLocal = (id: string, updates: Partial<InventoryItem>) => {
         setItems(prev => prev.map(i => i.id === id ? { ...i, ...updates } : i));
+    };
 
-        const item = items.find(i => i.id === id);
-        if (!item) return;
-
-        // Persist changes to inventory_items
+    // 2. Persist to Server (Actual API Call)
+    const persistItem = async (id: string, updates: Partial<InventoryItem>) => {
+        console.log(`[MenuDesign] Persisting updates for ${id}...`, updates);
+        const storeId = profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
+        localStorage.removeItem(`inventory_cache_v4_${storeId}`);
         try {
-            // Construir el objeto de actualización solo con campos permitidos
-            const dbUpdates: any = {};
+            // Find item to identify Target Table
+            const item = items.find(i => i.id === id);
 
-            if (updates.is_menu_visible !== undefined) dbUpdates.is_menu_visible = updates.is_menu_visible;
+            // Use Explicit Source if available, fallback to legacy type check (should not be needed after refresh)
+            const isProduct = (item as any)?.id_source === 'product' || item?.item_type === 'sellable' && !(item as any)?.id_source;
+            const table = isProduct ? 'products' : 'inventory_items';
+
+            const dbUpdates: any = {};
             if (updates.name !== undefined) dbUpdates.name = updates.name;
             if (updates.description !== undefined) dbUpdates.description = updates.description;
             if (updates.image_url !== undefined) dbUpdates.image_url = updates.image_url;
             if (updates.price !== undefined) dbUpdates.price = updates.price;
 
-            // Complejos (JSONB columns)
+            // Handle Visibility Mapping
+            if (updates.is_menu_visible !== undefined) {
+                if (isProduct) {
+                    dbUpdates.is_visible = updates.is_menu_visible; // Products -> is_visible
+                } else {
+                    dbUpdates.is_menu_visible = updates.is_menu_visible; // Inventory -> is_menu_visible
+                }
+            }
+
+            // Complex JSONB fields
             if (updates.variants !== undefined) dbUpdates.variants = updates.variants;
             if (updates.addon_links !== undefined) dbUpdates.addons = updates.addon_links;
             if (updates.combo_links !== undefined) dbUpdates.combo_items = updates.combo_links;
 
-            if (Object.keys(dbUpdates).length > 0) {
-                // Recuperar token para la petición
-                const storageKey = 'sb-yjxjyxhksedwfeueduwl-auth-token';
-                const storedData = localStorage.getItem(storageKey);
-                let token = '';
-                if (storedData) {
-                    try {
-                        const parsed = JSON.parse(storedData);
-                        token = parsed.access_token || '';
-                    } catch (e) { console.error(e); }
-                }
+            if (Object.keys(dbUpdates).length === 0) return;
 
-                const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-                const response = await fetch(`https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/inventory_items?id=eq.${id}`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'apikey': apiKey,
-                        'Authorization': token ? `Bearer ${token}` : `Bearer ${apiKey}`,
-                        'Prefer': 'return=minimal'
-                    },
-                    body: JSON.stringify(dbUpdates)
-                });
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('[MenuDesign] Update failed:', response.status, errorText);
-                    throw new Error(`Failed to update item: ${response.status} ${errorText}`);
-                }
+            // Retrieve token
+            const storageKey = 'sb-yjxjyxhksedwfeueduwl-auth-token';
+            const storedData = localStorage.getItem(storageKey);
+            let token = '';
+            if (storedData) {
+                try {
+                    const parsed = JSON.parse(storedData);
+                    token = parsed.access_token || '';
+                } catch (e) { console.error(e); }
             }
+            const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+            const response = await fetch(`https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/${table}?id=eq.${id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': apiKey,
+                    'Authorization': token ? `Bearer ${token}` : `Bearer ${apiKey}`,
+                    'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify(dbUpdates)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('[MenuDesign] Update failed:', response.status, errorText);
+                throw new Error(`Failed to update item: ${response.status} ${errorText}`);
+            }
+            // console.log('[MenuDesign] Item persisted successfully');
+            // Optional: Show a subtle "Saved" indicator here if needed, but avoiding toast spam is better
         } catch (err: any) {
             console.error('[MenuDesign] Error saving item:', err);
-            // Verify if error is about missing column
-            if (err.message && (err.message.includes('column "addons" does not exist') || err.message.includes('column "variants" does not exist') || err.message.includes('column "combo_items" does not exist'))) {
-                addToast('Error: La base de datos no tiene las columnas (addons/variants/combo_items).', 'error');
-            } else {
-                addToast(`ERROR AL GUARDAR: ${err.message}`, 'error');
+            addToast(`Error al guardar: ${err.message}`, 'error');
+        }
+    };
+
+    // 3. Debounced Update Wrapper
+    // Use this for text inputs (Name, Price, etc.)
+    const updateItemDebounced = (id: string, updates: Partial<InventoryItem>) => {
+        // 1. Update UI immediately
+        updateItemLocal(id, updates);
+
+        // 2. Clear pending timeout for this item
+        if (updateTimeoutRef.current[id]) {
+            clearTimeout(updateTimeoutRef.current[id]);
+        }
+
+        // 3. Set new timeout to persist
+        updateTimeoutRef.current[id] = setTimeout(() => {
+            persistItem(id, updates);
+            // Optional: delete ref key? Not strictly necessary
+        }, 1000); // Wait 1 second after last keystroke
+    };
+
+    // 4. Force Update (For toggles, buttons, critical changes)
+    const updateItemImmediate = (id: string, updates: Partial<InventoryItem>) => {
+        updateItemLocal(id, updates);
+        persistItem(id, updates);
+    };
+
+    // --- DELETE ITEM ---
+    const handleDeleteProduct = async (item: InventoryItem) => {
+        if (!confirm(`¿Estás seguro de que quieres eliminar "${item.name}"?\nEsta acción es permanente y no se puede deshacer.`)) {
+            return;
+        }
+
+        try {
+            // Retrieve token
+            const storageKey = 'sb-yjxjyxhksedwfeueduwl-auth-token';
+            const storedData = localStorage.getItem(storageKey);
+            let token = '';
+            if (storedData) {
+                try {
+                    const parsed = JSON.parse(storedData);
+                    token = parsed.access_token || '';
+                } catch (e) { console.error(e); }
             }
+            const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+            const response = await fetch(`https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/inventory_items?id=eq.${item.id}`, {
+                method: 'DELETE',
+                headers: {
+                    'apikey': apiKey,
+                    'Authorization': token ? `Bearer ${token}` : `Bearer ${apiKey}`,
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Error deleting item');
+            }
+
+            // Update Local State
+            setItems(prev => prev.filter(i => i.id !== item.id));
+            setEditingId(null);
+            setSelectedItem(null); // Assuming logic uses finding from items, but safe to clear
+            addToast('Producto eliminado', 'success');
+
+        } catch (err) {
+            console.error('Error removing item:', err);
+            addToast('Error al eliminar el producto', 'error');
         }
     };
 
@@ -1134,12 +1261,12 @@ const MenuDesign: React.FC = () => {
     const handleAddVariant = () => {
         if (!selectedItem) return;
         const newVariant: ProductVariant = {
-            id: `var-${Date.now()}`,
+            id: crypto.randomUUID(),
             name: 'Nueva Variante',
             price_adjustment: 0,
             recipe_overrides: []
         };
-        updateItem(selectedItem.id, { variants: [...(selectedItem.variants || []), newVariant] });
+        updateItemImmediate(selectedItem.id, { variants: [...(selectedItem.variants || []), newVariant] });
     };
 
     const handleUpdateVariant = (variantId: string, field: keyof ProductVariant, value: any) => {
@@ -1147,25 +1274,28 @@ const MenuDesign: React.FC = () => {
         const updatedVariants = selectedItem.variants.map(v =>
             v.id === variantId ? { ...v, [field]: value } : v
         );
-        updateItem(selectedItem.id, { variants: updatedVariants });
+        // Use debounced update since this is typically called from input fields (name, price)
+        updateItemDebounced(selectedItem.id, { variants: updatedVariants });
     };
 
     const handleRemoveVariant = (variantId: string) => {
         if (!selectedItem || !selectedItem.variants) return;
-        updateItem(selectedItem.id, { variants: selectedItem.variants.filter(v => v.id !== variantId) });
+        // Immediate update for removal
+        updateItemImmediate(selectedItem.id, { variants: selectedItem.variants.filter(v => v.id !== variantId) });
     };
 
     const handleAddAddon = () => {
         if (!selectedItem) return;
         const newAddon: ProductAddon = {
-            id: `add-${Date.now()}`,
+            id: crypto.randomUUID(),
             name: 'Extra ...',
             price: 0,
             inventory_item_id: '',
             quantity_consumed: 0
         };
         // Consolidated: Push to addon_links
-        updateItem(selectedItem.id, { addon_links: [...(selectedItem.addon_links || []), newAddon] });
+        // Immediate update for addition
+        updateItemImmediate(selectedItem.id, { addon_links: [...(selectedItem.addon_links || []), newAddon] });
     };
 
     const handleUpdateAddon = (addonId: string, field: keyof ProductAddon, value: any) => {
@@ -1173,20 +1303,22 @@ const MenuDesign: React.FC = () => {
         const updatedAddons = selectedItem.addon_links.map(a =>
             a.id === addonId ? { ...a, [field]: value } : a
         );
-        updateItem(selectedItem.id, { addon_links: updatedAddons });
+        // Debounced update for editing addon fields
+        updateItemDebounced(selectedItem.id, { addon_links: updatedAddons });
     };
 
     const handleRemoveAddon = (addonId: string) => {
         if (!selectedItem || !selectedItem.addon_links) return;
         const filteredAddons = selectedItem.addon_links.filter(a => a.id !== addonId);
-        updateItem(selectedItem.id, { addon_links: filteredAddons });
+        // Immediate update for removal
+        updateItemImmediate(selectedItem.id, { addon_links: filteredAddons });
     };
 
     // Explicit Save Helper
     const saveItemChanges = async () => {
         if (!selectedItem) return;
         // Force update to DB to ensure persistence
-        await updateItem(selectedItem.id, {
+        await persistItem(selectedItem.id, {
             addon_links: selectedItem.addon_links
         });
         addToast('Extras guardados y sincronizados con la nube', 'success');
@@ -1204,12 +1336,12 @@ const MenuDesign: React.FC = () => {
                 inventory_item_id: itemToLink.id,
                 quantity_consumed: 1
             };
-            updateItem(selectedItem.id, {
+            updateItemImmediate(selectedItem.id, {
                 addon_links: [...(selectedItem.addon_links || []), newAddonLink]
             });
         } else if (linkType === 'combo') {
             const newComboLink = { id: crypto.randomUUID(), component_item_id: itemToLink.id, quantity: 1 };
-            updateItem(selectedItem.id, {
+            updateItemImmediate(selectedItem.id, {
                 combo_links: [...(selectedItem.combo_links || []), newComboLink]
             });
         } else if ((linkType as string) === 'variant_override') {
@@ -1218,11 +1350,11 @@ const MenuDesign: React.FC = () => {
             const variant = selectedItem.variants?.find(v => v.id === variantId);
             if (!variant) return;
 
-            const newOverride = { ingredient_id: itemToLink.id, quantity_delta: 1 };
+            const newOverride = { ingredient_id: itemToLink.id, quantity_delta: 1, consumption_type: 'fixed' as const, value: 1 };
             const updatedVariants = selectedItem.variants?.map(v =>
                 v.id === variantId ? { ...v, recipe_overrides: [...(v.recipe_overrides || []), newOverride] } : v
             );
-            updateItem(selectedItem.id, { variants: updatedVariants });
+            updateItemImmediate(selectedItem.id, { variants: updatedVariants });
         }
         setShowItemSelector(false);
     };
@@ -1233,10 +1365,10 @@ const MenuDesign: React.FC = () => {
 
         if (linkType === 'addon') {
             const updatedAddonLinks = (item.addon_links || []).filter(link => link.id !== linkId);
-            updateItem(itemId, { addon_links: updatedAddonLinks });
+            updateItemImmediate(itemId, { addon_links: updatedAddonLinks });
         } else if (linkType === 'combo') {
             const updatedComboLinks = (item.combo_links || []).filter(link => link.id !== linkId);
-            updateItem(itemId, { combo_links: updatedComboLinks });
+            updateItemImmediate(itemId, { combo_links: updatedComboLinks });
         }
     };
 
@@ -1258,7 +1390,7 @@ const MenuDesign: React.FC = () => {
             const result = await model.generateContent(prompt);
             const response = await result.response;
             const text = response.text();
-            if (text) updateItem(selectedItem.id, { description: text.trim() });
+            if (text) updateItemImmediate(selectedItem.id, { description: text.trim() });
         } catch (e) {
             console.error("AI Error:", e);
             alert(`Error al contactar con SquadAI: ${(e as Error).message}`);
@@ -1334,7 +1466,7 @@ const MenuDesign: React.FC = () => {
 
             console.log('[ImageUpload] Success. URL:', finalUrl);
 
-            await updateItem(selectedItem.id, { image_url: finalUrl });
+            await updateItemImmediate(selectedItem.id, { image_url: finalUrl });
 
             // Reset input to allow re-uploading the same file if needed
             const input = document.getElementById('item-image-input') as HTMLInputElement;
@@ -1857,7 +1989,7 @@ const MenuDesign: React.FC = () => {
                                                 <div className="flex items-center justify-between p-1.5 bg-white/5 rounded-lg border border-white/5">
                                                     <span className="text-[8px] font-medium text-white/60">Visible</span>
                                                     <button
-                                                        onClick={(e) => { e.stopPropagation(); updateItem(item.id, { is_menu_visible: !item.is_menu_visible }); }}
+                                                        onClick={(e) => { e.stopPropagation(); updateItemImmediate(item.id, { is_menu_visible: !item.is_menu_visible }); }}
                                                         className={`w-6 h-3 rounded-full transition-colors relative ${item.is_menu_visible ? 'bg-[#4ADE80]' : 'bg-white/10'}`}
                                                     >
                                                         <div className={`absolute top-0.5 left-0.5 w-2 h-2 bg-white rounded-full transition-transform ${item.is_menu_visible ? 'translate-x-3' : ''}`} />
@@ -2070,7 +2202,7 @@ const MenuDesign: React.FC = () => {
                                             <input
                                                 type="text"
                                                 value={selectedItem.name}
-                                                onChange={(e) => updateItem(selectedItem.id, { name: e.target.value })}
+                                                onChange={(e) => updateItemDebounced(selectedItem.id, { name: e.target.value })}
                                                 className="w-full h-11 px-4 rounded-xl bg-white/5 border border-white/10 text-white font-black text-sm outline-none focus:ring-1 focus:ring-neon/30 uppercase"
                                                 placeholder="Nombre del producto en el menú..."
                                             />
@@ -2081,7 +2213,7 @@ const MenuDesign: React.FC = () => {
                                                 <input
                                                     type="number"
                                                     value={selectedItem.price || 0}
-                                                    onChange={(e) => updateItem(selectedItem.id, { price: parseFloat(e.target.value) || 0 })}
+                                                    onChange={(e) => updateItemDebounced(selectedItem.id, { price: parseFloat(e.target.value) || 0 })}
                                                     className="w-full h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white font-black text-sm outline-none focus:ring-1 focus:ring-neon/30"
                                                 />
                                             </div>
@@ -2116,7 +2248,7 @@ const MenuDesign: React.FC = () => {
                                             </div>
                                             <textarea
                                                 value={selectedItem.description || ''}
-                                                onChange={(e) => updateItem(selectedItem.id, { description: e.target.value })}
+                                                onChange={(e) => updateItemDebounced(selectedItem.id, { description: e.target.value })}
                                                 className="w-full h-24 p-4 rounded-xl bg-white/5 border border-white/10 text-white text-xs font-medium leading-relaxed outline-none focus:ring-1 focus:ring-neon/30 resize-none"
                                                 placeholder="Descripción corta para el menú digital..."
                                             />
@@ -2134,7 +2266,7 @@ const MenuDesign: React.FC = () => {
                                                     onClick={() => {
                                                         const currentCombo = selectedItem.combo_links || [];
                                                         const newLink = { id: crypto.randomUUID(), component_item_id: '', quantity: 1 };
-                                                        updateItem(selectedItem.id, { combo_links: [...currentCombo, newLink] });
+                                                        updateItemImmediate(selectedItem.id, { combo_links: [...currentCombo, newLink] });
                                                     }}
                                                     className="text-[8px] font-black bg-neon/10 hover:bg-neon/20 text-neon px-3 py-1.5 rounded-lg uppercase tracking-widest transition-all border border-neon/20"
                                                 >
@@ -2176,7 +2308,7 @@ const MenuDesign: React.FC = () => {
                                                                             onChange={(e) => {
                                                                                 const newCombo = [...(selectedItem.combo_links || [])];
                                                                                 newCombo[idx] = { ...newCombo[idx], quantity: parseFloat(e.target.value) || 1 };
-                                                                                updateItem(selectedItem.id, { combo_links: newCombo });
+                                                                                updateItemDebounced(selectedItem.id, { combo_links: newCombo });
                                                                             }}
                                                                             className="w-full h-9 pl-3 pr-2 rounded-lg bg-black/20 border border-white/10 text-[10px] font-black text-white outline-none focus:border-neon/30"
                                                                         />
@@ -2186,7 +2318,7 @@ const MenuDesign: React.FC = () => {
                                                                     <button
                                                                         onClick={() => {
                                                                             const newCombo = (selectedItem.combo_links || []).filter((_, i) => i !== idx);
-                                                                            updateItem(selectedItem.id, { combo_links: newCombo });
+                                                                            updateItemImmediate(selectedItem.id, { combo_links: newCombo });
                                                                         }}
                                                                         className="size-9 rounded-lg bg-white/5 flex items-center justify-center text-white/20 hover:text-red-500 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
                                                                     >
@@ -2237,33 +2369,89 @@ const MenuDesign: React.FC = () => {
                                                             </div>
                                                         </div>
                                                         <div className="flex justify-between items-center px-1">
-                                                            <span className="text-[8px] font-bold text-white/20 uppercase tracking-widest">Ajuste de Receta: {variant.recipe_overrides?.length || 0} ítems</span>
+                                                            <span className="text-[8px] font-bold text-white/20 uppercase tracking-widest" title="Define qué insumos extra consume esta variante">Impacto en Inventario: {variant.recipe_overrides?.length || 0} ítems</span>
                                                             <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">
                                                                 Precio Final: <span className="text-white">${((selectedItem.price || 0) + variant.price_adjustment).toFixed(2)}</span>
                                                             </span>
+                                                        </div>
+
+                                                        {/* GLOBAL RECIPE MULTIPLIER */}
+                                                        <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-transparent border border-purple-500/20">
+                                                            <span className="material-symbols-outlined text-purple-400 text-base">percent</span>
+                                                            <div className="flex-1">
+                                                                <label className="text-[8px] font-bold text-purple-300 uppercase tracking-widest block">Multiplicador Receta Base</label>
+                                                                <span className="text-[7px] text-white/30">Ej: 1.5 = usa 50% más de todos los ingredientes</span>
+                                                            </div>
+                                                            <div className="relative">
+                                                                <input
+                                                                    type="number"
+                                                                    value={variant.recipe_multiplier ?? 1}
+                                                                    onChange={(e) => handleUpdateVariant(variant.id, 'recipe_multiplier', parseFloat(e.target.value) || 1)}
+                                                                    className="w-16 h-8 bg-black/30 border border-purple-500/30 rounded-lg px-2 text-[10px] font-black text-purple-300 text-right outline-none focus:border-purple-500"
+                                                                    step={0.1}
+                                                                    min={0.1}
+                                                                />
+                                                                <span className="absolute right-8 top-1/2 -translate-y-1/2 text-[9px] text-purple-400/50 font-bold pointer-events-none">x</span>
+                                                            </div>
                                                         </div>
 
                                                         {/* STOCK OVERRIDES UI */}
                                                         <div className="pt-2 border-t border-white/5 space-y-2">
                                                             {variant.recipe_overrides?.map((ov, ovIdx) => {
                                                                 const ovItem = items.find(i => i.id === ov.ingredient_id);
+                                                                const isMultiplier = ov.consumption_type === 'multiplier';
+
                                                                 return (
                                                                     <div key={ovIdx} className="flex items-center gap-2 p-2 rounded-lg bg-black/40 border border-white/5 group/ov">
                                                                         <div className="flex-1 text-[9px] font-bold text-white/60 truncate">
                                                                             {ovItem?.name || 'Insumo Desconocido'}
                                                                         </div>
-                                                                        <input
-                                                                            type="number"
-                                                                            value={ov.quantity_delta}
-                                                                            onChange={(e) => {
+
+                                                                        {/* TYPE TOGGLE */}
+                                                                        <button
+                                                                            onClick={() => {
                                                                                 const newOverrides = [...(variant.recipe_overrides || [])];
-                                                                                newOverrides[ovIdx] = { ...ov, quantity_delta: parseFloat(e.target.value) || 0 };
+                                                                                const newType = isMultiplier ? 'fixed' : 'multiplier';
+                                                                                // Reset value to sensible default when switching
+                                                                                const newValue = newType === 'multiplier' ? 1.5 : 0;
+                                                                                newOverrides[ovIdx] = {
+                                                                                    ...ov,
+                                                                                    consumption_type: newType,
+                                                                                    value: newValue,
+                                                                                    quantity_delta: newType === 'fixed' ? newValue : 0 // Update legacy field
+                                                                                };
                                                                                 handleUpdateVariant(variant.id, 'recipe_overrides', newOverrides);
                                                                             }}
-                                                                            className="w-16 h-7 bg-white/5 border border-white/10 rounded px-2 text-[9px] font-black text-right outline-none focus:border-neon/30"
-                                                                            step={0.01}
-                                                                        />
-                                                                        <span className="text-[8px] font-bold text-white/20 w-6 uppercase">{ovItem?.unit_type || 'un'}</span>
+                                                                            className={`w-6 h-7 rounded border text-[8px] font-black uppercase flex items-center justify-center transition-all ${isMultiplier ? 'bg-purple-500/20 border-purple-500/50 text-purple-400' : 'bg-white/5 border-white/10 text-white/40'}`}
+                                                                            title={isMultiplier ? "Modo Multiplicador (Ej: 1.5x)" : "Modo Cantidad Fija (Ej: +50ml)"}
+                                                                        >
+                                                                            {isMultiplier ? 'X' : '+'}
+                                                                        </button>
+
+                                                                        <div className="relative">
+                                                                            <input
+                                                                                type="number"
+                                                                                value={isMultiplier ? (ov.value || 1) : (ov.quantity_delta || 0)}
+                                                                                onChange={(e) => {
+                                                                                    const val = parseFloat(e.target.value) || 0;
+                                                                                    const newOverrides = [...(variant.recipe_overrides || [])];
+                                                                                    newOverrides[ovIdx] = {
+                                                                                        ...ov,
+                                                                                        value: val,
+                                                                                        quantity_delta: isMultiplier ? 0 : val // Only set pure delta if fixed
+                                                                                    };
+                                                                                    handleUpdateVariant(variant.id, 'recipe_overrides', newOverrides);
+                                                                                }}
+                                                                                className={`w-16 h-7 bg-white/5 border border-white/10 rounded px-2 text-[9px] font-black text-right outline-none focus:border-neon/30 ${isMultiplier ? 'text-purple-400' : 'text-white'}`}
+                                                                                step={isMultiplier ? 0.1 : 1}
+                                                                            />
+                                                                            {isMultiplier && <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[8px] text-purple-400/50 pointer-events-none">x</span>}
+                                                                        </div>
+
+                                                                        <span className="text-[8px] font-bold text-white/20 w-6 uppercase">
+                                                                            {isMultiplier ? 'BASE' : (ovItem?.unit_type || 'un')}
+                                                                        </span>
+
                                                                         <button
                                                                             onClick={() => {
                                                                                 const newOverrides = variant.recipe_overrides?.filter((_, i) => i !== ovIdx);
@@ -2278,19 +2466,22 @@ const MenuDesign: React.FC = () => {
                                                             })}
                                                             <button
                                                                 onClick={() => {
-                                                                    setEditingId(selectedItem.id); // redundante pero seguro
-                                                                    setEditingAddonId(variant.id); // REUTILIZAMOS para el ID de la variante
+                                                                    setEditingId(selectedItem.id);
+                                                                    setEditingAddonId(variant.id);
                                                                     setLinkType('variant_override' as any);
                                                                     setShowItemSelector(true);
                                                                 }}
                                                                 className="w-full h-7 border border-dashed border-white/10 rounded-lg text-[8px] font-bold text-white/30 hover:text-white/60 hover:border-white/20 transition-all uppercase tracking-widest"
                                                             >
-                                                                + Añadir Impacto en Stock
+                                                                + Añadir Consumo Extra
                                                             </button>
                                                         </div>
                                                     </div>
                                                     <button onClick={() => handleRemoveVariant(variant.id)} className="size-9 rounded-lg bg-white/5 flex items-center justify-center text-white/20 hover:text-red-500 hover:bg-red-500/10 transition-all">
                                                         <span className="material-symbols-outlined text-base">delete</span>
+                                                    </button>
+                                                    <button onClick={() => handleDeleteProduct(selectedItem)} className="w-full mt-12 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-500 font-bold text-[10px] uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all">
+                                                        Eliminar Producto
                                                     </button>
                                                 </div>
                                             ))}

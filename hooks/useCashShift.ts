@@ -61,26 +61,29 @@ export const useCashShift = () => {
                 .eq('status', 'open');
 
             // Fetch Pending Orders Counts per Active Zone
+            // Orders don't have zone_id directly - they have node_id.
+            // We need to fetch orders with their node's zone_id
             if (sessionsData && sessionsData.length > 0) {
-                const zoneIds = sessionsData.map(s => s.zone_id);
-                const { data: ordersData, error: ordersError } = await supabase
-                    .from('orders')
-                    .select('zone_id', { count: 'exact' })
-                    .in('status', ['pending', 'preparing', 'ready'])
-                    .in('zone_id', zoneIds);
+                const zoneIds = sessionsData.map(s => s.zone_id).filter(Boolean);
 
-                // Group counts by zone_id manualy since Supabase count is aggregate
-                // Actually, to get count per zone we need rpc or distinct queries. 
-                // For simplicity, we'll fetch all active orders for these zones and count in JS (assuming reasonable volume for "Active" orders)
-                const { data: activeOrders } = await supabase
+                // Fetch active orders with node info to get zone_id
+                const { data: activeOrders, error: ordersError } = await supabase
                     .from('orders')
-                    .select('zone_id')
-                    .in('status', ['pending', 'preparing', 'ready'])
-                    .in('zone_id', zoneIds);
+                    .select('id, node_id, node:venue_nodes(zone_id)')
+                    .in('status', ['pending', 'preparing', 'ready', 'Pendiente', 'En Preparación', 'Listo'])
+                    .eq('store_id', profile.store_id);
 
+                if (ordersError) {
+                    console.warn('Error fetching orders for pending count:', ordersError);
+                }
+
+                // Count orders by zone_id (extracted from the node relationship)
                 const counts: Record<string, number> = {};
-                activeOrders?.forEach(o => {
-                    if (o.zone_id) counts[o.zone_id] = (counts[o.zone_id] || 0) + 1;
+                activeOrders?.forEach((o: any) => {
+                    const nodeZoneId = o.node?.zone_id;
+                    if (nodeZoneId && zoneIds.includes(nodeZoneId)) {
+                        counts[nodeZoneId] = (counts[nodeZoneId] || 0) + 1;
+                    }
                 });
 
                 const sessionsWithCounts = sessionsData.map(s => ({

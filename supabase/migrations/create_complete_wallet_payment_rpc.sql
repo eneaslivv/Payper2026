@@ -23,7 +23,7 @@ BEGIN
   SET 
     payment_status = 'approved',
     is_paid = true,
-    status = CASE WHEN status = 'pending' THEN 'en preparación' ELSE status END,
+    status = CASE WHEN status = 'pending' THEN 'preparing' ELSE status END,
     updated_at = now()
   WHERE id = p_order_id;
   

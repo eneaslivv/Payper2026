@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { OrderStatus } from './types';
 import { useClient } from '../../contexts/ClientContext';
 import { supabase } from '../../lib/supabase';
@@ -17,8 +17,12 @@ interface ActiveOrderWidgetProps {
 
 const ActiveOrderWidget: React.FC<ActiveOrderWidgetProps> = ({ hasActiveOrder, status, isHubOpen, setIsHubOpen, tableNumber, accentColor, activeOrderId, activeOrders = [] }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { slug } = useParams();
   const { setActiveOrderId, setOrderStatus, store } = useClient();
+
+  // Check if we are on the wallet page to adjust position
+  const isWalletPage = location.pathname.includes('/wallet');
   const [isPolling, setIsPolling] = useState(false);
   const [showTipModal, setShowTipModal] = useState(false);
   const [serviceFeedback, setServiceFeedback] = useState<string | null>(null);
@@ -136,7 +140,7 @@ const ActiveOrderWidget: React.FC<ActiveOrderWidgetProps> = ({ hasActiveOrder, s
     <>
       {/* FLOATING ACCESS BUTTON - Always visible when Hub is closed */}
       {!isHubOpen && (
-        <div className="fixed bottom-[calc(7rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-[60] w-full max-w-md px-4 animate-in slide-in-from-bottom-6 duration-500">
+        <div className={`fixed ${isWalletPage ? 'bottom-[calc(11rem+env(safe-area-inset-bottom))]' : 'bottom-[calc(7rem+env(safe-area-inset-bottom))]'} left-1/2 -translate-x-1/2 z-[60] w-full max-w-md px-4 animate-in slide-in-from-bottom-6 duration-500 transition-all`}>
           <div
             onClick={() => setIsHubOpen(true)}
             className="w-full flex items-center gap-4 p-4 rounded-[2.5rem] bg-surface-dark/95 backdrop-blur-xl border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] active:scale-[0.98] transition-all cursor-pointer group relative overflow-hidden"
@@ -177,14 +181,18 @@ const ActiveOrderWidget: React.FC<ActiveOrderWidgetProps> = ({ hasActiveOrder, s
               </>
             ) : (
               <>
-                <div className="w-14 h-14 rounded-[1.2rem] bg-white/5 flex items-center justify-center shrink-0 border border-white/10">
-                  <span className="material-symbols-outlined text-2xl" style={{ color: accentColor }}>room_service</span>
+                <div className={`w-14 h-14 rounded-[1.2rem] flex items-center justify-center shrink-0 border border-white/10 ${tableNumber ? 'bg-white/10' : 'bg-white/5'}`}>
+                  <span className="material-symbols-outlined text-2xl" style={{ color: accentColor }}>{tableNumber ? 'room_service' : 'restaurant'}</span>
                 </div>
                 <div className="flex flex-col flex-1 min-w-0">
-                  <span className="text-[13px] font-black text-white uppercase tracking-tighter italic">Centro de Servicios</span>
-                  <p className="text-[10px] font-bold text-slate-600 uppercase tracking-tight">Llamar barista, pedir cuenta, propina</p>
+                  <span className="text-[13px] font-black text-white uppercase tracking-tighter italic">
+                    {tableNumber ? `Mesa ${tableNumber}` : 'Comenzar Pedido'}
+                  </span>
+                  <p className="text-[10px] font-bold text-slate-600 uppercase tracking-tight">
+                    {tableNumber ? 'Llamar barista · Pedir cuenta' : 'Escanea QR o pide en barra'}
+                  </p>
                 </div>
-                <span className="material-symbols-outlined text-slate-600 text-xl pr-2">chevron_right</span>
+                <span className="material-symbols-outlined text-slate-600 text-xl pr-2">{tableNumber ? 'expand_less' : 'chevron_right'}</span>
               </>
             )}
           </div>
@@ -284,8 +292,18 @@ const ActiveOrderWidget: React.FC<ActiveOrderWidgetProps> = ({ hasActiveOrder, s
                   })}
                 </div>
               ) : (
-                <div className="mb-8 p-5 rounded-[2rem] bg-surface-dark border border-white/5 flex items-center justify-center animate-in slide-in-from-top-2">
-                  <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] text-center italic opacity-60">Esperando tu próximo pedido...</p>
+                <div className="mb-8 p-5 rounded-[2rem] bg-surface-dark border border-white/5 flex flex-col items-center justify-center animate-in slide-in-from-top-2 text-center gap-2">
+                  <span className="material-symbols-outlined text-3xl opacity-40 text-slate-500">
+                    {tableNumber ? 'storefront' : 'qr_code_scanner'}
+                  </span>
+                  <div>
+                    <p className="text-[11px] font-black text-white uppercase tracking-widest italic">
+                      {tableNumber ? 'Mesa Asignada' : 'Sin Pedido Activo'}
+                    </p>
+                    <p className="text-[10px] font-medium text-slate-600 uppercase tracking-wide opacity-80 mt-1">
+                      {tableNumber ? 'Usa los botones abajo para llamar al servicio.' : 'Escanea un QR o acércate a la barra.'}
+                    </p>
+                  </div>
                 </div>
               )}
 

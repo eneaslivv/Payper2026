@@ -48,6 +48,7 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  /* LEGACY METRICS STATE (Kept for compatibility) */
   const [metrics, setMetrics] = useState({
     revenue: 0,
     ordersCount: 0,
@@ -57,48 +58,77 @@ const Dashboard: React.FC = () => {
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [chartData, setChartData] = useState(initialChartData);
 
-  useEffect(() => {
-    // ONBOARDING CHECK REDIRECT REMOVED
-    // We shouldn't force redirect users away from Dashboard, it's confusing.
-    // Instead we should show a banner or alert if they need to complete setup.
+  /* FINANCIAL STATE */
+  const [financials, setFinancials] = useState<any>(null);
+  const [isLoadingFinancials, setIsLoadingFinancials] = useState(false);
+  const [dateRange, setDateRange] = useState({
+    start: new Date(new Date().setHours(0, 0, 0, 0)).toISOString(),
+    end: new Date(new Date().setHours(23, 59, 59, 999)).toISOString()
+  });
 
+
+
+  // Fixed Expenses State
+
+
+
+
+  /* LOAD DATA */
+  useEffect(() => {
     const fetchDashboardData = async () => {
       if (!profile?.store_id) return;
 
-      // Fetch Orders for Metrics
+      setIsLoadingFinancials(true);
+      try {
+        // 1. Fetch KPI Metrics
+        const { data: finData, error } = await supabase.rpc('get_financial_metrics' as any, {
+          p_start_date: dateRange.start,
+          p_end_date: dateRange.end,
+          p_store_id: profile.store_id
+        });
+
+        if (error) throw error;
+        setFinancials(finData);
+
+        // Update basic metrics
+        if (finData) {
+          setMetrics({
+            revenue: finData.gross_revenue || 0,
+            ordersCount: finData.total_orders || 0,
+            avgTicket: finData.total_orders > 0 ? (finData.gross_revenue / finData.total_orders) : 0,
+            stockStatus: 'OPTIMAL'
+          });
+        }
+
+
+
+      } catch (err) {
+        console.error("Financial fetch error:", err);
+      } finally {
+        setIsLoadingFinancials(false);
+      }
+
+      // 3. Fetch Recent Orders (Keep existing logic)
       const { data: orders } = await supabase
         .from('orders')
         .select('*')
         .eq('store_id', profile.store_id)
         .order('created_at', { ascending: false })
-        .limit(50); // Limit for calc
+        .limit(10);
 
-      const totalRevenue = orders?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
-      const totalOrders = orders?.length || 0;
-      const avgTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-
-      setMetrics({
-        revenue: totalRevenue,
-        ordersCount: totalOrders,
-        avgTicket: avgTicket,
-        stockStatus: 'OPTIMAL' // Placeholder logic, could fetch inventory later
-      });
-
-      // Recent Orders for List (mapped to UI format)
-      const uiOrders = (orders || []).slice(0, 5).map(o => ({
-        id: o.id.substring(0, 8), // Short ID
+      const uiOrders = (orders || []).map(o => ({
+        id: o.id.substring(0, 8),
         customer: o.customer_name || 'Cliente',
         status: o.status || 'pending',
-        items: [{ name: `Pedido #${o.id.substring(0, 4)}` }] // Placeholder item name
+        items: [{ name: `Pedido #${o.order_number || o.id.substring(0, 4)}` }]
       }));
       setRecentOrders(uiOrders);
     };
 
     if (profile?.store_id) {
-      // checkOnboarding(); // Removed
       fetchDashboardData();
     }
-  }, [profile, navigate]);
+  }, [profile, dateRange, navigate]);
 
   const handleGenerateBriefing = async () => {
     setIsBriefing(true);
@@ -108,9 +138,18 @@ const Dashboard: React.FC = () => {
         setBriefingText("Configuración de IA no detectada. Contacte a soporte.");
         return;
       }
+
+      const prompt = `Analiza KPIs de cafetería hoy:
+      - Ventas Brutas: $${financials?.gross_revenue || 0}
+      - Flujo de Caja (Topups + Ventas Directas): $${financials?.net_cash_flow || 0}
+      - Pedidos: ${financials?.total_orders || 0}
+      - Gastos Variables (Mermas/Regalos): $${financials?.expenses?.variable_total || 0}
+      - Ganancia Neta Est: $${financials?.profitability?.net_profit || 0}
+      
+      Dame un briefing táctico corto y motivador para el equipo.`;
+
       const ai = new GoogleGenerativeAI(apiKey);
       const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
-      const prompt = "Analiza KPIs de cafetería: Facturación $" + metrics.revenue + ", " + metrics.ordersCount + " pedidos. Ticket $" + metrics.avgTicket + ". Dame un briefing táctico corto.";
       const result = await model.generateContent(prompt);
       const response = await result.response;
       setBriefingText(response.text() || "Reporte interrumpido.");
@@ -183,12 +222,86 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* FINANCIAL OVERVIEW */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatusCard label="FACTURACIÓN" value={`$${metrics.revenue.toFixed(2)}`} status="ACTIVE" progress={metrics.revenue > 0 ? 50 : 0} icon="payments" color="text-accent" barColor="bg-accent" />
-        <StatusCard label="PEDIDOS" value={metrics.ordersCount.toString()} status="READY" progress={metrics.ordersCount > 0 ? 50 : 0} icon="local_fire_department" color="text-neon" barColor="bg-neon" />
-        <StatusCard label="TICKET PROM" value={`$${metrics.avgTicket.toFixed(2)}`} status="NORMAL" progress={metrics.avgTicket > 0 ? 50 : 0} icon="show_chart" color="text-accent" barColor="bg-accent" />
-        <StatusCard label="STOCK" value={metrics.stockStatus} status="MONITORING" progress={100} icon="inventory_2" color="text-primary" barColor="bg-primary" />
+        {/* 1. VENTAS BRUTAS */}
+        <StatusCard
+          label="VENTAS TOTALES"
+          value={`$${(financials?.gross_revenue || 0).toLocaleString()}`}
+          status="REVENUE"
+          progress={100}
+          icon="payments"
+          color="text-neon"
+          barColor="bg-neon"
+        />
+
+        {/* 2. FLUJO DE CAJA (WALLET + CASH) */}
+        <StatusCard
+          label="FLUJO DE CAJA (REAL)"
+          value={`$${(financials?.net_cash_flow || 0).toLocaleString()}`}
+          status={financials?.net_cash_flow > 0 ? "POSITIVE" : "NEUTRAL"}
+          progress={100}
+          icon="account_balance_wallet"
+          color="text-white"
+          barColor="bg-white"
+        />
+
+        {/* 3. GANANCIA NETA (PROFIT) */}
+        <StatusCard
+          label="GANANCIA NETA (EST)"
+          value={`$${(financials?.profitability?.net_profit || 0).toLocaleString()}`}
+          status={(financials?.profitability?.margin_percent || 0) + "% MARGIN"}
+          progress={Math.min(Math.max(financials?.profitability?.margin_percent || 0, 0), 100)}
+          icon="trending_up"
+          color={(financials?.profitability?.net_profit || 0) >= 0 ? "text-accent" : "text-red-500"}
+          barColor={(financials?.profitability?.net_profit || 0) >= 0 ? "bg-accent" : "bg-red-500"}
+        />
+
+        {/* 4. GASTOS VARIABLES */}
+        <StatusCard
+          label="GASTOS / MERMAS"
+          value={`$${(financials?.expenses?.variable_total || 0).toLocaleString()}`}
+          status="COSTS"
+          progress={100}
+          icon="delete_forever"
+          color="text-orange-500"
+          barColor="bg-orange-500"
+        />
       </div>
+
+
+
+      {/* DETAILED EXPENSE BREAKDOWN */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="bg-[#141714] rounded-3xl border border-white/5 p-6 shadow-soft hover:border-red-500/20 transition-colors">
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-red-400 mb-4">PÉRDIDAS OPERATIVAS</h3>
+          <div className="flex justify-between items-end">
+            <span className="text-3xl font-black italic-black text-white">$ {(financials?.expenses?.operational_loss || 0).toLocaleString()}</span>
+            <span className="material-symbols-outlined text-4xl text-white/5">broken_image</span>
+          </div>
+          <p className="text-[9px] text-white/40 font-bold uppercase mt-2">Vencidos, Rotos, Robos</p>
+        </div>
+
+        <div className="bg-[#141714] rounded-3xl border border-white/5 p-6 shadow-soft hover:border-accent/20 transition-colors">
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-accent mb-4">INVERSIÓN MARKETING</h3>
+          <div className="flex justify-between items-end">
+            <span className="text-3xl font-black italic-black text-white">$ {(financials?.expenses?.marketing || 0).toLocaleString()}</span>
+            <span className="material-symbols-outlined text-4xl text-white/5">card_giftcard</span>
+          </div>
+          <p className="text-[9px] text-white/40 font-bold uppercase mt-2">Regalos y Cortesías</p>
+        </div>
+
+        <div className="bg-[#141714] rounded-3xl border border-white/5 p-6 shadow-soft hover:border-purple-500/20 transition-colors">
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400 mb-4">CONSUMO INTERNO (PR)</h3>
+          <div className="flex justify-between items-end">
+            <span className="text-3xl font-black italic-black text-white">$ {(financials?.expenses?.internal || 0).toLocaleString()}</span>
+            <span className="material-symbols-outlined text-4xl text-white/5">group</span>
+          </div>
+          <p className="text-[9px] text-white/40 font-bold uppercase mt-2">Consumo de Staff / Socios</p>
+        </div>
+      </div>
+
+
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
         <div className="lg:col-span-8 bg-[#141714] rounded-3xl border border-white/5 p-6 shadow-soft">
@@ -263,6 +376,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
     </div>
   );
 };

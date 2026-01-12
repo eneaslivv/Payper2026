@@ -23,9 +23,54 @@ const Finance: React.FC = () => {
     totalRevenue: 0,
     avgTicket: 0,
     orderCount: 0,
-    revenueToday: 0
+    revenueToday: 0,
+    loyaltyCost: 0 // Sum of monetary_cost from loyalty redemptions
   });
   const [performanceData, setPerformanceData] = useState<any[]>([]);
+
+  // Advanced Chart & Expenses State (Migrated)
+  const [chartFilter, setChartFilter] = useState<'total' | 'mercadopago' | 'cash' | 'wallet'>('total');
+  const [fixedExpensesList, setFixedExpensesList] = useState<any[]>([]);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [isSubmittingExpense, setIsSubmittingExpense] = useState(false);
+  const [topProducts, setTopProducts] = useState<any[]>([]); // Added correctly here
+
+  const [expenseForm, setExpenseForm] = useState({
+    name: '',
+    amount: '',
+    category: 'rent',
+    description: ''
+  });
+
+  const handleRegisterExpense = async () => {
+    if (!expenseForm.name || !expenseForm.amount) return alert('Nombre y monto requeridos');
+    setIsSubmittingExpense(true);
+
+    try {
+      const { error } = await supabase.rpc('register_fixed_expense', {
+        p_store_id: profile?.store_id,
+        p_name: expenseForm.name,
+        p_amount: Number(expenseForm.amount),
+        p_category: expenseForm.category,
+        p_description: expenseForm.description,
+        p_date: new Date().toISOString(),
+        p_is_recurring: false
+      });
+
+      if (error) throw error;
+
+      alert('Gasto registrado correctamente');
+      setShowExpenseModal(false);
+      setExpenseForm({ name: '', amount: '', category: 'rent', description: '' });
+      // Trigger refresh
+      window.location.reload();
+    } catch (err) {
+      console.error('Error al registrar gasto:', err);
+      alert('Error al registrar el gasto');
+    } finally {
+      setIsSubmittingExpense(false);
+    }
+  };
 
   // Fetch real data from Supabase
   useEffect(() => {
@@ -84,7 +129,60 @@ const Finance: React.FC = () => {
       }
     };
 
+    const fetchAdvancedData = async () => {
+      if (!profile?.store_id) return;
+
+      try {
+        // 1. Fetch Hourly Chart Data (RPC)
+        const { data: chartData, error: chartError } = await supabase.rpc('get_financial_chart_data', {
+          p_store_id: profile.store_id,
+          p_start_date: dateRange.start.toISOString(),
+          p_end_date: dateRange.end.toISOString()
+        });
+
+        if (chartError) console.error('Error chart:', chartError);
+        setPerformanceData(chartData || []);
+
+        // 1.5 Fetch Top Products
+        const { data: topData, error: topError } = await supabase.rpc('get_top_products', {
+          p_store_id: profile.store_id,
+          p_start_date: dateRange.start.toISOString(),
+          p_end_date: dateRange.end.toISOString()
+        });
+        if (topError) console.error('Error top products:', topError);
+        setTopProducts(topData || []);
+
+        // 2. Fetch Fixed Expenses
+        const { data: expensesList } = await (supabase as any)
+          .from('fixed_expenses')
+          .select('*')
+          .eq('store_id', profile.store_id)
+          .gte('expense_date', dateRange.start.toISOString())
+          .lte('expense_date', dateRange.end.toISOString())
+          .order('expense_date', { ascending: false });
+
+        setFixedExpensesList(expensesList || []);
+
+        // 3. Fetch Loyalty Redemption Cost (COGS of redeemed rewards)
+        const { data: loyaltyData } = await (supabase as any)
+          .from('loyalty_transactions')
+          .select('monetary_cost')
+          .eq('store_id', profile.store_id)
+          .eq('type', 'burn')
+          .eq('is_rolled_back', false)
+          .gte('created_at', dateRange.start.toISOString())
+          .lte('created_at', dateRange.end.toISOString());
+
+        const totalLoyaltyCost = (loyaltyData || []).reduce((sum: number, tx: any) => sum + (Number(tx.monetary_cost) || 0), 0);
+        setMetrics(prev => ({ ...prev, loyaltyCost: totalLoyaltyCost }));
+
+      } catch (err) {
+        console.error('Error fetching advanced data:', err);
+      }
+    };
+
     fetchFinanceData();
+    fetchAdvancedData();
   }, [profile?.store_id, dateRange]);
 
   return (
@@ -140,42 +238,220 @@ const Finance: React.FC = () => {
               type="neutral"
               icon="receipt_long"
             />
-            <FinanceCard label="Costo Lealtad" value="$0.00" trend="-" type="neutral" icon="loyalty" />
+            <FinanceCard label="Costo Lealtad" value={`$${metrics.loyaltyCost.toFixed(2)}`} trend={metrics.loyaltyCost > 0 ? 'Canjes activos' : '-'} type={metrics.loyaltyCost > 0 ? 'negative' : 'neutral'} icon="loyalty" />
             <FinanceCard label="Ajustes Stock" value="$0.00" trend="-" type="neutral" icon="inventory_2" />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-8 bg-white dark:bg-surface-dark p-8 rounded-2xl subtle-border shadow-soft">
-              <div className="flex justify-between items-center mb-10">
-                <h3 className="text-xs font-bold uppercase tracking-[0.2em] dark:text-white">Rendimiento Temporal</h3>
-                <span className="text-[9px] font-black text-neon uppercase italic tracking-widest">Datos en tiempo real</span>
+          <div className="lg:col-span-12 bg-[#141714] rounded-3xl border border-white/5 p-6 shadow-soft mb-8">
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h3 className="text-lg font-black italic uppercase tracking-tighter text-white leading-none">FLUJO DE OPERACIONES</h3>
+                <p className="text-[9px] font-black text-[#71766F] uppercase tracking-[0.2em] mt-1">ANÁLISIS DE INGRESOS POR CANAL</p>
               </div>
-              <div className="h-80 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={performanceData}>
-                    <defs>
-                      <linearGradient id="financeGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#4ADE80" stopOpacity={0.05} />
-                        <stop offset="95%" stopColor="#4ADE80" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid vertical={false} stroke="rgba(0,0,0,0.02)" strokeDasharray="5 5" />
-                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#71766F', fontSize: 9, fontWeight: 600 }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71766F', fontSize: 9 }} />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#141714', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', fontSize: '10px', color: '#fff' }}
-                    />
-                    <Area type="monotone" dataKey="revenue" stroke="#4ADE80" strokeWidth={2} fillOpacity={1} fill="url(#financeGradient)" dot={{ r: 3, fill: '#4ADE80' }} />
-                  </AreaChart>
-                </ResponsiveContainer>
+              <div className="flex gap-2">
+                {['total', 'mercadopago', 'cash', 'wallet'].map(filter => (
+                  <button
+                    key={filter}
+                    onClick={() => setChartFilter(filter as any)}
+                    className={`px-4 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${chartFilter === filter ? 'bg-neon/10 text-neon border border-neon/20 shadow-neon-soft' : 'text-[#71766F] border border-white/5 hover:text-white'}`}
+                  >
+                    {filter === 'total' ? 'TOTAL' : filter === 'mercadopago' ? 'MERCADO PAGO' : filter === 'cash' ? 'EFECTIVO' : 'WALLET'}
+                  </button>
+                ))}
               </div>
             </div>
+            <div className="h-96 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={performanceData}>
+                  <defs>
+                    <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#00ff9d" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#00ff9d" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorMp" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorCash" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ffffff" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#ffffff" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.02)" strokeDasharray="5 5" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71766F', fontWeight: 800 }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#141714', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', fontSize: '10px' }} />
 
-            <div className="lg:col-span-4 bg-white dark:bg-surface-dark p-8 rounded-2xl subtle-border shadow-soft">
-              <h3 className="text-xs font-bold uppercase tracking-[0.2em] dark:text-white mb-10 text-center">Origen de Pedidos</h3>
-              <div className="h-64 w-full flex items-center justify-center">
-                <p className="text-[10px] font-black text-white/10 uppercase tracking-widest italic">Sin datos de origen</p>
+                  {chartFilter === 'total' && (
+                    <Area type="monotone" dataKey="total_revenue" stroke="#00ff9d" strokeWidth={3} fillOpacity={1} fill="url(#colorTotal)" animationDuration={1500} />
+                  )}
+                  {chartFilter === 'mercadopago' && (
+                    <Area type="monotone" dataKey="mercadopago" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorMp)" animationDuration={1000} />
+                  )}
+                  {chartFilter === 'cash' && (
+                    <>
+                      <Area type="monotone" dataKey="cash_sales" stackId="1" stroke="#ffffff" strokeWidth={2} fillOpacity={1} fill="url(#colorCash)" name="Ventas Efectivo" />
+                      <Area type="monotone" dataKey="cash_topups" stackId="1" stroke="#ffffff" strokeWidth={2} strokeDasharray="5 5" fill="transparent" name="Cargas Efectivo" />
+                    </>
+                  )}
+                  {chartFilter === 'wallet' && (
+                    <Area type="monotone" dataKey="wallet_sales" stroke="#8b5cf6" strokeWidth={3} fillOpacity={0.2} fill="#8b5cf6" name="Consumo Wallet" />
+                  )}
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* FIXED EXPENSES SECTION */}
+          <div className="lg:col-span-12 bg-[#141714] rounded-3xl border border-white/5 p-6 shadow-soft mb-8">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-lg font-black italic uppercase text-white">GASTOS FIJOS / RECURRENTES</h3>
+                <p className="text-[9px] font-bold text-white/40 uppercase">ALQUILER, LUZ, SERVICIOS, SUELDOS</p>
               </div>
+              <button
+                onClick={() => setShowExpenseModal(true)}
+                className="px-4 py-2 bg-white text-black font-black text-[10px] uppercase tracking-wider rounded-xl hover:bg-neon hover:scale-105 transition-all flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-sm">add</span>
+                REGISTRAR GASTO
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* List */}
+              <div className="col-span-1 md:col-span-1 lg:col-span-4 space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                {fixedExpensesList.map(exp => (
+                  <div key={exp.id} className="flex justify-between items-center p-3 rounded-xl bg-black/20 border border-white/5 hover:border-white/10 transition-colors group">
+                    <div>
+                      <p className="text-[10px] font-black uppercase text-white group-hover:text-neon transition-colors">{exp.name}</p>
+                      <div className="flex gap-2 items-center">
+                        <span className="text-[8px] font-bold text-white/40 uppercase bg-white/5 px-1.5 py-0.5 rounded">{exp.category}</span>
+                        <span className="text-[8px] font-bold text-white/20 uppercase">{new Date(exp.expense_date).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    <span className="text-sm font-black text-white">$ {exp.amount.toLocaleString()}</span>
+                  </div>
+                ))}
+                {fixedExpensesList.length === 0 && (
+                  <div className="flex items-center justify-center h-full border border-dashed border-white/10 rounded-xl p-4">
+                    <p className="text-[10px] font-bold text-white/20 uppercase">No hay gastos fijos registrados en este periodo</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* MODAL */}
+          {showExpenseModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+              <div className="bg-[#141714] border border-white/10 rounded-3xl p-6 w-full max-w-md shadow-2xl relative">
+                <button
+                  onClick={() => setShowExpenseModal(false)}
+                  className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors"
+                >
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+
+                <h3 className="text-xl font-black italic uppercase text-white mb-1">REGISTRAR GASTO FIJO</h3>
+                <p className="text-[10px] text-white/40 font-bold uppercase mb-6">REGISTRO DE SALIDAS DE DINERO RECURRENTES</p>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-[9px] font-black uppercase text-white/60 mb-1.5 block">CONCEPTO / NOMBRE</label>
+                    <input
+                      type="text"
+                      value={expenseForm.name}
+                      onChange={e => setExpenseForm({ ...expenseForm, name: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold outline-none focus:border-neon transition-colors"
+                      placeholder="Ej: Alquiler Local"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-white/60 mb-1.5 block">MONTO</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 font-bold">$</span>
+                        <input
+                          type="number"
+                          value={expenseForm.amount}
+                          onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value })}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-4 py-3 text-white font-bold outline-none focus:border-neon transition-colors"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-white/60 mb-1.5 block">CATEGORÍA</label>
+                      <select
+                        value={expenseForm.category}
+                        onChange={e => setExpenseForm({ ...expenseForm, category: e.target.value })}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold outline-none focus:border-neon transition-colors appearance-none"
+                      >
+                        <option value="rent">ALQUILER</option>
+                        <option value="utilities">SERVICIOS</option>
+                        <option value="salaries">SUELDOS</option>
+                        <option value="marketing_fixed">MARKETING FIJO</option>
+                        <option value="software">SOFTWARE</option>
+                        <option value="maintenance">MANTENIMIENTO</option>
+                        <option value="other">OTROS</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[9px] font-black uppercase text-white/60 mb-1.5 block">DESCRIPCIÓN</label>
+                    <textarea
+                      value={expenseForm.description}
+                      onChange={e => setExpenseForm({ ...expenseForm, description: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold outline-none focus:border-neon transition-colors h-24 resize-none"
+                      placeholder="Detalles adicionales..."
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleRegisterExpense}
+                    disabled={isSubmittingExpense}
+                    className="w-full bg-neon text-black font-black uppercase tracking-widest py-4 rounded-xl mt-4 hover:shadow-neon transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmittingExpense ? 'REGISTRANDO...' : 'CONFIRMAR GASTO'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
+            {/* Main Chart Section (Takes 8 columns) */}
+            <div className="lg:col-span-8 bg-[#141714] rounded-3xl border border-white/5 p-6 shadow-soft">
+              {/* ... (Existing Chart Logic, already rendered above, we just need to wrap it correctly if layout changes) */}
+              {/* NOTE: Since I am replacing a specific block below the chart, I will implement Top Products there for now, 
+                   but usually this would be a sidebar. Let's put it as a secondary card. */}
+            </div>
+          </div>
+
+          {/* Re-using the spot of "Origen de Pedidos" for Top Products */}
+          <div className="lg:col-span-4 bg-[#141714] border border-white/5 p-6 rounded-3xl shadow-soft">
+            <h3 className="text-lg font-black italic uppercase text-white mb-4">PRODUCTOS TOP</h3>
+            <div className="space-y-3">
+              {topProducts.length > 0 ? (
+                topProducts.map((prod, idx) => (
+                  <div key={idx} className="flex justify-between items-center p-3 rounded-xl bg-white/5 border border-white/5">
+                    <div className="flex items-center gap-3">
+                      <span className={`text-lg font-black ${idx === 0 ? 'text-neon' : 'text-white/40'}`}>#{idx + 1}</span>
+                      <div>
+                        <p className="text-xs font-bold text-white uppercase">{prod.name}</p>
+                        <p className="text-[9px] text-white/40 font-bold uppercase">{prod.quantity} unidades</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-black text-neon">$ {prod.total_sales.toLocaleString()}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="flex items-center justify-center py-10 opacity-50">
+                  <p className="text-[10px] uppercase font-bold text-white">Sin datos de ventas</p>
+                </div>
+              )}
             </div>
           </div>
         </>

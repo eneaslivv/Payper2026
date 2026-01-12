@@ -8,9 +8,10 @@ import { toast } from 'sonner';
 interface ScanOrderModalProps {
     isOpen: boolean;
     onClose: () => void;
+    currentStation?: string; // Station to assign when scanning
 }
 
-const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose }) => {
+const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, currentStation }) => {
     const { profile } = useAuth();
 
     // Refs
@@ -24,6 +25,25 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose }) => {
     const [status, setStatus] = useState<'idle' | 'loading' | 'preview' | 'success' | 'error'>('idle');
     const [scannedOrder, setScannedOrder] = useState<any>(null);
     const [errorMessage, setErrorMessage] = useState('');
+
+    // Active station from localStorage (set by OrderBoard)
+    const [activeStation, setActiveStation] = useState<string>(() => {
+        return localStorage.getItem('payper_dispatch_station') || 'ALL';
+    });
+
+    // Sync with localStorage changes (when OrderBoard changes station)
+    useEffect(() => {
+        const handleStorageChange = () => {
+            const station = localStorage.getItem('payper_dispatch_station') || 'ALL';
+            setActiveStation(station);
+        };
+        window.addEventListener('storage', handleStorageChange);
+        // Also sync on modal open
+        if (isOpen) {
+            handleStorageChange();
+        }
+        return () => window.removeEventListener('storage', handleStorageChange);
+    }, [isOpen]);
 
     // Input Modes: 'gun' (hidden input, default), 'manual' (visible input), 'camera' (webcam)
     const [inputMode, setInputMode] = useState<'gun' | 'manual' | 'camera'>('gun');
@@ -294,6 +314,22 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose }) => {
 
         console.log("👤 Staff ID:", staffId);
 
+        // If a station is selected (not ALL), assign this order to that station
+        // Uses activeStation from localStorage (set by OrderBoard)
+        if (activeStation && activeStation !== 'ALL') {
+            console.log("📍 Assigning order to station:", activeStation);
+            const { error: stationError } = await supabase
+                .from('orders' as any)
+                .update({ dispatch_station: activeStation })
+                .eq('id', scannedOrder.id);
+
+            if (stationError) {
+                console.warn("⚠️ Could not assign station:", stationError);
+            } else {
+                console.log("✅ Order assigned to station:", activeStation);
+            }
+        }
+
         // Use the reusable logic from scanHandler
         const success = await markOrderAsDelivered(scannedOrder.pickup_code || scannedOrder.id, staffId);
 
@@ -301,7 +337,7 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose }) => {
 
         if (success) {
             setStatus('success');
-            toast.success(`Orden #${scannedOrder.order_number || '---'} entregada éxito`);
+            toast.success(`Orden #${scannedOrder.order_number || '---'} escaneada${activeStation && activeStation !== 'ALL' ? ` en ${activeStation}` : ''}`);
 
             setTimeout(() => {
                 resetModal();

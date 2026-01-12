@@ -6,11 +6,10 @@ import type { InventoryItem, StorageLocation } from '../types';
 interface StockTransferModalProps {
     isOpen: boolean;
     onClose: () => void;
-    item: InventoryItem;
+    item?: InventoryItem;
     onSuccess: () => void;
-    /** Optional: Pre-select origin location (e.g., from Bar context) */
+    /** Optional: Pre-select origin location */
     sourceLocationId?: string;
-    /** Callback to open initial stock wizard */
     onInitialStockClick?: () => void;
 }
 
@@ -32,274 +31,299 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
     const [quantity, setQuantity] = useState<string>('');
     const [notes, setNotes] = useState('');
 
-    // Derived State
-    const currentSourceStock = useMemo(() => stockLevels[fromLocation] || 0, [stockLevels, fromLocation]);
-    const parsedQuantity = useMemo(() => parseFloat(quantity) || 0, [quantity]);
+    // --- Local Item State (for when prop is missing) ---
+    const [localItem, setLocalItem] = useState<InventoryItem | undefined>(item);
+    const [allItems, setAllItems] = useState<InventoryItem[]>([]);
+
+    // --- Derived State ---
+    const parsedQuantity = parseFloat(quantity) || 0;
+    const currentSourceStock = stockLevels[fromLocation] || 0;
     const quantityExceedsStock = parsedQuantity > currentSourceStock;
+    const isValidTransfer = localItem && fromLocation && toLocation && parsedQuantity > 0 && !quantityExceedsStock;
 
-    // Smart Origin Detection (locations with stock)
-    const locationsWithStock = useMemo(() =>
-        locations.filter(l => (stockLevels[l.id] || 0) > 0),
-        [locations, stockLevels]
-    );
-
-    const hasNoStockAtAll = locationsWithStock.length === 0;
-    const isOriginLocked = locationsWithStock.length === 1;
-
-    // Destination options (exclude origin)
-    const destinationOptions = useMemo(() =>
-        locations.filter(l => l.id !== fromLocation),
-        [locations, fromLocation]
-    );
-
-    const isValidTransfer = fromLocation && toLocation && parsedQuantity > 0 && !quantityExceedsStock;
-
-    // Unit display helper
+    // Unit Label Helper
     const unitLabel = useMemo(() => {
-        const unit = item.unit_type?.toLowerCase() || 'unit';
-        const labels: Record<string, string> = {
-            gram: 'g', ml: 'ml', kg: 'kg', liter: 'L', unit: 'u', oz: 'oz'
-        };
-        return labels[unit] || unit;
-    }, [item.unit_type]);
+        if (!localItem?.unit_type) return 'u';
+        const map: Record<string, string> = { gram: 'g', ml: 'ml', liter: 'L', kilogram: 'kg', kg: 'kg' };
+        return map[localItem.unit_type] || localItem.unit_type;
+    }, [localItem]);
 
+    // --- Fetch Data ---
     const fetchLocationsAndStock = async () => {
         setLoading(true);
         try {
+            // 1. Get Locations
             const { data: locs, error: locError } = await supabase
                 .from('storage_locations')
                 .select('*')
                 .order('name');
-
             if (locError) throw locError;
-            setLocations(locs || []);
 
+            const validLocs = locs || [];
+            setLocations(validLocs);
+
+            // 2. Get Stock Levels
             const { data: levels, error: stockError } = await supabase
                 .from('item_stock_levels')
                 .select('location_id, quantity')
-                .eq('inventory_item_id', item.id);
-
+                .eq('inventory_item_id', localItem!.id); // Use localItem
             if (stockError) throw stockError;
 
             const levelsMap: Record<string, number> = {};
-            levels?.forEach((l: any) => {
-                levelsMap[l.location_id] = Number(l.quantity);
-            });
+            levels?.forEach((l: any) => { levelsMap[l.location_id] = Number(l.quantity); });
             setStockLevels(levelsMap);
 
-            // Pre-selection Logic
-            const validLocsWithStock = (locs || []).filter(l => (levelsMap[l.id] || 0) > 0);
+            // 3. Smart Auto-Select Origin
+            const resultLocs = validLocs.filter(l => (levelsMap[l.id] || 0) > 0);
 
-            if (validLocsWithStock.length === 1) {
-                setFromLocation(validLocsWithStock[0].id);
-            } else if (sourceLocationId && levelsMap[sourceLocationId] > 0) {
+            if (sourceLocationId && levelsMap[sourceLocationId] > 0) {
                 setFromLocation(sourceLocationId);
-            } else if (validLocsWithStock.length > 1) {
-                const best = [...validLocsWithStock].sort((a, b) => (levelsMap[b.id] || 0) - (levelsMap[a.id] || 0))[0];
+            } else if (resultLocs.length === 1) {
+                setFromLocation(resultLocs[0].id);
+            } else if (resultLocs.length > 0) {
+                // Default to one with most stock
+                const best = resultLocs.sort((a, b) => (levelsMap[b.id] || 0) - (levelsMap[a.id] || 0))[0];
                 setFromLocation(best.id);
-            } else if (hasNoStockAtAll && locs && locs.length > 0) {
-                // If no stock anywhere, pick the default location
-                const def = locs.find(l => l.is_default) || locs[0];
-                setFromLocation(def.id);
             }
 
         } catch (err) {
             console.error('Error init transfer:', err);
-            addToast('Error al cargar datos de ubicación', 'error');
+            addToast('Error al cargar ubicaciones', 'error');
         } finally {
             setLoading(false);
         }
     };
 
+    // --- Actions ---
     const handleTransfer = async () => {
         if (!isValidTransfer) return;
-
         setLoading(true);
         try {
             const { data, error } = await supabase.rpc('transfer_stock', {
-                p_item_id: item.id,
+                p_item_id: localItem!.id,
                 p_from_location_id: fromLocation,
                 p_to_location_id: toLocation,
                 p_quantity: parsedQuantity,
                 p_user_id: (await supabase.auth.getUser()).data.user?.id || '',
-                p_notes: notes
+                p_notes: notes || '',
+                p_movement_type: 'transfer',
+                p_reason: 'Transferencia entre ubicaciones'
             });
 
             if (error) throw error;
-
-            const response = data as { success: boolean, transfer_id?: string, error?: string };
-            if (response && response.success === false) {
-                throw new Error(response.error || 'Error en transferencia');
-            }
+            const res = data as any;
+            if (res && res.success === false) throw new Error(res.error || 'Falló la transferencia');
 
             const fromName = locations.find(l => l.id === fromLocation)?.name || 'Origen';
             const toName = locations.find(l => l.id === toLocation)?.name || 'Destino';
-            addToast(`✓ ${parsedQuantity} ${unitLabel} transferidos: ${fromName} → ${toName}`, 'success');
 
+            addToast(`Transferido: ${parsedQuantity} ${unitLabel} (${fromName} -> ${toName})`, 'success');
             onSuccess();
             onClose();
-
         } catch (err: any) {
-            console.error('Transfer failed:', err);
-            addToast(err.message || 'Error al procesar transferencia', 'error');
+            console.error(err);
+            addToast(err.message || 'Error en transferencia', 'error');
         } finally {
             setLoading(false);
         }
     };
 
+    // --- Effects ---
     useEffect(() => {
-        if (isOpen && item.id) {
-            fetchLocationsAndStock();
-        }
-        if (!isOpen) {
+        if (isOpen) {
+            if (item) {
+                setLocalItem(item);
+                fetchLocationsAndStock();
+            } else {
+                // Fetch All Items for selection
+                const fetchAllItems = async () => {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (!user) return;
+                    // Get store id (or use context if available, but safeguard here)
+                    const { data: profile } = await supabase.from('profiles').select('store_id').eq('id', user.id).single();
+                    if (profile?.store_id) {
+                        const { data } = await supabase.from('inventory_items').select('*').eq('store_id', profile.store_id).order('name');
+                        if (data) setAllItems(data);
+                    }
+                };
+                fetchAllItems();
+            }
+        } else {
+            // Reset state on close
             setQuantity('');
             setNotes('');
-            setToLocation('');
             setFromLocation('');
+            setToLocation('');
+            if (!item) setLocalItem(undefined);
         }
-    }, [isOpen, item.id]);
+    }, [isOpen, item]);
+
+    // Fetch stock when localItem changes (if manually selected)
+    useEffect(() => {
+        if (localItem && isOpen) {
+            fetchLocationsAndStock();
+        }
+    }, [localItem, isOpen]);
 
     if (!isOpen) return null;
 
     return (
-        <div
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-200"
-            onClick={(e) => e.target === e.currentTarget && onClose()}
-        >
-            <div className="w-full max-w-lg bg-[#0a0a0a] border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <div
+                className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300"
+                onClick={onClose}
+            />
 
-                {/* === PRODUCT CONTEXT HEADER === */}
-                <div className="p-5 border-b border-white/5 bg-gradient-to-r from-[#141714] to-[#0d0d0d]">
-                    <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-2xl bg-black/50 border border-white/5 flex items-center justify-center overflow-hidden">
-                            {item.image_url ? (
-                                <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                            ) : (
-                                <span className="material-symbols-outlined text-2xl text-zinc-600">inventory_2</span>
+            {/* Modal Content */}
+            <div className="relative w-full max-w-md bg-[#09090b] border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+
+                {/* Header */}
+                <div className="p-6 border-b border-white/5 bg-[#121212]">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-black text-white uppercase italic tracking-tighter">
+                            TRANSFERIR <span className="text-neon">STOCK</span>
+                        </h2>
+                        <button onClick={onClose} className="size-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all">
+                            <span className="material-symbols-outlined text-lg">close</span>
+                        </button>
+                    </div>
+
+                    {/* Item Context */}
+                    <div className="flex items-center gap-3 bg-black/40 p-3 rounded-xl border border-white/5">
+                        {item ? (
+                            <>
+                                <div className="size-10 rounded-lg bg-white/5 flex items-center justify-center border border-white/5">
+                                    {item.image_url ?
+                                        <img src={item.image_url} className="size-full object-cover rounded-lg" /> :
+                                        <span className="material-symbols-outlined text-white/20">inventory_2</span>
+                                    }
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-white uppercase">{item.name}</p>
+                                    <p className="text-[10px] text-white/40 uppercase tracking-wider">
+                                        Total: {item.current_stock?.toFixed(2)} {unitLabel}
+                                    </p>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="w-full">
+                                <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-1 block">Producto a Transferir</label>
+                                <select
+                                    value={localItem?.id || ''}
+                                    onChange={(e) => {
+                                        const selected = allItems.find(i => i.id === e.target.value);
+                                        setLocalItem(selected);
+                                    }}
+                                    className="w-full bg-transparent text-sm font-bold text-white outline-none border-b border-white/10 py-1 focus:border-neon"
+                                >
+                                    <option value="">Seleccionar Producto...</option>
+                                    {allItems.map(i => (
+                                        <option key={i.id} value={i.id}>{i.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Body */}
+                <div className="p-6 space-y-6">
+
+                    {/* Flow: Origin -> Dest */}
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Origin */}
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Desde</label>
+                            <select
+                                value={fromLocation}
+                                onChange={e => setFromLocation(e.target.value)}
+                                className="w-full h-12 bg-[#1a1a1a] border border-white/10 rounded-xl px-3 text-xs font-bold text-white outline-none focus:border-neon/50 appearance-none"
+                            >
+                                <option value="" disabled>Seleccionar...</option>
+                                {locations.filter(l => (stockLevels[l.id] || 0) > 0).map(loc => (
+                                    <option key={loc.id} value={loc.id}>
+                                        {loc.name} ({stockLevels[loc.id]} {unitLabel})
+                                    </option>
+                                ))}
+                            </select>
+                            {fromLocation === '' && locations.every(l => (stockLevels[l.id] || 0) === 0) && (
+                                <p className="text-[9px] text-red-400 font-bold ml-1">⚠ Sin stock disponible</p>
                             )}
                         </div>
 
-                        <div className="flex-1 min-w-0">
-                            <h3 className="text-white font-black text-lg truncate italic-black uppercase tracking-tight">{item.name}</h3>
-                            <div className="flex items-center gap-2 mt-1">
-                                <span className="text-[10px] font-black text-neon uppercase tracking-[0.2em]">{item.item_type === 'ingredient' ? 'Insumo' : 'Producto'}</span>
-                                <span className="text-[9px] text-zinc-500">•</span>
-                                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{item.unit_type || 'u'}</span>
-                            </div>
+                        {/* Destination */}
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Hacia</label>
+                            <select
+                                value={toLocation}
+                                onChange={e => setToLocation(e.target.value)}
+                                className="w-full h-12 bg-[#1a1a1a] border border-white/10 rounded-xl px-3 text-xs font-bold text-white outline-none focus:border-neon/50 appearance-none"
+                            >
+                                <option value="" disabled>Seleccionar...</option>
+                                {locations.filter(l => l.id !== fromLocation).map(loc => (
+                                    <option key={loc.id} value={loc.id}>
+                                        {loc.name}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
-
-                        <button onClick={onClose} className="w-10 h-10 rounded-xl flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/5 transition-colors">
-                            <span className="material-symbols-outlined">close</span>
-                        </button>
                     </div>
+
+                    {/* Quantity Input (Big) */}
+                    <div className="space-y-3">
+                        <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Cantidad a Transferir</label>
+                        <div className="relative group">
+                            <input
+                                type="number"
+                                value={quantity}
+                                onChange={e => setQuantity(e.target.value)}
+                                placeholder="0"
+                                className={`w-full h-16 bg-transparent border-b-2 text-4xl font-black text-center outline-none transition-all placeholder:text-white/10 ${quantityExceedsStock ? 'border-red-500 text-red-500' : 'border-white/10 focus:border-neon text-white'}`}
+                            />
+                            <span className="absolute right-0 bottom-4 text-xs font-bold text-white/20 uppercase">{unitLabel}</span>
+                        </div>
+                        {quantityExceedsStock && (
+                            <p className="text-center text-[10px] text-red-400 font-bold uppercase tracking-wider animate-pulse">
+                                Excede stock disponible ({currentSourceStock} {unitLabel})
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Notes (Optional) */}
+                    <div className="space-y-2">
+                        <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Notas (Opcional)</label>
+                        <input
+                            value={notes}
+                            onChange={e => setNotes(e.target.value)}
+                            className="w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-white/30 placeholder:text-white/20"
+                            placeholder="Motivo de traslado..."
+                        />
+                    </div>
+
                 </div>
 
-                {/* === BODY === */}
-                <div className="p-6 space-y-6 overflow-y-auto flex-1 no-scrollbar">
-
-                    {/* STOCK SUMMARY (MINIMAL) */}
-                    <div className="grid grid-cols-2 gap-3">
-                        {locations.map(loc => {
-                            const stock = stockLevels[loc.id] || 0;
-                            return (
-                                <div key={loc.id} className={`p-3 rounded-xl border transition-all ${stock > 0 ? 'bg-white/[0.03] border-white/10' : 'bg-black/20 border-white/5 opacity-50'}`}>
-                                    <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1 truncate">{loc.name}</p>
-                                    <p className={`text-xs font-black italic-black ${stock > 0 ? 'text-white' : 'text-white/20'}`}>{stock} <span className="text-[9px] font-bold uppercase ml-0.5">{unitLabel}</span></p>
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    {/* SELECT ORIGIN */}
-                    <div className="space-y-2">
-                        <label className="text-[9px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">Desde (Origen)</label>
-                        <select
-                            value={fromLocation}
-                            onChange={(e) => setFromLocation(e.target.value)}
-                            className={`w-full bg-black border rounded-xl px-4 py-3.5 text-xs font-bold text-white uppercase tracking-widest outline-none transition-all ${isOriginLocked ? 'border-neon/30 text-neon cursor-default' : 'border-white/10 focus:border-neon cursor-pointer'}`}
-                            disabled={isOriginLocked}
+                {/* Footer */}
+                <div className="p-6 pt-0">
+                    <button
+                        onClick={handleTransfer}
+                        disabled={!isValidTransfer || loading}
+                        className="w-full py-4 rounded-xl bg-neon text-black font-black text-xs uppercase tracking-[0.2em] hover:bg-white hover:scale-[1.02] transition-all disabled:opacity-50 disabled:grayscale disabled:hover:scale-100 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                    >
+                        {loading ? 'Procesando...' : 'Confirmar Transferencia'}
+                    </button>
+                    {fromLocation === '' && locations.every(l => (stockLevels[l.id] || 0) === 0) && (
+                        <button
+                            onClick={() => { onClose(); onInitialStockClick?.(); }}
+                            className="w-full mt-3 py-3 rounded-xl border border-white/10 text-white/40 font-bold text-[10px] uppercase tracking-widest hover:text-white hover:border-white/30 transition-all"
                         >
-                            <option value="" disabled>Seleccionar Origen</option>
-                            {locations.map(loc => (
-                                <option key={loc.id} value={loc.id}>
-                                    {loc.name} ({stockLevels[loc.id] || 0} {unitLabel})
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* SELECT DESTINATION */}
-                    <div className="space-y-2">
-                        <label className="text-[9px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">Hacia (Destino)</label>
-                        <div className="flex gap-2 flex-wrap">
-                            {destinationOptions.map(loc => (
-                                <button
-                                    key={loc.id}
-                                    onClick={() => setToLocation(loc.id)}
-                                    className={`px-4 py-2.5 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all ${toLocation === loc.id ? 'bg-neon text-black border-neon' : 'bg-black/40 text-white/40 border-white/5 hover:border-white/10'}`}
-                                >
-                                    {loc.name}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* QUANTITY AND NOTES */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-[9px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">Cantidad</label>
-                            <div className="relative">
-                                <input
-                                    type="number"
-                                    value={quantity}
-                                    onChange={(e) => setQuantity(e.target.value)}
-                                    placeholder="0"
-                                    className={`w-full h-12 bg-black border rounded-xl px-4 text-sm font-black text-white italic-black outline-none transition-all ${quantityExceedsStock ? 'border-red-500/50 text-red-400' : 'border-white/10 focus:border-neon'}`}
-                                />
-                                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/20 uppercase tracking-widest">{unitLabel}</div>
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[9px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">Nota</label>
-                            <input
-                                value={notes}
-                                onChange={(e) => setNotes(e.target.value)}
-                                placeholder="OPCIONAL..."
-                                className="w-full h-12 bg-black border border-white/10 rounded-xl px-4 text-[10px] font-bold text-white uppercase tracking-widest outline-none focus:border-neon transition-all"
-                            />
-                        </div>
-                    </div>
-
-                    {/* ERROR / INFO */}
-                    {hasNoStockAtAll && (
-                        <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl flex items-center justify-between">
-                            <p className="text-[9px] font-black text-red-400 uppercase tracking-widest">Sin stock disponible</p>
-                            <button
-                                onClick={() => { onClose(); onInitialStockClick?.(); }}
-                                className="text-[8px] font-black text-white bg-white/10 px-3 py-1.5 rounded-lg hover:bg-white/20 transition-all uppercase"
-                            >
-                                Cargar Stock
-                            </button>
-                        </div>
+                            Cargar Stock Inicial
+                        </button>
                     )}
                 </div>
 
-                {/* === FOOTER === */}
-                <div className="p-5 border-t border-white/5 bg-[#080808]">
-                    <button
-                        onClick={handleTransfer}
-                        disabled={loading || !isValidTransfer}
-                        className={`w-full h-14 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-all ${isValidTransfer ? 'bg-neon text-black shadow-lg shadow-neon/10 active:scale-[0.98]' : 'bg-white/5 text-white/20 cursor-not-allowed'}`}
-                    >
-                        {loading ? 'Procesando...' : (
-                            <>
-                                <span className="material-symbols-outlined text-lg">swap_horiz</span>
-                                Confirmar Transferencia
-                            </>
-                        )}
-                    </button>
-                </div>
             </div>
         </div>
     );
 };
+

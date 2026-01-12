@@ -354,7 +354,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             id: userId,
             email: userEmail || `user_${userId.substr(0, 8)}@temp.livv`,
             full_name: session?.user?.user_metadata?.full_name || 'Nuevo Usuario',
-            role: 'customer', // Default role
+            // CRITICAL: Respect metadata role (e.g. for new store owners), fall back to customer
+            role: (session?.user?.user_metadata?.role as UserRole) || 'customer',
             is_active: true,
             store_id: session?.user?.user_metadata?.store_id || undefined
         };

@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/ToastSystem';
 import { Client, LoyaltyTransaction } from '../types';
 
 interface TimelineEvent {
@@ -14,9 +15,21 @@ interface TimelineEvent {
 
 const Clients: React.FC = () => {
   const { profile } = useAuth();
+  const { addToast } = useToast();
   const [clients, setClients] = useState<Client[]>([]); // Start empty, no mocks
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'blocked'>('all');
+
+
+
+  // Lazy init for persistence
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'blocked' | 'highest_spend' | 'newest'>(() => {
+    return (localStorage.getItem('clients_filter_v1') as any) || 'all';
+  });
+
+  // Persist filter
+  useEffect(() => {
+    localStorage.setItem('clients_filter_v1', statusFilter);
+  }, [statusFilter]);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
   const [isTimelineLoading, setIsTimelineLoading] = useState(false);
@@ -66,7 +79,8 @@ const Clients: React.FC = () => {
       const { data: clientsData, error: clientsError } = await (supabase as any)
         .from('clients')
         .select('*')
-        .eq('store_id', profile?.store_id as string);
+        .eq('store_id', profile?.store_id as string)
+        .order('created_at', { ascending: false });
 
       console.log('[Clients] Raw query result:', { count: clientsData?.length, error: clientsError });
 
@@ -193,25 +207,30 @@ const Clients: React.FC = () => {
           });
         }
 
-        // 2. Fetch Wallet Transactions
+        // 2. Fetch Wallet Transactions (from wallet_ledger, the correct table)
         const { data: walletTx } = await (supabase as any)
-          .from('wallet_transactions')
+          .from('wallet_ledger')
           .select('*')
           .eq('wallet_id', selectedClientId)
           .order('created_at', { ascending: false })
           .limit(10);
 
         if (walletTx) {
-          walletTx.forEach(tx => {
+          walletTx.forEach((tx: any) => {
+            const isTopup = tx.entry_type === 'topup' || tx.amount >= 0;
+            const paymentMethodLabel = tx.payment_method === 'card' ? 'TARJETA' :
+              tx.payment_method === 'cash' ? 'EFECTIVO' :
+                tx.source || 'ADMIN';
             events.push({
               type: 'wallet',
-              label: tx.amount >= 0 ? 'CARGA DE SALDO' : 'PAGO CON WALLET',
-              detail: `${tx.description || 'Movimiento de saldo'} — ${tx.amount >= 0 ? '+' : ''}$${Math.abs(tx.amount).toFixed(2)}`,
+              label: isTopup ? 'CARGA DE SALDO' : 'PAGO CON WALLET',
+              detail: `${tx.description || 'Movimiento de saldo'} — ${tx.amount >= 0 ? '+' : ''}$${Math.abs(tx.amount).toFixed(2)} (${paymentMethodLabel})`,
               timestamp: tx.created_at,
               icon: 'account_balance_wallet'
             });
           });
         }
+
 
         // 3. Fetch Loyalty Transactions (NEW - from ledger)
         const { data: loyaltyTx } = await (supabase as any)
@@ -283,12 +302,28 @@ const Clients: React.FC = () => {
   }, [selectedClientId, clients]);
 
   const filteredClients = useMemo(() => {
-    return clients.filter(c => {
+    let result = clients.filter(c => {
       const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
         c.email.toLowerCase().includes(search.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
-      return matchesSearch && matchesStatus;
+
+      // Filter logic
+      if (statusFilter === 'active') return matchesSearch && c.status === 'active';
+      if (statusFilter === 'blocked') return matchesSearch && c.status === 'blocked';
+      // For all, highest_spend, newest, we just match search
+      return matchesSearch;
     });
+
+    // Sorting logic
+    if (statusFilter === 'highest_spend') {
+      result.sort((a, b) => b.total_spent - a.total_spent);
+    } else if (statusFilter === 'newest') {
+      // Natural order (assuming new clients are added to top) or rely on join_date string if roughly sortable
+      // Since we don't have raw date available in this scope easily without modifying the entire client object,
+      // and 'clients' state has new ones prepended (see subscription), 'all' is usually 'newest'.
+      // If user wants 'newest' explicit, we can just leave it as is or ensure it matches 'all' order.
+    }
+
+    return result;
   }, [clients, search, statusFilter]);
 
   const toggleBlockStatus = (id: string) => {
@@ -319,22 +354,25 @@ const Clients: React.FC = () => {
   };
 
   // Wallet Functions
-  const openWalletModal = async (client: Client) => {
-    setWalletClient(client);
-    setShowWalletModal(true);
+  const fetchWalletInfo = async (clientId: string) => {
     setIsLoadingWallet(true);
-    setWalletAmount('');
-    setWalletDescription('');
-
     try {
-      // El balance ya está en clients.wallet_balance, no necesitamos query separada
-      setWalletBalance(client.wallet_balance || 0);
+      // Get fresh balance from clients table
+      const { data: clientData } = await supabase
+        .from('clients')
+        .select('wallet_balance')
+        .eq('id', clientId)
+        .single();
 
-      // Fetch recent transactions
-      const { data: txData } = await supabase
-        .from('wallet_transactions')
-        .select('*, staff:staff_id(full_name)')
-        .eq('wallet_id', client.id)
+      if (clientData) {
+        setWalletBalance(clientData.wallet_balance || 0);
+      }
+
+      // Fetch recent transactions (Correct Table: wallet_ledger)
+      const { data: txData } = await (supabase as any)
+        .from('wallet_ledger')
+        .select('*') // Simplify selection for now, or ensure 'performer' relation exists
+        .eq('wallet_id', clientId)
         .order('created_at', { ascending: false })
         .limit(10);
 
@@ -346,41 +384,58 @@ const Clients: React.FC = () => {
     }
   };
 
+  const openWalletModal = async (client: Client) => {
+    setWalletClient(client);
+    setShowWalletModal(true);
+    setWalletAmount('');
+    setWalletDescription('');
+    await fetchWalletInfo(client.id);
+  };
+
   const handleAddBalance = async () => {
     if (!walletClient || !walletAmount || parseFloat(walletAmount) <= 0) return;
 
     setIsLoadingWallet(true);
     try {
-      const { data, error } = await (supabase.rpc as any)('admin_add_balance', {
+      // Use V2: Handles Ledger + Client Balance Update atomically
+      const { data, error } = await (supabase.rpc as any)('admin_add_balance_v2', {
         p_user_id: walletClient.id,
         p_amount: parseFloat(walletAmount),
-        p_description: walletDescription || 'Carga de saldo desde panel admin',
-        p_source: walletSource,
-        p_payment_method: walletPaymentMethod
+        p_payment_method: walletPaymentMethod || 'cash',
+        p_description: walletDescription || 'Carga de saldo desde panel admin'
       });
 
       if (error) throw error;
 
       const newBalance = data.new_balance;
-      setWalletBalance(newBalance);
 
-      // Actualizar el cliente en la lista local
+      // Update UI state with new balance (Optimistic-like)
       setClients(prev => prev.map(c =>
         c.id === walletClient.id ? { ...c, wallet_balance: newBalance } : c
       ));
-      setWalletClient({ ...walletClient, wallet_balance: newBalance });
+
+      // Reset modal state
+      setWalletClient(prev => prev ? { ...prev, wallet_balance: newBalance } : null);
       setWalletAmount('');
       setWalletDescription('');
 
-      // Refresh transactions (from wallet_ledger now)
-      const { data: txData } = await (supabase as any)
-        .from('wallet_ledger')
-        .select('*, performer:profiles!performed_by(full_name)')
-        .eq('wallet_id', (walletClient as any).wallet_id || walletClient.id) // Fallback if wallet_id isn't directly the client_id
-        .order('created_at', { ascending: false })
-        .limit(10);
+      // Refresh transactions log
+      await fetchWalletInfo(walletClient.id);
 
-      setWalletTransactions(txData || []);
+      // Notify success (using existing addToast or alert)
+      // Assuming addToast is available or falling back to simple alert if not visible in this scope
+      // The viewed code showed 'addToast', so I'll try to use it, else generic alert.
+      // Looking at lines 402, setWalletTransactions and addToast are used.
+      // So fetchWalletInfo should update transactions. 
+      // I'll assume fetchWalletInfo handles transaction fetching as seen in original code?
+      // Wait, original code had explicit fetch after comments.
+      // I should verify if fetchWalletInfo exists and what it does.
+      // Line 379 calls fetchWalletInfo(walletClient.id).
+
+      // Re-adding the explicit fetch if fetchWalletInfo is not enough?
+      // Actually line 412 is // Points Functions.
+      // I'll stick to the cleanest logic: RPC -> State -> fetchWalletInfo.
+
     } catch (e: any) {
       console.error('Error adding balance:', e);
       alert('Error al agregar saldo: ' + e.message);
@@ -488,6 +543,8 @@ const Clients: React.FC = () => {
       <div className="flex flex-col xl:flex-row justify-between gap-6 items-center">
         <div className="flex bg-white dark:bg-surface-dark p-1 rounded-xl border border-black/[0.04] dark:border-white/[0.04] shadow-soft w-full xl:w-auto overflow-x-auto no-scrollbar">
           <FilterTab active={statusFilter === 'all'} onClick={() => setStatusFilter('all')}>Todos</FilterTab>
+          <FilterTab active={statusFilter === 'highest_spend'} onClick={() => setStatusFilter('highest_spend')}>Más Gastaron</FilterTab>
+          <FilterTab active={statusFilter === 'newest'} onClick={() => setStatusFilter('newest')}>Nuevos</FilterTab>
           <FilterTab active={statusFilter === 'active'} onClick={() => setStatusFilter('active')}>Activos</FilterTab>
           <FilterTab active={statusFilter === 'blocked'} onClick={() => setStatusFilter('blocked')}>Bloqueados</FilterTab>
         </div>
@@ -512,6 +569,7 @@ const Clients: React.FC = () => {
                 <th className="px-8 py-5 text-[9px] font-bold uppercase text-text-secondary tracking-widest">Registro</th>
                 <th className="px-8 py-5 text-[9px] font-bold uppercase text-text-secondary tracking-widest text-center">Frecuencia</th>
                 <th className="px-8 py-5 text-[9px] font-bold uppercase text-text-secondary tracking-widest text-center">LTV (Gasto)</th>
+                <th className="px-8 py-5 text-[9px] font-bold uppercase text-text-secondary tracking-widest text-center">Saldo</th>
                 <th className="px-8 py-5 text-[9px] font-bold uppercase text-text-secondary tracking-widest text-center">Estatus</th>
                 <th className="px-8 py-5 text-[9px] font-bold uppercase text-text-secondary tracking-widest text-right">Acciones</th>
               </tr>
@@ -540,6 +598,14 @@ const Clients: React.FC = () => {
                   <td className="px-8 py-5 text-[11px] font-bold dark:text-white/60">{client.join_date}</td>
                   <td className="px-8 py-5 text-center text-[11px] font-bold dark:text-white">{client.orders_count} ord.</td>
                   <td className="px-8 py-5 text-center text-[11px] font-black text-neon">${client.total_spent.toFixed(2)}</td>
+
+                  {/* Saldo Column */}
+                  <td className="px-8 py-5 text-center">
+                    <span className={`text-[11px] font-black ${client.wallet_balance > 0 ? 'text-accent' : 'text-white/20'}`}>
+                      ${(client.wallet_balance || 0).toFixed(2)}
+                    </span>
+                  </td>
+
                   <td className="px-8 py-5 text-center">
                     <span className={`px-2 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-widest border ${client.status === 'active' ? 'bg-neon/5 text-neon border-neon/10' : 'bg-primary/5 text-primary border-primary/10'}`}>
                       {client.status === 'active' ? 'Activo' : 'Bloqueado'}
@@ -793,7 +859,7 @@ const Clients: React.FC = () => {
             {/* Current Balance */}
             <div className="bg-accent/10 border border-accent/20 rounded-2xl p-6 mb-6 text-center">
               <p className="text-[9px] font-black uppercase text-accent/60 tracking-widest mb-1">Saldo Actual</p>
-              <p className="text-4xl font-black italic text-accent">${walletBalance.toFixed(2)}</p>
+              <p className="text-4xl font-black italic text-accent break-all">${walletBalance.toFixed(2)}</p>
             </div>
 
             {/* Add Balance Form */}

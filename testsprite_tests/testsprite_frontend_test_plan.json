@@ -1,0 +1,568 @@
+[
+  {
+    "id": "TC001",
+    "title": "User Authentication Success",
+    "description": "Verify user login is successful using valid email and password credentials, including role assignment and no data leakage across tenants.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page"
+      },
+      {
+        "type": "action",
+        "description": "Input valid email and password for a registered user"
+      },
+      {
+        "type": "action",
+        "description": "Click the login button"
+      },
+      {
+        "type": "assertion",
+        "description": "Check that the user is authenticated and redirected to the dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user has the correct role and permissions assigned"
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure no data from other tenants is accessible"
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "User Authentication Failure",
+    "description": "Verify login fails with invalid credentials and appropriate error message is shown.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page"
+      },
+      {
+        "type": "action",
+        "description": "Input invalid email and/or password"
+      },
+      {
+        "type": "action",
+        "description": "Click the login button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify login is rejected and an error message is displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Password Recovery Workflow",
+    "description": "Validate password recovery email is sent and user can reset password successfully.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the password recovery page"
+      },
+      {
+        "type": "action",
+        "description": "Input valid registered email address"
+      },
+      {
+        "type": "action",
+        "description": "Submit the password recovery request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify password recovery email is sent"
+      },
+      {
+        "type": "action",
+        "description": "Follow the reset link and set a new valid password"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify password reset is successful and user can login with new password"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Multi-Tenant Data Isolation",
+    "description": "Ensure strict data segregation between tenants so users cannot access data outside their assigned store.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as a user assigned to Tenant A"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to access inventory or orders of Tenant B either via direct URL or API"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access is denied and no data from Tenant B is exposed"
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Inventory Item CRUD Operations",
+    "description": "Test creation, reading, updating, and deletion of inventory items with stock tracking and low stock alerts.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as inventory manager"
+      },
+      {
+        "type": "action",
+        "description": "Create a new inventory item with all required details"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify new inventory item is listed with correct data"
+      },
+      {
+        "type": "action",
+        "description": "Update the inventory item's quantity and details"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify updates are correctly saved and displayed"
+      },
+      {
+        "type": "action",
+        "description": "Reduce stock level below low stock threshold"
+      },
+      {
+        "type": "assertion",
+        "description": "Check for low stock alert notification"
+      },
+      {
+        "type": "action",
+        "description": "Delete the inventory item"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm the inventory item no longer appears in the list"
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Recipe Ingredient Association",
+    "description": "Verify recipes can be created and associated with inventory ingredients properly.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to recipe management"
+      },
+      {
+        "type": "action",
+        "description": "Create a new recipe and link it to multiple inventory ingredients"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the recipe displays all associated ingredients with correct quantities"
+      },
+      {
+        "type": "action",
+        "description": "Modify ingredient quantities in the recipe"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm updates are saved and reflected in the recipe details"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Visual Menu Design Updates and Live Preview",
+    "description": "Check that menu design changes including product variants and add-ons are saved correctly and live preview updates dynamically.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as a manager with menu design permissions"
+      },
+      {
+        "type": "action",
+        "description": "Open the menu design editor"
+      },
+      {
+        "type": "action",
+        "description": "Add a new product with variants and add-ons"
+      },
+      {
+        "type": "assertion",
+        "description": "Check live preview updates immediately reflecting changes"
+      },
+      {
+        "type": "action",
+        "description": "Reorder menu categories using drag-and-drop"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new order is reflected in previews and saved correctly"
+      },
+      {
+        "type": "action",
+        "description": "Save menu design changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Reload the menu design and confirm persistence of changes"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Order Creation and Real-Time Kanban Board Update",
+    "description": "Test order creation via POS and QR code scanning, including dine-in and takeaway, with instantaneous updates on the Kanban board and inventory adjustments.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as a cashier"
+      },
+      {
+        "type": "action",
+        "description": "Create a new dine-in order via POS, assigning table number"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the order appears immediately on the Kanban board with correct status"
+      },
+      {
+        "type": "action",
+        "description": "Create a takeaway order via QR code scan"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm takeaway order appears on Kanban board linked to scanned QR code"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify inventory levels update correctly corresponding to ordered items"
+      },
+      {
+        "type": "assertion",
+        "description": "Check loyalty points are increased for client if linked"
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Public Client Ordering Flow",
+    "description": "Verify public clients can view menu, add items to cart, checkout with payment, and track order status reliably.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Access public client menu page"
+      },
+      {
+        "type": "action",
+        "description": "Browse menu, select products including variants and add-ons, add them to the cart"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify cart contents match selected items"
+      },
+      {
+        "type": "action",
+        "description": "Proceed to checkout"
+      },
+      {
+        "type": "action",
+        "description": "Complete payment via integrated gateway (e.g. MercadoPago)"
+      },
+      {
+        "type": "assertion",
+        "description": "Validate successful order placement and obtain order confirmation"
+      },
+      {
+        "type": "action",
+        "description": "Track the order status via client order status page"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm order status updates in real-time correctly"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Staff Invitation and Role Assignment",
+    "description": "Check staff invitation workflow sends email invites and that users created have correct role permissions per store.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as a store owner or admin"
+      },
+      {
+        "type": "action",
+        "description": "Invite new staff member entering email and assigning role and permissions"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify invitation email is sent"
+      },
+      {
+        "type": "action",
+        "description": "New staff member accepts the invite and sets password"
+      },
+      {
+        "type": "assertion",
+        "description": "Check user profile is created with correct permissions and linked to the store"
+      },
+      {
+        "type": "action",
+        "description": "New staff member logs in and attempts to access authorized and unauthorized areas"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm access control enforces permissions properly"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Audit Log Entries",
+    "description": "Verify all critical user actions generate audit log entries accessible to authorized users.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Perform key actions such as login, inventory changes, order creation, and role changes"
+      },
+      {
+        "type": "action",
+        "description": "Access the audit log page as an authorized user"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm audit log displays entries with correct timestamps, user info, and action details"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify filtering and search functionality works on audit logs"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "AI Product Description Generation",
+    "description": "Test AI assistant generates relevant product descriptions without blocking UI and handles API errors gracefully.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to product description generation section"
+      },
+      {
+        "type": "action",
+        "description": "Request AI to generate description for a sample product"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify generated description appears timely without delay or UI freeze"
+      },
+      {
+        "type": "action",
+        "description": "Simulate AI API failure or timeout"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm system displays user-friendly error message and fallback option"
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "PWA Offline Mode and Data Sync",
+    "description": "Verify application works offline with cached data and syncs changes correctly when connection restores.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the application while online and load data"
+      },
+      {
+        "type": "action",
+        "description": "Switch network to offline mode"
+      },
+      {
+        "type": "action",
+        "description": "Perform actions such as viewing inventory, placing orders, and editing client info"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the UI reflects offline mode status and no errors occur"
+      },
+      {
+        "type": "action",
+        "description": "Reconnect the network"
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure all offline changes sync correctly with backend and data remains consistent"
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Finance Reporting Accuracy",
+    "description": "Validate financial reports display accurate totals, reflect cash shifts, and integrate payment gateways correctly.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login to finance module"
+      },
+      {
+        "type": "action",
+        "description": "Perform cash shift operations and complete payments including MercadoPago transactions"
+      },
+      {
+        "type": "action",
+        "description": "Generate financial report for the period"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify report totals match expected values based on orders and payments"
+      },
+      {
+        "type": "assertion",
+        "description": "Check payment gateway statuses and receipts are correctly recorded"
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Staff Role-Based Access Control",
+    "description": "Verify access to features and pages is restricted or allowed correctly based on user role and custom permissions per store.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as staff member with limited permissions"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to access restricted modules such as finance or admin panel"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm access is denied with proper error or redirect"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to access allowed modules such as order management or inventory"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify full functionality is available for permitted areas"
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Order Status Updates Reflect in Client and Staff UI",
+    "description": "Ensure order status changes are propagated correctly and displayed on both staff Kanban board and public client order tracking in real time.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Create a new order via POS or public client interface"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify order appears on staff Kanban board"
+      },
+      {
+        "type": "action",
+        "description": "Change order status through staff UI (e.g., processing, ready, completed)"
+      },
+      {
+        "type": "assertion",
+        "description": "Validate that status changes appear instantly on client order tracking page"
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "QR Code Order Linking and Scanning",
+    "description": "Test QR code generation for tables, scanning, and linking orders accordingly in the system.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Generate QR code for a specific restaurant table"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify QR code renders and contains correct table identifier"
+      },
+      {
+        "type": "action",
+        "description": "Scan QR code using POS scanner"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm order creation form is pre-filled or linked with the scanned table"
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Store Settings Update Persistence",
+    "description": "Verify that updates to store business details, payment settings, and multi-location configurations persist correctly.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as store owner"
+      },
+      {
+        "type": "action",
+        "description": "Modify business details (contact info, business name)"
+      },
+      {
+        "type": "action",
+        "description": "Adjust payment settings and add a new location"
+      },
+      {
+        "type": "action",
+        "description": "Save changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Reload settings page and verify all changes persist accurately"
+      }
+    ]
+  }
+]

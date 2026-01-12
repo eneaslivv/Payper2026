@@ -97,10 +97,8 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     useEffect(() => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             console.log('[ClientContext] Auth state changed:', event);
-            if (session?.user) {
-                fetchUserProfile(session.user.id);
-            } else {
-                // 🧹 IMPORTANT: Clear ALL user-specific state on logout
+            if (event === 'SIGNED_OUT') {
+                // 🧹 IMPORTANT: Clear ALL user-specific state ONLY on explicit logout
                 console.log('[ClientContext] User signed out, clearing state');
                 setUser(null);
                 setActiveOrders([]);
@@ -108,6 +106,9 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 setActiveOrderId(null);
                 setOrderStatus('received');
                 setCart([]); // Clear cart on logout
+            } else if (session?.user) {
+                // For SIGNED_IN, TOKEN_REFRESHED, etc.
+                fetchUserProfile(session.user.id);
             }
         });
 
@@ -126,11 +127,12 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             const { data: userData } = await supabase.auth.getUser();
             if (!userData.user) throw new Error('Usuario no autenticado');
 
-            // 1. Fetch from 'clients'
+            // 1. Fetch from 'clients' looking for auth_user_id in this store
             let clientDataWrapper = await supabase
                 .from('clients')
                 .select('*')
-                .eq('id', userId)
+                .eq('auth_user_id', userId) // Match Auth User ID
+                .eq('store_id', store.id)   // Match Current Store
                 .maybeSingle();
 
             if (!clientDataWrapper.data) {
@@ -141,43 +143,41 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     .eq('id', userId)
                     .maybeSingle();
 
-                if (staffProfile) {
+                if (staffProfile && ['admin', 'staff', 'manager', 'owner', 'superadmin'].includes(staffProfile.role)) {
                     // User is a staff member, don't create client profile
-                    console.log('[ClientContext] User is staff, skipping client auto-creation');
+                    console.log('[ClientContext] User is staff (role:', staffProfile.role, '), skipping client auto-creation');
                     setUser(null); // Clear user state for client context
                     return;
                 }
 
-                console.log('[ClientContext] Auto-creating client record for user:', store.id);
+                console.log('[ClientContext] Auto-creating/updating client record via RPC for store:', store.id);
 
-                const newProfile: any = {
-                    id: userId,
-                    email: userData.user.email || '',
-                    name: userData.user.user_metadata?.full_name || (userData.user.email || '').split('@')[0],
-                    full_name: userData.user.user_metadata?.full_name || (userData.user.email || '').split('@')[0],
-                    store_id: store.id,
-                    loyalty_points: 0,
-                    is_active: true
-                };
+                const { data: ensureData, error: ensureError } = await (supabase.rpc as any)('ensure_client_in_store', {
+                    p_store_id: store.id
+                });
 
-                const { error: createError } = await supabase
-                    .from('clients')
-                    .insert(newProfile);
-
-                if (createError && createError.code !== '23505') {
-                    console.error("[ClientContext] Error creating client:", createError);
+                if (ensureError || !ensureData?.success) {
+                    console.error("[ClientContext] RPC ensure_client_in_store failed:", ensureError || ensureData);
+                    // If RPC fails, we still might be able to read if it existed but errored on "is_new" check logic?
+                    // Attempt fallback fetch just in case
+                    clientDataWrapper = await supabase
+                        .from('clients')
+                        .select('*')
+                        .eq('auth_user_id', userId)
+                        .eq('store_id', store.id)
+                        .maybeSingle();
+                } else {
+                    // Success - fetch the fresh record (or we could return it from RPC ideally, but select * is safer for schema changes)
+                    clientDataWrapper = await supabase
+                        .from('clients')
+                        .select('*')
+                        .eq('id', ensureData.client_id)
+                        .single();
                 }
-
-                // Final attempt to fetch
-                clientDataWrapper = await supabase
-                    .from('clients')
-                    .select('*')
-                    .eq('id', userId)
-                    .single();
             }
 
             const clientData = clientDataWrapper.data || {
-                id: userId,
+                id: userId, // Fallback for UI only
                 name: userData.user?.user_metadata?.full_name || 'Cliente Nuevo',
                 full_name: userData.user?.user_metadata?.full_name || 'Cliente Nuevo',
                 email: userData.user?.email || '',

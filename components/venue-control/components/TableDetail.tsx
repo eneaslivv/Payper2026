@@ -94,7 +94,7 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
         .select('id, order_number, total_amount, status, created_at, customer_name')
         .eq('store_id', profile.store_id)
         .eq('node_id', table.id)
-        .in('status', ['draft', 'pending', 'preparing', 'ready', 'served', 'delivered', 'bill_requested'])
+        .in('status', ['draft', 'pending', 'preparing', 'ready', 'served', 'delivered', 'bill_requested', 'Pendiente', 'En Preparación', 'Listo', 'Entregado'])
         .order('created_at', { ascending: false });
 
       if (data) {
@@ -282,8 +282,8 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
     }
   };
 
-  const activeOrders = orderItems.filter(o => o.status !== 'delivered');
-  const deliveredOrders = orderItems.filter(o => o.status === 'delivered');
+  const activeOrders = orderItems.filter(o => !['served', 'delivered', 'Entregado', 'cancelled', 'paid'].includes(o.status));
+  const deliveredOrders = orderItems.filter(o => ['served', 'delivered', 'Entregado', 'delivered'].includes(o.status));
 
   const subtotal = table.totalAmount; // This might be aggregate from view, but we are paying specific order.
   // Actually, we should calculate subtotal from orderItems of SELECTED order
@@ -335,7 +335,7 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
         .from('orders' as any)
         .update({ status: 'cancelled' })
         .eq('node_id', table.id)
-        .in('status', ['draft', 'pending', 'preparing', 'ready', 'served', 'delivered', 'bill_requested']);
+        .in('status', ['draft', 'pending', 'preparing', 'ready', 'served', 'delivered', 'bill_requested', 'Pendiente', 'En Preparación', 'Listo', 'Entregado']);
 
       if (error) throw error;
 
@@ -1109,7 +1109,7 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
                             </div>
                           </div>
                           <button
-                            onClick={() => handleUpdateOrderItem(order.id, 'delivered')}
+                            onClick={() => handleUpdateOrderItem(order.id, 'Entregado')}
                             className="w-8 h-8 flex items-center justify-center text-[#36e27b] hover:bg-[#36e27b]/10 rounded-lg transition-all border border-transparent hover:border-[#36e27b]/20"
                           >
                             <CheckCircle2 size={16} />

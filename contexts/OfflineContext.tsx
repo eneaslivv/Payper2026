@@ -43,6 +43,14 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // 1. Load Orders (Hybrid Strategy: Local + Optimized Remote Fetch)
       // First, get what we have locally (instant)
       let localOrders = await dbOps.getAllOrders();
+
+      // CRITICAL: Filter local orders by store_id to prevent data leak between accounts
+      // Only keep orders that match current store OR (for migration) have no store_id but we can't be sure...
+      // Safer: Only show matching store_id. Remote fetch will restore valid orders with correct ID.
+      if (storeId) {
+        localOrders = localOrders.filter(o => o.store_id === storeId);
+      }
+
       setOrders(localOrders.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()));
 
       // Then, if online, fetch ACTIVE orders from server (Optimized)
@@ -74,6 +82,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 product:inventory_items(name)
               )
             `)
+            .eq('store_id', storeId) // CRITICAL: Filter by store_id
             .order('created_at', { ascending: false })
             .range(0, 49);
 
@@ -84,6 +93,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
             // Merge strategy: Server is truth for 'synced' orders. Keep local 'pending' sync orders.
             const mappedRemote: DBOrder[] = remoteOrders.map((ro: any) => ({
               id: ro.id,
+              store_id: ro.store_id, // CRITICAL: Persist store_id
               customer: ro.client?.name || 'Cliente',
               client_email: ro.client?.email,
               table: ro.table_number,
@@ -272,7 +282,8 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                   order_number: orderData.order_number,
                   created_at: orderData.created_at,
                   syncStatus: 'synced',
-                  lastModified: new Date(orderData.created_at).getTime()
+                  lastModified: new Date(orderData.created_at).getTime(),
+                  store_id: orderData.store_id
                 };
 
                 // Add to orders at the beginning
@@ -405,7 +416,8 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         order_number: remoteOrder.order_number,
         created_at: remoteOrder.created_at,
         syncStatus: 'synced',
-        lastModified: new Date(remoteOrder.created_at).getTime()
+        lastModified: new Date(remoteOrder.created_at).getTime(),
+        store_id: remoteOrder.store_id
       };
 
       await dbOps.saveOrder(mappedOrder);
@@ -432,7 +444,8 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const newOrder: DBOrder = {
       ...order,
       syncStatus: 'pending', // Default to pending until confirmed
-      lastModified: Date.now()
+      lastModified: Date.now(),
+      store_id: storeId // Ensure store_id is attached locally
     };
 
     // 1. Save locally immediately (Optimistic UI)

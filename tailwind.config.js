@@ -8,15 +8,17 @@ export default {
     theme: {
         extend: {
             colors: {
+                'primary': '#3B4D35',
+                'accent': '#B4965C',
+                'neon': '#4ADE80',
+                'background-light': '#F8F9F7',
                 'background-dark': '#0D0F0D',
                 'surface-dark': '#141714',
-                'text-main': '#1a1a1a',
+                'text-main': '#1A1D19',
                 'text-secondary': '#71766F',
-                'primary': '#D63C5E',
-                'accent': '#B4965C',
-                'cream': '#F3EFE9', // Crema suave para textos
-                'rose-soft': '#E8B4BC', // Rosa suave
-                'neon': '#D63C5E', // Fallback temporal para no romper todo, mapeado al rosa
+                'border-color': '#E2E4DF',
+                'cream': '#F3EFE9',
+                'rose-soft': '#E8B4BC',
             },
             fontFamily: {
                 sans: ['Outfit', 'system-ui', 'sans-serif'],

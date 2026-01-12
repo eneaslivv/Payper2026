@@ -14,7 +14,11 @@ interface LocationWithMetrics extends StorageLocation {
     };
 }
 
-export const LogisticsView: React.FC = () => {
+interface LogisticsViewProps {
+    preselectedLocationName?: string | null;
+}
+
+export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocationName }) => {
     const { addToast } = useToast();
     const [loading, setLoading] = useState(false);
     const [locations, setLocations] = useState<LocationWithMetrics[]>([]);
@@ -26,11 +30,70 @@ export const LogisticsView: React.FC = () => {
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [transferItemId, setTransferItemId] = useState<string | undefined>(undefined);
     const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+    const [itemsVisibility, setItemsVisibility] = useState<Record<string, { is_visible: boolean, type: string }>>({});
+
+    useEffect(() => {
+        if (locationStock.length > 0) {
+            fetchItemVisibility();
+        }
+    }, [locationStock]);
+
+    const fetchItemVisibility = async () => {
+        const itemIds = locationStock.map(s => s.item_id);
+        const { data } = await supabase
+            .from('inventory_items')
+            .select('id, is_menu_visible, item_type')
+            .in('id', itemIds);
+
+        if (data) {
+            const map: Record<string, { is_visible: boolean, type: string }> = {};
+            data.forEach((i: any) => {
+                map[i.id] = { is_visible: i.is_menu_visible, type: i.item_type };
+            });
+            setItemsVisibility(map);
+        }
+    };
+
+    const handleToggleVisibility = async (itemId: string, currentVal: boolean, type: string) => {
+        setItemsVisibility(prev => ({
+            ...prev,
+            [itemId]: { ...prev[itemId], is_visible: !currentVal }
+        }));
+
+        const isProduct = type === 'sellable' || type === 'product';
+        const endpoint = isProduct ? 'products' : 'inventory_items';
+        // Check local storage / update logic
+        // We can just rely on the existing logic
+        try {
+            const payload = isProduct ? { is_visible: !currentVal } : { is_menu_visible: !currentVal };
+            await supabase.from(endpoint).update(payload).eq('id', itemId);
+            addToast(!currentVal ? 'Visible en menú' : 'Oculto del menú', 'success');
+            // Invalidate cache
+            const profile = await supabase.auth.getUser();
+            // We need store_id. Using locations[0] is risky if empty.
+            const storeId = locations[0]?.store_id;
+            if (storeId) localStorage.removeItem(`inventory_cache_v5_${storeId}`);
+        } catch (e) {
+            addToast('Error al actualizar', 'error');
+            setItemsVisibility(prev => ({ ...prev, [itemId]: { ...prev[itemId], is_visible: currentVal } }));
+        }
+    };
 
     useEffect(() => {
         fetchLocations();
         fetchHistory();
     }, []);
+
+    // Effect to handle preselection
+    useEffect(() => {
+        if (preselectedLocationName && locations.length > 0) {
+            const found = locations.find(l => l.name === preselectedLocationName);
+            if (found && (!selectedLocation || selectedLocation.id !== found.id)) {
+                console.log('📍 Auto-selecting location in Logistics:', found.name);
+                handleSelectLocation(found);
+            }
+        }
+    }, [preselectedLocationName, locations]);
 
     const fetchLocations = async () => {
         setLoading(true);
@@ -107,9 +170,19 @@ export const LogisticsView: React.FC = () => {
         }
     };
 
-    const handleSelectLocation = (loc: LocationWithMetrics) => {
+    const handleSelectLocation = async (loc: LocationWithMetrics) => {
+        // Optimistically select
         setSelectedLocation(loc);
         setSelectedItemIds([]);
+
+        // Fetch latest metrics to avoid stale data from initial fetch
+        const { data: metrics } = await (supabase.rpc as any)('get_location_stock', { p_location_id: loc.id });
+        if (metrics?.[0]) {
+            setSelectedLocation(prev => prev && prev.id === loc.id ? { ...prev, metrics: metrics[0] } : prev);
+            // Also update it in the main list
+            setLocations(prev => prev.map(l => l.id === loc.id ? { ...l, metrics: metrics[0] } : l));
+        }
+
         fetchLocationStock(loc.id);
     };
 
@@ -273,15 +346,71 @@ export const LogisticsView: React.FC = () => {
                                             )}
                                             <div>
                                                 <p className="text-[11px] font-black text-white uppercase">{stock.inventory_items?.name}</p>
-                                                <p className="text-[8px] text-white/40 uppercase">{stock.inventory_items?.unit_type}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-[8px] text-white/40 uppercase">{stock.inventory_items?.unit_type}</p>
+
+                                                    {/* Menu Visibility Toggle */}
+                                                    {itemsVisibility[stock.item_id] && (
+                                                        <div
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const info = itemsVisibility[stock.item_id];
+                                                                handleToggleVisibility(stock.item_id, info.is_visible, info.type);
+                                                            }}
+                                                            className={`
+                                                                ml-2 px-1.5 py-0.5 rounded-full flex items-center gap-1 cursor-pointer transition-all border
+                                                                ${itemsVisibility[stock.item_id]?.is_visible
+                                                                    ? 'bg-neon/10 border-neon/30 text-neon'
+                                                                    : 'bg-white/5 border-white/10 text-white/30 hover:bg-white/10'
+                                                                }
+                                                            `}
+                                                        >
+                                                            <div className={`size-1.5 rounded-full ${itemsVisibility[stock.item_id]?.is_visible ? 'bg-neon shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-white/30'}`} />
+                                                            <span className="text-[7px] font-black uppercase tracking-wider">
+                                                                {itemsVisibility[stock.item_id]?.is_visible ? 'MENÚ ON' : 'MENÚ OFF'}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-4">
                                             <div className="text-right">
                                                 <p className="text-sm font-black text-neon">{stock.closed_units} <span className="text-[8px] text-white/40">ENV</span></p>
-                                                {stock.open_packages?.length > 0 && (
-                                                    <p className="text-[8px] text-amber-500">+{stock.open_packages.length} abiertos</p>
-                                                )}
+                                                {stock.open_packages?.length > 0 && stock.open_packages.map((pkg: any, idx: number) => {
+                                                    const unitSize = Number(stock.inventory_items?.unit_size) || 1;
+                                                    const remaining = Number(pkg.remaining || 0);
+
+                                                    // Cap percentage at 100 visually, but calculations rely on data
+                                                    const percentage = unitSize > 0 ? Math.min(100, Math.round((remaining / unitSize) * 100)) : 0;
+
+                                                    // Determine color based on percentage
+                                                    const barColor = percentage > 50 ? 'bg-green-500' : percentage > 20 ? 'bg-amber-500' : 'bg-red-500';
+                                                    const textColor = percentage > 50 ? 'text-green-500' : percentage > 20 ? 'text-amber-500' : 'text-red-500';
+
+                                                    return (
+                                                        <div key={idx} className="flex flex-col items-end gap-0.5 mt-1 text-right">
+                                                            <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                                                <span className="text-[10px] font-bold text-white uppercase tracking-tight">
+                                                                    #{idx + 1}
+                                                                </span>
+                                                                <span className={`text-[10px] font-black ${textColor}`}>
+                                                                    {remaining} / {unitSize} {stock.inventory_items?.unit_type}
+                                                                </span>
+                                                                <span className="text-[8px] font-bold text-white/40">
+                                                                    ({percentage}%)
+                                                                </span>
+                                                            </div>
+                                                            {/* Mini Progress Bar */}
+                                                            <div className="w-24 h-1 bg-white/10 rounded-full overflow-hidden">
+                                                                <div
+                                                                    className={`h-full ${barColor} transition-all duration-500`}
+                                                                    style={{ width: `${percentage}%` }}
+                                                                ></div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                             <button
                                                 onClick={() => {
@@ -475,14 +604,39 @@ export const LogisticsView: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-3">
                                             <p className="text-[10px] font-black text-white uppercase">{tr.inventory_items?.name || '-'}</p>
+                                            {tr.inventory_items?.unit_type && (
+                                                <p className="text-[8px] text-white/30 uppercase">{tr.inventory_items.unit_type}</p>
+                                            )}
                                         </td>
                                         <td className="px-6 py-3">
-                                            <span className={`text-[11px] font-black ${tr.quantity_delta > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                                {tr.quantity_delta > 0 ? '+' : ''}{tr.quantity_delta} {tr.unit || ''}
+                                            <span className={`text-[11px] font-black ${(tr.package_delta || tr.quantity_delta) > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                {(tr.package_delta || tr.quantity_delta) > 0 ? '+' : ''}{tr.package_delta || tr.quantity_delta} un
                                             </span>
                                         </td>
                                         <td className="px-6 py-3">
-                                            <p className="text-[9px] text-white/40 truncate max-w-[150px]">{tr.reason || '-'}</p>
+                                            <p className="text-[9px] text-white/40 truncate max-w-[250px]">
+                                                {tr.action_type === 'transfer' ? (
+                                                    <span>
+                                                        <span className="text-red-400">{tr.location_from?.name || 'Origen'}</span>
+                                                        <span className="text-white/20 mx-1">→</span>
+                                                        <span className="text-green-400">{tr.location_to?.name || 'Destino'}</span>
+                                                    </span>
+                                                ) : tr.action_type === 'loss' ? (
+                                                    <span>
+                                                        <span className="text-red-400">{tr.location_from?.name || ''}</span>
+                                                        {tr.location_from?.name && <span className="text-white/20"> · </span>}
+                                                        {tr.reason || 'Pérdida'}
+                                                    </span>
+                                                ) : tr.action_type === 'purchase' ? (
+                                                    <span>
+                                                        <span className="text-green-400">{tr.location_to?.name || ''}</span>
+                                                        {tr.location_to?.name && <span className="text-white/20"> · </span>}
+                                                        {tr.reason || 'Compra'}
+                                                    </span>
+                                                ) : (
+                                                    tr.reason || '-'
+                                                )}
+                                            </p>
                                         </td>
                                     </tr>
                                 ))

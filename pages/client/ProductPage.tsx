@@ -262,24 +262,27 @@ const ProductPage: React.FC = () => {
 
           <button
             onClick={handleAdd}
-            className="group relative flex h-20 flex-1 items-center justify-between rounded-full pl-8 pr-3 text-black active:scale-[0.97] transition-all duration-500 overflow-hidden border border-white/20"
-            style={{ backgroundColor: accentColor, boxShadow: `0 20px 40px ${accentColor}40` }}
+            disabled={item.isOutOfStock}
+            className={`group relative flex h-20 flex-1 items-center justify-between rounded-full pl-8 pr-3 text-black active:scale-[0.97] transition-all duration-500 overflow-hidden border border-white/20 ${item.isOutOfStock ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
+            style={{ backgroundColor: item.isOutOfStock ? '#333' : accentColor, boxShadow: item.isOutOfStock ? 'none' : `0 20px 40px ${accentColor}40` }}
           >
             <div className="flex flex-col items-start leading-[1] text-left shrink-0">
-              <span className="font-black uppercase text-[11px] tracking-tight">Añadir</span>
-              <span className="font-black uppercase text-[11px] tracking-tight opacity-40 italic">Orden</span>
+              <span className="font-black uppercase text-[11px] tracking-tight">{item.isOutOfStock ? 'Agotado' : 'Añadir'}</span>
+              <span className="font-black uppercase text-[11px] tracking-tight opacity-40 italic">{item.isOutOfStock ? 'Sin Stock' : 'Orden'}</span>
             </div>
-            <div className="flex items-center gap-4 relative z-10 ml-2">
-              <div className="flex items-center gap-3">
-                <span className="font-black text-[22px] italic tabular-nums tracking-tighter leading-none">${totalPrice.toFixed(2)}</span>
-                <div
-                  className="w-14 h-14 rounded-full flex items-center justify-center bg-black transition-all group-hover:scale-105 shadow-xl shrink-0"
-                  style={{ color: accentColor }}
-                >
-                  <span className="material-symbols-outlined font-black text-[28px]">add</span>
+            {!item.isOutOfStock && (
+              <div className="flex items-center gap-4 relative z-10 ml-2">
+                <div className="flex items-center gap-3">
+                  <span className="font-black text-[22px] italic tabular-nums tracking-tighter leading-none">${totalPrice.toFixed(2)}</span>
+                  <div
+                    className="w-14 h-14 rounded-full flex items-center justify-center bg-black transition-all group-hover:scale-105 shadow-xl shrink-0"
+                    style={{ color: accentColor }}
+                  >
+                    <span className="material-symbols-outlined font-black text-[28px]">add</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </button>
         </div>
       </div>

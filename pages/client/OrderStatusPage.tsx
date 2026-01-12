@@ -249,11 +249,19 @@ export default function OrderStatusPage() {
     // Normalize Items (Relation > JSONB Fallback)
     const normalizeItems = () => {
         if (order.order_items && order.order_items.length > 0) {
-            return order.order_items.map((item: any) => ({
-                quantity: item.quantity,
-                name: item.product?.name || 'Producto',
-                product: item.product // Keep full product just in case
-            }));
+            return order.order_items.map((item: any) => {
+                let productName = item.product?.name || 'Producto';
+                const isDeleted = productName.startsWith('[ELIMINADO]') || item.product?.is_active === false;
+                if (isDeleted) {
+                    productName = productName.replace('[ELIMINADO] ', '') + ' (eliminado)';
+                }
+                return {
+                    quantity: item.quantity,
+                    name: productName,
+                    product: item.product,
+                    isDeleted
+                };
+            });
         }
         if (order.items && Array.isArray(order.items)) {
             return order.items.map((item: any) => ({

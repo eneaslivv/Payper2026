@@ -1,0 +1,315 @@
+CoffeeSquad (CoffeeSaaS)
+
+Producto: CoffeeSquad – Integrated Management Suite
+Tipo: SaaS Multi-Tenant para cafeterías
+Versión: 0.0.0 (Development)
+Fecha: 2025-12-23
+Estado: Pre-Production
+Owner: Product / Engineering
+Usuarios objetivo: Cafeterías, cadenas pequeñas, operadores SaaS
+
+1. 🎯 OBJETIVO DEL PRODUCTO
+
+CoffeeSquad permite a cafeterías gestionar operaciones completas desde un único sistema:
+
+Pedidos (POS + tablero)
+
+Inventario y recetas
+
+Menú digital personalizable
+
+Clientes y fidelización
+
+Finanzas operativas
+
+Staff y permisos
+
+Administración SaaS multi-tenant
+
+El sistema está diseñado como SaaS escalable, con aislamiento estricto por tienda (tenant).
+
+2. 🧑‍💼 ROLES DE USUARIO
+Rol	Descripción
+Super Admin	Gestión global SaaS
+Store Owner	Dueño del local
+Manager	Operación completa
+Staff	Operación diaria
+Viewer	Solo lectura
+3. 🏗️ ALCANCE DEL PRODUCTO
+3.1 Incluido (In Scope)
+
+Autenticación y onboarding
+
+Gestión de tiendas (multi-tenant)
+
+Inventario y productos
+
+Recetas, variantes y addons
+
+Diseño visual del menú
+
+Creación y gestión de pedidos
+
+Tablero de pedidos
+
+Clientes y loyalty
+
+Roles y permisos (RBAC)
+
+Auditoría de acciones
+
+IA para generación de texto
+
+PWA básica
+
+3.2 Excluido (Out of Scope – por ahora)
+
+Pagos automáticos
+
+Reportes fiscales
+
+Integraciones contables
+
+Multi-idioma
+
+White-label avanzado
+
+4. 🧩 MÓDULOS FUNCIONALES
+4.1 Autenticación & Onboarding
+
+Usuarios pueden:
+
+Loguearse
+
+Recuperar contraseña
+
+Completar onboarding
+
+Ser invitados a una tienda
+
+Requerimientos:
+
+No acceder a Dashboard sin onboarding completo
+
+Asociación correcta a store_id
+
+4.2 Multi-Tenant & Seguridad
+
+Requerimientos clave:
+
+Cada usuario solo accede a datos de su tienda
+
+Super Admin no ve datos operativos de tiendas
+
+Todas las tablas con RLS activo
+
+Criterio crítico:
+
+No debe existir data leakage entre tiendas
+
+4.3 Inventario
+
+Funcionalidades:
+
+CRUD de insumos
+
+Control de stock
+
+Alertas por bajo stock
+
+Asociación a recetas
+
+4.4 Productos, Variantes y Addons
+
+Productos
+
+Precio base
+
+Descripción
+
+Categoría
+
+Variantes
+
+Precio adicional
+
+Asociadas a producto
+
+Addons
+
+Opcionales
+
+Disponibles en pedidos
+
+4.5 Diseño de Menú
+
+Requerimientos:
+
+Editor visual
+
+Preview en vivo
+
+Persistencia en JSONB:
+
+stores.menu_theme
+
+stores.menu_logic
+
+4.6 Pedidos (POS + Board)
+
+Creación de pedidos
+
+Productos + variantes + addons
+
+Asociación a mesa o cliente
+
+Persistencia en DB
+
+Order Board
+
+Estados del pedido
+
+Realtime updates
+
+4.7 Mesas
+
+Gestión de mesas
+
+QR por mesa
+
+Asociación pedidos ↔ mesa
+
+4.8 Clientes & Loyalty
+
+Clientes
+
+Datos básicos
+
+Historial de pedidos
+
+Loyalty
+
+Sistema de puntos
+
+Trigger automático al cerrar pedido
+
+4.9 Finanzas
+
+Requerimientos:
+
+Totales diarios / mensuales
+
+Ingresos por pedidos
+
+Visualización clara
+
+4.10 Staff & Roles
+
+Invitación por email
+
+Roles custom por tienda
+
+Control de vistas y acciones (PermissionGuard)
+
+4.11 Auditoría
+
+Acciones auditadas:
+
+Crear / editar productos
+
+Pedidos
+
+Cambios de permisos
+
+Configuración de tienda
+
+4.12 IA (Gemini)
+
+Generación de descripciones
+
+No bloqueante
+
+Manejo de errores API
+
+5. ⚙️ REQUERIMIENTOS NO FUNCIONALES
+Seguridad
+
+RLS obligatorio en todas las tablas
+
+Edge Functions protegidas
+
+No exponer Service Role Key
+
+Performance
+
+Carga inicial < 3s
+
+Realtime eficiente
+
+UX
+
+Manejo de errores visible
+
+No silent failures
+
+Estados de carga claros
+
+6. 🔁 FLUJOS CRÍTICOS
+Flujo 1 — Pedido completo
+
+Crear pedido
+
+Persistir pedido + items
+
+Descontar stock
+
+Asignar puntos
+
+Reflejar en finanzas
+
+Actualizar tablero realtime
+
+Flujo 2 — Invitación de staff
+
+Enviar invitación
+
+Crear usuario Auth
+
+Crear perfil
+
+Asignar rol
+
+Acceso controlado
+
+7. 🧪 RELACIÓN CON TESTSPRITE
+
+Este PRD se utiliza para:
+
+Derivar test cases
+
+Validar cobertura funcional
+
+Definir criterios de aceptación
+
+Generar tests manuales y automáticos
+
+👉 Cada módulo del PRD mapea 1:1 con suites de TestSprite.
+
+8. ✅ CRITERIOS DE ÉXITO (GO / NO-GO)
+
+✔ Autenticación y roles correctos
+✔ No hay filtración multi-tenant
+✔ Pedidos consistentes con inventario
+✔ Realtime funcional
+✔ Errores visibles y manejados
+✔ PRD 100% cubierto por tests
+
+9. 📌 NOTAS FINALES
+
+Este PRD es:
+
+La fuente madre
+
+Inmutable salvo cambios de producto
+
+Base para QA, desarrollo y auditoría

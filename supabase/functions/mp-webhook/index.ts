@@ -263,9 +263,9 @@ serve(async (req) => {
         provider_event_id: provider_event_id,
         topic: topic,
         action: action,
-        payload: body,
-        headers: headersObj,
-        store_id: store_id,
+        payload_json: body,     // Fixed column name
+        headers_json: headersObj, // Fixed column name
+        store_id: store_id ? store_id : null, // Added store_id (requires migration)
         processed: false
       })
       .select()
@@ -273,6 +273,7 @@ serve(async (req) => {
 
     if (webhookError) {
       console.error("Webhook log error:", webhookError);
+      // Don't throw here, try to process anyway
     }
 
     // 2. Procesar solo eventos de pago
@@ -334,7 +335,7 @@ serve(async (req) => {
               p_payment_method: p.payment_method_id,
               p_payment_type: p.payment_type_id,
               p_payer_email: p.payer?.email,
-              p_date_approved: p.date_approved
+              p_date_approved: p.date_approved ? String(p.date_approved) : new Date().toISOString()
             });
 
             console.log('verify_payment result:', verifyResult, 'error:', verifyError);

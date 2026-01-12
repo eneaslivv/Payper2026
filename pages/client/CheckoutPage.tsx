@@ -70,7 +70,7 @@ const CheckoutPage: React.FC = () => {
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   // Discount now comes from selected reward, not hardcoded
   const discount = rewardDiscount;
-  const tax = subtotal * 0.08;
+  const tax = 0; // Removed 8% tax as per user request
   const total = subtotal + tax - discount;
 
   // Calculate after total is defined

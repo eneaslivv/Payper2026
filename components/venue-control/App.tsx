@@ -12,8 +12,9 @@ import { AppMode, Table, Bar, QR, TableStatus, Position, OrderStatus, Zone, Noti
 import { INITIAL_ZONES } from './constants';
 import { ZoomIn, ZoomOut, Zap, MousePointer2, Plus, Beer, Circle, QrCode, Check, Trash2, Edit3, X as XIcon, Users, Layers, Bell, Timer, Clock, Hand, Receipt, AlertCircle, ChevronRight, ClipboardList } from 'lucide-react';
 import { useToast } from '../../components/ToastSystem';
-import { TransferStockModal } from '../../components/TransferStockModal';
+import { StockTransferModal } from '../../components/StockTransferModal';
 import StationManager from './components/StationManager';
+import StationAnalyticsPanel from './components/StationAnalyticsPanel';
 
 const App: React.FC = () => {
   const { profile } = useAuth();
@@ -625,17 +626,7 @@ const App: React.FC = () => {
                   }}
                 />
               ) : (
-                <div className="h-full flex flex-col items-center justify-center p-8 text-center space-y-6 opacity-30 select-none pointer-events-none">
-                  <div className="w-24 h-24 rounded-full border-2 border-dashed border-zinc-600 flex items-center justify-center">
-                    <MousePointer2 className="w-8 h-8 text-zinc-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black text-zinc-400 uppercase tracking-widest">Selecciona un elemento</h3>
-                    <p className="text-[10px] text-zinc-600 mt-2 max-w-[200px] mx-auto leading-relaxed">
-                      Haz clic en una mesa o barra para ver detalles, gestionar pedidos o editar propiedades.
-                    </p>
-                  </div>
-                </div>
+                <StationAnalyticsPanel />
               )
             )}
           </div>
@@ -686,15 +677,15 @@ const App: React.FC = () => {
         )
       }
 
-      {/* QUICK TRANSFER MODAL */}
-      <TransferStockModal
+      {/* GLOBAL STOCK TRANSFER MODAL (Unified) */}
+      <StockTransferModal
         isOpen={isTransferModalOpen}
         onClose={() => setIsTransferModalOpen(false)}
         onSuccess={() => {
           setIsTransferModalOpen(false);
-          // Optional: refresh logic if needed
         }}
-        preselectedFromLocation={transferSourceLocationId}
+        sourceLocationId={transferSourceLocationId}
+      // item prop remains undefined to trigger Selector Mode
       />
 
       {

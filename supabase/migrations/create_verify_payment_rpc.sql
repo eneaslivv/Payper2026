@@ -24,7 +24,7 @@ BEGIN
   SELECT status INTO v_order_status FROM orders WHERE id = p_order_id;
 
   IF p_status = 'approved' THEN
-      v_new_status := 'en preparación'; -- Auto-advance to preparing if paid
+      v_new_status := 'preparing'; -- Auto-advance to preparing if paid
       
       -- Update Order
       UPDATE orders 

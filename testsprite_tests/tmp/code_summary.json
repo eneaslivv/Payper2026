@@ -1,0 +1,192 @@
+{
+    "tech_stack": [
+        "TypeScript",
+        "React 19.2.3",
+        "Vite 6.2.0",
+        "TailwindCSS 4.1.18",
+        "Supabase (PostgreSQL + Auth + Edge Functions)",
+        "Framer Motion",
+        "Recharts",
+        "Google Generative AI (Gemini)",
+        "React Router DOM 7.11.0",
+        "Service Worker (PWA)"
+    ],
+    "features": [
+        {
+            "name": "Authentication",
+            "description": "User login/logout with email/password, password recovery, magic links. Role-based access control with super admin hardcoded emails. AuthContext handles authentication state across the app.",
+            "files": [
+                "pages/Login.tsx",
+                "contexts/AuthContext.tsx",
+                "pages/auth/SetPassword.tsx",
+                "pages/auth/AcceptInvite.tsx"
+            ]
+        },
+        {
+            "name": "Dashboard",
+            "description": "Main dashboard with metrics overview including orders, inventory levels, and financial summaries. Shows real-time business insights.",
+            "files": [
+                "pages/Dashboard.tsx",
+                "components/SmartInsights.tsx"
+            ]
+        },
+        {
+            "name": "Inventory Management",
+            "description": "Complete CRUD for inventory items, stock tracking, alerts for low stock, recipe management with product-ingredient relationships. Largest feature module (176KB).",
+            "files": [
+                "pages/InventoryManagement.tsx",
+                "pages/RecipeManagement.tsx",
+                "components/StockAdjustmentModal.tsx",
+                "components/StockTransferModal.tsx",
+                "components/TransferStockModal.tsx",
+                "components/InventoryAuditLog.tsx",
+                "components/InventoryReports.tsx"
+            ]
+        },
+        {
+            "name": "Menu Design",
+            "description": "Visual menu editor with theming, live preview, product variants, and addons management. Supports category organization and drag-drop ordering.",
+            "files": [
+                "pages/MenuDesign.tsx",
+                "pages/MenuManagement.tsx",
+                "pages/MenuPage.tsx",
+                "components/MenuRenderer.tsx"
+            ]
+        },
+        {
+            "name": "Order Management",
+            "description": "Kanban-style order board for tracking order status, order creation terminal (POS), order scanning via QR codes. Supports takeaway and dine-in orders.",
+            "files": [
+                "pages/OrderBoard.tsx",
+                "pages/OrderCreation.tsx",
+                "pages/OrderConfirmationPage.tsx",
+                "components/ScanOrderModal.tsx",
+                "components/OrderStatusDisplay.tsx",
+                "hooks/useCreateOrder.ts",
+                "hooks/useOrderStatus.ts"
+            ]
+        },
+        {
+            "name": "Client Management (CRM)",
+            "description": "Customer relationship management with client profiles, loyalty points tracking, and client-specific order history.",
+            "files": [
+                "pages/Clients.tsx",
+                "pages/Loyalty.tsx",
+                "components/LoyaltyClientView.tsx",
+                "contexts/ClientContext.tsx"
+            ]
+        },
+        {
+            "name": "Finance Module",
+            "description": "Financial reporting with charts, cash shift management, payment processing integrations (MercadoPago). Invoice processing capabilities.",
+            "files": [
+                "pages/Finance.tsx",
+                "pages/InvoiceProcessor.tsx",
+                "components/PaymentSettings.tsx",
+                "hooks/useCashShift.ts",
+                "hooks/useMercadoPagoConnect.ts",
+                "hooks/useCheckout.ts"
+            ]
+        },
+        {
+            "name": "Staff Management",
+            "description": "Employee/staff management with custom roles and permissions per store. Role-based access control for different sections.",
+            "files": [
+                "pages/StaffManagement.tsx",
+                "components/PermissionGuard.tsx",
+                "components/RoleGuard.tsx"
+            ]
+        },
+        {
+            "name": "Store Settings",
+            "description": "Store configuration including business details, staff invitations, payment settings, and multi-location management.",
+            "files": [
+                "pages/StoreSettings.tsx",
+                "pages/Settings.tsx",
+                "components/LocationManagerModal.tsx",
+                "hooks/useStore.ts"
+            ]
+        },
+        {
+            "name": "SaaS Admin Panel",
+            "description": "Multi-tenant administration for managing multiple stores/venues. Owner invitations, tenant overview, global user management.",
+            "files": [
+                "pages/SaaSAdmin.tsx",
+                "components/admin/LiveActivityPanel.tsx"
+            ]
+        },
+        {
+            "name": "Table Management",
+            "description": "Restaurant table layout management for dine-in service tracking.",
+            "files": [
+                "pages/TableManagement.tsx"
+            ]
+        },
+        {
+            "name": "QR Code System",
+            "description": "QR code generation for tables, scanning functionality, and order linking via QR codes.",
+            "files": [
+                "pages/Scanner.tsx",
+                "pages/QRResolver.tsx",
+                "components/QRCodeCard.tsx",
+                "lib/qrContext.ts",
+                "lib/scanHandler.ts",
+                "hooks/useOrderQR.ts"
+            ]
+        },
+        {
+            "name": "AI Chat Assistant",
+            "description": "Integrated AI chat powered by Google Gemini for generating product descriptions and providing smart insights.",
+            "files": [
+                "components/AIChat.tsx",
+                "components/AIStockInsight.tsx",
+                "hooks/useAIContext.ts"
+            ]
+        },
+        {
+            "name": "Offline Support",
+            "description": "PWA with Service Worker, IndexedDB for local data storage, offline indicator, and sync capabilities.",
+            "files": [
+                "sw.js",
+                "lib/db.ts",
+                "contexts/OfflineContext.tsx",
+                "components/OfflineIndicator.tsx"
+            ]
+        },
+        {
+            "name": "Toast Notifications",
+            "description": "Global toast notification system for user feedback and alerts.",
+            "files": [
+                "components/ToastSystem.tsx"
+            ]
+        },
+        {
+            "name": "Audit Log",
+            "description": "Activity logging and audit trail for tracking user actions across the system.",
+            "files": [
+                "pages/AuditLog.tsx"
+            ]
+        },
+        {
+            "name": "Client Ordering (Public)",
+            "description": "Public-facing pages for clients to view menu, place orders, and track order status.",
+            "files": [
+                "pages/client/ClientMenu.tsx",
+                "pages/client/ClientCart.tsx",
+                "pages/client/ClientOrderStatus.tsx",
+                "pages/client/ClientCheckout.tsx",
+                "components/client/CartDrawer.tsx",
+                "components/client/OrderPickupTicket.tsx"
+            ]
+        },
+        {
+            "name": "Venue Control Panel",
+            "description": "Real-time venue operations including live activity monitoring, kitchen display, and order fulfillment tracking.",
+            "files": [
+                "components/venue-control/VenueControlPanel.tsx",
+                "components/venue-control/KitchenDisplaySystem.tsx",
+                "components/venue-control/LiveActivityPanel.tsx"
+            ]
+        }
+    ]
+}

@@ -31,7 +31,7 @@ BEGIN
   END IF;
 
   IF p_status = 'approved' THEN
-      v_new_status := 'en preparación'; -- Auto-advance to preparing if paid
+      v_new_status := 'preparing'; -- Auto-advance to preparing if paid
       
       -- Update Order
       UPDATE orders 

@@ -27,6 +27,7 @@ interface MenuRendererProps {
     layoutOverride?: 'grid' | 'list';
 
     // Interactivity Props
+    // Interactivity Props
     activeCategory: string;
     onCategoryChange: (category: string) => void;
     searchQuery?: string;
@@ -34,6 +35,7 @@ interface MenuRendererProps {
     allowOrdering?: boolean;
     serviceMode?: 'counter' | 'table' | 'club';
     tableLabel?: string | null;
+    isGuest?: boolean;
 }
 
 export const MenuRenderer: React.FC<MenuRendererProps> = ({
@@ -53,7 +55,8 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
     onSearchChange,
     allowOrdering = true,
     serviceMode,
-    tableLabel
+    tableLabel,
+    isGuest = true // Default to showing if not specified, or false? Usually guest is default state efficiently.
 }) => {
 
     // --- STYLE HELPERS ---
@@ -144,34 +147,38 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
                 </motion.div>
             )}
 
-            {/* GUEST BANNER (Exact Match) */}
-            <div className="px-6 pt-6 mb-4">
-                <div
-                    className={`relative group border ${radiusClass} p-7 overflow-hidden shadow-2xl transition-all hover:scale-[1.01]`}
-                    style={{
-                        backgroundColor: theme.cardStyle === 'glass' ? `${theme.accentColor}10` : theme.surfaceColor,
-                        borderColor: `${theme.accentColor}20`
-                    }}
-                >
-                    <div className="absolute top-0 right-0 w-32 h-32 blur-[50px] rounded-full -mr-16 -mt-16 pointer-events-none" style={{ backgroundColor: `${theme.accentColor}30` }} />
-                    <div className="flex items-center justify-between relative z-10">
-                        <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-1.5 mb-1">
-                                <span className="w-1 h-1 rounded-full animate-pulse" style={{ backgroundColor: theme.accentColor }} />
-                                <span className="text-[7px] font-black uppercase tracking-[0.3em] italic" style={{ color: `${theme.accentColor}CC` }}>Status: Guest_Mode</span>
+            {/* GUEST BANNER (Conditional) */}
+            {isGuest && (
+                <div className="px-6 pt-6 mb-4">
+                    <div
+                        className={`relative group border ${radiusClass} p-7 overflow-hidden shadow-2xl transition-all hover:scale-[1.01]`}
+                        style={{
+                            backgroundColor: theme.cardStyle === 'glass' ? `${theme.accentColor}10` : theme.surfaceColor,
+                            borderColor: `${theme.accentColor}20`
+                        }}
+                    >
+                        <div className="absolute top-0 right-0 w-32 h-32 blur-[50px] rounded-full -mr-16 -mt-16 pointer-events-none" style={{ backgroundColor: `${theme.accentColor}30` }} />
+                        <div className="flex items-center justify-between relative z-10">
+                            <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                    <span className="w-1 h-1 rounded-full animate-pulse" style={{ backgroundColor: theme.accentColor }} />
+                                    <span className="text-[7px] font-black uppercase tracking-[0.3em] italic" style={{ color: `${theme.accentColor}CC` }}>Sin Filas</span>
+                                </div>
+                                <h3 className="text-[20px] font-black uppercase italic tracking-tighter leading-none" style={{ color: theme.textColor }}>Pide desde tu mesa</h3>
+                                <p className="text-[10px] font-medium tracking-tight mt-1 max-w-[180px]" style={{ color: `${theme.textColor}4D` }}>
+                                    Pedí desde acá o pedí sin fila
+                                </p>
                             </div>
-                            <h3 className="text-[20px] font-black uppercase italic tracking-tighter leading-none" style={{ color: theme.textColor }}>Pide desde tu mesa</h3>
-                            <p className="text-[10px] font-medium tracking-tight mt-1 max-w-[180px]" style={{ color: `${theme.textColor}4D` }}>Evita las filas, realiza tu pedido y acumula beneficios.</p>
-                        </div>
-                        <div
-                            className="w-14 h-14 rounded-full text-black flex items-center justify-center transform transition-transform group-hover:rotate-12"
-                            style={{ backgroundColor: theme.accentColor, boxShadow: `0 10px 25px ${theme.accentColor}40` }}
-                        >
-                            <span className="material-symbols-outlined font-black text-[28px]">bolt</span>
+                            <div
+                                className="w-14 h-14 rounded-full text-black flex items-center justify-center transform transition-transform group-hover:rotate-12"
+                                style={{ backgroundColor: theme.accentColor, boxShadow: `0 10px 25px ${theme.accentColor}40` }}
+                            >
+                                <span className="material-symbols-outlined font-black text-[28px]">bolt</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             {/* SEARCH BAR */}
             <div className="px-6 py-2">
@@ -268,17 +275,17 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
                                     <motion.div
                                         layout
                                         initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
+                                        animate={{ opacity: product.isOutOfStock ? 0.6 : 1, x: 0 }}
                                         exit={{ opacity: 0, scale: 0.95 }}
                                         transition={{ delay: i * 0.05 }}
                                         key={product.id}
                                         onClick={() => onItemClick && onItemClick(product)}
-                                        className={`flex gap-4 p-4 items-center group transition-all duration-300 ${radiusClass} border cursor-pointer active:scale-[0.98]`}
+                                        className={`flex gap-4 p-4 items-center group transition-all duration-300 ${radiusClass} border cursor-pointer active:scale-[0.98] relative overflow-hidden`}
                                         style={cardStyles}
                                     >
                                         {theme.showImages && (
                                             <div
-                                                className={`w-20 h-20 shrink-0 bg-cover bg-center ${radiusClass} border border-white/5 relative overflow-hidden`}
+                                                className={`w-20 h-20 shrink-0 bg-cover bg-center ${radiusClass} border border-white/5 relative overflow-hidden ${product.isOutOfStock ? 'grayscale' : ''}`}
                                                 style={{ backgroundImage: `url(${imageUrl})` }}
                                             >
                                                 <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
@@ -286,7 +293,10 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
                                         )}
                                         <div className="flex-1 min-w-0 flex flex-col justify-center">
                                             <div className="flex flex-col gap-1">
-                                                <h3 className="font-black text-[15px] uppercase tracking-tighter leading-none italic-black">{product.name}</h3>
+                                                <h3 className="font-black text-[15px] uppercase tracking-tighter leading-none italic-black">
+                                                    {product.name}
+                                                    {product.isOutOfStock && <span className="ml-2 text-[8px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-bold tracking-widest uppercase">Agotado</span>}
+                                                </h3>
                                                 {theme.showDescription && (
                                                     <p className="text-[10px] font-medium opacity-40 leading-tight line-clamp-1">{product.description}</p>
                                                 )}
@@ -295,9 +305,9 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
                                                 )}
                                             </div>
                                         </div>
-                                        {showAdd && (
+                                        {showAdd && !product.isOutOfStock && (
                                             <button
-                                                onClick={() => onAddToCart && onAddToCart(product)}
+                                                onClick={(e) => { e.stopPropagation(); onAddToCart && onAddToCart(product); }}
                                                 className="w-10 h-10 rounded-full flex items-center justify-center transition-all bg-white/5 hover:bg-white/10 group-hover:scale-110"
                                                 style={{ border: `1px solid ${theme.accentColor}20` }}
                                             >
@@ -313,23 +323,23 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
                                 <motion.div
                                     layout
                                     initial={{ opacity: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, scale: 1 }}
+                                    animate={{ opacity: product.isOutOfStock ? 0.6 : 1, scale: 1 }}
                                     exit={{ opacity: 0, scale: 0.95 }}
-                                    whileHover={{ y: -4 }}
+                                    whileHover={{ y: product.isOutOfStock ? 0 : -4 }}
                                     transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                                     key={product.id}
                                     onClick={() => onItemClick && onItemClick(product)}
-                                    className={`flex flex-col border overflow-hidden ${radiusClass} group cursor-pointer active:scale-[0.98]`}
+                                    className={`flex flex-col border overflow-hidden ${radiusClass} group cursor-pointer active:scale-[0.98] ${product.isOutOfStock ? 'grayscale-[0.5]' : ''}`}
                                     style={cardStyles}
                                 >
                                     {theme.showImages && (
-                                        <div className="aspect-square bg-cover bg-center relative overflow-hidden" style={{ backgroundImage: `url(${imageUrl})` }}>
+                                        <div className={`aspect-square bg-cover bg-center relative overflow-hidden ${product.isOutOfStock ? 'grayscale' : ''}`} style={{ backgroundImage: `url(${imageUrl})` }}>
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity" />
 
-                                            {showAdd && (
+                                            {showAdd && !product.isOutOfStock && (
                                                 <motion.button
                                                     whileTap={{ scale: 0.9 }}
-                                                    onClick={() => onAddToCart && onAddToCart(product)}
+                                                    onClick={(e) => { e.stopPropagation(); onAddToCart && onAddToCart(product); }}
                                                     className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full shadow-2xl scale-0 group-hover:scale-100 transition-all duration-300 backdrop-blur-md"
                                                     style={{ backgroundColor: `${theme.accentColor}`, color: '#000' }}
                                                 >
@@ -337,21 +347,31 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
                                                 </motion.button>
                                             )}
 
+                                            {product.isOutOfStock && (
+                                                <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
+                                                    <span className="px-3 py-1 bg-black/80 border border-white/10 rounded-full text-[9px] font-black uppercase tracking-[0.2em] text-white">
+                                                        Agotado
+                                                    </span>
+                                                </div>
+                                            )}
+
                                             <div className="absolute inset-0 border border-white/5 pointer-events-none" />
                                         </div>
                                     )}
                                     <div className="p-4 flex-1 flex flex-col justify-between">
                                         <div className="space-y-1.5">
-                                            <h3 className="font-black text-[14px] uppercase tracking-tighter leading-none italic-black break-words">{product.name}</h3>
+                                            <h3 className="font-black text-[14px] uppercase tracking-tighter leading-none italic-black break-words">
+                                                {product.name}
+                                            </h3>
                                             {theme.showDescription && product.description && (
                                                 <p className="text-[9px] font-medium opacity-40 line-clamp-1 leading-tight">{product.description}</p>
                                             )}
                                         </div>
                                         {theme.showPrices && (
                                             <div className="mt-3 flex items-center justify-between">
-                                                <span className="font-black text-[15px] italic-black" style={{ color: theme.accentColor }}>${price.toLocaleString('es-AR')}</span>
-                                                {!theme.showImages && showAdd && (
-                                                    <button onClick={() => onAddToCart && onAddToCart(product)} className="w-8 h-8 rounded-full flex items-center justify-center bg-white/5">
+                                                <span className="font-black text-[15px] italic-black" style={product.isOutOfStock ? { color: '#999', textDecoration: 'line-through' } : { color: theme.accentColor }}>${price.toLocaleString('es-AR')}</span>
+                                                {!theme.showImages && showAdd && !product.isOutOfStock && (
+                                                    <button onClick={(e) => { e.stopPropagation(); onAddToCart && onAddToCart(product); }} className="w-8 h-8 rounded-full flex items-center justify-center bg-white/5">
                                                         <span className="material-symbols-outlined text-xs" style={{ color: theme.accentColor }}>add</span>
                                                     </button>
                                                 )}

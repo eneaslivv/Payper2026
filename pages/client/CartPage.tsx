@@ -79,7 +79,7 @@ const CartPage: React.FC = () => {
                     <div className="flex-1 flex flex-col justify-center min-w-0">
                       <div className="flex justify-between items-start">
                         <p className="text-[17px] font-black uppercase italic truncate tracking-tight" style={{ color: textColor }}>{item.name}</p>
-                        <button onClick={() => removeFromCart(item.id, item.size || 'Chico')} className="hover:text-red-500 transition-colors -mt-1 -mr-1 p-2" style={{ color: `${textColor}80` }}>
+                        <button onClick={() => removeFromCart(item.id, item.size)} className="hover:text-red-500 transition-colors -mt-1 -mr-1 p-2" style={{ color: `${textColor}80` }}>
                           <span className="material-symbols-outlined text-xl">close</span>
                         </button>
                       </div>
@@ -94,10 +94,10 @@ const CartPage: React.FC = () => {
                             borderColor: `${textColor}0D`
                           }}
                         >
-                          <button onClick={() => updateQuantity(item.id, -1, item.size || 'Chico')} className="size-10 flex items-center justify-center rounded-full transition-colors opacity-50 hover:opacity-100" style={{ color: textColor }}><span className="material-symbols-outlined text-sm">remove</span></button>
+                          <button onClick={() => updateQuantity(item.id, -1, item.size)} className="size-10 flex items-center justify-center rounded-full transition-colors opacity-50 hover:opacity-100" style={{ color: textColor }}><span className="material-symbols-outlined text-sm">remove</span></button>
                           <span className="text-xs font-black w-4 text-center tabular-nums" style={{ color: textColor }}>{item.quantity}</span>
                           <button
-                            onClick={() => updateQuantity(item.id, 1, item.size || 'Chico')}
+                            onClick={() => updateQuantity(item.id, 1, item.size)}
                             className="size-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
                             style={{ color: accentColor }}
                           >

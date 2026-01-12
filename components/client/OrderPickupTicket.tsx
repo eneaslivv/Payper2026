@@ -294,7 +294,15 @@ export const OrderPickupTicket = ({ order, storeSlug, theme }: OrderPickupTicket
                         <div className="flex flex-col gap-3">
                             {order.order_items?.map((item, idx) => (
                                 <div key={idx} className="flex justify-between items-center text-sm">
-                                    <span className="font-bold" style={{ color: `${textColor}99` }}>{item.quantity}x <span style={{ color: textColor }}>{item.product?.name || 'Producto'}</span></span>
+                                    <span className="font-bold" style={{ color: `${textColor}99` }}>
+                                        {item.quantity}x{' '}
+                                        <span style={{
+                                            color: (item as any).isDeleted ? `${textColor}50` : textColor,
+                                            fontStyle: (item as any).isDeleted ? 'italic' : 'normal'
+                                        }}>
+                                            {item.name || item.product?.name || 'Producto'}
+                                        </span>
+                                    </span>
                                 </div>
                             ))}
                             {!order.order_items?.length && <p className="text-xs italic" style={{ color: `${textColor}80` }}>Cafe de especialidad</p>}

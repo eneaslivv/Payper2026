@@ -23,14 +23,35 @@ serve(async (req) => {
         }
 
         const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-        const { email: rawEmail, fullName, role, storeId } = await req.json();
+        // ACCEPT roleId in addition to role
+        const { email: rawEmail, fullName, role, roleId, storeId } = await req.json();
 
         const email = rawEmail?.trim().toLowerCase();
         if (!email) throw new Error('Email es obligatorio');
-        if (!role) throw new Error('Role es obligatorio');
         if (!storeId) throw new Error('storeId es obligatorio');
+        // Relaxed check: need either role or roleId
+        if (!role && !roleId) throw new Error('Rol es obligatorio');
 
-        console.log(`[INVITE-MEMBER] Processing: ${email}, role: ${role}, store: ${storeId}`);
+        // RESOLVE ROLE NAME
+        let roleNameForEmail = role || 'Staff'; // Default fallback
+        let targetRoleId = roleId || null;
+
+        if (roleId) {
+            // Fetch the custom role name
+            const { data: roleData, error: roleError } = await supabaseAdmin
+                .from('cafe_roles')
+                .select('name')
+                .eq('id', roleId)
+                .single();
+
+            if (roleData) {
+                roleNameForEmail = roleData.name;
+            } else {
+                console.warn(`[INVITE-MEMBER] Role ID ${roleId} not found, using fallback.`);
+            }
+        }
+
+        console.log(`[INVITE-MEMBER] Processing: ${email}, role: ${roleNameForEmail}, store: ${storeId}`);
 
         // 1. AUTHORIZATION: Check if caller can manage this store
         const authHeader = req.headers.get('Authorization');
@@ -80,9 +101,21 @@ serve(async (req) => {
             wasExisting = true;
         } else {
             // Create new invitation
+            // Store roleId in 'role' column? Or keep it text name? 
+            // team_invitations 'role' column is text. We can store the name or ID.
+            // Storing name is better for display if ID relation is lost/not fetched.
+            // Or store ID if we want strict link.
+            // For now, let's store the NAME if available, or 'staff'.
+            // Actually, if we use ID, we might break existing assumption.
+            // Let's store roleNameForEmail.
             const { data: newInvite, error: inviteError } = await supabaseAdmin
                 .from('team_invitations')
-                .insert({ store_id: storeId, email, role, status: 'pending' })
+                .insert({
+                    store_id: storeId,
+                    email,
+                    role: roleNameForEmail, // Store readable name or ID? Let's use Name for now.
+                    status: 'pending'
+                })
                 .select('id, token')
                 .single();
 
@@ -102,7 +135,12 @@ serve(async (req) => {
             const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
                 email,
                 email_confirm: true,
-                user_metadata: { full_name: fullName || '', role: 'staff', store_id: storeId }
+                user_metadata: {
+                    full_name: fullName || '',
+                    role: 'staff', // System role 
+                    role_id: targetRoleId, // Custom Role ID
+                    store_id: storeId
+                }
             });
             if (createError) throw createError;
             targetUserId = newUser.user.id;
@@ -115,7 +153,8 @@ serve(async (req) => {
             id: targetUserId,
             email: email,
             full_name: fullName || email.split('@')[0],
-            role: 'staff',
+            role: 'staff', // Always 'staff' for permissions system baseline
+            role_id: targetRoleId, // Link to custom role
             store_id: storeId,
             is_active: false
         });
@@ -141,7 +180,7 @@ serve(async (req) => {
             p_event_id: invitationId,
             p_event_entity: 'invitation',
             p_template_key: 'member_invite',
-            p_payload_core: { store_name: storeName, member_name: fullName, role: role, accept_url: inviteLink },
+            p_payload_core: { store_name: storeName, member_name: fullName, role: roleNameForEmail, accept_url: inviteLink },
             p_idempotency_key: idempotencyKey,
             p_triggered_by: 'api',
             p_trigger_source: 'invite-member'
@@ -155,11 +194,13 @@ serve(async (req) => {
             if (resendKey) {
                 console.log(`[INVITE-MEMBER] Sending email to ${email}...`);
 
+                // Map commonly used English roles to Spanish for the email body if needed
                 const roleMap: Record<string, string> = {
                     'admin': 'Administrador', 'manager': 'Gerente', 'staff': 'Staff',
                     'cashier': 'Cajero', 'kitchen': 'Cocina', 'waiter': 'Mesero', 'owner': 'Propietario'
                 };
-                const roleName = roleMap[role] || role;
+                // Use fetched name, or mapped name, or raw.
+                const displayRole = roleMap[roleNameForEmail] || roleNameForEmail;
 
                 const resendRes = await fetch('https://api.resend.com/emails', {
                     method: 'POST',
@@ -172,7 +213,7 @@ serve(async (req) => {
                             <div style="font-family:sans-serif; background:#0F110F; color:#fff; padding:40px; border-radius:12px; border: 1px solid #4ADE80; max-width: 500px; margin: auto;">
                                 <h1 style="color:#4ADE80; font-size: 24px; font-weight: 800; margin-bottom: 24px;">${storeName}</h1>
                                 <p style="font-size: 16px; line-height: 1.5; margin-bottom: 16px;">Hola <b>${fullName || 'Nuevo miembro'}</b>,</p>
-                                <p style="font-size: 14px; line-height: 1.5; color: #a1a1aa; margin-bottom: 24px;">Has sido invitado como <b style="color:#4ADE80">${roleName}</b> al equipo de <b style="color:#fff">${storeName}</b>.</p>
+                                <p style="font-size: 14px; line-height: 1.5; color: #a1a1aa; margin-bottom: 24px;">Has sido invitado como <b style="color:#4ADE80">${displayRole}</b> al equipo de <b style="color:#fff">${storeName}</b>.</p>
                                 <div style="background: rgba(74, 222, 128, 0.1); padding: 16px; border-radius: 8px; margin-bottom: 24px;">
                                     <p style="font-size: 12px; color: #4ADE80; margin: 0; text-transform: uppercase; font-weight: bold;">Tu acceso está listo</p>
                                 </div>

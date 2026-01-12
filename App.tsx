@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
-import AdminDashboard from './pages/AdminDashboard';
+
 import DebugPayment from './pages/DebugPayment';
 import Dashboard from './pages/Dashboard';
 import InventoryManagement from './pages/InventoryManagement';
@@ -679,7 +679,13 @@ const MainRouter: React.FC = () => {
     const lastSlug = localStorage.getItem('last_store_slug');
     if (lastSlug) {
       console.log('🔒 Security: Client attempting to access Admin. Redirecting to:', lastSlug);
-      return <Navigate to={`/m/${lastSlug}`} replace />;
+      window.location.hash = `/m/${lastSlug}`;
+      window.location.reload();
+      return (
+        <div className="flex flex-col h-screen w-full items-center justify-center bg-black">
+          <div className="size-8 rounded-full border-4 border-white/10 border-t-neon animate-spin"></div>
+        </div>
+      );
     }
     // Fallback if we don't know where they belong
     return (

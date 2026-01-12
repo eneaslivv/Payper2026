@@ -135,6 +135,22 @@ const SetupOwner: React.FC = () => {
             const { error } = await supabase.auth.updateUser({ password });
             if (error) throw error;
 
+            // Update store onboarding_status to COMPLETED
+            const { data: { session } } = await supabase.auth.getSession();
+            const storeId = session?.user?.user_metadata?.store_id;
+            if (storeId) {
+                const { error: storeUpdateError } = await (supabase
+                    .from('stores') as any)
+                    .update({ onboarding_status: 'COMPLETED' })
+                    .eq('id', storeId);
+
+                if (storeUpdateError) {
+                    console.warn('[SetupOwner] Failed to update onboarding_status:', storeUpdateError);
+                } else {
+                    console.log('[SetupOwner] Store onboarding_status set to COMPLETED');
+                }
+            }
+
             setSetupComplete(true);
             addToast('¡Cuenta configurada!', 'success', 'Redirigiendo al dashboard...');
 
