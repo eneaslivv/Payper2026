@@ -121,6 +121,11 @@ const SaaSLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </div>
 
         <div className="p-4 border-t border-white/5">
+          {/* PAYPER BRANDING */}
+          <div className="w-full flex justify-center pb-4 pt-1 opacity-40 hover:opacity-100 transition-opacity duration-500">
+            <img src="/src/assets/payper-branding.png" alt="Payper" className="w-20 object-contain" />
+          </div>
+
           <button
             type="button"
             onMouseDown={() => {
@@ -338,6 +343,12 @@ const OperativeLayout: React.FC<{ children: React.ReactNode, activeNode: CafeNod
 
         {/* MENÚ DE USUARIO */}
         <div className="p-3 border-t border-white/5 bg-[#0D0F0D] relative" ref={userMenuRef}>
+
+          {/* PAYPER BRANDING */}
+          <div className="w-full flex justify-center pb-4 pt-1 opacity-40 hover:opacity-100 transition-opacity duration-500">
+            <img src="/src/assets/payper-branding.png" alt="Payper" className="w-20 object-contain" />
+          </div>
+
           {isUserMenuOpen && (
             <div className="absolute bottom-full left-3 right-3 mb-2 bg-[#141714] border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-2 duration-200 z-[60]">
               <div className="p-3 border-b border-white/5 bg-white/[0.02]">
