@@ -24,6 +24,8 @@ const Finance: React.FC = () => {
     avgTicket: 0,
     orderCount: 0,
     revenueToday: 0,
+    topupsToday: 0, // NEW
+    totalLiability: 0, // NEW
     loyaltyCost: 0 // Sum of monetary_cost from loyalty redemptions
   });
   const [performanceData, setPerformanceData] = useState<any[]>([]);
@@ -84,7 +86,7 @@ const Finance: React.FC = () => {
         const startOfDay = new Date(today.setHours(0, 0, 0, 0)).toISOString();
         const endOfDay = new Date(today.setHours(23, 59, 59, 999)).toISOString();
 
-        // Fetch orders for the store
+        // 1. Fetch orders for the store
         const { data: orders, error } = await supabase
           .from('orders')
           .select('total_amount, created_at, status')
@@ -94,20 +96,45 @@ const Finance: React.FC = () => {
 
         if (error) throw error;
 
+        // 2. Fetch Wallet Top-ups for today
+        const { data: topups, error: topupError } = await (supabase as any)
+          .from('wallet_ledger')
+          .select('amount')
+          .eq('store_id', profile.store_id)
+          .gte('created_at', startOfDay)
+          .lte('created_at', endOfDay)
+          .eq('entry_type', 'topup');
+
+        if (topupError) console.error('Error fetching topups', topupError);
+
+        // 3. Fetch Total Wallet Liability (All clients balance)
+        const { data: clientsData, error: clientError } = await supabase
+          .from('clients')
+          .select('wallet_balance')
+          .eq('store_id', profile.store_id);
+
+        if (clientError) console.error('Error fetching clients liability', clientError);
+
         // Calculate metrics
         const completedOrders = orders?.filter(o => o.status !== 'cancelled') || [];
-        const totalRevenue = completedOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
+        const totalSales = completedOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
+        const totalTopups = (topups || []).reduce((sum: number, t: any) => sum + (Number(t.amount) || 0), 0);
+        const totalLiability = (clientsData || []).reduce((sum, c) => sum + (c.wallet_balance || 0), 0);
+
         const orderCount = completedOrders.length;
-        const avgTicket = orderCount > 0 ? totalRevenue / orderCount : 0;
+        const avgTicket = orderCount > 0 ? totalSales / orderCount : 0;
 
         setMetrics({
-          totalRevenue,
+          totalRevenue: totalSales, // Keep as Sales Volume
           avgTicket,
           orderCount,
-          revenueToday: totalRevenue
+          revenueToday: totalSales,
+          topupsToday: totalTopups, // New Metric
+          totalLiability, // New Metric
+          loyaltyCost: metrics.loyaltyCost // Preserve existing if not updated here (it is updated in advanced)
         });
 
-        // Generate performance data by hour
+        // Generate performance data by hour (Client Side fallback)
         const hourlyData: Record<string, number> = {};
         completedOrders.forEach(o => {
           const hour = new Date(o.created_at).getHours();
@@ -120,6 +147,7 @@ const Finance: React.FC = () => {
           revenue
         })).sort((a, b) => a.date.localeCompare(b.date));
 
+        // Note: RPC will overwrite this, but good for initial load
         setPerformanceData(chartData);
 
       } catch (err) {
@@ -226,20 +254,32 @@ const Finance: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
             <FinanceCard
               label="Ingresos Hoy"
-              value={`$${metrics.revenueToday.toFixed(2)}`}
+              value={`$${(metrics.revenueToday || 0).toFixed(2)}`}
               trend={metrics.orderCount > 0 ? `${metrics.orderCount} pedidos` : '-'}
               type={metrics.revenueToday > 0 ? 'positive' : 'neutral'}
               icon="payments"
             />
             <FinanceCard
               label="Ticket Promedio"
-              value={`$${metrics.avgTicket.toFixed(2)}`}
+              value={`$${(metrics.avgTicket || 0).toFixed(2)}`}
               trend="-"
               type="neutral"
               icon="receipt_long"
             />
-            <FinanceCard label="Costo Lealtad" value={`$${metrics.loyaltyCost.toFixed(2)}`} trend={metrics.loyaltyCost > 0 ? 'Canjes activos' : '-'} type={metrics.loyaltyCost > 0 ? 'negative' : 'neutral'} icon="loyalty" />
-            <FinanceCard label="Ajustes Stock" value="$0.00" trend="-" type="neutral" icon="inventory_2" />
+            <FinanceCard
+              label="Cargas Wallet (Hoy)"
+              value={`$${(metrics.topupsToday || 0).toFixed(2)}`}
+              trend="Fondos Ingresados"
+              type="positive"
+              icon="account_balance_wallet"
+            />
+            <FinanceCard
+              label="Pasivo: Saldo en Billeteras"
+              value={`$${(metrics.totalLiability || 0).toFixed(2)}`}
+              trend="Dinero en cuentas sin consumir"
+              type="neutral"
+              icon="savings"
+            />
           </div>
 
           <div className="lg:col-span-12 bg-[#141714] rounded-3xl border border-white/5 p-6 shadow-soft mb-8">
@@ -294,7 +334,11 @@ const Finance: React.FC = () => {
                     </>
                   )}
                   {chartFilter === 'wallet' && (
-                    <Area type="monotone" dataKey="wallet_sales" stroke="#8b5cf6" strokeWidth={3} fillOpacity={0.2} fill="#8b5cf6" name="Consumo Wallet" />
+                    <>
+                      <Area type="monotone" dataKey="wallet_sales" stroke="#8b5cf6" strokeWidth={3} fillOpacity={0.2} fill="#8b5cf6" name="Consumo Wallet" />
+                      <Area type="monotone" dataKey="cash_topups" stroke="#4ade80" strokeWidth={2} strokeDasharray="5 5" fill="transparent" name="Cargas Efectivo" />
+                      <Area type="monotone" dataKey="transfer_topups" stroke="#facc15" strokeWidth={2} strokeDasharray="5 5" fill="transparent" name="Cargas Transfer" />
+                    </>
                   )}
                 </AreaChart>
               </ResponsiveContainer>

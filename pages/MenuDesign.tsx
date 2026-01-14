@@ -1036,7 +1036,16 @@ const MenuDesign: React.FC = () => {
             if (updates.name !== undefined) dbUpdates.name = updates.name;
             if (updates.description !== undefined) dbUpdates.description = updates.description;
             if (updates.image_url !== undefined) dbUpdates.image_url = updates.image_url;
-            if (updates.price !== undefined) dbUpdates.price = updates.price;
+            if (updates.price !== undefined) {
+                // Fix: Verify target table to map column correctly
+                if (table === 'products') {
+                    dbUpdates.base_price = updates.price;
+                    // Ensure 'price' is never sent to products table
+                    if ('price' in dbUpdates) delete dbUpdates.price;
+                } else {
+                    dbUpdates.price = updates.price;
+                }
+            }
 
             // Handle Visibility Mapping
             if (updates.is_menu_visible !== undefined) {

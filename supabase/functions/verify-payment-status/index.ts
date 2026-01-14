@@ -63,7 +63,8 @@ serve(async (req) => {
         // 3. Search Payment in Mercado Pago by External Reference (Order ID)
         const searchUrl = new URL('https://api.mercadopago.com/v1/payments/search');
         searchUrl.searchParams.append('external_reference', order_id);
-        searchUrl.searchParams.append('status', 'approved'); // We only care about approved ones for now
+        // Removed status filter to allow finding pending/in_process payments
+        // searchUrl.searchParams.append('status', 'approved');
 
         console.log(`[Verify] Searching MP: ${searchUrl.toString()}`);
 

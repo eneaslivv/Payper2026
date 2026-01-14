@@ -210,7 +210,8 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 o.status === 'received' ||
                 o.status === 'pending' ||
                 o.status === 'preparing' ||
-                o.status === 'ready'
+                o.status === 'ready' ||
+                o.status === 'paid'  // MP payments set status to 'paid'
             ) || [];
 
             setActiveOrders(activeOrdersFound);
@@ -459,14 +460,26 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
                 // Helper: Load all products directly (fallback)
                 async function loadAllProducts() {
-                    const { data, error } = await (supabase.from('inventory_items') as any)
+                    // Load inventory items
+                    const { data: inventoryData, error: invError } = await (supabase.from('inventory_items') as any)
                         .select('*')
                         .eq('store_id', store.id)
                         .order('name', { ascending: true });
 
-                    if (error) throw error;
+                    if (invError) console.error('[ClientContext] Error loading inventory:', invError);
 
-                    const mappedProducts: MenuItem[] = (data || []).map((item: any) => {
+                    // Also load products table (recipes/composed items)
+                    const { data: productsData, error: prodError } = await (supabase.from('products') as any)
+                        .select('*')
+                        .eq('store_id', store.id)
+                        .eq('active', true)
+                        .eq('is_visible', true)
+                        .order('name', { ascending: true });
+
+                    if (prodError) console.error('[ClientContext] Error loading products:', prodError);
+
+                    // Map inventory items
+                    const inventoryProducts: MenuItem[] = (inventoryData || []).map((item: any) => {
                         const catName = item.category_id ? categoryMap[item.category_id] : (item.category || 'General');
                         return {
                             id: item.id,
@@ -479,11 +492,33 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                             isOutOfStock: (item.current_stock !== undefined && item.current_stock <= 0) || false,
                             variants: item.variants || [],
                             addons: item.addons || [],
-                            item_type: (item.cost > 0 || item.price > 0) ? 'sellable' : 'ingredient',
+                            item_type: 'sellable' as const,
                         };
                     });
-                    setProducts(mappedProducts);
+
+                    // Map products (recipes)
+                    const recipeProducts: MenuItem[] = (productsData || []).map((item: any) => {
+                        return {
+                            id: item.id,
+                            name: item.name,
+                            description: item.description || '',
+                            price: item.base_price || 0,
+                            image: item.image_url || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
+                            category: item.category || 'General',
+                            isPopular: false,
+                            isOutOfStock: !item.is_available,
+                            variants: [],
+                            addons: [],
+                            item_type: 'product' as const, // Mark as product (has recipe)
+                        };
+                    });
+
+                    // Combine: Products first (composed items), then inventory items
+                    // Filter inventory to only show items with price > 0 (sellable)
+                    const sellableInventory = inventoryProducts.filter(p => p.price > 0);
+                    setProducts([...recipeProducts, ...sellableInventory]);
                 }
+
 
                 // Set categories: Filter empty names and normalize
                 if (dbCategories.length > 0) {

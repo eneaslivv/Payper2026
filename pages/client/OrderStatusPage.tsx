@@ -124,6 +124,7 @@ export default function OrderStatusPage() {
                 }
             } else if (data?.status === 'pending') {
                 console.log("[OrderStatusPage] Payment still pending in MP");
+                addToast("Tu pago se está procesando...", "info");
             }
         } catch (e) {
             console.error("[OrderStatusPage] Verification failed:", e);
@@ -134,8 +135,8 @@ export default function OrderStatusPage() {
     };
 
     useEffect(() => {
-        // 🛡️ Don't fetch until auth is ready
-        if (authLoading) return;
+        // 🛡️ Don't fetch until auth is ready or if missing orderId
+        if (authLoading || !orderId) return;
 
         // 1. Carga inicial
         fetchOrder();
@@ -188,8 +189,22 @@ export default function OrderStatusPage() {
                 console.log("Realtime status for order:", status);
             });
 
-        return () => { supabase.removeChannel(subscription); };
-    }, [orderId, authLoading]);
+        // 3. POLLING FALLBACK (Every 10s if pending)
+        // This ensures that if the webhook fails or realtime disconnects, we still check.
+        const pollInterval = setInterval(() => {
+            if (order && (order.status === 'pending' || order.payment_status === 'pending')) {
+                console.log("🔄 [Polling] Auto-verifying payment status...");
+                // Pass existing payment ID if we have it to help the verification
+                const mpParams = getMPParams();
+                verifyPaymentStatus(orderId, mpParams.payment_id || undefined);
+            }
+        }, 10000); // 10 seconds
+
+        return () => {
+            supabase.removeChannel(subscription);
+            clearInterval(pollInterval);
+        };
+    }, [orderId, authLoading, order?.status, order?.payment_status]); // Added dependencies to restart poll check if status changes
 
     // UI: Clean Error State
     if (error) return (

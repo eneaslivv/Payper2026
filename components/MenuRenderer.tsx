@@ -256,7 +256,9 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
                     className={activeLayout === 'grid' ? `grid gap-3 md:gap-6 ${theme.columns === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3'}` : 'flex flex-col gap-3 md:gap-4'}
                 >
                     <AnimatePresence>
-                        {products.map((product, i) => {
+                        {products.map((productRaw, i) => {
+                            const isOutOfStock = productRaw.isOutOfStock || productRaw.is_available === false;
+                            const product = { ...productRaw, isOutOfStock };
                             const price = getPrice(product);
                             const imageUrl = getImage(product);
 

@@ -28,7 +28,7 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
     const [selectedItem, setSelectedItem] = useState(preselectedItemId || '');
     const [fromLocation, setFromLocation] = useState(preselectedFromLocation || '');
     const [toLocation, setToLocation] = useState('');
-    const [quantity, setQuantity] = useState(1);
+    const [quantity, setQuantity] = useState('1');
     const [bulkQuantities, setBulkQuantities] = useState<Record<string, number>>({});
     const [reason, setReason] = useState('');
 
@@ -95,7 +95,8 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
             return;
         }
 
-        if (!isBulk && (!selectedItem || quantity > availableStock)) {
+        const numQuantity = parseInt(quantity) || 0;
+        if (!isBulk && (!selectedItem || numQuantity > availableStock || numQuantity < 1)) {
             addToast(`Stock insuficiente o producto no seleccionado. Disponible: ${availableStock}`, 'error');
             return;
         }
@@ -135,7 +136,7 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
                     p_from_location: fromLocation,
                     p_to_location: toLocation,
                     p_item_id: selectedItem,
-                    p_quantity: quantity,
+                    p_quantity: parseInt(quantity) || 1,
                     p_reason: reason,
                     p_source_ui: 'locations'
                 });
@@ -159,7 +160,7 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
         setSelectedItem('');
         setFromLocation('');
         setToLocation('');
-        setQuantity(1);
+        setQuantity('1');
         setBulkQuantities({});
         setReason('');
     };
@@ -171,12 +172,12 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
     const toLocationData = locations.find(l => l.id === toLocation);
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4">
             {/* Backdrop */}
             <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
 
             {/* Modal */}
-            <div className="relative bg-[#0D0F0D] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4">
+            <div className="relative z-10 bg-[#0D0F0D] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-white/5">
                     <div className="flex items-center gap-3">
@@ -299,7 +300,11 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
                             </div>
                             <div className="flex items-center gap-3">
                                 <button
-                                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                                    type="button"
+                                    onClick={() => {
+                                        const current = parseInt(quantity) || 1;
+                                        setQuantity(String(Math.max(1, current - 1)));
+                                    }}
                                     className="size-12 rounded-xl bg-white/5 border border-white/10 text-white font-black text-lg hover:bg-white/10 transition-all"
                                 >
                                     -
@@ -307,13 +312,22 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
                                 <input
                                     type="number"
                                     value={quantity}
-                                    onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                                    onChange={(e) => setQuantity(e.target.value)}
+                                    onBlur={(e) => {
+                                        const val = parseInt(e.target.value) || 1;
+                                        setQuantity(String(Math.max(1, Math.min(availableStock || 999, val))));
+                                    }}
                                     min={1}
-                                    max={availableStock}
+                                    max={availableStock || undefined}
                                     className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-center text-xl font-black text-white focus:border-blue-500 outline-none"
                                 />
                                 <button
-                                    onClick={() => setQuantity(Math.min(availableStock, quantity + 1))}
+                                    type="button"
+                                    onClick={() => {
+                                        const current = parseInt(quantity) || 0;
+                                        const max = availableStock || 999;
+                                        setQuantity(String(Math.min(max, current + 1)));
+                                    }}
                                     className="size-12 rounded-xl bg-white/5 border border-white/10 text-white font-black text-lg hover:bg-white/10 transition-all"
                                 >
                                     +
@@ -361,7 +375,7 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
                     </button>
                     <button
                         onClick={handleTransfer}
-                        disabled={loading || (!isBulk && !selectedItem) || !fromLocation || !toLocation || !reason.trim() || (!isBulk && quantity > availableStock)}
+                        disabled={loading || (!isBulk && !selectedItem) || !fromLocation || !toLocation || !reason.trim() || (!isBulk && (parseInt(quantity) || 0) > availableStock) || (!isBulk && (parseInt(quantity) || 0) < 1)}
                         className="flex-1 py-4 rounded-xl bg-blue-500 text-white text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {loading ? 'Transfiriendo...' : 'Confirmar Transferencia'}

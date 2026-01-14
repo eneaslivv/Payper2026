@@ -207,13 +207,24 @@ const Clients: React.FC = () => {
           });
         }
 
-        // 2. Fetch Wallet Transactions (from wallet_ledger, the correct table)
-        const { data: walletTx } = await (supabase as any)
-          .from('wallet_ledger')
-          .select('*')
-          .eq('wallet_id', selectedClientId)
-          .order('created_at', { ascending: false })
-          .limit(10);
+        // 2. Fetch Wallet Transactions (CORRECTED: Resolve wallet_id first)
+        // First, get the wallet_id for this client
+        const { data: walletData } = await (supabase as any)
+          .from('wallets')
+          .select('id')
+          .eq('user_id', selectedClientId)
+          .single();
+
+        let walletTx = null;
+        if (walletData?.id) {
+          const { data: txData } = await (supabase as any)
+            .from('wallet_ledger')
+            .select('*')
+            .eq('wallet_id', walletData.id)
+            .order('created_at', { ascending: false })
+            .limit(10);
+          walletTx = txData;
+        }
 
         if (walletTx) {
           walletTx.forEach((tx: any) => {
@@ -368,15 +379,28 @@ const Clients: React.FC = () => {
         setWalletBalance(clientData.wallet_balance || 0);
       }
 
-      // Fetch recent transactions (Correct Table: wallet_ledger)
-      const { data: txData } = await (supabase as any)
-        .from('wallet_ledger')
-        .select('*') // Simplify selection for now, or ensure 'performer' relation exists
-        .eq('wallet_id', clientId)
-        .order('created_at', { ascending: false })
-        .limit(10);
+      // Fetch recent transactions (Correct Table: wallet_ledger via wallet_id)
+      let txData = [];
 
-      setWalletTransactions(txData || []);
+      // 1. Get wallet_id
+      const { data: walletData } = await (supabase as any)
+        .from('wallets')
+        .select('id')
+        .eq('user_id', clientId)
+        .single();
+
+      // 2. Query ledger if wallet exists
+      if (walletData?.id) {
+        const { data } = await (supabase as any)
+          .from('wallet_ledger')
+          .select('*')
+          .eq('wallet_id', walletData.id)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        txData = data || [];
+      }
+
+      setWalletTransactions(txData);
     } catch (e) {
       console.error('Error fetching wallet:', e);
     } finally {
@@ -671,10 +695,10 @@ const Clients: React.FC = () => {
             <div className="flex-1 overflow-y-auto p-8 space-y-10 no-scrollbar pb-40">
               {/* Resumen Operativo */}
               <div className="grid grid-cols-2 gap-4">
-                <MetricBlock label="Total Gastado" value={`$${selectedClient.total_spent.toFixed(2)}`} icon="payments" color="text-neon" />
+                <MetricBlock label="Total Gastado" value={`$${(selectedClient.total_spent || 0).toFixed(2)}`} icon="payments" color="text-neon" />
                 <MetricBlock label="Puntos de Inteligencia" value={selectedClient.points_balance.toString()} icon="loyalty" color="text-accent" />
                 <MetricBlock label="Última Incursión" value={selectedClient.last_visit} icon="schedule" />
-                <MetricBlock label="Ticket Promedio" value={`$${(selectedClient.total_spent / selectedClient.orders_count).toFixed(2)}`} icon="calculate" />
+                <MetricBlock label="Ticket Promedio" value={`$${((selectedClient.total_spent / (selectedClient.orders_count || 1)) || 0).toFixed(2)}`} icon="calculate" />
               </div>
 
               {/* Acciones de Fidelidad */}

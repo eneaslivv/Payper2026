@@ -30,7 +30,7 @@ export function MenuPage() {
     // Obtener productos
     const { products, isLoading: productsLoading, error: productsError } = useProducts({
         storeId: store?.id || '',
-        source: 'inventory_items', // Change from 'products' to 'inventory_items' to match MenuDesign
+        source: 'products', // Revert to 'products' to fetch recipes/sellables correctly
     });
 
     // Estado del carrito y UI

@@ -47,11 +47,25 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // CRITICAL: Filter local orders by store_id to prevent data leak between accounts
       // Only keep orders that match current store OR (for migration) have no store_id but we can't be sure...
       // Safer: Only show matching store_id. Remote fetch will restore valid orders with correct ID.
+      // CRITICAL: Filter local orders by store_id to prevent data leak between accounts
       if (storeId) {
-        localOrders = localOrders.filter(o => o.store_id === storeId);
+        const validOrders: DBOrder[] = [];
+        for (const o of localOrders) {
+          // Strict check: Must match store_id. If missing or different, it's leaked/stale data.
+          if (o.store_id === storeId) {
+            validOrders.push(o);
+          } else {
+            // CLEANUP: Proactively delete data from other stores to fix "disaster" state
+            console.warn(`[OfflineContext] Cleaning up leaked order from other store: ${o.id} (store: ${o.store_id} vs current: ${storeId})`);
+            await dbOps.deleteOrder(o.id).catch(e => console.error("Failed to cleanup order", e));
+          }
+        }
+        localOrders = validOrders;
+        setOrders(localOrders.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()));
+      } else {
+        // If no storeId (not logged in or loading), DO NOT show unrelated orders from local DB
+        setOrders([]);
       }
-
-      setOrders(localOrders.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()));
 
       // Then, if online, fetch ACTIVE orders from server (Optimized)
       if (navigator.onLine && storeId) {
@@ -222,10 +236,41 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
             console.log('[Realtime] Order change detected:', payload);
 
             if (payload.eventType === 'INSERT') {
-              // New order arrived
+              // New order arrived - show immediately with available data as optimistic update
               const newOrder = payload.new as any;
 
-              // Fetch full order with items
+              // Create immediate partial order to show right away
+              const immediateOrder: DBOrder = {
+                id: newOrder.id,
+                store_id: newOrder.store_id,
+                customer: 'Cargando...',
+                table: newOrder.table_number,
+                status: newOrder.status ? mapStatusFromSupabase(newOrder.status) : 'Pendiente',
+                type: newOrder.table_number ? 'dine-in' : 'takeaway',
+                paid: newOrder.is_paid || newOrder.payment_status === 'approved' || newOrder.payment_status === 'paid',
+                items: [],
+                amount: newOrder.total_amount || 0,
+                time: new Date(newOrder.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                paymentMethod: newOrder.payment_method,
+                payment_provider: newOrder.payment_provider,
+                payment_status: newOrder.payment_status,
+                is_paid: newOrder.is_paid,
+                order_number: newOrder.order_number,
+                table_number: newOrder.table_number,
+                dispatch_station: newOrder.dispatch_station,
+                created_at: newOrder.created_at,
+                syncStatus: 'synced',
+                lastModified: new Date(newOrder.created_at).getTime()
+              };
+
+              // Add immediately for instant visibility
+              setOrders(prev => {
+                // Avoid duplicates
+                if (prev.some(o => o.id === immediateOrder.id)) return prev;
+                return [immediateOrder, ...prev];
+              });
+
+              // Then fetch full order with items in background
               const { data: fullOrder } = await supabase
                 .from('orders')
                 .select(`
@@ -235,7 +280,12 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                   total_amount, 
                   created_at, 
                   order_number, 
-                  table_number, 
+                  table_number,
+                  payment_status,
+                  payment_method,
+                  payment_provider,
+                  is_paid,
+                  dispatch_station,
                   client:clients(name, email),
                   items,
                   order_items(
@@ -253,12 +303,13 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 const orderData = fullOrder as any;
                 const mappedOrder: DBOrder = {
                   id: orderData.id,
+                  store_id: orderData.store_id,
                   customer: orderData.client?.name || 'Cliente',
                   client_email: orderData.client?.email,
                   table: orderData.table_number,
                   status: orderData.status ? mapStatusFromSupabase(orderData.status) : 'Pendiente',
                   type: orderData.table_number ? 'dine-in' : 'takeaway',
-                  paid: orderData.payment_status === 'paid',
+                  paid: orderData.is_paid || orderData.payment_status === 'approved' || orderData.payment_status === 'paid',
                   items: (orderData.order_items && orderData.order_items.length > 0)
                     ? orderData.order_items.map((i: any) => ({
                       id: i.id || 'unknown',
@@ -279,15 +330,19 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                   amount: orderData.total_amount || 0,
                   time: new Date(orderData.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                   paymentMethod: orderData.payment_method || 'cash',
+                  payment_provider: orderData.payment_provider,
+                  payment_status: orderData.payment_status,
+                  is_paid: orderData.is_paid,
                   order_number: orderData.order_number,
+                  table_number: orderData.table_number,
+                  dispatch_station: orderData.dispatch_station,
                   created_at: orderData.created_at,
                   syncStatus: 'synced',
-                  lastModified: new Date(orderData.created_at).getTime(),
-                  store_id: orderData.store_id
+                  lastModified: new Date(orderData.created_at).getTime()
                 };
 
-                // Add to orders at the beginning
-                setOrders(prev => [mappedOrder, ...prev]);
+                // Update with full data
+                setOrders(prev => prev.map(o => o.id === mappedOrder.id ? mappedOrder : o));
 
                 // Save to IndexedDB
                 await dbOps.saveOrder(mappedOrder);
@@ -300,29 +355,103 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 );
               }
             } else if (payload.eventType === 'UPDATE') {
-              // Order updated (e.g., status changed)
+              // Order updated (e.g., status changed, payment confirmed)
               const updatedOrder = payload.new as any;
+              const oldOrder = payload.old as any;
 
-              setOrders(prev => prev.map(order => {
-                if (order.id === updatedOrder.id) {
-                  return {
-                    ...order,
-                    status: updatedOrder.status ? mapStatusFromSupabase(updatedOrder.status) : order.status,
-                    syncStatus: 'synced'
+              // Check if payment status just changed to paid - fetch full order to ensure items are visible
+              const paymentJustConfirmed = (
+                (updatedOrder.is_paid === true && oldOrder?.is_paid !== true) ||
+                (updatedOrder.payment_status === 'paid' && oldOrder?.payment_status !== 'paid') ||
+                (updatedOrder.payment_status === 'approved' && oldOrder?.payment_status !== 'approved')
+              );
+
+              if (paymentJustConfirmed) {
+                // Fetch complete order data to ensure everything is visible
+                const { data: fullOrder } = await supabase
+                  .from('orders')
+                  .select(`
+                    id, store_id, status, total_amount, created_at, order_number, table_number,
+                    payment_status, payment_method, payment_provider, is_paid, dispatch_station,
+                    client:clients(name, email), items,
+                    order_items(id, quantity, unit_price, product_id, product:inventory_items(name))
+                  `)
+                  .eq('id', updatedOrder.id)
+                  .maybeSingle();
+
+                if (fullOrder) {
+                  const orderData = fullOrder as any;
+                  const mappedOrder: DBOrder = {
+                    id: orderData.id,
+                    store_id: orderData.store_id,
+                    customer: orderData.client?.name || 'Cliente',
+                    client_email: orderData.client?.email,
+                    table: orderData.table_number,
+                    status: orderData.status ? mapStatusFromSupabase(orderData.status) : 'Pendiente',
+                    type: orderData.table_number ? 'dine-in' : 'takeaway',
+                    paid: true,
+                    items: (orderData.order_items && orderData.order_items.length > 0)
+                      ? orderData.order_items.map((i: any) => ({
+                        id: i.id || 'unknown',
+                        name: i.product?.name || 'Ítem',
+                        quantity: i.quantity,
+                        price_unit: i.unit_price || 0,
+                        productId: i.product_id,
+                        inventory_items_to_deduct: []
+                      }))
+                      : (Array.isArray(orderData.items) ? orderData.items.map((i: any) => ({
+                        id: i.id || 'unknown',
+                        name: i.name || 'Ítem',
+                        quantity: i.quantity,
+                        price_unit: i.price_unit || i.price || 0,
+                        productId: i.id,
+                        inventory_items_to_deduct: []
+                      })) : []),
+                    amount: orderData.total_amount || 0,
+                    time: new Date(orderData.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    paymentMethod: orderData.payment_method || 'cash',
+                    payment_provider: orderData.payment_provider,
+                    payment_status: orderData.payment_status,
+                    is_paid: orderData.is_paid,
+                    order_number: orderData.order_number,
+                    table_number: orderData.table_number,
+                    dispatch_station: orderData.dispatch_station,
+                    created_at: orderData.created_at,
+                    syncStatus: 'synced',
+                    lastModified: Date.now()
                   };
-                }
-                return order;
-              }));
 
-              // Update in IndexedDB
-              const existingOrder = await dbOps.getOrder(updatedOrder.id);
-              if (existingOrder) {
-                const updated = {
-                  ...existingOrder,
-                  status: updatedOrder.status ? mapStatusFromSupabase(updatedOrder.status) : existingOrder.status,
-                  syncStatus: 'synced' as const
-                };
-                await dbOps.saveOrder(updated);
+                  setOrders(prev => prev.map(order => order.id === mappedOrder.id ? mappedOrder : order));
+                  await dbOps.saveOrder(mappedOrder);
+                }
+              } else {
+                // Normal status update - use payload data directly
+                setOrders(prev => prev.map(order => {
+                  if (order.id === updatedOrder.id) {
+                    return {
+                      ...order,
+                      status: updatedOrder.status ? mapStatusFromSupabase(updatedOrder.status) : order.status,
+                      payment_status: updatedOrder.payment_status || order.payment_status,
+                      is_paid: updatedOrder.is_paid !== undefined ? updatedOrder.is_paid : order.is_paid,
+                      paid: (updatedOrder.is_paid === true) || (updatedOrder.payment_status === 'approved') || (updatedOrder.payment_status === 'paid') || order.paid,
+                      syncStatus: 'synced'
+                    };
+                  }
+                  return order;
+                }));
+
+                // Update in IndexedDB
+                const existingOrder = await dbOps.getOrder(updatedOrder.id);
+                if (existingOrder) {
+                  const updated = {
+                    ...existingOrder,
+                    status: updatedOrder.status ? mapStatusFromSupabase(updatedOrder.status) : existingOrder.status,
+                    payment_status: updatedOrder.payment_status || existingOrder.payment_status,
+                    is_paid: updatedOrder.is_paid !== undefined ? updatedOrder.is_paid : existingOrder.is_paid,
+                    syncStatus: 'synced' as const
+                  };
+                  await dbOps.saveOrder(updated);
+                }
               }
             }
           }

@@ -45,12 +45,13 @@ export function useProducts({
             category,
             category_slug,
             is_available,
+            is_visible,
             active,
             store_id
           `)
                     .eq('store_id', storeId)
                     .eq('active', true)
-                    .eq('is_available', true)
+                    .eq('is_visible', true)
                     .order('category', { ascending: true })
                     .order('name', { ascending: true });
 
