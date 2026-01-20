@@ -186,11 +186,11 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
         fetchLocationStock(loc.id);
     };
 
-    const toggleSelection = (stockId: string) => {
+    const toggleSelection = (itemId: string) => {
         setSelectedItemIds(prev =>
-            prev.includes(stockId)
-                ? prev.filter(id => id !== stockId)
-                : [...prev, stockId]
+            prev.includes(itemId)
+                ? prev.filter(id => id !== itemId)
+                : [...prev, itemId]
         );
     };
 
@@ -198,7 +198,7 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
         if (selectedItemIds.length === locationStock.length) {
             setSelectedItemIds([]);
         } else {
-            setSelectedItemIds(locationStock.map(s => s.id));
+            setSelectedItemIds(locationStock.map(s => s.item_id));
         }
     };
 
@@ -332,13 +332,13 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
                                 </div>
                                 {locationStock.map(stock => (
                                     <div
-                                        key={stock.id}
-                                        className={`flex items-center justify-between bg-white/[0.02] p-3 rounded-xl border transition-all ${selectedItemIds.includes(stock.id) ? 'border-neon/50 bg-neon/5' : 'border-white/5 hover:bg-white/[0.04]'}`}
+                                        key={stock.item_id}
+                                        className={`flex items-center justify-between bg-white/[0.02] p-3 rounded-xl border transition-all ${selectedItemIds.includes(stock.item_id) ? 'border-neon/50 bg-neon/5' : 'border-white/5 hover:bg-white/[0.04]'}`}
                                     >
                                         <div className="flex items-center gap-3">
-                                            <div onClick={() => toggleSelection(stock.id)} className="cursor-pointer">
-                                                <div className={`size-5 rounded border flex items-center justify-center transition-all ${selectedItemIds.includes(stock.id) ? 'bg-neon border-neon' : 'border-white/20 hover:border-white/40'}`}>
-                                                    {selectedItemIds.includes(stock.id) && <span className="material-symbols-outlined text-black text-sm font-bold">check</span>}
+                                            <div onClick={() => toggleSelection(stock.item_id)} className="cursor-pointer">
+                                                <div className={`size-5 rounded border flex items-center justify-center transition-all ${selectedItemIds.includes(stock.item_id) ? 'bg-neon border-neon' : 'border-white/20 hover:border-white/40'}`}>
+                                                    {selectedItemIds.includes(stock.item_id) && <span className="material-symbols-outlined text-black text-sm font-bold">check</span>}
                                                 </div>
                                             </div>
                                             {stock.inventory_items?.image_url && (
@@ -660,7 +660,7 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
                 }}
                 preselectedFromLocation={selectedLocation?.id}
                 preselectedItemId={transferItemId}
-                preselectedItemIds={selectedItemIds.length > 0 && !transferItemId ? selectedItemIds.map(stockId => locationStock.find(s => s.id === stockId)?.item_id).filter(Boolean) as string[] : undefined}
+                preselectedItemIds={selectedItemIds.length > 0 && !transferItemId ? selectedItemIds : undefined}
             />
         </div >
     );
