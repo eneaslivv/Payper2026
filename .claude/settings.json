@@ -8,18 +8,24 @@
             "PRD.md",
             "DOCUMENTACION_SISTEMA.md",
             "docs/audit/known-gaps.md",
+            ".cloud-code/SYSTEM.md",
+            ".cloud-code/AGENTS.md",
+            ".cloud-code/RULES.md",
+            ".cloud-code/DECISIONS.md",
+            ".cloud-code/known-bugs.md",
             "supabaseTypes.ts",
             "types.ts"
-        ],
-        "ignore": [
-            "node_modules",
-            "dist",
-            ".git"
         ]
     },
     "behavior": {
         "confirm_before_edit": true,
-        "max_file_changes_per_response": 3,
+        "max_file_changes_per_message": 3,
         "require_test_for_fix": false
     }
+}{
+  "rules": [
+    ".agent/rules/reglas-maestras.md",
+    ".agent/rules/error-reporting.md",
+    ".claude/claude rules"  ← AGREGAR ESTO
+  ]
 }

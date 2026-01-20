@@ -28,3 +28,21 @@
 - **Caso Receta**: Orden con "Test Cafe" (0.1 Panceta + 0.5 Jamón).
 - **Resultado**: Stock descontado correctamente de ingredientes.
 - **Trazabilidad**: Movimientos registrados en `stock_movements`.
+
+## 2026-01-20: Fix Creación de Clientes (Auth Trigger)
+
+### Problema
+- Fallo en registro de nuevos clientes desde el panel de SaaS (`Clients -> Nuevo Usuario`).
+- Error DB: "database error" al crear usuario.
+- Causa raíz: Trigger `handle_new_user` intentaba insertar columnas inexistentes y faltaba robustez en tipos de datos.
+
+### Solución (Protocolo 'Cloud Code')
+1.  **Auditoría de Schema**: Verificada estructura exacta de `clients` y `profiles`.
+2.  **Fix Defensivo `handle_new_user`**:
+    - Generación explícita de defaults en código (aunque DB tenga defaults).
+    - Mapeo seguro de `store_id` (UUID nullable) y `role` (TEXT).
+    - Uso de `ON CONFLICT` con suposición de índice único existente (`auth_user_id`, `store_id`).
+3.  **Seguridad**: `SECURITY DEFINER` mantenido para permitir inserción privilegiada desde Auth.
+
+### Archivos
+- `supabase/migrations/20260120_fix_clients_creation_v2.sql`
