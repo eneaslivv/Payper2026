@@ -1762,7 +1762,7 @@ const MenuDesign: React.FC = () => {
                                                 onClick={() => document.getElementById('logo-input')?.click()}
                                             >
                                                 {theme.logoUrl ? (
-                                                    <img src={theme.logoUrl} className="w-full h-full object-cover" />
+                                                    <img src={theme.logoUrl} className="w-full h-full object-contain bg-black/10" />
                                                 ) : (
                                                     <span className="material-symbols-outlined text-[#52525B] text-xl">add_photo_alternate</span>
                                                 )}

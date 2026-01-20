@@ -1138,7 +1138,7 @@ const LogoUploader: React.FC<{
                 {isUploading ? (
                     <div className="size-8 border-2 border-neon/20 border-t-neon rounded-full animate-spin"></div>
                 ) : currentUrl ? (
-                    <img src={currentUrl} className="w-full h-full object-cover" alt="Logo" />
+                    <img src={currentUrl} className="w-full h-full object-contain bg-black/10" alt="Logo" />
                 ) : (
                     <span className="material-symbols-outlined text-3xl text-white/20">add_photo_alternate</span>
                 )}

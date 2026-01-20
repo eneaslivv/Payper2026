@@ -567,7 +567,7 @@ const Settings: React.FC = () => {
                   <div className="flex items-center gap-6 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
                     <div className="size-20 rounded-2xl bg-black border border-white/10 flex items-center justify-center overflow-hidden relative group">
                       {storeForm.logo_url ? (
-                        <img src={storeForm.logo_url} alt="Logo" className="w-full h-full object-cover" />
+                        <img src={storeForm.logo_url} alt="Logo" className="w-full h-full object-contain bg-black/10" />
                       ) : (
                         <span className="material-symbols-outlined text-white/20 text-3xl">add_photo_alternate</span>
                       )}
