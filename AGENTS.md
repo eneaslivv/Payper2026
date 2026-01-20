@@ -11,6 +11,20 @@ Agents MUST NOT break the system.
 
 ---
 
+## ⚠️ REGLA OBLIGATORIA PARA TODO PROMPT
+
+Antes de ejecutar CUALQUIER tarea que toque código o base de datos:
+
+1. **Identificar módulo afectado**
+2. **Llamar al agente correspondiente**
+3. **Auditar SIN TOCAR código**
+4. **Presentar plan**
+5. **Esperar aprobación explícita**
+6. **Ejecutar**
+7. **Documentar en DECISIONS.md**
+
+---
+
 ## Core Principles (NON-NEGOTIABLE)
 
 1. Stock correctness > feature speed
@@ -21,11 +35,128 @@ Agents MUST NOT break the system.
 
 ---
 
+## 🎯 Agentes Disponibles
+
+### orchestrator
+**Usar cuando:**
+- No está claro qué agente usar
+- El cambio toca múltiples módulos
+- Hay duda sobre el impacto
+
+**Prompt:**
+```
+Actuá como orchestrator de Payper.
+Necesito: [describir tarea]
+Identificá qué agente(s) deben intervenir y en qué orden.
+NO ejecutar nada, solo planificar.
+```
+
+---
+
+### stock-agent
+**Responsable de:**
+- `inventory_items`, `inventory_location_stock`, `open_packages`
+- `stock_movements`, triggers de stock
+- Funciones: `update_inventory_from_movement()`, `decrease_stock_atomic_v20()`, `transfer_stock()`
+
+**Prompt:**
+```
+Actuá como stock-agent de Payper.
+Problema: [describir]
+1. Auditar funciones actuales SIN modificar
+2. Identificar causa raíz
+3. Proponer fix con migración versionada
+4. NO ejecutar hasta aprobación
+```
+
+---
+
+### security-agent
+**Responsable de:**
+- Auth triggers (`handle_new_user`)
+- RLS policies
+- Constraints de FK/Unique
+- Tablas: `profiles`, `clients`, `cafe_roles`
+
+**Prompt:**
+```
+Actuá como security-agent de Payper.
+Problema: [describir]
+1. Auditar políticas RLS actuales
+2. Verificar constraints de integridad
+3. Proponer fix seguro
+4. NO ejecutar hasta aprobación
+```
+
+---
+
+### orders-agent
+**Responsable de:**
+- Ciclo de vida de pedidos
+- Triggers de delivery/loyalty
+- Sincronización offline
+
+**Prompt:**
+```
+Actuá como orders-agent de Payper.
+Problema: [describir]
+1. Auditar flujo de pedidos
+2. Verificar triggers de estado
+3. Proponer fix
+4. NO ejecutar hasta aprobación
+```
+
+---
+
+### frontend-agent
+**Responsable de:**
+- Componentes React/TSX
+- Contextos (AuthContext, ClientContext, OfflineContext)
+- UI/UX
+
+**Prompt:**
+```
+Actuá como frontend-agent de Payper.
+Problema: [describir]
+1. Auditar componente afectado
+2. Verificar dependencias
+3. Proponer fix mínimo
+4. NO modificar lógica de backend
+```
+
+---
+
+### db-agent
+**Responsable de:**
+- Migraciones SQL
+- Esquema de tablas
+- Índices y performance
+
+**Prompt:**
+```
+Actuá como db-agent de Payper.
+Problema: [describir]
+1. Auditar esquema actual
+2. Verificar integridad referencial
+3. Proponer migración versionada
+4. NO ejecutar hasta aprobación
+```
+
+---
+
+### docs-agent
+**Responsable de:**
+- Documentación (DECISIONS.md, fixed-issues.md)
+- Actualización de PROTECTED_FUNCTIONS.md
+- Commits y changelog
+
+---
+
 ## Critical Core (DO NOT BREAK)
 
 The following areas are CORE and must never be modified without explicit confirmation:
 
-- Stock engine (stock_movements, inventory updates, triggers V17–V19)
+- Stock engine (stock_movements, inventory updates, triggers V17–V22)
 - Payment logic (cash, wallets, settlements)
 - RLS / permissions
 - Order state machine
@@ -99,3 +230,11 @@ Each agent has:
 - Mandatory consult points
 
 Agents MUST respect their scope.
+
+---
+
+## 📚 Referencias
+
+- [PROTECTED_FUNCTIONS.md](docs/PROTECTED_FUNCTIONS.md) - Lista de funciones que NO se pueden modificar sin auditoría
+- [DECISIONS.md](DECISIONS.md) - Historial de decisiones de arquitectura
+- [docs/fixed-issues.md](docs/fixed-issues.md) - Log de bugs resueltos
