@@ -44,6 +44,7 @@ import { CafeNode, Tenant } from './types';
 import { ToastProvider, useToast, NotificationPanel } from './components/ToastSystem';
 import { OfflineProvider } from './contexts/OfflineContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { TenantProvider } from './contexts/TenantContext';
 import { PermissionGuard } from './components/PermissionGuard';
 import { RoleGuard } from './components/RoleGuard';
 
@@ -53,15 +54,15 @@ const SidebarItem: React.FC<{ to: string, icon: string, label: string, active?: 
     to={to}
     onClick={onClick}
     className={`relative flex items-center gap-3 px-6 py-2 transition-all duration-300 ${active
-      ? 'bg-white/[0.03] text-neon'
-      : 'text-[#71766F] hover:text-white'
+      ? 'bg-emerald-50 dark:bg-white/[0.03] text-emerald-600 dark:text-neon'
+      : 'text-[#9B9A97] dark:text-[#71766F] hover:text-[#37352F] dark:hover:text-white'
       }`}
   >
-    {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-neon rounded-r-full shadow-[0_0_10px_#4ADE80]"></div>}
+    {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-emerald-500 dark:bg-neon rounded-r-full shadow-[0_0_10px_rgba(16,185,129,0.5)] dark:shadow-[0_0_10px_#4ADE80]"></div>}
     <span className={`material-symbols-outlined text-[16px] ${active ? 'fill-[1]' : 'opacity-40'}`}>{icon}</span>
     <span className={`text-[11px] tracking-tight flex-1 ${active ? 'font-bold' : 'font-medium'}`}>{label}</span>
     {badge && (
-      <span className="px-1 py-0.5 rounded bg-primary text-white text-[7px] font-black italic tracking-tighter">
+      <span className="px-1 py-0.5 rounded bg-emerald-600 dark:bg-primary text-white text-[7px] font-black italic tracking-tighter">
         {badge}
       </span>
     )}
@@ -75,7 +76,7 @@ const SidebarGroup: React.FC<{ label: string, children: React.ReactNode }> = ({ 
 
   return (
     <div className="flex flex-col gap-0.5 mt-4">
-      <p className="px-6 mb-1 text-[8px] font-black uppercase tracking-[0.2em] text-white/10 select-none">{label}</p>
+      <p className="px-6 mb-1 text-[8px] font-black uppercase tracking-[0.2em] text-[#37352F]/10 dark:text-white/10 select-none">{label}</p>
       {children}
     </div>
   );
@@ -182,6 +183,16 @@ const OperativeLayout: React.FC<{ children: React.ReactNode, activeNode: CafeNod
   const [isBarMode, setIsBarMode] = useState(false);
   const [showScanModal, setShowScanModal] = useState(false);
 
+  // Theme State
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return document.documentElement.classList.contains('dark');
+  });
+
+  const toggleTheme = () => {
+    document.documentElement.classList.toggle('dark');
+    setIsDarkMode(!isDarkMode);
+  };
+
   // Store Branding State
   const [storeBranding, setStoreBranding] = useState({ name: 'PAYPER', logo_url: '' });
 
@@ -282,16 +293,16 @@ const OperativeLayout: React.FC<{ children: React.ReactNode, activeNode: CafeNod
   }, [navigate, isBarMode, addToast]);
 
   return (
-    <div className={`flex h-screen w-full bg-[#0D0F0D] overflow-hidden ${isBarMode ? 'text-lg' : ''}`}>
+    <div className={`flex h-screen w-full bg-[#F8F9F7] dark:bg-[#0D0F0D] overflow-hidden transition-colors duration-300 ${isBarMode ? 'text-lg' : ''}`}>
       <ScanOrderModal isOpen={showScanModal} onClose={() => setShowScanModal(false)} />
       <AIChat />
       <OfflineIndicator />
 
       {/* SIDEBAR OPERATIVA */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-[220px] bg-[#0D0F0D] border-r border-white/5 flex flex-col transition-transform duration-300 lg:static lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-[220px] bg-white dark:bg-[#0D0F0D] border-r border-gray-200 dark:border-white/5 flex flex-col transition-all duration-300 lg:static lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-5 pb-5 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="size-8 rounded-lg bg-neon/10 border border-neon/30 flex items-center justify-center text-neon overflow-hidden">
+            <div className="size-8 rounded-lg bg-emerald-50 dark:bg-neon/10 border border-emerald-200 dark:border-neon/30 flex items-center justify-center text-emerald-600 dark:text-neon overflow-hidden">
               {storeBranding.logo_url ? (
                 <img src={storeBranding.logo_url} alt="Logo" className="w-full h-full object-cover" />
               ) : (
@@ -299,8 +310,8 @@ const OperativeLayout: React.FC<{ children: React.ReactNode, activeNode: CafeNod
               )}
             </div>
             <div className="flex flex-col">
-              <h1 className="text-white text-[13px] font-black tracking-tighter uppercase leading-none">{storeBranding.name}</h1>
-              <p className="text-[#71766F] text-[6px] font-black uppercase tracking-[0.25em] mt-0.5 opacity-30 leading-none">Local Op Unit</p>
+              <h1 className="text-[#37352F] dark:text-white text-[13px] font-black tracking-tighter uppercase leading-none">{storeBranding.name}</h1>
+              <p className="text-[#9B9A97] dark:text-[#71766F] text-[6px] font-black uppercase tracking-[0.25em] mt-0.5 opacity-30 leading-none">Local Op Unit</p>
             </div>
           </div>
         </div>
@@ -342,34 +353,49 @@ const OperativeLayout: React.FC<{ children: React.ReactNode, activeNode: CafeNod
         </div>
 
         {/* MENÚ DE USUARIO */}
-        <div className="p-3 border-t border-white/5 bg-[#0D0F0D] relative" ref={userMenuRef}>
+        <div className="p-3 border-t border-gray-200 dark:border-white/5 bg-white dark:bg-[#0D0F0D] relative" ref={userMenuRef}>
+
+          {/* THEME TOGGLE */}
+          <button
+            onClick={toggleTheme}
+            className="w-full mb-3 p-2.5 rounded-xl flex items-center gap-2 border border-gray-200 dark:border-white/5 bg-gray-50 dark:bg-white/[0.02] hover:border-emerald-300 dark:hover:border-neon/30 transition-all group"
+          >
+            <div className="size-6 rounded-lg bg-amber-100 dark:bg-white/5 flex items-center justify-center text-amber-600 dark:text-white/60 group-hover:text-amber-500 dark:group-hover:text-neon shrink-0">
+              <span className="material-symbols-outlined text-sm">{isDarkMode ? 'light_mode' : 'dark_mode'}</span>
+            </div>
+            <div className="flex-1 text-left overflow-hidden">
+              <p className="text-[9px] font-black text-[#37352F] dark:text-white truncate uppercase leading-none">{isDarkMode ? 'Modo Claro' : 'Modo Oscuro'}</p>
+              <p className="text-[6px] text-[#9B9A97] dark:text-[#71766F] font-bold uppercase tracking-widest opacity-60 truncate leading-none mt-0.5">Cambiar tema</p>
+            </div>
+            <span className="material-symbols-outlined text-sm text-[#9B9A97] dark:text-[#71766F]">{isDarkMode ? 'wb_sunny' : 'nightlight'}</span>
+          </button>
 
           {/* PAYPER BRANDING */}
           <div className="w-full flex justify-center pb-4 pt-1 opacity-40 hover:opacity-100 transition-opacity duration-500">
-            <img src="/src/assets/payper-branding.png" alt="Payper" className="w-20 object-contain" />
+            <img src="/src/assets/payper-branding.png" alt="Payper" className="w-20 object-contain dark:invert-0" />
           </div>
 
           {isUserMenuOpen && (
-            <div className="absolute bottom-full left-3 right-3 mb-2 bg-[#141714] border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-2 duration-200 z-[60]">
-              <div className="p-3 border-b border-white/5 bg-white/[0.02]">
-                <p className="text-[8px] font-black text-white/30 uppercase tracking-widest">Protocolo de Operador</p>
+            <div className="absolute bottom-full left-3 right-3 mb-2 bg-white dark:bg-[#141714] border border-gray-200 dark:border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-2 duration-200 z-[60]">
+              <div className="p-3 border-b border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/[0.02]">
+                <p className="text-[8px] font-black text-[#9B9A97] dark:text-white/30 uppercase tracking-widest">Protocolo de Operador</p>
               </div>
               {hasPermission('staff') && (
-                <Link to="/settings" onClick={() => setIsUserMenuOpen(false)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-white/60 hover:text-white hover:bg-white/5 transition-all">
+                <Link to="/settings" onClick={() => setIsUserMenuOpen(false)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[#9B9A97] dark:text-white/60 hover:text-[#37352F] dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5 transition-all">
                   <span className="material-symbols-outlined text-sm">settings</span>
                   <span className="text-[10px] font-bold uppercase tracking-tight">Ajustes Local</span>
                 </Link>
               )}
-              <div className="h-px bg-white/5"></div>
+              <div className="h-px bg-gray-100 dark:bg-white/5"></div>
               <button
                 type="button"
                 onMouseDown={() => {
                   console.log("Cerrando sesión (Op)...");
                   signOut();
                 }}
-                className="w-full flex items-center gap-2.5 px-4 py-3 text-primary hover:bg-primary/10 transition-all group"
+                className="w-full flex items-center gap-2.5 px-4 py-3 text-red-500 dark:text-primary hover:bg-red-50 dark:hover:bg-primary/10 transition-all group"
               >
-                <span className="material-symbols-outlined text-sm font-black group-hover:text-primary transition-colors">logout</span>
+                <span className="material-symbols-outlined text-sm font-black group-hover:text-red-600 dark:group-hover:text-primary transition-colors">logout</span>
                 <span className="text-[10px] font-black uppercase tracking-widest italic">Cerrar Sesión</span>
               </button>
             </div>
@@ -377,59 +403,59 @@ const OperativeLayout: React.FC<{ children: React.ReactNode, activeNode: CafeNod
 
           <button
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-            className={`w-full p-2.5 rounded-xl flex items-center gap-2 border transition-all pointer-events-auto ${isUserMenuOpen ? 'bg-white/5 border-neon/30' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}
+            className={`w-full p-2.5 rounded-xl flex items-center gap-2 border transition-all pointer-events-auto ${isUserMenuOpen ? 'bg-gray-50 dark:bg-white/5 border-emerald-300 dark:border-neon/30' : 'bg-gray-50 dark:bg-white/[0.02] border-gray-200 dark:border-white/5 hover:border-gray-300 dark:hover:border-white/10'}`}
           >
-            <div className="size-6 rounded-lg bg-neon/20 flex items-center justify-center text-neon shrink-0"><span className="material-symbols-outlined text-sm">person</span></div>
+            <div className="size-6 rounded-lg bg-emerald-100 dark:bg-neon/20 flex items-center justify-center text-emerald-600 dark:text-neon shrink-0"><span className="material-symbols-outlined text-sm">person</span></div>
             <div className="flex-1 text-left overflow-hidden">
-              <p className="text-[9px] font-black text-white truncate uppercase italic leading-none mb-0.5">{user?.email || 'Operador'}</p>
-              <p className="text-[6px] text-[#71766F] font-bold uppercase tracking-widest opacity-40 truncate leading-none">{profile?.role || 'Operador'}</p>
+              <p className="text-[9px] font-black text-[#37352F] dark:text-white truncate uppercase italic leading-none mb-0.5">{user?.email || 'Operador'}</p>
+              <p className="text-[6px] text-[#9B9A97] dark:text-[#71766F] font-bold uppercase tracking-widest opacity-40 truncate leading-none">{profile?.role || 'Operador'}</p>
             </div>
-            <span className={`material-symbols-outlined text-sm text-[#71766F] transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`}>expand_less</span>
+            <span className={`material-symbols-outlined text-sm text-[#9B9A97] dark:text-[#71766F] transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`}>expand_less</span>
           </button>
         </div>
       </aside>
 
       {/* MAIN OPERATIVO */}
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        <header className="shrink-0 flex items-center justify-between px-6 py-2.5 bg-[#0D0F0D] border-b border-white/5 z-40">
+        <header className="shrink-0 flex items-center justify-between px-6 py-2.5 bg-white dark:bg-[#0D0F0D] border-b border-gray-200 dark:border-white/5 z-40 transition-colors duration-300">
           <div className="flex items-center gap-4">
-            <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-1 rounded-lg bg-white/5 text-white"><span className="material-symbols-outlined text-xl">menu</span></button>
+            <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-1 rounded-lg bg-gray-100 dark:bg-white/5 text-[#37352F] dark:text-white"><span className="material-symbols-outlined text-xl">menu</span></button>
             <div className="flex items-center gap-2">
-              <div className="size-1 rounded-full bg-neon animate-pulse"></div>
-              <h2 className="text-[8px] font-black uppercase tracking-[0.3em] text-[#71766F] italic">NODE: <span className="text-neon">{activeNode.name.toUpperCase()}</span></h2>
+              <div className="size-1 rounded-full bg-emerald-500 dark:bg-neon animate-pulse"></div>
+              <h2 className="text-[8px] font-black uppercase tracking-[0.3em] text-[#9B9A97] dark:text-[#71766F] italic">NODE: <span className="text-emerald-600 dark:text-neon">{activeNode.name.toUpperCase()}</span></h2>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/5">
-              <span className="text-[8px] font-bold text-white/30 uppercase tracking-widest">Atajos:</span>
-              <span className="text-[9px] font-black text-neon bg-white/5 px-1.5 rounded">N</span>
-              <span className="text-[9px] font-black text-neon bg-white/5 px-1.5 rounded">G</span>
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/5">
+              <span className="text-[8px] font-bold text-[#9B9A97] dark:text-white/30 uppercase tracking-widest">Atajos:</span>
+              <span className="text-[9px] font-black text-emerald-600 dark:text-neon bg-white dark:bg-white/5 px-1.5 rounded">N</span>
+              <span className="text-[9px] font-black text-emerald-600 dark:text-neon bg-white dark:bg-white/5 px-1.5 rounded">G</span>
             </div>
 
             {/* NOTIFICATION CENTER BUTTON */}
             <div className="relative" ref={notifRef}>
               <button
                 onClick={() => setIsNotifPanelOpen(!isNotifPanelOpen)}
-                className={`relative flex items-center justify-center size-8 rounded-lg border transition-all ${isNotifPanelOpen ? 'bg-white/10 border-white/20 text-white' : 'border-white/5 text-[#71766F] hover:text-white'}`}
+                className={`relative flex items-center justify-center size-8 rounded-lg border transition-all ${isNotifPanelOpen ? 'bg-gray-100 dark:bg-white/10 border-gray-300 dark:border-white/20 text-[#37352F] dark:text-white' : 'border-gray-200 dark:border-white/5 text-[#9B9A97] dark:text-[#71766F] hover:text-[#37352F] dark:hover:text-white'}`}
               >
                 <span className="material-symbols-outlined text-[18px]">notifications</span>
                 {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 size-2 bg-neon rounded-full shadow-[0_0_8px_#4ADE80] animate-pulse"></span>
+                  <span className="absolute top-1.5 right-1.5 size-2 bg-emerald-500 dark:bg-neon rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)] dark:shadow-[0_0_8px_#4ADE80] animate-pulse"></span>
                 )}
               </button>
               {isNotifPanelOpen && <NotificationPanel onClose={() => setIsNotifPanelOpen(false)} />}
             </div>
 
-            <Link to="/scanner" className="flex items-center justify-center size-8 rounded-lg border border-white/5 text-[#71766F] hover:text-neon transition-all"><span className="material-symbols-outlined text-[18px]">center_focus_weak</span></Link>
-            <Link to="/create-order" className="flex items-center gap-2 px-4 py-1.5 bg-neon text-black rounded-lg font-black text-[9px] uppercase tracking-[0.15em] shadow-neon-soft hover:scale-105 active:scale-95 transition-all">
+            <Link to="/scanner" className="flex items-center justify-center size-8 rounded-lg border border-gray-200 dark:border-white/5 text-[#9B9A97] dark:text-[#71766F] hover:text-emerald-600 dark:hover:text-neon transition-all"><span className="material-symbols-outlined text-[18px]">center_focus_weak</span></Link>
+            <Link to="/create-order" className="flex items-center gap-2 px-4 py-1.5 bg-emerald-500 dark:bg-neon text-white dark:text-black rounded-lg font-black text-[9px] uppercase tracking-[0.15em] shadow-lg dark:shadow-neon-soft hover:scale-105 active:scale-95 transition-all">
               <span className="material-symbols-outlined text-[16px]">add</span>
               <span className="hidden sm:inline italic">NUEVA MISIÓN [N]</span>
             </Link>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar relative bg-[#0D0F0D]">
+        <div className="flex-1 overflow-y-auto no-scrollbar relative bg-[#F8F9F7] dark:bg-[#0D0F0D] transition-colors duration-300">
           {children}
         </div>
       </main>
@@ -840,9 +866,11 @@ const App: React.FC = () => {
   return (
     <ToastProvider>
       <AuthProvider>
-        <MainRouter />
-        {/* DEBUG OVERLAY - REMOVE IN PRODUCTION */}
-        <DebugStateInspector />
+        <TenantProvider>
+          <MainRouter />
+          {/* DEBUG OVERLAY - REMOVE IN PRODUCTION */}
+          <DebugStateInspector />
+        </TenantProvider>
       </AuthProvider>
     </ToastProvider>
   );

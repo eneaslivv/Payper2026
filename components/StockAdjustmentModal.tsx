@@ -135,7 +135,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                 p_from_location_id: fromLocation,
                 p_to_location_id: toLocation,
                 p_quantity: parsedQty,
-                p_user_id: user?.id || '',
+                p_user_id: user?.id || null,
                 p_notes: `[${type}] ${notes}`.trim(), // Include original type in notes for tracking
                 p_movement_type: rpcMovementType,
                 p_reason: reason

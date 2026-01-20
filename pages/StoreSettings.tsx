@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ToastSystem';
 import { Store, StaffMember, CustomRole, SectionSlug, AuditLogEntry, AuditCategory, AIConfig } from '../types';
-import { MOCK_STAFF, MOCK_ROLES, MOCK_AUDIT_LOG, DEFAULT_AI_CONFIG } from '../constants';
+import { MOCK_STAFF, MOCK_ROLES, DEFAULT_AI_CONFIG } from '../constants';
+import { formatAuditLog } from '../utils/auditAdapter';
 
 const SECTIONS: { slug: SectionSlug, label: string }[] = [
     { slug: 'dashboard', label: 'Dashboard Principal' },
@@ -57,7 +58,7 @@ const StoreSettings: React.FC = () => {
     const [inviteForm, setInviteForm] = useState({ email: '', fullName: '', roleId: '' });
 
     // --- AUDIT STATE ---
-    const [logs] = useState<AuditLogEntry[]>(MOCK_AUDIT_LOG);
+    const [logs, setLogs] = useState<AuditLogEntry[]>([]);
     const [auditFilter, setAuditFilter] = useState<AuditCategory | 'all'>('all');
     const [auditSearch, setAuditSearch] = useState('');
 
@@ -66,6 +67,40 @@ const StoreSettings: React.FC = () => {
     const [mpConnected, setMpConnected] = useState(false);
 
     // --- AUDIT LOGIC ---
+    useEffect(() => {
+        if (!isAdmin && profile?.role !== 'store_owner') return;
+
+        const fetchAuditLogs = async () => {
+            const { data, error } = await supabase
+                .from('audit_logs' as any)
+                .select(`
+                    *,
+                    profiles:user_id ( full_name, role, email )
+                `)
+                .order('created_at', { ascending: false })
+                .limit(100);
+
+            if (data) {
+                // Import dynamically to avoid circular deps if any, or just use standard import
+                const formatted = data.map(log => formatAuditLog(log as any));
+                setLogs(formatted);
+            }
+        };
+
+        fetchAuditLogs();
+
+        // Realtime subscription
+        const channel = supabase
+            .channel('audit_realtime')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'audit_logs' }, (payload) => {
+                // We need to fetch the joining data (profile name), so we just refetch
+                fetchAuditLogs();
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, [profile, isAdmin]);
+
     const filteredLogs = useMemo(() => {
         return logs.filter(log => {
             const matchesCategory = auditFilter === 'all' || log.category === auditFilter;
@@ -84,7 +119,7 @@ const StoreSettings: React.FC = () => {
         try {
             const { error } = await supabase
                 .from('profiles')
-                .update({ status: newStatus })
+                .update({ status: newStatus } as any)
                 .eq('id', id);
 
             if (error) throw error;
@@ -478,7 +513,7 @@ const StoreSettings: React.FC = () => {
     }
 
     return (
-        <div className="p-10 space-y-12 max-w-[1400px] mx-auto animate-in fade-in duration-700 relative z-10">
+        <div className="p-10 space-y-12 max-w-[1400px] mx-auto animate-in fade-in duration-700 relative z-10 bg-[#F8F9F7] dark:bg-transparent min-h-screen transition-colors duration-300">
             {/* AMBIENT GLOWS */}
             <div className="absolute top-0 left-1/4 size-96 bg-neon/5 blur-[120px] rounded-full pointer-events-none"></div>
 

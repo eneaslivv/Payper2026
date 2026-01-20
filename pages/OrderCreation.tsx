@@ -16,7 +16,7 @@ const OrderCreation: React.FC = () => {
   const { createOrder } = useOffline();
   const [menuProducts, setMenuProducts] = useState<any[]>([]); // Real menu items from inventory
   const { profile } = useAuth();
-  const [activeCategory, setActiveCategory] = useState('Todo');
+  const [activeCategory, setActiveCategory] = useState('Todos');
   const [search, setSearch] = useState('');
   const [cart, setCart] = useState<OrderItem[]>([]);
   const [isCartOpenMobile, setIsCartOpenMobile] = useState(false);
@@ -49,7 +49,7 @@ const OrderCreation: React.FC = () => {
   // Dynamic Categories from Menu Products
   const categories = useMemo(() => {
     const cats = Array.from(new Set(menuProducts.map(p => p.category).filter(Boolean)));
-    return ['Todo', ...cats.sort()];
+    return ['Todos', ...cats.sort()];
   }, [menuProducts]);
 
   // Fetch Real Data
@@ -167,7 +167,7 @@ const OrderCreation: React.FC = () => {
     return menuProducts.filter(p => {
       if (!p || !p.name) return false; // Skip invalid products
       const matchesSearch = (p.name || '').toLowerCase().includes(search.toLowerCase());
-      const matchesCategory = activeCategory === 'Todo' || p.category === activeCategory;
+      const matchesCategory = activeCategory === 'Todos' || p.category === activeCategory;
       return matchesSearch && matchesCategory;
     });
   }, [search, activeCategory, menuProducts]);
@@ -190,7 +190,8 @@ const OrderCreation: React.FC = () => {
       name: product.name,
       quantity: quantity,
       price_unit: product.price,
-      sellable_type: (product as any).sellable_type || 'inventory_item'
+      sellable_type: (product as any).sellable_type || 'inventory_item',
+      inventory_items_to_deduct: []
     };
     setCart(prev => [...prev, newItem]);
     addToast(`${product.name} Agregado`, 'success', `$${product.price.toFixed(2)}`);
@@ -242,7 +243,7 @@ const OrderCreation: React.FC = () => {
 
     const tableNum = selectedTable?.name.replace('Mesa ', '') || null;
 
-    // CHECK ACTIVE ORDERS WARNING (Only if checking for the first time and has table)
+    // CHECK ACTIVE ORDERS WARNING
     if (!force && tableNum) {
       try {
         const { data: existing } = await supabase
@@ -264,59 +265,89 @@ const OrderCreation: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      // 1. Insert Order with items JSONB
-      const itemsPayload = cart.map(item => ({
-        id: item.productId,
-        quantity: item.quantity,
-        sellable_type: (item as any).sellable_type || 'inventory_item',
-        variant_id: null
-      }));
+      // WALLET VALIDATION
+      if (paymentMethod === 'wallet') {
+        if (!selectedClient) {
+          addToast('ERROR', 'error', 'Debes seleccionar un cliente para pagar con saldo');
+          setIsSubmitting(false);
+          return;
+        }
+        const { data: clientData, error: walletCheckError } = await supabase
+          .from('clients')
+          .select('wallet_balance')
+          .eq('id', selectedClient.id)
+          .single();
 
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          store_id: profile.store_id,
-          client_id: selectedClient?.id || null,
-          total_amount: total,
-          subtotal: total,
-          status: 'pending',
-          is_paid: true,
-          channel: selectedTable ? 'table' : 'takeaway',
-          table_number: tableNum,
-          node_id: selectedTable?.id || null,
-          payment_method: paymentMethod,
-          items: itemsPayload // CRITICAL for stock deduction
-        })
-        .select()
-        .single();
+        if (walletCheckError || !clientData) {
+          addToast('ERROR', 'error', 'No se pudo verificar el saldo');
+          setIsSubmitting(false);
+          return;
+        }
 
-      if (orderError) throw orderError;
-
-      // 2. Insert Items (Legacy table sync)
-      if (cart.length > 0 && orderData.id) {
-        const orderItemsToInsert = cart.map(item => ({
-          order_id: orderData.id,
-          store_id: profile.store_id,
-          tenant_id: profile.store_id,
-          product_id: item.productId,
-          quantity: item.quantity,
-          unit_price: item.price_unit,
-          total_price: item.price_unit * item.quantity,
-          notes: ''
-        }));
-
-        const { error: itemsError } = await supabase
-          .from('order_items')
-          .insert(orderItemsToInsert);
-
-        if (itemsError) throw itemsError;
-
-        // 3. Stock Deduction is handled by Database Trigger (trigger_deduct_stock_on_payment)
-        // when is_paid = true. No manual RPC call needed here to avoid double deduction.
-        console.log('Order created. Stock deduction trigger should fire.');
+        const currentBalance = clientData.wallet_balance || 0;
+        if (currentBalance < total) {
+          addToast('SALDO INSUFICIENTE', 'error', `Saldo: $${currentBalance.toFixed(2)} - Requerido: $${total.toFixed(2)}`);
+          setIsSubmitting(false);
+          return;
+        }
       }
 
-      addToast(`PEDIDO CONFIRMADO`, 'success', `Orden #${orderData.order_number || ''} creada`);
+      // 1. Prepare Order Object with Client-Side ID
+      const orderId = crypto.randomUUID();
+      const isPaidOnCreation = paymentMethod !== 'qr';
+
+      const newOrder: Order = {
+        id: orderId,
+        store_id: profile.store_id, // Ensure store_id is set
+        customer: selectedClient?.name || 'Cliente Ocasional',
+        client_email: selectedClient?.email, // Add if available
+        table: tableNum,
+        node_id: selectedTable?.id,
+        status: isPaidOnCreation ? 'En Preparación' : 'Pendiente', // Auto-advance if paid
+        type: selectedTable ? 'dine-in' : 'takeaway',
+        paid: isPaidOnCreation,
+        items: cart.map(item => ({
+          ...item,
+          productId: item.productId,
+          inventory_items_to_deduct: [] // Backend handles this
+        })),
+        amount: total,
+        time: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+        paymentMethod: paymentMethod,
+        payment_provider: paymentMethod === 'qr' ? 'mercadopago' : paymentMethod,
+        payment_status: isPaidOnCreation ? 'paid' : 'pending',
+        is_paid: isPaidOnCreation,
+        table_number: tableNum,
+        created_at: new Date().toISOString(), // Important for sorting
+        lastModified: Date.now()
+      };
+
+      // 2. Delegate to OfflineContext (Handles Local Save + Sync + order_items)
+      await createOrder(newOrder);
+
+      // 3. Post-Creation Actions (Wallet Deduction)
+      // Note: If offline, this step might fail or need queueing. For now, we assume online for Wallet.
+      if (paymentMethod === 'wallet' && selectedClient?.id) {
+        // Wait a brief moment for trigger propagation if needed, but RPC is direct
+        const { data: walletResult, error: walletError } = await supabase.rpc('pay_with_wallet' as any, {
+          p_client_id: selectedClient.id,
+          p_amount: total,
+          p_order_id: orderId
+        });
+
+        if (walletError || !(walletResult as any)?.success) {
+          console.error('Wallet deduction error:', walletError);
+          addToast('AVISO', 'info', 'Pedido guardado, pero falló descuento de saldo');
+        } else {
+          addToast('SALDO DESCONTADO', 'success', `Nuevo saldo: $${(walletResult as any)?.new_balance?.toFixed(2)}`);
+        }
+      }
+
+      const successMsg = paymentMethod === 'qr'
+        ? 'Esperando confirmación de pago...'
+        : 'Pedido enviado a cocina';
+
+      addToast(`PEDIDO CONFIRMADO`, 'success', successMsg);
 
       setLastOrderTotal(total);
       setShowOrderSuccess(true);
@@ -324,7 +355,7 @@ const OrderCreation: React.FC = () => {
       setIsCartOpenMobile(false);
 
     } catch (err: any) {
-      console.error('Order error:', err);
+      console.error('Order creation error:', err);
       addToast('Error al crear pedido', 'error', err.message);
     } finally {
       setIsSubmitting(false);
@@ -549,7 +580,7 @@ const OrderCreation: React.FC = () => {
         <div className="flex justify-between items-baseline">
           <div className="space-y-1">
             <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] block">SUBTOTAL</span>
-            <span className="text-[9px] font-bold text-neon uppercase bg-neon/10 px-2 py-0.5 rounded tracking-widest">LOYALTY ACTIVE</span>
+            {selectedClient && <span className="text-[9px] font-bold text-neon uppercase bg-neon/10 px-2 py-0.5 rounded tracking-widest">FIDELIDAD ACTIVA</span>}
           </div>
           <span className="text-4xl font-black italic-black text-neon leading-none tracking-tighter">${total.toFixed(2)}</span>
         </div>
@@ -561,7 +592,7 @@ const OrderCreation: React.FC = () => {
           {isSubmitting ? (
             <>
               <div className="size-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
-              <span>SINCRO...</span>
+              <span>PROCESANDO...</span>
             </>
           ) : (
             <>

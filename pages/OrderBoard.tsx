@@ -10,8 +10,13 @@ import { supabase } from '../lib/supabase';
 const OrderBoard: React.FC = () => {
   const { addToast } = useToast();
   const { orders, updateOrderStatus, refreshOrders, syncOrder, confirmOrderDelivery } = useOffline();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const [now, setNow] = useState(new Date());
+
+  // Safe navigation fallback
+  const navigate = (window as any).useNavigate ? (window as any).useNavigate() : (path: string) => window.location.href = path;
+  // NOTE: If using strict react-router-dom, import { useNavigate } from 'react-router-dom';
+
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -56,8 +61,84 @@ const OrderBoard: React.FC = () => {
 
   // Load latest orders on mount and set up realtime
   useEffect(() => {
-    // ...
-  }, [selectedOrder, orderToCancel]);
+    if (!profile?.store_id) return;
+
+    // Refresh orders on mount
+    refreshOrders();
+
+    // Sound Notification Logic
+    const playNotificationSound = () => {
+      try {
+        const audio = new Audio('data:audio/mp3;base64,//uQxAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//uQxAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq');
+        // Short beep placeholder - In production use a proper MP3
+        // Replacing with a better "ding" sound structure would be ideal, but for now using a minimal valid MP3 frame or relying on a standard file if I could write one. 
+        // Let's use a known "Glass Ping" base64 or similar.
+
+        // Actually, let's use a proper short base64 for a "pop" sound.
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(500, audioCtx.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(1000, audioCtx.currentTime + 0.1);
+
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.5);
+
+      } catch (e) {
+        console.error("Audio play failed", e);
+      }
+    };
+
+    // Set up Supabase Realtime subscription for live order updates
+    const channel = supabase
+      .channel(`orders_realtime_${profile.store_id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'orders',
+        filter: `store_id=eq.${profile.store_id}`
+      }, (payload) => {
+        console.log('[REALTIME] New order received:', payload.new);
+        setIncomingOrder(payload.new);
+        refreshOrders();
+        addToast('NUEVO PEDIDO', 'success', `Pedido #${(payload.new as any).order_number || 'nuevo'} recibido`);
+        playNotificationSound();
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'orders',
+        filter: `store_id=eq.${profile.store_id}`
+      }, (payload) => {
+        console.log('[REALTIME] Order updated:', payload.new);
+        refreshOrders();
+      })
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'orders',
+        filter: `store_id=eq.${profile.store_id}`
+      }, (payload) => {
+        console.log('[REALTIME] Order deleted:', payload.old);
+        refreshOrders();
+      })
+      .subscribe((status) => {
+        console.log('[REALTIME] Subscription status:', status);
+      });
+
+    return () => {
+      console.log('[REALTIME] Cleaning up subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [profile?.store_id]);
 
   const stats = useMemo(() => ({
     total: orders.filter(o => o.status !== 'Entregado' && o.status !== 'Cancelado').length,
@@ -93,7 +174,14 @@ const OrderBoard: React.FC = () => {
 
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
     if (newStatus === 'Entregado') {
-      const result = await confirmOrderDelivery(orderId, profile?.id || '');
+      const staffId = profile?.id || user?.id;
+
+      if (!staffId) {
+        addToast("ERROR DE SESIÓN", "error", "No se puede identificar al usuario. Recarga la página.");
+        return;
+      }
+
+      const result = await confirmOrderDelivery(orderId, staffId);
       if (result.success) {
         addToast(`PEDIDO #${orderId}`, 'success', result.message);
       } else {
@@ -221,12 +309,13 @@ const OrderBoard: React.FC = () => {
       }
 
       // Station Filter (only in active mode)
-      // In "ALL" view: show all orders
-      // In specific station view: ONLY show orders that have been scanned/assigned to that station
+      // In "ALL" view: show all orders (assigned + unassigned)
+      // In specific station view: ONLY show orders that have been assigned to that exact station
       if (!showHistory && locationFilter !== 'ALL') {
         const orderStation = (o as any).dispatch_station;
-        // Orders must have the exact matching station to appear in station-specific view
-        if (!orderStation || orderStation.trim() !== locationFilter) {
+        // Strict match: order must have the exact station assigned to appear in this view
+        // Unassigned orders (null/undefined) will only be visible in the "ALL" view
+        if (!orderStation || orderStation.trim().toLowerCase() !== locationFilter.toLowerCase()) {
           return false;
         }
       }
@@ -261,7 +350,7 @@ const OrderBoard: React.FC = () => {
 
   return (
     <>
-      <div className="h-[calc(100vh-64px)] bg-[#0D0F0D] flex flex-col overflow-hidden animate-in fade-in duration-500">
+      <div className="h-[calc(100vh-64px)] bg-[#F8F9F7] dark:bg-[#0D0F0D] flex flex-col overflow-hidden animate-in fade-in duration-500 transition-colors">
         <header className="p-6 pb-4 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 shrink-0">
           <div className="flex items-center gap-6">
             <div className="space-y-0.5">
@@ -605,8 +694,10 @@ const OrderBoard: React.FC = () => {
               <div className="size-16 rounded-full bg-orange-500/10 flex items-center justify-center mx-auto mb-6">
                 <span className="material-symbols-outlined text-3xl text-orange-500">event_busy</span>
               </div>
-              <h3 className="text-2xl font-black italic-black text-white uppercase tracking-tighter mb-2">¿Cerrar Turno?</h3>
-              <p className="text-white/60 text-sm mb-4">Los pedidos completados serán archivados y no aparecerán en la vista principal.</p>
+              <h3 className="text-2xl font-black italic-black text-white uppercase tracking-tighter mb-2">¿Finalizar Turno Operativo?</h3>
+              <p className="text-white/60 text-sm mb-4">
+                Para un control seguro, recuerda realizar el <strong className="text-neon">Arqueo de Caja</strong> en Finanzas antes de irte.
+              </p>
               <div className="bg-white/5 rounded-xl p-4 mb-6 text-left">
                 <div className="flex justify-between text-sm mb-2">
                   <span className="text-white/40">Entregados</span>
@@ -618,10 +709,19 @@ const OrderBoard: React.FC = () => {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <button onClick={() => setShowCloseShiftConfirm(false)} className="py-4 rounded-xl border border-white/10 text-white/60 hover:text-white hover:bg-white/5 font-bold uppercase tracking-widest text-xs transition-colors">Volver</button>
-                <button onClick={handleCloseShift} disabled={isClosingShift} className="py-4 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-black uppercase tracking-widest text-xs shadow-lg transition-colors disabled:opacity-50">
-                  {isClosingShift ? 'Archivando...' : 'Cerrar Turno'}
-                </button>
+                <button onClick={() => setShowCloseShiftConfirm(false)} className="py-4 rounded-xl border border-white/10 text-white/60 hover:text-white hover:bg-white/5 font-bold uppercase tracking-widest text-xs transition-colors">Cancelar</button>
+                <div className="flex gap-2">
+                  <button onClick={handleCloseShift} disabled={isClosingShift} className="flex-1 py-4 rounded-xl border border-orange-500/30 text-orange-500 hover:bg-orange-500/10 font-bold uppercase tracking-widest text-[10px] transition-colors">
+                    Solo Limpiar Tablero
+                  </button>
+                  <button
+                    onClick={() => window.location.href = '/finance'} // Simple nav for now, preferably useNavigate if available
+                    className="flex-1 py-4 rounded-xl bg-neon text-black font-black uppercase tracking-widest text-[10px] shadow-neon-soft hover:scale-105 transition-all flex items-center justify-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-sm">payments</span>
+                    Ir a Arqueo de Caja
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
@@ -809,6 +909,13 @@ const Column: React.FC<{
                     <span className="text-[11px] font-black text-white opacity-80">${order.amount.toFixed(2)}</span>
                   </div>
                   <PaymentBadge order={order} />
+
+                  {/* UNASSIGNED STATION BADGE */}
+                  {!(order as any).dispatch_station && (
+                    <span className="text-[7px] font-black uppercase px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                      Sin Asignar
+                    </span>
+                  )}
                 </div>
 
                 <button

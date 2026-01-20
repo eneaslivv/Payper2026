@@ -182,24 +182,24 @@ const { data, error } = await supabase.functions.invoke('invite-owner', {
 | **IA Generativa** | ✅ Completo | Descripciones automáticas con Gemini |
 | **Sistema de Toasts** | ✅ Completo | Notificaciones UI con persistencia |
 | **PWA** | ✅ Básico | Instalable, manifest configurado |
+| **Tablero de Pedidos** | ✅ Completo | UI + Realtime subscriptions activas |
+| **Gestión de Mesas** | ✅ Completo | venue_nodes, venue_zones, realtime, CRUD completo |
+| **Finanzas** | ✅ Completo | Métricas reales, cash sessions, RPCs, charts |
 
 ### 3.2 Funcionalidades Parciales (A Medio Hacer)
 
 | Feature | Estado | Qué falta |
 |---------|--------|-----------|
-| **Tablero de Pedidos** | ⚠️ 70% | UI lista, falta conexión realtime a DB |
-| **Creación de Pedidos** | ⚠️ 60% | Terminal funcional, falta persistir en `orders` |
-| **Gestión de Mesas** | ⚠️ 40% | UI básica, sin conexión a DB |
-| **Finanzas** | ⚠️ 50% | Métricas visuales, sin datos reales |
-| **Programa Fidelidad** | ⚠️ 60% | Lógica de puntos definida, sin cálculo automático |
+| **Creación de Pedidos** | ⚠️ 80% | Terminal funcional, persistencia OK, faltan edge cases |
+| **Programa Fidelidad** | ⚠️ 70% | Lógica de puntos + redemptions funcionando, UI mejorable |
 | **Modo Offline** | ⚠️ 30% | IndexedDB configurado, sync no implementado |
-| **Panel SaaS Admin** | ⚠️ 50% | Visualización OK, gestión real limitada |
+| **Panel SaaS Admin** | ⚠️ 60% | Visualización OK, gestión real mejorable |
+| **White-Label** | ⚠️ 80% | TenantContext creado, CSS variables, falta usar en más componentes |
 
 ### 3.3 Funcionalidades Pendientes (No Implementadas)
 
 | Feature | Prioridad | Dependencias |
 |---------|-----------|--------------|
-| **Realtime Subscriptions** | Alta | Supabase Realtime para actualizar pedidos en vivo |
 | **Webhook de Pagos** | Media | Integración Stripe/MercadoPago |
 | **Reportes PDF** | Baja | Librería de generación de PDFs |
 | **Multi-idioma** | Baja | i18n framework |

@@ -144,6 +144,8 @@ const MenuPage: React.FC = () => {
         onAddToCart={(item) => navigate(`/m/${slug}/product/${item.id}`)} // Or direct add if desired
         serviceMode={serviceMode}
         tableLabel={tableLabel}
+        isGuest={!user}
+        userBalance={user?.balance}
       />
 
       {/* USER HUB BUTTON (Floating Overlay) */}

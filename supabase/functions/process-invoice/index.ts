@@ -92,9 +92,10 @@ serve(async (req) => {
         const genAI = new GoogleGenerativeAI(geminiApiKey)
         const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' })
 
-        // System prompt for Argentine invoice extraction
+        // System prompt for Argentine invoice extraction (Spanish is required for the model context)
         const systemPrompt = `Eres un experto contable argentino especializado en OCR de facturas. 
-
+        
+        // --- INICIO DE PROMPT PARA IA (NO MODIFICAR TEXTO) ---
 TAREA: Extrae todos los datos de esta factura y devuélvelos en formato JSON.
 
 IMPORTANTE - FORMATO DE NÚMEROS ARGENTINOS:

@@ -33,7 +33,7 @@ const TABLE_ENTITY_MAP: Record<string, string> = {
 };
 
 const CATEGORIES: { slug: AuditCategory | 'all', label: string, icon: string }[] = [
-  { slug: 'all', label: 'Todo', icon: 'apps' },
+  { slug: 'all', label: 'Todos', icon: 'apps' },
   { slug: 'stock', label: 'Stock', icon: 'package_2' },
   { slug: 'orders', label: 'Pedidos', icon: 'list_alt' },
   { slug: 'finance', label: 'Finanzas', icon: 'payments' },

@@ -108,7 +108,7 @@ export const InventoryAuditLog: React.FC<InventoryAuditLogProps> = ({ itemId, cl
                 <FilterChip
                     active={filter === 'all'}
                     onClick={() => setFilter('all')}
-                    label="Todo"
+                    label="Todos"
                     count={logs.length}
                 />
                 {Object.entries(ACTION_CONFIG).map(([key, config]) => {

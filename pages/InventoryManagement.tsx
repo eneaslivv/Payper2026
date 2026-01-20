@@ -85,7 +85,7 @@ function InputBlock({ label, children }: { label: string, children: React.ReactN
 }
 
 // Location Stock Breakdown Component
-function LocationStockBreakdown({ itemId, unitType, packageSize, onLocationClick }: { itemId: string, unitType: string, packageSize: number, onLocationClick?: (locationName: string) => void }) {
+function LocationStockBreakdown({ itemId, unitType, packageSize, onLocationClick, refreshKey }: { itemId: string, unitType: string, packageSize: number, onLocationClick?: (locationName: string) => void, refreshKey?: number }) {
   const [locations, setLocations] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
 
@@ -104,7 +104,7 @@ function LocationStockBreakdown({ itemId, unitType, packageSize, onLocationClick
       }
     };
     if (itemId) fetchLocations();
-  }, [itemId]);
+  }, [itemId, refreshKey]);
 
   if (loading) {
     return (
@@ -215,11 +215,14 @@ const InventoryManagement: React.FC = () => {
   };
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const itemsRef = useRef(items);
+  itemsRef.current = items; // Keep ref synced with state
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [adjustmentModal, setAdjustmentModal] = useState<{ open: boolean, type: 'WASTE' | 'ADJUSTMENT' | 'PURCHASE' }>({ open: false, type: 'WASTE' });
   const [drawerTab, setDrawerTab] = useState<'details' | 'recipe' | 'history'>('details');
+  const [stockRefreshKey, setStockRefreshKey] = useState(0); // Force refresh on realtime updates
 
   // Lazy init for persistence
   const [filter, setFilter] = useState<InventoryFilter>(() => {
@@ -351,11 +354,18 @@ const InventoryManagement: React.FC = () => {
         },
         (payload) => {
           console.log('[Realtime] ✅ UPDATE en inventory_items recibido:', payload);
-          // Solo procesar si pertenece a esta tienda
-          if (payload.new && (payload.new as any).store_id === storeId) {
+          // Match by ID - check against current items using Ref to avoid stale closure
+          const itemId = (payload.new as any).id;
+          const currentItems = itemsRef.current;
+          const existsInList = currentItems.some(i => i.id === itemId);
+
+          // Always update if it's in our list OR if it matches our store_id (as fallback)
+          if (existsInList || (payload.new as any).store_id === storeId) {
+            console.log('[Realtime] 🔄 Updating item:', (payload.new as any).name);
             const newStock = parseFloat((payload.new as any).current_stock);
             const newClosedStock = parseFloat((payload.new as any).closed_stock || '0');
-            const itemId = (payload.new as any).id;
+            const newOpenPackages = (payload.new as any).open_packages || [];
+            const newOpenCount = parseInt((payload.new as any).open_count || '0');
 
             // Actualizar el estado directamente
             setItems(prev => {
@@ -365,16 +375,24 @@ const InventoryManagement: React.FC = () => {
                     ...item,
                     current_stock: newStock,
                     closed_stock: newClosedStock,
+                    open_packages: newOpenPackages,
+                    open_count: newOpenCount,
                     cost: (payload.new as any).cost || item.cost
                   }
                   : item
               );
               // Invalidar cache para forzar refresh en próxima carga
-              localStorage.removeItem(`inventory_cache_v5_${storeId}`);
+              localStorage.removeItem(`inventory_cache_v7_${storeId}`);
               return updated;
             });
 
             addToast('📦 Stock actualizado: ' + (payload.new as any).name, 'success');
+
+            // Force LocationStockBreakdown to refresh
+            setStockRefreshKey(prev => prev + 1);
+
+            // Backup: Force full refetch to ensure consistency with DB (e.g. ensure closed_stock matches locations)
+            fetchData(true, true);
           }
         }
       )
@@ -415,29 +433,33 @@ const InventoryManagement: React.FC = () => {
     if (selectedItem) {
       const freshItem = items.find(i => i.id === selectedItem.id);
       if (freshItem) {
-        // Only update if specific fields changed to avoid unnecessary renders
-        // We focus on stock fields which are the dynamic ones
+        // Compare using string conversion to avoid type mismatch issues
         const hasChanged =
-          freshItem.current_stock !== selectedItem.current_stock ||
-          freshItem.closed_stock !== selectedItem.closed_stock ||
+          String(freshItem.current_stock) !== String(selectedItem.current_stock) ||
+          String(freshItem.closed_stock) !== String(selectedItem.closed_stock) ||
+          String(freshItem.open_count) !== String(selectedItem.open_count) ||
           JSON.stringify(freshItem.open_packages) !== JSON.stringify(selectedItem.open_packages);
 
         if (hasChanged) {
-          console.log('[Sync] Refreshing selected item in drawer:', freshItem.name);
+          console.log('[Sync] Refreshing selected item in drawer:', freshItem.name, {
+            old_closed: selectedItem.closed_stock,
+            new_closed: freshItem.closed_stock,
+            old_current: selectedItem.current_stock,
+            new_current: freshItem.current_stock
+          });
           setSelectedItem(freshItem);
         }
       }
     }
-  }, [items]);
+  }, [items, selectedItem]);
 
   const fetchData = async (forceRefresh = false, silent = false) => {
     const storeId = profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
     if (!storeId) return;
 
     // CACHE STRATEGY
-    // CACHE STRATEGY
-    const CACHE_KEY = `inventory_cache_v6_${storeId}`; // Force refresh (v6 - fix category corruption)
-    const CACHE_DURATION = 5 * 60 * 1000; // 5 mins
+    const CACHE_KEY = `inventory_cache_v7_${storeId}`; // Force refresh (v7 - fix open package location)
+    const CACHE_DURATION = 30 * 1000; // 30 seconds (Stock is critical)
 
     // 1. Check Cache
     if (!forceRefresh) {
@@ -528,14 +550,22 @@ const InventoryManagement: React.FC = () => {
 
       console.log('[Inventory] Fetching data for Store ID:', storeId);
 
-      // 2. Fetch Fresh Data (including recipes)
-      const [insumos, prods, cats, openPackages, recipesData] = await Promise.all([
+      // 2. Fetch Fresh Data (including recipes & locations)
+      const [insumos, prods, cats, openPackages, recipesData, locationsData, locationStockData] = await Promise.all([
         fetchWithTimeout(`${baseUrl}/inventory_items?store_id=eq.${storeId}`),
         fetchWithTimeout(`${baseUrl}/products?select=*,product_variants(*)&store_id=eq.${storeId}`),
         fetchWithTimeout(`${baseUrl}/categories?store_id=eq.${storeId}`),
         fetchWithTimeout(`${baseUrl}/open_packages?store_id=eq.${storeId}`),
-        fetchWithTimeout(`${baseUrl}/product_recipes?select=*`)
+        fetchWithTimeout(`${baseUrl}/product_recipes?select=*`),
+        fetchWithTimeout(`${baseUrl}/storage_locations?store_id=eq.${storeId}`),
+        fetchWithTimeout(`${baseUrl}/inventory_location_stock?store_id=eq.${storeId}`)
       ]);
+
+      // Map Locations for quick lookup
+      const locationsMap = (locationsData || []).reduce((acc: any, loc: any) => {
+        acc[loc.id] = loc.name;
+        return acc;
+      }, {});
 
       // Store recipes - debug log
       console.log('[Inventory] product_recipes loaded:', recipesData?.length || 0, 'recipes');
@@ -568,7 +598,7 @@ const InventoryManagement: React.FC = () => {
           closed_stock: parseFloat(i.closed_stock || '0'), // ADDED: Map closed_stock from DB (parseFloat for numeric)
           package_size: i.package_size || 1, // ADDED: Map package_size
           content_unit: i.content_unit || i.unit_type || 'un', // ADDED: Map content_unit
-          cost: i.cost || 0,
+          cost: parseFloat(i.cost || '0'),
           category_ids: i.category_id ? [i.category_id] : [],
           presentations: [],
           closed_packages: [],
@@ -577,30 +607,59 @@ const InventoryManagement: React.FC = () => {
           open_count: i.open_count || 0
         }));
 
+      // Map product recipes to products for easy cost calculation
+      const productRecipesMap = (recipesData || []).reduce((acc: any, r: any) => {
+        if (!acc[r.product_id]) acc[r.product_id] = [];
+        acc[r.product_id].push(r);
+        return acc;
+      }, {});
+
       // Transform Products
       const transformedProducts: InventoryItem[] = (prods || [])
         .filter((p: any) => !p.name?.startsWith('[ELIMINADO]')) // Client-side safety filter
-        .map((p: any) => ({
-          id: p.id,
-          cafe_id: p.store_id,
-          name: p.name,
-          sku: 'SKU-' + (p.id || '').slice(0, 4).toUpperCase(),
-          item_type: 'sellable' as const,
-          unit_type: 'unit' as UnitType,
-          image_url: p.image_url || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
-          is_active: p.is_available, // Correctly mapped to DB column
-          is_menu_visible: p.is_visible, // Map from 'is_visible' column in products table
-          min_stock: 0,
-          current_stock: 0,
-          cost: 0,
-          price: p.price || 0,
-          category_ids: p.category_id ? [p.category_id] : [],
-          description: p.description || '',
-          presentations: [],
-          closed_packages: [],
-          open_packages: [],
-          variants: p.product_variants || [] // Map variants from join
-        }));
+        .map((p: any) => {
+          const productRecipe = productRecipesMap[p.id] || [];
+          const recipeCost = productRecipe.reduce((sum: number, r: any) => {
+            const ingredient = transformedInsumos.find(i => i.id === r.inventory_item_id);
+            const subtotal = (ingredient?.cost || 0) * parseFloat(r.quantity_required || '0');
+            return sum + subtotal;
+          }, 0);
+
+          if (p.id.startsWith('a46c')) {
+            console.log('[DEBUG] Product SKU-A46C recipe calculation:', {
+              id: p.id,
+              recipeLength: productRecipe.length,
+              calculatedCost: recipeCost,
+              ingredients: productRecipe.map(r => ({ id: r.inventory_item_id, qty: r.quantity_required }))
+            });
+          }
+
+          return {
+            id: p.id,
+            cafe_id: p.store_id,
+            name: p.name,
+            sku: 'SKU-' + (p.id || '').slice(0, 4).toUpperCase(),
+            item_type: 'sellable' as const,
+            unit_type: 'unit' as UnitType,
+            image_url: p.image_url || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
+            is_active: p.is_available, // Correctly mapped to DB column
+            is_menu_visible: p.is_visible, // Map from 'is_visible' column in products table
+            min_stock: 0,
+            current_stock: 0,
+            cost: recipeCost, // DYNAMICALLY CALCULATED COST
+            recipe: productRecipe.map((r: any) => ({
+              ingredientId: r.inventory_item_id,
+              quantity: parseFloat(r.quantity_required || '0')
+            })),
+            price: p.price || 0,
+            category_ids: p.category_id ? [p.category_id] : [],
+            description: p.description || '',
+            presentations: [],
+            closed_packages: [],
+            open_packages: [],
+            variants: p.product_variants || [] // Map variants from join
+          };
+        });
 
 
       // Map real open_packages to items (merge from separate table OR use JSONB column)
@@ -609,21 +668,26 @@ const InventoryManagement: React.FC = () => {
         const itemPackages = (openPackages || []).filter((pkg: any) => pkg.inventory_item_id === item.id);
 
         // If separate table has data, use it. Otherwise, keep the JSONB column data.
-        if (itemPackages.length > 0) {
-          return {
-            ...item,
-            open_count: itemPackages.length,
-            open_packages: itemPackages.map((pkg: any) => ({
-              id: pkg.id,
-              remaining: pkg.remaining,
-              package_capacity: pkg.package_capacity,
-              opened_at: pkg.opened_at
-            }))
-          };
-        }
+        // Find location stocks
+        const itemLocationStocks = (locationStockData || []).filter((ls: any) => ls.item_id === item.id);
 
-        // Keep existing data from JSONB column (already set in transform)
-        return item;
+        return {
+          ...item,
+          open_count: itemPackages.length,
+          open_packages: itemPackages.map((pkg: any) => ({
+            id: pkg.id,
+            remaining: pkg.remaining,
+            package_capacity: pkg.package_capacity,
+            opened_at: pkg.opened_at,
+            location_id: pkg.location_id,
+            location_name: locationsMap[pkg.location_id] || null // Map location name here
+          })),
+          location_stocks: itemLocationStocks.map((ls: any) => ({
+            location_id: ls.location_id,
+            location_name: locationsMap[ls.location_id] || null,
+            closed_units: parseFloat(ls.closed_units || '0')
+          }))
+        };
       });
 
       // Filter out deleted items (is_active=false or name starts with [ELIMINADO])
@@ -994,20 +1058,101 @@ const InventoryManagement: React.FC = () => {
 
       addToast('Receta actualizada', 'success');
       setIsAddingRecipeItem(false);
-      // Removed fetchData() to avoid full reload, just accept local update logic below
-      // fetchData(); 
 
-      // Update local selected item to reflect cost change immediately
-      const newComp = { ingredientId: selectedIngredientToAdd.id, quantity: qty };
+      // 1. Update global Recipes state for background calculations
+      const newRecipeDB = {
+        product_id: selectedItem.id,
+        inventory_item_id: selectedIngredientToAdd.id,
+        quantity_required: qty
+      };
+      setProductRecipes(prev => {
+        const idx = prev.findIndex(r => r.product_id === selectedItem.id && r.inventory_item_id === selectedIngredientToAdd.id);
+        const updated = [...prev];
+        if (idx >= 0) updated[idx] = newRecipeDB;
+        else updated.push(newRecipeDB);
+        return updated;
+      });
+
+      // 2. Update local selected item to reflect cost change immediately
+      const newInsumoFromState = items.find(i => i.id === selectedIngredientToAdd.id);
+      const insumoCost = newInsumoFromState ? newInsumoFromState.cost : (selectedIngredientToAdd.cost || 0);
+
+      const newComp = {
+        ingredientId: selectedIngredientToAdd.id,
+        quantity: qty
+      };
       const newRecipe = [...(selectedItem.recipe || [])];
       const idx = newRecipe.findIndex(r => r.ingredientId === selectedIngredientToAdd.id);
       if (idx >= 0) newRecipe[idx] = newComp;
       else newRecipe.push(newComp);
 
-      setSelectedItem({ ...selectedItem, recipe: newRecipe });
+      // Recalculate total cost locally
+      const newTotalCost = newRecipe.reduce((sum, comp) => {
+        const insumo = items.find(i => i.id === comp.ingredientId);
+        return sum + (insumo ? comp.quantity * insumo.cost : 0);
+      }, 0);
+
+      const updatedItem = { ...selectedItem, recipe: newRecipe, cost: newTotalCost };
+      setSelectedItem(updatedItem);
+
+      // 3. Update main items list
+      setItems(prev => prev.map(i => i.id === selectedItem.id ? updatedItem : i));
+
     } catch (err: any) {
       console.error('Add Ingredient Error:', err);
       addToast('Error: ' + err.message, 'error');
+    }
+  };
+
+  const handleDeleteIngredient = async (ingredientId: string) => {
+    if (!selectedItem) return;
+
+    try {
+      const storageKey = 'sb-yjxjyxhksedwfeueduwl-auth-token';
+      const storedData = localStorage.getItem(storageKey);
+      let token = '';
+      if (storedData) {
+        try {
+          const parsed = JSON.parse(storedData);
+          token = parsed.access_token || '';
+        } catch (e) { }
+      }
+
+      const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      const response = await fetch(
+        `https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/product_recipes?product_id=eq.${selectedItem.id}&inventory_item_id=eq.${ingredientId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'apikey': apiKey,
+            'Authorization': token ? `Bearer ${token}` : `Bearer ${apiKey}`
+          }
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to delete ingredient');
+
+      addToast('Ingrediente removido', 'success');
+
+      // Update global states
+      setProductRecipes(prev => prev.filter(r => !(r.product_id === selectedItem.id && r.inventory_item_id === ingredientId)));
+
+      // Update local item
+      const newRecipe = (selectedItem.recipe || []).filter(r => r.ingredientId !== ingredientId);
+      const newTotalCost = newRecipe.reduce((sum, comp) => {
+        const insumo = items.find(i => i.id === comp.ingredientId);
+        return sum + (insumo ? comp.quantity * insumo.cost : 0);
+      }, 0);
+
+      const updatedItem = { ...selectedItem, recipe: newRecipe, cost: newTotalCost };
+      setSelectedItem(updatedItem);
+
+      // Update main list
+      setItems(prev => prev.map(i => i.id === selectedItem.id ? updatedItem : i));
+
+    } catch (err: any) {
+      addToast('Error al eliminar ingrediente', 'error');
     }
   };
 
@@ -1064,7 +1209,8 @@ const InventoryManagement: React.FC = () => {
 
       // Location filter (Enhanced Navigation)
       const matchesLocation = activeLocationFilter === null ||
-        (item.open_packages?.some(pkg => pkg.location === activeLocationFilter));
+        (item.open_packages?.some(pkg => (pkg.location_name || pkg.location) === activeLocationFilter)) ||
+        ((item as any).location_stocks?.some((ls: any) => ls.location_name === activeLocationFilter && ls.closed_units > 0));
 
       return matchesSearch && matchesFilter && matchesCategory && matchesLocation;
     });
@@ -1248,7 +1394,7 @@ const InventoryManagement: React.FC = () => {
           // Log deletion in audit
           const storeIdForLog = profile?.store_id;
           if (storeIdForLog) {
-            await (supabase.from('inventory_audit_logs') as any).insert({
+            await (supabase.from as any)('inventory_audit_logs').insert({
               store_id: storeIdForLog,
               item_id: selectedItem.id,
               action_type: 'deletion',
@@ -1338,7 +1484,8 @@ const InventoryManagement: React.FC = () => {
       if (selectedItem.description) payload.description = selectedItem.description;
       if (selectedItem.price !== undefined) payload.price = selectedItem.price;
 
-      const response = await fetch(`https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/inventory_items?id=eq.${selectedItem.id}`, {
+      const table = selectedItem.item_type === 'sellable' ? 'products' : 'inventory_items';
+      const response = await fetch(`https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/${table}?id=eq.${selectedItem.id}`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify(payload)
@@ -1373,6 +1520,16 @@ const InventoryManagement: React.FC = () => {
     }
   }, [drawerTab, selectedItem]);
 
+  // Sync selectedItem when items list updates (e.g. after background fetchData)
+  useEffect(() => {
+    if (selectedItem) {
+      const updated = items.find(i => i.id === selectedItem.id);
+      if (updated && (updated.cost !== selectedItem.cost || (updated.recipe || []).length !== (selectedItem.recipe || []).length)) {
+        setSelectedItem(updated);
+      }
+    }
+  }, [items]);
+
   const fetchStockHistory = async (itemId: string) => {
     setLoadingMovements(true);
     const { data } = await (supabase.from as any)('inventory_audit_logs')
@@ -1388,7 +1545,7 @@ const InventoryManagement: React.FC = () => {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-5 max-w-[1400px] mx-auto pb-32">
+    <div className="p-4 md:p-6 space-y-5 max-w-[1400px] mx-auto pb-32 bg-[#F8F9F7] dark:bg-transparent min-h-screen transition-colors duration-300">
       {/* HEADER COMPACTO */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3">
 
@@ -1615,7 +1772,15 @@ const InventoryManagement: React.FC = () => {
                       <button
                         onClick={() => {
                           setEditingProductId(productId);
-                          setRecipeIngredients(recipeItems.map(r => ({ id: r.inventory_item_id, qty: r.quantity_required })));
+                          const mappedIngredients = recipeItems.map(r => {
+                            const invItem = items.find(i => i.id === r.inventory_item_id);
+                            let unit: any = invItem?.unit_type || 'un';
+                            let qty = r.quantity_required;
+                            if (unit === 'kg') { if (qty < 1) { unit = 'gram'; qty *= 1000; } }
+                            else if (unit === 'liter') { if (qty < 1) { unit = 'ml'; qty *= 1000; } }
+                            return { id: r.inventory_item_id, qty: Number(qty.toFixed(4)), unit };
+                          });
+                          setRecipeIngredients(mappedIngredients);
                           setShowRecipeModal(true);
                         }}
                         className="flex-1 py-2 rounded-lg bg-white/5 text-white/50 text-[9px] font-bold uppercase hover:text-neon hover:bg-white/5 transition-all"
@@ -1980,7 +2145,8 @@ const InventoryManagement: React.FC = () => {
             </div>
           )}
         </>
-      )}
+      )
+      }
 
       {/* OVERLAY PARA CERRAR DRAWER */}
       {
@@ -2260,6 +2426,7 @@ const InventoryManagement: React.FC = () => {
                             itemId={selectedItem.id}
                             unitType={selectedItem.unit_type}
                             packageSize={selectedItem.package_size || 1}
+                            refreshKey={stockRefreshKey}
                             onLocationClick={(locName) => {
                               console.log('📍 Navigating to Logistics:', locName);
                               setActiveLocationFilter(locName);
@@ -2351,21 +2518,22 @@ const InventoryManagement: React.FC = () => {
 
                               {/* Info adicional Footer */}
                               <div className="flex items-center justify-between text-[8px] pt-1 border-t border-white/5">
-                                {pkg.location ? (
+                                {(pkg.location_name || pkg.location) ? (
                                   <button
                                     onClick={(e) => {
-                                      e.stopPropagation(); // Prevent row click or other bubbles
-                                      console.log('📍 Location Clicked (Open Pkg):', pkg.location);
-                                      setActiveLocationFilter(pkg.location);
+                                      e.stopPropagation(); // Prevent row click
+                                      const locName = pkg.location_name || pkg.location;
+                                      console.log('📍 Location Clicked (Open Pkg):', locName);
+                                      setActiveLocationFilter(locName);
                                       setFilter('logistics'); // Switch to Logistics Tab
                                       setSelectedItem(null); // Close drawer
-                                      addToast(`Navegando a: ${pkg.location}`, 'info');
+                                      addToast(`Navegando a: ${locName}`, 'info');
                                     }}
                                     className="text-white/40 flex items-center gap-1 hover:text-neon transition-colors cursor-pointer group relative z-50 text-left"
                                   >
                                     <span className="material-symbols-outlined text-[10px] group-hover:text-neon">location_on</span>
                                     <span className="underline decoration-transparent group-hover:decoration-neon/50 underline-offset-2 transition-all">
-                                      {pkg.location}
+                                      {pkg.location_name || pkg.location}
                                     </span>
                                   </button>
                                 ) : (
@@ -2588,7 +2756,10 @@ const InventoryManagement: React.FC = () => {
                           </div>
                           <div className="flex items-center gap-5">
                             <p className="text-[12px] font-black text-white font-mono">{formatCurrency(comp.quantity * insumo.cost)}</p>
-                            <button className="size-8 rounded-xl bg-white/5 flex items-center justify-center text-white/20 hover:text-primary transition-all">
+                            <button
+                              onClick={() => handleDeleteIngredient(comp.ingredientId)}
+                              className="size-8 rounded-xl bg-white/5 flex items-center justify-center text-white/20 hover:text-rose-500 hover:bg-rose-500/10 transition-all"
+                            >
                               <span className="material-symbols-outlined text-lg">delete</span>
                             </button>
                           </div>
@@ -3611,42 +3782,48 @@ const InventoryManagement: React.FC = () => {
       }
 
       {/* STOCK TRANSFER MODAL */}
-      {selectedItem && (
-        <StockTransferModal
-          isOpen={isTransferModalOpen}
-          onClose={() => setIsTransferModalOpen(false)}
-          item={selectedItem}
-          onSuccess={() => fetchData(true)}
-          onInitialStockClick={() => {
-            setShowInsumoWizard(true);
-            setWizardMethod('selector');
-          }}
-        />
-      )}
+      {
+        selectedItem && (
+          <StockTransferModal
+            isOpen={isTransferModalOpen}
+            onClose={() => setIsTransferModalOpen(false)}
+            item={selectedItem}
+            onSuccess={() => fetchData(true)}
+            onInitialStockClick={() => {
+              setShowInsumoWizard(true);
+              setWizardMethod('selector');
+            }}
+          />
+        )
+      }
 
       {/* STOCK ADJUSTMENT MODAL */}
-      {selectedItem && (
-        <StockAdjustmentModal
-          isOpen={adjustmentModal.open}
-          onClose={() => setAdjustmentModal({ ...adjustmentModal, open: false })}
-          item={selectedItem}
-          type={adjustmentModal.type}
-          onSuccess={() => fetchData(true)}
-        />
-      )}
+      {
+        selectedItem && (
+          <StockAdjustmentModal
+            isOpen={adjustmentModal.open}
+            onClose={() => setAdjustmentModal({ ...adjustmentModal, open: false })}
+            item={selectedItem}
+            type={adjustmentModal.type}
+            onSuccess={() => fetchData(true)}
+          />
+        )
+      }
 
       {/* EDIT PRICE MODAL */}
-      {selectedItem && (
-        <EditPriceModal
-          isOpen={showEditPriceModal}
-          onClose={() => setShowEditPriceModal(false)}
-          itemId={selectedItem.id}
-          itemName={selectedItem.name}
-          currentCost={selectedItem.cost || 0}
-          currentPrice={selectedItem.price || 0}
-          onSuccess={() => fetchData(true)}
-        />
-      )}
+      {
+        selectedItem && (
+          <EditPriceModal
+            isOpen={showEditPriceModal}
+            onClose={() => setShowEditPriceModal(false)}
+            itemId={selectedItem.id}
+            itemName={selectedItem.name}
+            currentCost={selectedItem.cost || 0}
+            currentPrice={selectedItem.price || 0}
+            onSuccess={() => fetchData(true)}
+          />
+        )
+      }
     </div >
   );
 };

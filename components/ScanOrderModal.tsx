@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useOffline } from '../contexts/OfflineContext'; // Import context
 import jsQR from 'jsqr';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,6 +14,7 @@ interface ScanOrderModalProps {
 
 const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, currentStation }) => {
     const { profile } = useAuth();
+    const { refreshOrders } = useOffline();
 
     // Refs
     const inputRef = useRef<HTMLInputElement>(null);
@@ -271,9 +273,6 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
             // Check current store ownership
             if (profile?.store_id && data.store_id !== profile.store_id) {
                 console.warn("⛔ Store Mismatch:", data.store_id, profile.store_id);
-                // setStatus('error');
-                // setErrorMessage('Esta orden pertenece a otra sucursal.');
-                // return;
                 // TEMPORARY BYPASS FOR DEBUGGING
             }
 
@@ -285,7 +284,46 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
                 return;
             }
 
-            // Successful Preview
+            // ============================================
+            // TWO-SCAN AUTOMATIC FLOW FOR STATIONS
+            // ============================================
+            const currentStation = activeStation && activeStation !== 'ALL' ? activeStation : null;
+            const orderStation = data.dispatch_station;
+
+            // CASE A: Station selected AND order NOT yet assigned to this station → AUTO-ASSIGN (1st scan)
+            if (currentStation && (!orderStation || orderStation !== currentStation)) {
+                console.log("📍 FIRST SCAN - Auto-assigning to station:", currentStation);
+
+                const { error: stationError } = await supabase
+                    .from('orders' as any)
+                    .update({
+                        dispatch_station: currentStation,
+                        status: 'preparing' // Move to preparing status
+                    })
+                    .eq('id', data.id);
+
+                if (stationError) {
+                    console.warn("⚠️ Could not assign station:", stationError);
+                    setStatus('error');
+                    setErrorMessage('Error al asignar estación');
+                } else {
+                    console.log("✅ Order auto-assigned to station:", currentStation);
+                    setStatus('success');
+                    toast.success(`📍 #${data.order_number || '---'} → ${currentStation}`, {
+                        description: 'Escanea nuevamente para entregar'
+                    });
+                    await refreshOrders();
+                    setTimeout(() => {
+                        resetModal();
+                    }, 1500); // Faster reset for workflow
+                }
+                return; // Exit early - no popup needed for first scan
+            }
+
+            // CASE B: Order already assigned to this station → Show preview for delivery (2nd scan)
+            // CASE C: No station selected (ALL view) → Show preview for delivery
+            // Both cases fall through to show the preview popup
+
             setScannedOrder(data);
             setStatus('preview');
 
@@ -299,7 +337,7 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
     const handleConfirmDelivery = async () => {
         if (!scannedOrder) return;
 
-        console.log("🚚 Attempting delivery for:", scannedOrder.pickup_code || scannedOrder.id);
+        console.log("🚚 Confirming delivery for:", scannedOrder.pickup_code || scannedOrder.id);
 
         // Obtener el user ID del usuario autenticado
         const { data: { user } } = await supabase.auth.getUser();
@@ -314,38 +352,19 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
 
         console.log("👤 Staff ID:", staffId);
 
-        // If a station is selected (not ALL), assign this order to that station
-        // Uses activeStation from localStorage (set by OrderBoard)
-        if (activeStation && activeStation !== 'ALL') {
-            console.log("📍 Assigning order to station:", activeStation);
-            const { error: stationError } = await supabase
-                .from('orders' as any)
-                .update({ dispatch_station: activeStation })
-                .eq('id', scannedOrder.id);
-
-            if (stationError) {
-                console.warn("⚠️ Could not assign station:", stationError);
-            } else {
-                console.log("✅ Order assigned to station:", activeStation);
-            }
-        }
-
-        // Use the reusable logic from scanHandler
+        // At this point, we're on the 2nd scan (or ALL view) - just deliver
         const success = await markOrderAsDelivered(scannedOrder.pickup_code || scannedOrder.id, staffId);
-
-        console.log("🚚 Delivery Result:", success);
 
         if (success) {
             setStatus('success');
-            toast.success(`Orden #${scannedOrder.order_number || '---'} escaneada${activeStation && activeStation !== 'ALL' ? ` en ${activeStation}` : ''}`);
-
+            toast.success(`✅ Orden #${scannedOrder.order_number || '---'} ENTREGADA`);
+            await refreshOrders();
             setTimeout(() => {
                 resetModal();
-            }, 2000);
+            }, 1500);
         } else {
             setStatus('error');
             setErrorMessage('No se pudo confirmar la entrega. Verifica si ya fue procesada.');
-            console.error("❌ Delivery failed for order:", scannedOrder.order_number);
         }
     };
 

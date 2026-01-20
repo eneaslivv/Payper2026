@@ -418,7 +418,7 @@ serve(async (req) => {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${supabaseServiceKey}`
+                        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
                       },
                       body: JSON.stringify(emailPayload)
                     });
@@ -497,7 +497,10 @@ serve(async (req) => {
 
                     const emailRes = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
                       method: 'POST',
-                      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseServiceKey}` },
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+                      },
                       body: JSON.stringify({
                         to: orderData.client.email,
                         subject: `⚠️ Pago no procesado - Pedido #${orderData.order_number} | ${orderData.store?.name || 'Tienda'}`,
@@ -571,7 +574,7 @@ serve(async (req) => {
 
                     const emailRes = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
                       method: 'POST',
-                      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseServiceKey}` },
+                      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}` },
                       body: JSON.stringify({
                         to: orderData.client.email,
                         subject: `↩ Reembolso procesado - Pedido #${orderData.order_number} | ${orderData.store?.name || 'Tienda'}`,

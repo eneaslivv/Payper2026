@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS public.venue_zones (
 
 -- RLS for zones
 ALTER TABLE public.venue_zones ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can manage zones of their store" ON public.venue_zones;
 CREATE POLICY "Users can manage zones of their store" ON public.venue_zones
   USING (store_id IN (SELECT store_id FROM public.profiles WHERE id = auth.uid()));
 
@@ -36,6 +37,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
 );
 
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can manage orders of their store" ON public.orders;
 CREATE POLICY "Users can manage orders of their store" ON public.orders
   USING (store_id IN (SELECT store_id FROM public.profiles WHERE id = auth.uid()));
 
@@ -53,6 +55,7 @@ CREATE TABLE IF NOT EXISTS public.order_items (
 );
 
 ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can manage order items of their store" ON public.order_items;
 CREATE POLICY "Users can manage order items of their store" ON public.order_items
   USING (order_id IN (SELECT id FROM public.orders)); -- Simplified RLS relying on parent
 

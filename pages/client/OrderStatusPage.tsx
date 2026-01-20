@@ -39,26 +39,23 @@ export default function OrderStatusPage() {
 
     const fetchOrder = async () => {
         if (!orderId) return;
-        // 🛡️ GUARD: Wait for auth to stabilize before fetching
-        if (authLoading) {
-            console.log("[OrderStatusPage] Auth still loading, deferring fetch...");
-            return;
-        }
-        console.log("[OrderStatusPage] Fetching order:", orderId);
-        const { data, error } = await supabase
-            .from('orders')
-            .select('*, order_items(*, product:inventory_items(*))')
-            .eq('id', orderId)
-            .single();
 
-        if (error) {
-            console.error("Error fetching order:", error);
-            setError(error.message || JSON.stringify(error) || "No pudimos encontrar tu pedido. Verifica el enlace o intenta nuevamente.");
+        console.log("[OrderStatusPage] Fetching order securely:", orderId);
+
+        // USE SECURE RPC (Bypasses RLS if ID matches)
+        // Cast to any to bypass missing type definition for new RPC
+        const { data: rpcData, error } = await (supabase.rpc as any)('get_public_order_status', { p_order_id: orderId });
+
+        if (error || !rpcData?.success) {
+            console.error("Error fetching order:", error || rpcData?.error);
+            setError(rpcData?.error || error?.message || "No pudimos encontrar tu pedido.");
         } else {
-            setOrder(data);
+            // Normalize RPC data structure to match expected state
+            const orderData = rpcData.data;
+            setOrder(orderData);
 
             // ⚡ ACTIVE VERIFICATION: If order is pending, ask server to double check MP status
-            if (data.status === 'pending' || data.payment_status === 'pending') {
+            if (orderData.status === 'pending' || orderData.payment_status === 'pending') {
                 const mpParams = getMPParams();
                 verifyPaymentStatus(orderId, mpParams.payment_id || undefined);
             }
@@ -113,15 +110,7 @@ export default function OrderStatusPage() {
             if (data?.success && data?.status === 'approved') {
                 addToast("¡Pago confirmado! Tu pedido está en marcha.", "success");
                 // Re-fetch immediately
-                const { data: refreshedOrder } = await supabase
-                    .from('orders')
-                    .select('*, order_items(*, product:inventory_items(*))')
-                    .eq('id', oid)
-                    .single();
-                if (refreshedOrder) {
-                    console.log("[OrderStatusPage] Order refreshed after payment approval");
-                    setOrder(refreshedOrder);
-                }
+                fetchOrder();
             } else if (data?.status === 'pending') {
                 console.log("[OrderStatusPage] Payment still pending in MP");
                 addToast("Tu pago se está procesando...", "info");
@@ -135,13 +124,12 @@ export default function OrderStatusPage() {
     };
 
     useEffect(() => {
-        // 🛡️ Don't fetch until auth is ready or if missing orderId
-        if (authLoading || !orderId) return;
+        if (!orderId) return;
 
         // 1. Carga inicial
         fetchOrder();
 
-        // 2. Suscripción REALTIME
+        // 2. Suscripción REALTIME (Works only if Authenticated + RLS allowed)
         console.log("Subscribing to order changes:", orderId);
         const channelName = `order-tracking-${orderId || 'general'}`;
         const subscription = supabase
@@ -154,7 +142,7 @@ export default function OrderStatusPage() {
             }, (payload) => {
                 const newStatus = (payload.new as any)?.status;
                 const newPaymentStatus = (payload.new as any)?.payment_status;
-                console.log("Order updated! Status:", newStatus, "Payment:", newPaymentStatus);
+                console.log("Order updated (Realtime)! Status:", newStatus, "Payment:", newPaymentStatus);
 
                 // Notificación visual y sonora 🔔
                 if (newStatus) {
@@ -162,49 +150,45 @@ export default function OrderStatusPage() {
                     let type: any = "status";
                     let message = "Tu café está avanzando.";
 
-                    if (s === 'listo' || s === 'ready') {
+                    if (s === 'cancelled' || s === 'cancelado' || s === 'burned') {
+                        type = "error";
+                        message = "Tu pedido ha sido cancelado.";
+                    } else if (s === 'listo' || s === 'ready') {
                         type = "success";
                         message = "¡Ya puedes pasarlo a buscar! ☕✨";
                     } else if (s === 'en preparación' || s === 'preparing' || s === 'preparando') {
                         message = "El barista ya está manos a la obra. 👨‍🍳";
-                    } else if (newPaymentStatus === 'approved' && order?.payment_status !== 'approved') {
+                    } else if (newPaymentStatus === 'approved') {
                         type = "success";
                         message = "Pago confirmado. ¡Empezamos!";
                     }
 
-                    // Display name for the toast
                     const displayStatus = s === 'preparing' || s === 'preparando' ? 'En Preparación' :
                         s === 'ready' ? 'Listo' :
-                            s === 'delivered' ? 'Entregado' : newStatus;
+                            s === 'delivered' ? 'Entregado' :
+                                s === 'cancelled' || s === 'cancelado' || s === 'burned' ? 'Cancelado' : newStatus;
 
-                    if (order?.status !== newStatus) {
-                        addToast(`Estado: ${displayStatus}`, type, message);
-                    }
+                    addToast(`Estado: ${displayStatus}`, type, message);
                 }
 
-                // Re-fetch completo para no perder relaciones (items, productos)
+                // Re-fetch completo
                 fetchOrder();
             })
             .subscribe((status) => {
                 console.log("Realtime status for order:", status);
             });
 
-        // 3. POLLING FALLBACK (Every 10s if pending)
-        // This ensures that if the webhook fails or realtime disconnects, we still check.
+        // 3. Polling Fallback (Critical for Guests blocked by RLS)
+        // Check status every 4 seconds to ensure updates even if Realtime fails
         const pollInterval = setInterval(() => {
-            if (order && (order.status === 'pending' || order.payment_status === 'pending')) {
-                console.log("🔄 [Polling] Auto-verifying payment status...");
-                // Pass existing payment ID if we have it to help the verification
-                const mpParams = getMPParams();
-                verifyPaymentStatus(orderId, mpParams.payment_id || undefined);
-            }
-        }, 10000); // 10 seconds
+            fetchOrder();
+        }, 4000);
 
         return () => {
-            supabase.removeChannel(subscription);
             clearInterval(pollInterval);
+            supabase.removeChannel(subscription);
         };
-    }, [orderId, authLoading, order?.status, order?.payment_status]); // Added dependencies to restart poll check if status changes
+    }, [orderId]);
 
     // UI: Clean Error State
     if (error) return (
@@ -290,7 +274,11 @@ export default function OrderStatusPage() {
 
     const mappedOrder = {
         ...order,
-        delivery_status: mapToDeliveryStatus(order.status),
+        // ALWAYS map from status for intermediate states (received, preparing, ready)
+        // But if delivery_status is 'delivered', use that to show final state
+        delivery_status: order.delivery_status === 'delivered'
+            ? 'delivered'
+            : mapToDeliveryStatus(order.status),
         order_items: normalizeItems()
     };
 

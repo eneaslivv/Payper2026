@@ -99,6 +99,7 @@ const JoinTeam = () => {
                     data: {
                         full_name: fullName || invitation.email.split('@')[0],
                         store_id: invitation.store_id,
+                        role: 'staff', // Securely passed to trigger
                         role_id: invitation.role
                     }
                 }
@@ -109,23 +110,8 @@ const JoinTeam = () => {
                 throw authError;
             }
 
-            // Create profile for the new user
+            // User created (Trigger created profile automatically)
             if (authData?.user) {
-                const { error: profileError } = await supabase
-                    .from('profiles')
-                    .upsert({
-                        id: authData.user.id,
-                        email: invitation.email,
-                        full_name: fullName || invitation.email.split('@')[0],
-                        role: 'staff',
-                        role_id: invitation.role,
-                        store_id: invitation.store_id,
-                        status: 'active',
-                        is_active: true
-                    });
-
-                if (profileError) console.error('Profile creation error:', profileError);
-
                 // Update invitation status
                 await supabase
                     .from('team_invitations' as any)

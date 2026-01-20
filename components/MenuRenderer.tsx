@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { MenuTheme, InventoryItem, Product } from '../types';
 import { PaymentCapabilityBadge } from './PaymentCapabilityBadge';
+import { WalletTransferModal } from './WalletTransferModal';
 
 // Helper to unify Product and InventoryItem for display
 type DisplayItem = Partial<Product> & Partial<InventoryItem> & {
@@ -36,6 +37,7 @@ interface MenuRendererProps {
     serviceMode?: 'counter' | 'table' | 'club';
     tableLabel?: string | null;
     isGuest?: boolean;
+    userBalance?: number;
 }
 
 export const MenuRenderer: React.FC<MenuRendererProps> = ({
@@ -56,8 +58,13 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
     allowOrdering = true,
     serviceMode,
     tableLabel,
-    isGuest = true // Default to showing if not specified, or false? Usually guest is default state efficiently.
+    isGuest = true,
+    userBalance
 }) => {
+    const [showTransferModal, setShowTransferModal] = useState(false);
+
+    // Derived State
+    const hasProducts = products.length > 0;
 
     // --- STYLE HELPERS ---
     const getRadiusClass = (r: string) => {
@@ -147,8 +154,9 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
                 </motion.div>
             )}
 
-            {/* GUEST BANNER (Conditional) */}
-            {isGuest && (
+            {/* SMART BANNER SYSTEM (Guest Promo vs Member Balance) */}
+            {(isGuest || theme.showPromoBanner) ? (
+                // OPTION A: PROMO BANNER (Always for Guest, Optional for Member)
                 <div className="px-6 pt-6 mb-4">
                     <div
                         className={`relative group border ${radiusClass} p-7 overflow-hidden shadow-2xl transition-all hover:scale-[1.01]`}
@@ -178,6 +186,46 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
                         </div>
                     </div>
                 </div>
+            ) : (
+                // OPTION B: MEMBER BALANCE (Only if logged in and Banner OFF)
+                !isGuest && userBalance !== undefined && (
+                    <div className="mb-6 mx-4 p-4 rounded-2xl border border-white/5 relative overflow-hidden">
+                        {/* Background with Theme Color */}
+                        <div className="absolute inset-0 opacity-10" style={{ backgroundColor: theme.accentColor }} />
+
+                        <div className="relative z-10 flex flex-col gap-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">Tu Saldo Disponible</h3>
+                                    <div className="flex items-baseline gap-1" style={{ color: theme.accentColor }}>
+                                        <span className="text-sm font-bold">$</span>
+                                        <span className="text-3xl font-black tracking-tighter">{userBalance.toFixed(2)}</span>
+                                    </div>
+                                </div>
+                                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+                                    <span className="material-symbols-outlined text-white" style={{ color: theme.accentColor }}>account_balance_wallet</span>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => alert('Acércate a la caja para cargar saldo')}
+                                    className="flex-1 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-2"
+                                >
+                                    <span className="material-symbols-outlined text-sm">add</span>
+                                    Cargar
+                                </button>
+                                <button
+                                    onClick={() => setShowTransferModal(true)}
+                                    className="flex-1 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-2"
+                                >
+                                    <span className="material-symbols-outlined text-sm">send</span>
+                                    Transferir
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
             )}
 
             {/* SEARCH BAR */}

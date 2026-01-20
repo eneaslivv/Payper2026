@@ -66,7 +66,7 @@ serve(async (req) => {
                 mp_public_key: mpData.public_key,
                 mp_user_id: mpData.user_id.toString(),
                 mp_nickname: "Mercado Pago User", // MP API v2 doesn't always return nickname directly here, usually fetched separately or is implicit
-                mp_email: "vendedor@mercadopago.com", // Placeholder, ideally fetch user profile
+                mp_email: "noreply@payper.io", // Placeholder for MP Connect flow
                 mp_connected_at: new Date().toISOString(),
                 mp_expires_at: new Date(Date.now() + (mpData.expires_in * 1000)).toISOString()
             })

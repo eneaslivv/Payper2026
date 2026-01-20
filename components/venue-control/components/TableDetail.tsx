@@ -38,6 +38,8 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
 
   // Dispatch Stations for dropdown
   const [dispatchStations, setDispatchStations] = useState<{ id: string; name: string }[]>([]);
+  // Storage Locations for inventory tracking dropdown
+  const [storageLocations, setStorageLocations] = useState<{ id: string; name: string; location_type: string }[]>([]);
 
   // Fetch dispatch stations on mount
   useEffect(() => {
@@ -52,6 +54,49 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
         if (data) setDispatchStations(data);
       });
   }, [profile?.store_id]);
+
+  // Fetch storage locations for inventory tracking
+  useEffect(() => {
+    if (!profile?.store_id) return;
+    supabase
+      .from('storage_locations')
+      .select('id, name, location_type')
+      .eq('store_id', profile.store_id)
+      .order('name', { ascending: true })
+      .then(({ data }) => {
+        if (data) setStorageLocations(data as any);
+      });
+  }, [profile?.store_id]);
+
+  // Handler to update node's dispatch station
+  const handleUpdateNodeStation = async (stationName: string) => {
+    const { error } = await supabase
+      .from('venue_nodes' as any)
+      .update({ dispatch_station: stationName || null })
+      .eq('id', table.id);
+
+    if (!error) {
+      addToast('Estación actualizada', 'success');
+      onUpdateProperty('dispatch_station', stationName || null);
+    } else {
+      addToast('Error al actualizar estación', 'error');
+    }
+  };
+
+  // Handler to update node's location_id (for inventory tracking)
+  const handleUpdateNodeLocation = async (locationId: string | null) => {
+    const { error } = await supabase
+      .from('venue_nodes' as any)
+      .update({ location_id: locationId })
+      .eq('id', table.id);
+
+    if (!error) {
+      addToast('Ubicación de inventario actualizada', 'success');
+      onUpdateProperty('locationId', locationId);
+    } else {
+      addToast('Error al actualizar ubicación', 'error');
+    }
+  };
 
   // Fetch customers for syncing
   useEffect(() => {
@@ -91,7 +136,7 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
     try {
       const { data } = await supabase
         .from('orders' as any)
-        .select('id, order_number, total_amount, status, created_at, customer_name')
+        .select('id, order_number, total_amount, status, created_at')
         .eq('store_id', profile.store_id)
         .eq('node_id', table.id)
         .in('status', ['draft', 'pending', 'preparing', 'ready', 'served', 'delivered', 'bill_requested', 'Pendiente', 'En Preparación', 'Listo', 'Entregado'])
@@ -912,6 +957,21 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
                       ))}
                     </select>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Inventario:</span>
+                    <select
+                      value={table.locationId || ''}
+                      onChange={(e) => handleUpdateNodeLocation(e.target.value || null)}
+                      className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1.5 text-[10px] font-black text-white uppercase outline-none focus:border-amber-500 transition-all cursor-pointer"
+                    >
+                      <option value="">Sin asignar</option>
+                      {storageLocations.map(loc => (
+                        <option key={loc.id} value={loc.id}>
+                          {loc.name} {loc.location_type === 'bar' ? '🍺' : loc.location_type === 'storage' ? '📦' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   {editButton}
                 </div>
               ) : (
@@ -1008,6 +1068,26 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
                         <Plus size={18} />
                       </button>
                     </div>
+                  </div>
+
+                  {/* DISPATCH STATION SELECTOR */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Estación de Despacho</span>
+                      {table.dispatch_station && (
+                        <span className="text-[9px] font-black text-[#36e27b] uppercase tracking-widest">{table.dispatch_station}</span>
+                      )}
+                    </div>
+                    <select
+                      value={table.dispatch_station || ''}
+                      onChange={(e) => handleUpdateNodeStation(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-[#36e27b]/50 focus:outline-none transition-all"
+                    >
+                      <option value="">Sin asignar</option>
+                      {dispatchStations.map(station => (
+                        <option key={station.id} value={station.name}>{station.name}</option>
+                      ))}
+                    </select>
                   </div>
 
                   {/* WAITER INFO */}

@@ -113,6 +113,8 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId }) => {
     const [activeSubTab, setActiveSubTab] = useState<'products' | 'rules'>('products');
     const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
 
+
+
     useEffect(() => {
         if (storeId) { fetchMenus(); fetchAllProducts(); fetchVenueNodes(); }
     }, [storeId]);
@@ -129,7 +131,7 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId }) => {
     };
 
     const fetchAllProducts = async () => {
-        const { data } = await supabase.from('products').select('id, name, base_price, category').eq('store_id', storeId).eq('active', true).order('name');
+        const { data } = await supabase.from('products').select('*').eq('store_id', storeId).eq('active', true).order('name');
         setAllProducts(data || []);
     };
 
@@ -667,6 +669,10 @@ const MenuDesign: React.FC = () => {
     const [isDragging, setIsDragging] = useState(false);
     const [previewTab, setPreviewTab] = useState<'menu' | 'club' | 'profile'>('menu');
 
+    // Financial Input State
+    const [activeFinancialInput, setActiveFinancialInput] = useState<'price' | 'margin' | 'profit' | null>(null);
+    const [financialBuffer, setFinancialBuffer] = useState<string>('');
+
     const { addToast } = useToast();
 
     // --- CONFIGURACIÓN GLOBAL ---
@@ -923,6 +929,10 @@ const MenuDesign: React.FC = () => {
             );
             setCategories(categoriesData || []);
 
+            // 4. Fetch RECIPES for cost calculation
+            console.log('[MenuDesign] Fetching recipes...');
+            const recipesData = await fetchWithTimeout(`${baseUrl}/product_recipes`);
+
             // Cast raw data and Map to InventoryItem
 
             // Map Inventory Items (Ingredients/Raw Material)
@@ -959,32 +969,57 @@ const MenuDesign: React.FC = () => {
 
             // Map Products (Recipes/Sellables) - Source of Truth for Menu
             // We use 'sellable' type to distinguish them for persistence
-            const mappedProducts: InventoryItem[] = (products || []).map((p: any) => ({
-                id: p.id,
-                cafe_id: p.store_id,
-                name: p.name,
-                sku: 'SKU-' + (p.id || '').slice(0, 4).toUpperCase(),
-                item_type: 'sellable' as const,
-                unit_type: 'unit' as UnitType,
-                image_url: p.image_url || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
-                is_active: p.is_available,
-                is_menu_visible: p.is_visible, // Map from 'is_visible' column in products table
-                min_stock: 0,
-                current_stock: 0,
-                cost: 0,
-                price: p.price || 0,
-                category_ids: p.category_id ? [p.category_id] : [],
-                description: p.description || '',
-                presentations: [],
-                closed_packages: [],
-                open_packages: [],
-                variants: p.product_variants || [],
-                addon_links: [], // Logic for addons/combos might differ for products, keeping basic for now
-                combo_links: [],
+            const mappedProducts: InventoryItem[] = (products || []).map((p: any) => {
+                // Calculate recipe cost
+                const itemRecipes = (recipesData || []).filter((r: any) => r.product_id === p.id);
+                let recipeCost = 0;
 
-                // EXPLICIT SOURCE FOR PERSISTENCE
-                id_source: 'product' as const
-            }));
+                itemRecipes.forEach((r: any) => {
+                    const ingredient = (inventoryItems || []).find((inv: any) => inv.id === r.inventory_item_id);
+                    if (ingredient && ingredient.cost) {
+                        recipeCost += (ingredient.cost * (parseFloat(r.quantity_required) || 0));
+                    }
+                });
+
+                // Add combo components cost
+                (p.combo_items || []).forEach((link: any) => {
+                    const component = (inventoryItems || []).find((inv: any) => inv.id === link.component_item_id);
+                    if (component && component.cost) {
+                        recipeCost += (component.cost * (link.quantity || 1));
+                    }
+                });
+
+                return {
+                    id: p.id,
+                    cafe_id: p.store_id,
+                    name: p.name,
+                    sku: 'SKU-' + (p.id || '').slice(0, 4).toUpperCase(),
+                    item_type: 'sellable' as const,
+                    unit_type: 'unit' as UnitType,
+                    image_url: p.image_url || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
+                    is_active: p.is_available,
+                    is_menu_visible: p.is_visible, // Map from 'is_visible' column in products table
+                    min_stock: 0,
+                    current_stock: 0,
+                    cost: recipeCost, // Use calculated recipe cost
+                    price: (p.base_price !== undefined && p.base_price !== null) ? Number(p.base_price) : (p.price || 0),
+                    category_ids: p.category_id ? [p.category_id] : [],
+                    description: p.description || '',
+                    presentations: [],
+                    closed_packages: [],
+                    open_packages: [],
+                    variants: p.product_variants || [],
+                    addon_links: p.addons || [],
+                    combo_links: p.combo_items || [],
+                    recipe: itemRecipes.map((r: any) => ({
+                        inventory_item_id: r.inventory_item_id,
+                        quantity: r.quantity_required
+                    })),
+
+                    // EXPLICIT SOURCE FOR PERSISTENCE
+                    id_source: 'product' as const
+                };
+            });
 
             // DEDUPLICATION: Remove Inventory Item if a Product with same Name exists.
             // This prevents "Double items" (one from inventory, one from product) and ensures we edit the proper Menu Item.
@@ -1551,6 +1586,40 @@ const MenuDesign: React.FC = () => {
         }
     };
 
+    const handlePromoBannerSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0] && profile?.store_id) {
+            const file = e.target.files[0];
+            addToast('Subiendo banner...', 'info');
+
+            try {
+                const fileExt = file.name.split('.').pop();
+                const fileName = `promo-${Date.now()}.${fileExt}`;
+                const filePath = `${profile.store_id}/${fileName}`;
+
+                // Use Supabase SDK for proper auth handling
+                const { error: uploadError } = await supabase.storage
+                    .from('store-covers')
+                    .upload(filePath, file, {
+                        upsert: true,
+                        contentType: file.type
+                    });
+
+                if (uploadError) throw uploadError;
+
+                const { data: urlData } = supabase.storage
+                    .from('store-covers')
+                    .getPublicUrl(filePath);
+
+                const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+                setTheme(prev => ({ ...prev, promoBannerUrl: publicUrl }));
+                addToast('Banner cargado correctamente', 'success');
+            } catch (err: any) {
+                console.error('Error uploading promo banner:', err);
+                addToast(`Error al subir banner: ${err.message}`, 'error');
+            }
+        }
+    };
+
     // Helper para obtener clases basadas en el tema
     const getPreviewClasses = () => {
         const rounded = theme.borderRadius === 'none' ? 'rounded-none' : theme.borderRadius === 'md' ? 'rounded-md' : theme.borderRadius === 'full' ? 'rounded-[2rem]' : 'rounded-xl';
@@ -1568,7 +1637,7 @@ const MenuDesign: React.FC = () => {
     const preview = getPreviewClasses();
 
     return (
-        <div className="min-h-screen bg-[#0D0F0D] text-white p-4 md:p-8 font-sans selection:bg-[#4ADE80]/30">
+        <div className="min-h-screen bg-[#F8F9F7] dark:bg-[#0D0F0D] text-[#37352F] dark:text-white p-4 md:p-8 font-sans selection:bg-[#4ADE80]/30 transition-colors duration-300">
             {/* Header / Navigation */}
             <div className="max-w-[1600px] mx-auto mb-12">
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/5 pb-8">
@@ -1787,6 +1856,42 @@ const MenuDesign: React.FC = () => {
                                     <Toggle label="Precios" active={theme.showPrices} onChange={v => setTheme({ ...theme, showPrices: v })} />
                                     <Toggle label="Detalle" active={theme.showDescription} onChange={v => setTheme({ ...theme, showDescription: v })} />
                                     <Toggle label="Compra" active={theme.showAddButton} onChange={v => setTheme({ ...theme, showAddButton: v })} />
+                                    <div className="pt-2 border-t border-white/5 mt-2">
+                                        <Toggle label="Banner Promo" active={theme.showPromoBanner ?? false} onChange={v => setTheme({ ...theme, showPromoBanner: v })} />
+                                        {theme.showPromoBanner && (
+                                            <div className="mt-2 pl-3 border-l border-white/10 space-y-2 animate-in slide-in-from-top-2 fade-in duration-300">
+                                                <label className="text-[9px] font-black text-[#52525B] uppercase tracking-widest block">Imagen del Banner</label>
+                                                <div className="relative group">
+                                                    <div
+                                                        className="w-full h-16 rounded-xl bg-black/40 border border-white/10 overflow-hidden cursor-pointer hover:border-[#4ADE80]/50 transition-all flex items-center justify-center group-hover:bg-white/5"
+                                                        onClick={() => document.getElementById('promo-banner-input')?.click()}
+                                                    >
+                                                        {theme.promoBannerUrl ? (
+                                                            <>
+                                                                <img src={theme.promoBannerUrl} className="w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" />
+                                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                                    <span className="text-[9px] font-black text-white drop-shadow-md uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0 duration-300">Cambiar Imagen</span>
+                                                                </div>
+                                                            </>
+                                                        ) : (
+                                                            <div className="flex flex-col items-center gap-1 text-[#52525B] group-hover:text-white/60 transition-colors">
+                                                                <span className="material-symbols-outlined text-lg">add_photo_alternate</span>
+                                                                <span className="text-[8px] font-black uppercase tracking-widest">Subir Banner</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <input
+                                                        id="promo-banner-input"
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={handlePromoBannerSelect}
+                                                        className="hidden"
+                                                    />
+                                                </div>
+                                                <p className="text-[8px] text-white/30 italic">Se mostrará a invitados y usuarios cuando NO tengan saldo.</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -2216,37 +2321,238 @@ const MenuDesign: React.FC = () => {
                                                 placeholder="Nombre del producto en el menú..."
                                             />
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Precio Base ($)</label>
-                                                <input
-                                                    type="number"
-                                                    value={selectedItem.price || 0}
-                                                    onChange={(e) => updateItemDebounced(selectedItem.id, { price: parseFloat(e.target.value) || 0 })}
-                                                    className="w-full h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white font-black text-sm outline-none focus:ring-1 focus:ring-neon/30"
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Imagen Cover</label>
-                                                <div
-                                                    className={`h-12 rounded-xl bg-white/5 border border-dashed border-white/20 flex items-center justify-center cursor-pointer hover:border-neon/40 transition-all overflow-hidden relative group/img ${isDragging ? 'bg-neon/10 border-neon' : ''}`}
-                                                    onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
-                                                    onDragLeave={() => setIsDragging(false)}
-                                                    onDrop={handleImageDrop}
-                                                    onClick={() => document.getElementById('item-image-input')?.click()}
-                                                >
-                                                    {selectedItem.image_url ? (
-                                                        <>
-                                                            <img src={selectedItem.image_url} className="absolute inset-0 size-full object-cover opacity-50 group-hover/img:opacity-30 transition-opacity" />
-                                                            <span className="relative z-10 text-[9px] font-bold text-white shadow-black drop-shadow-md uppercase tracking-widest">{isDragging ? 'SOLTAR' : 'CAMBIAR IMAGEN'}</span>
-                                                        </>
-                                                    ) : (
-                                                        <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">{isDragging ? 'SOLTAR AQUÍ' : 'SUBIR / ARRASTRAR'}</span>
-                                                    )}
-                                                    <input id="item-image-input" type="file" accept="image/*" className="hidden" onChange={handleImageFileSelect} />
-                                                </div>
-                                            </div>
+                                        <div className="space-y-4">
+                                            {/* FINANCIAL DASHBOARD - SYNCHRONIZED */}
+                                            {(() => {
+                                                let currentCost = selectedItem.cost || 0;
+                                                const breakdown: { name: string, qty: string, cost: number }[] = [];
+
+                                                if (selectedItem.id_source === 'product') {
+                                                    let theoretical = 0;
+                                                    (selectedItem.recipe || []).forEach(r => {
+                                                        const comp = items.find(i => i.id === (r as any).inventory_item_id);
+                                                        if (comp) {
+                                                            const itemCost = (comp.cost || 0) * (parseFloat((r as any).quantity) || 0);
+                                                            theoretical += itemCost;
+                                                            breakdown.push({
+                                                                name: comp.name,
+                                                                qty: `${(r as any).quantity}`,
+                                                                unit: comp.unit_type || 'u',
+                                                                cost: itemCost
+                                                            });
+                                                        }
+                                                    });
+                                                    (selectedItem.combo_links || []).forEach(l => {
+                                                        const comp = items.find(i => i.id === l.component_item_id);
+                                                        if (comp) {
+                                                            const itemCost = (comp.cost || 0) * (parseFloat(l.quantity as any) || 1);
+                                                            theoretical += itemCost;
+                                                            breakdown.push({
+                                                                name: comp.name,
+                                                                qty: `${l.quantity} ${comp.unit || 'u'}`,
+                                                                cost: itemCost
+                                                            });
+                                                        }
+                                                    });
+                                                    if (theoretical > 0) currentCost = theoretical;
+                                                }
+
+                                                const profit = (selectedItem.price || 0) - currentCost;
+                                                const margin = (selectedItem.price || 0) > 0 ? (profit / (selectedItem.price || 0)) * 100 : 0;
+
+                                                // Sync Handlers
+                                                // Sync Handlers
+                                                const handlePriceChange = (newPrice: number) => {
+                                                    updateItemImmediate(selectedItem.id, { price: Math.round(newPrice * 100) / 100 });
+                                                };
+
+                                                const handleMarginChange = (targetMargin: number) => {
+                                                    if (currentCost <= 0) return;
+                                                    // Price = Cost / (1 - margin/100)
+                                                    const newPrice = currentCost / (1 - targetMargin / 100);
+                                                    if (newPrice > 0 && isFinite(newPrice)) {
+                                                        updateItemImmediate(selectedItem.id, { price: Math.round(newPrice * 100) / 100 });
+                                                    }
+                                                };
+
+                                                const handleFinancialInput = (type: 'price' | 'margin' | 'profit', valueStr: string) => {
+                                                    setFinancialBuffer(valueStr);
+                                                    const val = parseFloat(valueStr);
+
+                                                    if (isNaN(val)) return;
+
+                                                    if (type === 'price') {
+                                                        // Use debounced for price input to prevent UI jumping/excessive writes
+                                                        updateItemDebounced(selectedItem.id, { price: val });
+                                                    } else if (type === 'margin') {
+                                                        // Margin logic: Price = Cost / (1 - Margin/100)
+                                                        if (currentCost > 0 && val < 100) {
+                                                            const newPrice = currentCost / (1 - val / 100);
+                                                            updateItemDebounced(selectedItem.id, { price: Math.round(newPrice * 100) / 100 });
+                                                        }
+                                                    } else if (type === 'profit') {
+                                                        // Profit logic: Price = Cost + Profit
+                                                        const newPrice = currentCost + val;
+                                                        if (newPrice >= 0) {
+                                                            updateItemDebounced(selectedItem.id, { price: Math.round(newPrice * 100) / 100 });
+                                                        }
+                                                    }
+                                                };
+
+                                                return (
+                                                    <div className="space-y-4">
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            {/* COL 1: PRICE & COST */}
+                                                            <div className="space-y-4">
+                                                                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col justify-center">
+                                                                    <span className="text-[8px] font-bold text-white/30 uppercase tracking-[0.2em] mb-1">Precio de Venta ($)</span>
+                                                                    <div className="relative group/price flex items-center gap-2">
+                                                                        <input
+                                                                            type="number"
+                                                                            value={activeFinancialInput === 'price' ? financialBuffer : (selectedItem.price || 0)}
+                                                                            onChange={(e) => handleFinancialInput('price', e.target.value)}
+                                                                            onFocus={() => { setActiveFinancialInput('price'); setFinancialBuffer((selectedItem.price || 0).toString()); }}
+                                                                            onBlur={() => {
+                                                                                setActiveFinancialInput(null);
+                                                                                // Force save on blur
+                                                                                if (financialBuffer) {
+                                                                                    updateItemImmediate(selectedItem.id, { price: parseFloat(financialBuffer) });
+                                                                                }
+                                                                            }}
+                                                                            className="w-full bg-transparent border-b border-dashed border-white/10 text-xl font-black text-white outline-none focus:border-neon/50 transition-all"
+                                                                        />
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                if (activeFinancialInput === 'price') {
+                                                                                    updateItemImmediate(selectedItem.id, { price: parseFloat(financialBuffer) });
+                                                                                    setActiveFinancialInput(null);
+                                                                                }
+                                                                            }}
+                                                                            className={`h-6 px-3 rounded bg-neon/10 border border-neon/20 text-[9px] font-black text-neon hover:bg-neon hover:text-black transition-all uppercase flex items-center gap-1 ${activeFinancialInput === 'price' ? 'opacity-100 scale-100' : 'opacity-0 scale-90 pointer-events-none'}`}
+                                                                        >
+                                                                            <span className="material-symbols-outlined text-[10px]">save</span>
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col justify-center opacity-60">
+                                                                    <span className="text-[8px] font-bold text-white/30 uppercase tracking-[0.2em] mb-1">Costo de Producto</span>
+                                                                    <div className="flex items-baseline gap-1">
+                                                                        <span className="text-xl font-black text-white">${currentCost.toFixed(2)}</span>
+                                                                        <span className="text-[8px] font-bold text-white/20 uppercase">Unitario</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* COL 2: RENTABILIDAD & MARGEN */}
+                                                            <div className={`p-4 rounded-2xl border flex flex-col justify-center transition-all ${profit > 0
+                                                                ? 'bg-neon/5 border-neon/10'
+                                                                : (selectedItem.price || 0) === 0 ? 'bg-red-500/5 border-red-500/10' : 'bg-orange-500/5 border-orange-500/10'
+                                                                }`}>
+                                                                <div className="flex justify-between items-center mb-3">
+                                                                    <span className="text-[8px] font-bold text-white/30 uppercase tracking-[0.2em]">Rentabilidad</span>
+                                                                    <div className="flex items-center gap-1">
+                                                                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${profit > 0 ? 'bg-neon/10 text-neon' : 'bg-red-500/10 text-red-400'}`}>
+                                                                            {profit > 0 ? 'Saludable' : 'Alerta'}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="space-y-4">
+                                                                    {/* % Margin Input */}
+                                                                    <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                                                                        <span className="text-[9px] font-bold text-white/40 uppercase">Margen %</span>
+                                                                        <div className="flex items-center gap-1">
+                                                                            <input
+                                                                                type="number"
+                                                                                value={activeFinancialInput === 'margin' ? financialBuffer : Math.round(margin)}
+                                                                                onChange={(e) => handleFinancialInput('margin', e.target.value)}
+                                                                                onFocus={() => { setActiveFinancialInput('margin'); setFinancialBuffer(Math.round(margin).toString()); }}
+                                                                                onBlur={() => setActiveFinancialInput(null)}
+                                                                                className={`w-14 bg-transparent text-xl font-black text-right focus:outline-none transition-all ${profit > 0 ? 'text-neon' : 'text-red-400'}`}
+                                                                                disabled={currentCost <= 0}
+                                                                            />
+                                                                            <span className={`text-sm font-black ${profit > 0 ? 'text-neon' : 'text-red-400'}`}>%</span>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* $ Profit Input */}
+                                                                    <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                                                                        <span className="text-[9px] font-bold text-white/40 uppercase">Ganancia $</span>
+                                                                        <div className="flex items-center gap-1">
+                                                                            <span className="text-sm font-black text-white/20">$</span>
+                                                                            <input
+                                                                                type="number"
+                                                                                value={activeFinancialInput === 'profit' ? financialBuffer : profit.toFixed(2)}
+                                                                                onChange={(e) => handleFinancialInput('profit', e.target.value)}
+                                                                                onFocus={() => { setActiveFinancialInput('profit'); setFinancialBuffer(profit.toFixed(2)); }}
+                                                                                onBlur={() => setActiveFinancialInput(null)}
+                                                                                className="w-24 bg-transparent text-xl font-black text-white text-right focus:outline-none transition-all"
+                                                                                disabled={currentCost <= 0}
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                {currentCost <= 0 && (
+                                                                    <span className="text-[7px] text-white/20 uppercase mt-2 text-center">Falta definir costos</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* RECIPE BREAKDOWN */}
+                                                        {breakdown.length > 0 && (
+                                                            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    <span className="material-symbols-outlined text-sm text-white/30">list_alt</span>
+                                                                    <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">Desglose de Receta / Costos</span>
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    {breakdown.map((b, idx) => (
+                                                                        <div key={idx} className="flex justify-between items-center text-[10px] border-b border-white/[0.02] pb-1 last:border-0">
+                                                                            <div className="flex flex-col">
+                                                                                <span className="font-bold text-white/70 uppercase">{b.name}</span>
+                                                                                <span className="text-[8px] text-white/20">{b.qty} {b.unit}</span>
+                                                                            </div>
+                                                                            <div className="flex flex-col items-end">
+                                                                                <span className="font-black text-white/60">${b.cost.toFixed(2)}</span>
+                                                                                <span className="text-[7px] text-white/20">{((b.cost / currentCost) * 100).toFixed(0)}% del costo</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                    <div className="flex justify-between items-center pt-2 mt-1 border-t border-white/5">
+                                                                        <span className="text-[9px] font-black text-white/40 uppercase">Total Teórico</span>
+                                                                        <span className="text-[11px] font-black text-neon">${currentCost.toFixed(2)}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* IMAGE SECTOR (Moved here for better grid balance) */}
+                                                        <div className="space-y-2">
+                                                            <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Imagen Cover</label>
+                                                            <div
+                                                                className={`h-16 rounded-xl bg-white/5 border border-dashed border-white/20 flex items-center justify-center cursor-pointer hover:border-neon/40 transition-all overflow-hidden relative group/img ${isDragging ? 'bg-neon/10 border-neon' : ''}`}
+                                                                onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+                                                                onDragLeave={() => setIsDragging(false)}
+                                                                onDrop={handleImageDrop}
+                                                                onClick={() => document.getElementById('item-image-input')?.click()}
+                                                            >
+                                                                {selectedItem.image_url ? (
+                                                                    <>
+                                                                        <img src={selectedItem.image_url} className="absolute inset-0 size-full object-cover opacity-50 group-hover/img:opacity-30 transition-opacity" />
+                                                                        <span className="relative z-10 text-[9px] font-bold text-white shadow-black drop-shadow-md uppercase tracking-widest">{isDragging ? 'SOLTAR' : 'CAMBIAR IMAGEN'}</span>
+                                                                    </>
+                                                                ) : (
+                                                                    <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">{isDragging ? 'SOLTAR AQUÍ' : 'SUBIR / ARRASTRAR'}</span>
+                                                                )}
+                                                                <input id="item-image-input" type="file" accept="image/*" className="hidden" onChange={handleImageFileSelect} />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
+
                                         <div className="space-y-2">
                                             <div className="flex justify-between">
                                                 <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Descripción Menú</label>
@@ -2673,7 +2979,7 @@ const MenuDesign: React.FC = () => {
                                                     const newCombo = [...(selectedItem.combo_links || [])];
                                                     if (newCombo[editingComboItemId]) {
                                                         newCombo[editingComboItemId] = { ...newCombo[editingComboItemId], component_item_id: item.id };
-                                                        updateItem(selectedItem.id, { combo_links: newCombo });
+                                                        updateItemImmediate(selectedItem.id, { combo_links: newCombo });
                                                     }
                                                 }
                                                 setShowItemSelector(false);

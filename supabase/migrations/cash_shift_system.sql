@@ -29,27 +29,33 @@ ALTER TABLE cash_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cash_closures ENABLE ROW LEVEL SECURITY;
 
 -- Policies for cash_sessions
+-- Policies for cash_sessions
+DROP POLICY IF EXISTS "Enable read for store members" ON cash_sessions;
 CREATE POLICY "Enable read for store members" ON cash_sessions
     FOR SELECT USING (store_id IN (
         SELECT store_id FROM profiles WHERE id = auth.uid()
     ));
 
+DROP POLICY IF EXISTS "Enable insert for store members" ON cash_sessions;
 CREATE POLICY "Enable insert for store members" ON cash_sessions
     FOR INSERT WITH CHECK (store_id IN (
         SELECT store_id FROM profiles WHERE id = auth.uid()
     ));
 
+DROP POLICY IF EXISTS "Enable update for store members" ON cash_sessions;
 CREATE POLICY "Enable update for store members" ON cash_sessions
     FOR UPDATE USING (store_id IN (
         SELECT store_id FROM profiles WHERE id = auth.uid()
     ));
 
 -- Policies for cash_closures
+DROP POLICY IF EXISTS "Enable read for store members" ON cash_closures;
 CREATE POLICY "Enable read for store members" ON cash_closures
     FOR SELECT USING (store_id IN (
         SELECT store_id FROM profiles WHERE id = auth.uid()
     ));
 
+DROP POLICY IF EXISTS "Enable insert for store members" ON cash_closures;
 CREATE POLICY "Enable insert for store members" ON cash_closures
     FOR INSERT WITH CHECK (store_id IN (
         SELECT store_id FROM profiles WHERE id = auth.uid()

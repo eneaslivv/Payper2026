@@ -106,6 +106,8 @@ export interface MenuTheme {
 
   // Legacy support (optional)
   showQuickAdd?: boolean;
+  showPromoBanner?: boolean; // New: Controls visibility for registered users
+  promoBannerUrl?: string; // New: Custom image for the banner
 }
 
 export type TenantPlan = 'free' | 'trial' | 'basic' | 'pro' | 'enterprise';
@@ -404,6 +406,7 @@ export interface GlobalUser {
 
 export interface Order {
   id: string;
+  store_id?: string; // Added for context
   customer: string;
   client_email?: string; // New field for registered users
   time: string;
@@ -416,9 +419,12 @@ export interface Order {
   source?: string;
   activity?: OrderActivity[];
   table?: string;
+  node_id?: string;
   paymentMethod?: string;
   order_number?: number;
+  table_number?: string; // Consistency with DBOrder
   created_at: string;
+  lastModified?: number; // Offline sync tracking
   // Payment fields for badges
   payment_provider?: string;
   payment_status?: string;
@@ -437,6 +443,7 @@ export interface OrderItem {
   addons?: string[];
   note?: string;
   is_manual?: boolean;
+  sellable_type?: string;
   inventory_items_to_deduct: { id: string, qty: number }[];
 }
 

@@ -337,14 +337,14 @@ const Loyalty: React.FC = () => {
    };
 
    return (
-      <div className="p-4 md:p-8 space-y-8 max-w-[1400px] mx-auto animate-in fade-in duration-500 pb-32">
+      <div className="p-4 md:p-8 space-y-8 max-w-[1400px] mx-auto animate-in fade-in duration-500 pb-32 bg-[#F8F9F7] dark:bg-transparent min-h-screen transition-colors duration-300">
          <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
             <div className="space-y-0.5">
                <div className="flex items-center gap-1.5 text-neon/60 font-bold text-[8px] uppercase tracking-[0.3em]">
                   <span className="size-1 rounded-full bg-neon shadow-neon-soft"></span>
                   RETENTION ENGINE ALPHA
                </div>
-               <h1 className="text-3xl font-black italic-black tracking-tighter text-white uppercase leading-none">
+               <h1 className="text-3xl font-black italic-black tracking-tighter text-[#37352F] dark:text-white uppercase leading-none">
                   Motor de <span className="text-neon">Lealtad</span>
                </h1>
             </div>

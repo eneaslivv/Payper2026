@@ -104,7 +104,7 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
                 p_from_location_id: fromLocation,
                 p_to_location_id: toLocation,
                 p_quantity: parsedQuantity,
-                p_user_id: (await supabase.auth.getUser()).data.user?.id || '',
+                p_user_id: (await supabase.auth.getUser()).data.user?.id || null,
                 p_notes: notes || '',
                 p_movement_type: 'transfer',
                 p_reason: 'Transferencia entre ubicaciones'

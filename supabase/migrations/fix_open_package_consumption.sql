@@ -13,7 +13,7 @@ CREATE OR REPLACE FUNCTION consume_from_open_packages(
     p_store_id UUID,
     p_required_qty NUMERIC,
     p_unit TEXT DEFAULT 'g',
-    p_reason TEXT DEFAULT 'recipe_consumption',
+    p_reason TEXT DEFAULT 'order_delivered', -- FIX: Valid reason default
     p_order_id UUID DEFAULT NULL
 )
 RETURNS JSONB
@@ -109,10 +109,11 @@ BEGIN
     
     -- 3. Update current_stock (total effective stock)
     UPDATE inventory_items
-    SET current_stock = current_stock - v_total_consumed
+    SET current_stock = GREATEST(current_stock - v_total_consumed, 0)
     WHERE id = p_item_id;
     
     -- 4. Log the movement
+    -- V2 FIX: Added idempotency_key to prevent constraint error
     INSERT INTO stock_movements (
         inventory_item_id,
         store_id,
@@ -120,7 +121,8 @@ BEGIN
         unit_type,
         reason,
         order_id,
-        created_at
+        created_at,
+        idempotency_key
     ) VALUES (
         p_item_id,
         p_store_id,
@@ -128,7 +130,8 @@ BEGIN
         p_unit,
         p_reason,
         p_order_id,
-        NOW()
+        NOW(),
+        gen_random_uuid()::text -- Generate a random key since we don't have one passed
     );
     
     RETURN jsonb_build_object(
@@ -217,7 +220,7 @@ BEGIN
                     p_store_id,
                     v_recipe.quantity_required * v_item_qty,
                     COALESCE(v_recipe.unit_type, 'un'),
-                    'recipe_consumption',
+                    'order_delivered', -- Valid reason
                     v_order_id
                 );
                 

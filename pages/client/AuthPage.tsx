@@ -125,7 +125,7 @@ const AuthPage: React.FC = () => {
             {/* Floating Technical Tag */}
             <g className="animate-card-sync">
               <rect x="145" y="85" width="45" height="18" rx="4" fill={textColor} fillOpacity="0.1" stroke={accentColor} strokeWidth="0.5" />
-              <text x="151" y="97" fill={accentColor} fontSize="5" fontWeight="900" letterSpacing="0.1em" fontFamily="monospace">BREW-CONF</text>
+              <text x="151" y="97" fill={accentColor} fontSize="5" fontWeight="900" letterSpacing="0.1em" fontFamily="monospace">CONF-ACCESO</text>
             </g>
 
             <defs>
@@ -140,11 +140,11 @@ const AuthPage: React.FC = () => {
         {/* Refined Status Indicators */}
         <div className="absolute bottom-4 flex gap-8 opacity-30">
           <div className="flex flex-col items-center gap-1.5">
-            <span className="text-[6px] font-black uppercase tracking-[0.4em]" style={{ color: `${textColor}80` }}>LINK_SECURE</span>
+            <span className="text-[6px] font-black uppercase tracking-[0.4em]" style={{ color: `${textColor}80` }}>ENLACE_SEGURO</span>
             <div className="w-1 h-1 rounded-full animate-ping" style={{ backgroundColor: accentColor }}></div>
           </div>
           <div className="flex flex-col items-center gap-1.5">
-            <span className="text-[6px] font-black uppercase tracking-[0.4em]" style={{ color: `${textColor}80` }}>SYSTEM_FLOW</span>
+            <span className="text-[6px] font-black uppercase tracking-[0.4em]" style={{ color: `${textColor}80` }}>FLUJO_SISTEMA</span>
             <div className="w-3 h-0.5 rounded-full overflow-hidden" style={{ backgroundColor: `${accentColor}33` }}>
               <div className="h-full w-full animate-data-stream" style={{ backgroundColor: accentColor }}></div>
             </div>
@@ -268,7 +268,7 @@ const AuthPage: React.FC = () => {
             {mode === 'register' ? '¿Ya eres miembro?' : 'Solicitar Membresía'}
           </button>
           <div className="w-12 h-[1px]" style={{ backgroundColor: `${textColor}0D` }}></div>
-          <span className="text-[7px] font-black tracking-[1em] uppercase" style={{ color: `${textColor}1A` }}>Morning Brew v2.4</span>
+          <span className="text-[7px] font-black tracking-[1em] uppercase" style={{ color: `${textColor}1A` }}>PAYPER v2.4</span>
         </div>
       </div>
 

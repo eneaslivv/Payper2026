@@ -41,25 +41,24 @@ const TrackingPage: React.FC = () => {
 
   const [orderNumber, setOrderNumber] = useState<number | null>(null);
 
-  // Realtime Order Tracking
+  // Secure Tracking Logic
   useEffect(() => {
     if (!orderId) return;
 
-    const fetchOrder = async () => {
-      const { data } = await supabase
-        .from('orders')
-        .select('status, order_number')
-        .eq('id', orderId)
-        .single();
+    const fetchOrderSecure = async () => {
+      // Use standard RPC for public access
+      const { data, error } = await (supabase.rpc as any)('get_public_order_status', { p_order_id: orderId });
 
-      if (data) {
-        setOrderStatus(data.status as any);
-        setOrderNumber(data.order_number);
+      if (data && data.success && data.data) {
+        setOrderStatus(data.data.status as any);
+        setOrderNumber(data.data.order_number);
       }
     };
 
-    fetchOrder();
+    // 1. Initial Fetch
+    fetchOrderSecure();
 
+    // 2. Realtime Subscription (Best Effort for Auth Users)
     const channel = supabase
       .channel(`order_tracking_${orderId}`)
       .on(
@@ -78,8 +77,16 @@ const TrackingPage: React.FC = () => {
       )
       .subscribe();
 
+    // 3. Polling Fallback (Critical for Guest Users)
+    // Since we removed public SELECT, guests won't get Realtime updates.
+    // We poll every 15s to keep them updated.
+    const pollInterval = setInterval(() => {
+      fetchOrderSecure();
+    }, 15000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(pollInterval);
     };
   }, [orderId, setOrderStatus]);
 

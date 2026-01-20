@@ -16,6 +16,7 @@ export interface UserProfile {
     is_active: boolean;
     store_id?: string;
     role_id?: string;
+    balance?: number; // Added for wallet support
 }
 
 interface AuthContextType {
@@ -156,58 +157,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     const fetchProfile = async (userId: string, emailArg?: string) => {
-        // 🚨 GOD MODE BYPASS: Via Environment Variable
-        const currentUserEmail = emailArg || session?.user?.email || user?.email;
-        const superAdminEmail = import.meta.env.VITE_SUPER_ADMIN_EMAIL;
-
-        if (currentUserEmail && superAdminEmail && currentUserEmail === superAdminEmail) {
-            console.log('👑 GOD MODE ACTIVATED: Bypassing database completely for', currentUserEmail);
-            setProfile({
-                id: userId,
-                email: currentUserEmail,
-                full_name: 'SUPER ADMIN',
-                role: 'super_admin',
-                is_active: true,
-                store_id: undefined
-            });
-            setPermissions(null); // Full access
-            setIsLoading(false);
-            return; // 🛑 NEVER query DB for this user
-        }
-
-        // 🚨 STORE OWNER BYPASS: Via Environment Variables
-        const ownerBypassEmail = import.meta.env.VITE_OWNER_BYPASS_EMAIL;
-        const ownerBypassStoreId = import.meta.env.VITE_OWNER_BYPASS_STORE_ID;
-
-        if (currentUserEmail && ownerBypassEmail && currentUserEmail === ownerBypassEmail && ownerBypassStoreId) {
-            console.log('[AUTH] 👑 OWNER BYPASS ACTIVATED via env vars');
-
-            setProfile({
-                id: userId,
-                email: currentUserEmail,
-                full_name: 'Store Owner',
-                role: 'store_owner',
-                is_active: true,
-                store_id: ownerBypassStoreId
-            });
-            setPermissions(null);
-            setIsLoading(false);
-
-            // Background DB sync
-            supabase.from('profiles').upsert({
-                id: userId,
-                email: currentUserEmail,
-                full_name: 'Store Owner',
-                role: 'store_owner',
-                is_active: true,
-                store_id: ownerBypassStoreId
-            }).then(({ error }) => {
-                if (error) console.error('[AUTH] Background DB Repair failed:', error);
-                else console.log('[AUTH] Background DB Repair SUCCESS');
-            });
-            return;
-        }
-
         // SKIP if we already have a valid profile for this user
         if (profile && profile.id === userId) {
             console.log('[AUTH] Profile already loaded for this user. Skipping fetch.');
@@ -293,57 +242,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         }
 
-        // STEP 2: Profile fetch failed - ONLY use hardcoded fallback for TRUE emergency admin
-        // This is ONLY for when the database is completely unreachable and we need emergency access
+        // STEP 2: Profile fetch failed - Database might be unreachable or profile missing
         const userEmail = session?.user?.email || user?.email;
-        console.log('[AUTH] DB fetch failed. Checking emergency fallback for:', userEmail);
-
-        // EMERGENCY ADMIN ONLY - Via Environment Variable
-        const emergencyAdminEmail = import.meta.env.VITE_SUPER_ADMIN_EMAIL;
-        if (userEmail && emergencyAdminEmail && userEmail === emergencyAdminEmail) {
-            console.log('[AUTH] 🚨 EMERGENCY GOD MODE ACTIVATED via env var');
-            setProfile({
-                id: session?.user?.id || 'emergency-id',
-                email: userEmail,
-                full_name: 'GOD MODE ADMIN',
-                role: 'super_admin',
-                is_active: true,
-                store_id: undefined
-            });
-            setPermissions(null);
-            setIsLoading(false);
-            return;
-        }
-
-
-        // 🚨 AUTO-HEALING FOR STORE OWNER - Via Environment Variables
-        if (userEmail && ownerBypassEmail && userEmail === ownerBypassEmail && ownerBypassStoreId) {
-            console.log('[AUTH] 🩹 AUTO-HEALING Owner Profile via env vars');
-
-            setProfile({
-                id: userId,
-                email: userEmail,
-                full_name: 'Store Owner',
-                role: 'store_owner',
-                is_active: true,
-                store_id: ownerBypassStoreId
-            });
-            setPermissions(null);
-            setIsLoading(false);
-
-            supabase.from('profiles').upsert({
-                id: userId,
-                email: userEmail,
-                full_name: 'Store Owner',
-                role: 'store_owner',
-                is_active: true,
-                store_id: ownerBypassStoreId
-            }).then(({ error }) => {
-                if (error) console.error('[AUTH] Background DB Repair failed:', error);
-                else console.log('[AUTH] Background DB Repair SUCCESS');
-            });
-            return;
-        }
+        console.log('[AUTH] DB fetch failed. User:', userEmail);
 
 
         // STEP 3: Profile not found after retries -> AUTO-HEAL 🏳️
@@ -355,10 +256,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email: userEmail || `user_${userId.substr(0, 8)}@temp.livv`,
             full_name: session?.user?.user_metadata?.full_name || 'Nuevo Usuario',
             // CRITICAL: Respect metadata role (e.g. for new store owners), fall back to customer
-            role: (session?.user?.user_metadata?.role as UserRole) || 'customer',
+            role: 'customer', // Default fallback
             is_active: true,
             store_id: session?.user?.user_metadata?.store_id || undefined
-        };
+        } as unknown as UserProfile; // Force cast as we know this effectively matches what we need
 
         try {
             const { data: newProfile, error: createError } = await supabase
@@ -374,7 +275,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             if (newProfile) {
                 console.log('[AUTH] ✅ Profile AUTO-HEALED successfully.');
-                setProfile(newProfile as UserProfile);
+                setProfile(newProfile as unknown as UserProfile);
                 setPermissions(null); // Customers usually have no special permissions
                 return;
             }
@@ -422,10 +323,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    // --- SUPER ADMIN CHECK (STRICT - ROLE ONLY + GOD MODE via ENV) ---
-    const superAdminEnv = import.meta.env.VITE_SUPER_ADMIN_EMAIL;
-    const isGodMode = !!(superAdminEnv && user?.email === superAdminEnv);
-    const isAdmin = isGodMode || !!(user && profile && profile.id === user.id && profile.role === 'super_admin');
+    // --- ADMIN CHECK (STRICT - DB ROLE ONLY) ---
+    const isAdmin = !!(user && profile && profile.id === user.id && profile.role === 'super_admin');
 
     return (
         <AuthContext.Provider value={{

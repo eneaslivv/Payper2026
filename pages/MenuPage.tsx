@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useStore } from '../hooks/useStore';
 import { useProducts } from '../hooks/useProducts';
 import { useCreateOrder } from '../hooks/useCreateOrder';
@@ -19,6 +19,8 @@ interface CartItem {
 
 export function MenuPage() {
     const { storeSlug = '' } = useParams<{ storeSlug: string }>();
+    const [searchParams] = useSearchParams(); // Get URL params
+    const channelParam = searchParams.get('channel'); // 'takeaway', 'table', etc.
     const navigate = useNavigate();
     const { user } = useAuth(); // Get user status
 
@@ -85,6 +87,9 @@ export function MenuPage() {
     const handleCheckout = async () => {
         if (!store || cart.length === 0) return;
 
+        // Determine final channel: URL param > explicit desk number (table) > default (qr)
+        const finalChannel = channelParam || (tableNumber ? 'table' : 'qr');
+
         // 1. Crear la orden primero
         const order = await createOrder({
             storeId: store.id,
@@ -94,7 +99,7 @@ export function MenuPage() {
                 quantity: item.quantity,
                 unitPrice: item.product.base_price,
             })),
-            channel: tableNumber ? 'table' : 'qr',
+            channel: finalChannel as any,
             tableNumber: tableNumber || undefined,
         });
 
@@ -225,6 +230,7 @@ export function MenuPage() {
                     canProcessPayments={canProcessPayments}
                     onAddToCart={addToCart}
                     isGuest={!user}
+                    userBalance={user ? (user as any).balance || 0 : undefined} // Casting as AuthContext profile might vary
                 />
             )}
 

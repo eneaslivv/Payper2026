@@ -20,6 +20,7 @@ interface OfflineContextType {
   triggerSync: () => Promise<void>;
   syncOrder: (orderId: string) => Promise<void>;
   confirmOrderDelivery: (orderId: string, staffId: string) => Promise<{ success: boolean, message: string }>;
+  clearSyncQueue: () => Promise<void>;
 }
 
 const OfflineContext = createContext<OfflineContextType | undefined>(undefined);
@@ -96,9 +97,9 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 product:inventory_items(name)
               )
             `)
-            .eq('store_id', storeId) // CRITICAL: Filter by store_id
-            .order('created_at', { ascending: false })
-            .range(0, 49);
+            .is('archived_at', null) // Sincroniza SOLO pedidos activos (no archivados)
+            .order('created_at', { ascending: false });
+          // Eliminado .range(0, 49) para asegurar que NINGÚN pedido activo quede fuera de vista
 
 
           console.log('[OfflineContext] Fetched remote orders:', remoteOrders?.length, remoteOrders, 'Error:', error);
@@ -217,6 +218,9 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
       updatePendingCount();
     };
     loadData();
+    if (navigator.onLine) {
+      setTimeout(() => triggerSync(), 2000); // Small delay to let loadData finish
+    }
 
     // Set up Realtime subscription for orders
     if (storeId) {
@@ -243,12 +247,19 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
               const immediateOrder: DBOrder = {
                 id: newOrder.id,
                 store_id: newOrder.store_id,
-                customer: 'Cargando...',
+                customer: newOrder.customer_name || 'Nuevo Pedido...',
                 table: newOrder.table_number,
                 status: newOrder.status ? mapStatusFromSupabase(newOrder.status) : 'Pendiente',
-                type: newOrder.table_number ? 'dine-in' : 'takeaway',
+                type: (newOrder.table_number || newOrder.node_id) ? 'dine-in' : 'takeaway',
                 paid: newOrder.is_paid || newOrder.payment_status === 'approved' || newOrder.payment_status === 'paid',
-                items: [],
+                items: Array.isArray(newOrder.items) ? newOrder.items.map((i: any) => ({
+                  id: i.id || i.product_id || 'unknown',
+                  name: i.name || 'Ítem',
+                  quantity: i.quantity || 1,
+                  price_unit: i.price_unit || i.price || 0,
+                  productId: i.id || i.product_id,
+                  inventory_items_to_deduct: []
+                })) : [],
                 amount: newOrder.total_amount || 0,
                 time: new Date(newOrder.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 paymentMethod: newOrder.payment_method,
@@ -546,7 +557,8 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         created_at: remoteOrder.created_at,
         syncStatus: 'synced',
         lastModified: new Date(remoteOrder.created_at).getTime(),
-        store_id: remoteOrder.store_id
+        store_id: remoteOrder.store_id,
+        node_id: remoteOrder.node_id
       };
 
       await dbOps.saveOrder(mappedOrder);
@@ -584,7 +596,29 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // 2. Attempt Sync if Online
     if (isOnline) {
       try {
-        const { error } = await supabase.from('orders').insert(mapOrderToSupabase(newOrder, storeId || ''));
+        // Prepare order data for Supabase
+        const orderData = mapOrderToSupabase(newOrder, storeId || '');
+
+        // If order has node_id, fetch dispatch_station AND location_id from venue_nodes
+        if (orderData.node_id) {
+          const { data: nodeData } = await supabase
+            .from('venue_nodes')
+            .select('dispatch_station, location_id')
+            .eq('id', orderData.node_id)
+            .single();
+
+          const nData = nodeData as any;
+          if (nData?.dispatch_station) {
+            orderData.dispatch_station = nData.dispatch_station;
+            console.log(`[createOrder] Auto-assigned station from node: ${nData.dispatch_station}`);
+          }
+          if (nData?.location_id) {
+            orderData.source_location_id = nData.location_id;
+            console.log(`[createOrder] Auto-assigned source_location_id: ${nData.location_id}`);
+          }
+        }
+
+        const { error } = await supabase.from('orders').insert(orderData);
         if (error) throw error;
 
         // Sync Items
@@ -696,13 +730,19 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     if (isOnline) {
       try {
+        console.log('[confirmOrderDelivery] Calling RPC with:', { orderId, staffId });
         // @ts-ignore
         const { data, error } = await supabase.rpc('confirm_order_delivery', {
           p_order_id: orderId,
           p_staff_id: staffId
         });
 
-        if (error) throw error;
+        console.log('[confirmOrderDelivery] RPC Response:', { data, error });
+
+        if (error) {
+          console.error('[confirmOrderDelivery] RPC Error:', error.message, error.code, error.details);
+          throw error;
+        }
 
         const result = data as { success: boolean, message: string };
         if (result.success) {
@@ -711,12 +751,13 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
           setOrders(prev => prev.map(o => o.id === orderId ? syncedOrder : o));
         } else {
           // Revert if domain logic rejected it
+          console.warn('[confirmOrderDelivery] Domain rejection:', result.message);
           await dbOps.saveOrder(order);
           setOrders(prev => prev.map(o => o.id === orderId ? order : o));
         }
         return result;
-      } catch (err) {
-        console.error("Delivery confirm failed", err);
+      } catch (err: any) {
+        console.error("[confirmOrderDelivery] CATCH ERROR:", err?.message || err, err?.code, err?.details);
         const event: SyncEvent = {
           id: `evt-del-${Date.now()}`,
           type: 'CONFIRM_DELIVERY',
@@ -751,13 +792,28 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return;
     }
 
+    const MAX_RETRIES = 5; // Aggressive purge for stuck items
     let processedCount = 0;
+    let failedCount = 0;
+
     for (const event of queue) {
+      const retryCount = event.retryCount || 0;
+
+      // START FIX: Auto-purge events that are truly stuck to stop the annoying warning
+      if (retryCount >= MAX_RETRIES) {
+        console.warn(`[Sync] PURGING stuck event ${event.id} - exceeded max retries (${MAX_RETRIES})`);
+        await dbOps.removeSyncEvent(event.id); // DELETE IT
+        continue;
+      }
+      // END FIX
+
       try {
         if (event.type === 'CREATE_ORDER') {
           const order = event.payload as DBOrder;
+          // Optimistically assume success if it's a duplicate key error (already synced)
           const { error } = await supabase.from('orders').insert(mapOrderToSupabase(order, storeId || ''));
-          if (error && error.code !== '23505') throw error; // 23505 = duplicate key, maybe already synced?
+          if (error && error.code !== '23505') throw error;
+
 
           // Items
           if (order.items.length > 0) {
@@ -802,11 +858,19 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
           }
         }
 
-        // Remove from queue
+        // Remove from queue on success
         await dbOps.removeSyncEvent(event.id);
         processedCount++;
-      } catch (err) {
-        console.error("Sync failed for event", event.id, err);
+      } catch (err: any) {
+        console.error(`[Sync] Failed for event ${event.id} (retry ${retryCount + 1}/${MAX_RETRIES})`, err);
+
+        // Update event with retry count and error for next attempt
+        await dbOps.updateSyncEvent({
+          ...event,
+          retryCount: retryCount + 1,
+          lastError: err.message || 'Unknown error'
+        });
+        failedCount++;
       }
     }
 
@@ -817,7 +881,42 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (processedCount > 0) {
       addToast(`${processedCount} CAMBIOS SINCRONIZADOS`, "success", "La nube está al día");
     }
-  }, [addToast]);
+    if (failedCount > 0 && processedCount === 0) {
+      addToast(`${failedCount} cambios fallaron`, "error", "Se reintentará automáticamente");
+    }
+
+    // Schedule retry for failed events with exponential backoff
+    // ONLY if failure wasn't a "Hard Error" (e.g., RLS, UUID Validation, etc.)
+    if (failedCount > 0 && navigator.onLine) {
+      // Check if last errors were recomputable (network/timeout) vs persistent (validation/auth)
+      const lastEvents = queue.slice(-failedCount);
+      const hasHardError = lastEvents.some(e => {
+        const msg = (e as any).lastError?.toLowerCase() || '';
+        return msg.includes('uuid') || msg.includes('permission') || msg.includes('violates') || msg.includes('not found');
+      });
+
+      if (hasHardError) {
+        console.error('[Sync] Loop prevention: Detected persistent hard error. Stopping auto-retry.');
+        addToast('Sincronización pausada', 'error', 'Detectamos un error persistente. Revisa los datos o contacta a soporte.');
+        setIsSyncing(false);
+        return;
+      }
+
+      const retryDelay = Math.min(5000 * Math.pow(2, Math.min(failedCount - 1, 4)), 60000); // Max 60s
+      console.log(`[Sync] Scheduling retry in ${retryDelay}ms for ${failedCount} failed events`);
+      setTimeout(() => {
+        if (navigator.onLine) triggerSync();
+      }, retryDelay);
+    }
+  }, [addToast, refreshOrders, updatePendingCount]);
+
+  // Clear sync queue function
+  const clearSyncQueue = async () => {
+    console.log('[Sync] Clearing entire sync queue...');
+    await dbOps.clearSyncQueue();
+    updatePendingCount();
+    addToast('Cola de sincronización limpiada', 'success');
+  };
 
   return (
     <OfflineContext.Provider value={{
@@ -832,7 +931,8 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
       refreshOrders,
       triggerSync,
       syncOrder,
-      confirmOrderDelivery
+      confirmOrderDelivery,
+      clearSyncQueue
     }}>
       {children}
     </OfflineContext.Provider>

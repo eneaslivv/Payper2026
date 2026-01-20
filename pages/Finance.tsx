@@ -15,7 +15,13 @@ const Finance: React.FC = () => {
   const { profile } = useAuth();
   const [activeTab, setActiveTab] = useState<'analytics' | 'caja'>('analytics');
   const [sessions] = useState<CashRegisterSession[]>([]);
-  const [dateRange, setDateRange] = useState({ start: new Date(), end: new Date() });
+  const [dateRange, setDateRange] = useState(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   // Real metrics state
@@ -142,10 +148,16 @@ const Finance: React.FC = () => {
           hourlyData[key] = (hourlyData[key] || 0) + (o.total_amount || 0);
         });
 
-        const chartData = Object.entries(hourlyData).map(([date, revenue]) => ({
-          date,
-          revenue
-        })).sort((a, b) => a.date.localeCompare(b.date));
+        const chartData = Object.entries(hourlyData).map(([timeStr, revenue]) => ({
+          name: timeStr, // Recharts XAxis key (e.g., "14:00")
+          total_revenue: revenue, // Match Area dataKey
+          // Add other keys as 0 for safety/tooltip
+          mercadopago: 0,
+          cash_sales: 0,
+          wallet_sales: 0,
+          cash_topups: 0,
+          transfer_topups: 0
+        })).sort((a, b) => a.name.localeCompare(b.name));
 
         // Note: RPC will overwrite this, but good for initial load
         setPerformanceData(chartData);
@@ -168,8 +180,11 @@ const Finance: React.FC = () => {
           p_end_date: dateRange.end.toISOString()
         });
 
-        if (chartError) console.error('Error chart:', chartError);
-        setPerformanceData(chartData || []);
+        if (chartError) {
+          console.error('Error chart:', chartError);
+        } else if (chartData && Array.isArray(chartData) && chartData.length > 0) {
+          setPerformanceData(chartData);
+        }
 
         // 1.5 Fetch Top Products
         const { data: topData, error: topError } = await supabase.rpc('get_top_products', {
@@ -214,7 +229,7 @@ const Finance: React.FC = () => {
   }, [profile?.store_id, dateRange]);
 
   return (
-    <div className="p-6 md:p-10 space-y-10 max-w-[1400px] mx-auto animate-in fade-in duration-700 pb-32">
+    <div className="p-6 md:p-10 space-y-10 max-w-[1400px] mx-auto animate-in fade-in duration-700 pb-32 bg-[#F8F9F7] dark:bg-transparent min-h-screen transition-colors duration-300">
       {/* Header Táctico */}
       <header className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-10">
         <div className="space-y-1">
@@ -282,11 +297,11 @@ const Finance: React.FC = () => {
             />
           </div>
 
-          <div className="lg:col-span-12 bg-[#141714] rounded-3xl border border-white/5 p-6 shadow-soft mb-8">
+          <div className="lg:col-span-12 bg-white dark:bg-[#141714] rounded-3xl border border-gray-200 dark:border-white/5 p-6 shadow-xl dark:shadow-soft mb-8">
             <div className="flex justify-between items-center mb-8">
               <div>
-                <h3 className="text-lg font-black italic uppercase tracking-tighter text-white leading-none">FLUJO DE OPERACIONES</h3>
-                <p className="text-[9px] font-black text-[#71766F] uppercase tracking-[0.2em] mt-1">ANÁLISIS DE INGRESOS POR CANAL</p>
+                <h3 className="text-lg font-black italic uppercase tracking-tighter text-[#37352F] dark:text-white leading-none">FLUJO DE OPERACIONES</h3>
+                <p className="text-[9px] font-black text-[#9B9A97] dark:text-[#71766F] uppercase tracking-[0.2em] mt-1">ANÁLISIS DE INGRESOS POR CANAL</p>
               </div>
               <div className="flex gap-2">
                 {['total', 'mercadopago', 'cash', 'wallet'].map(filter => (
@@ -346,11 +361,11 @@ const Finance: React.FC = () => {
           </div>
 
           {/* FIXED EXPENSES SECTION */}
-          <div className="lg:col-span-12 bg-[#141714] rounded-3xl border border-white/5 p-6 shadow-soft mb-8">
+          <div className="lg:col-span-12 bg-white dark:bg-[#141714] rounded-3xl border border-gray-200 dark:border-white/5 p-6 shadow-xl dark:shadow-soft mb-8">
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h3 className="text-lg font-black italic uppercase text-white">GASTOS FIJOS / RECURRENTES</h3>
-                <p className="text-[9px] font-bold text-white/40 uppercase">ALQUILER, LUZ, SERVICIOS, SUELDOS</p>
+                <h3 className="text-lg font-black italic uppercase text-[#37352F] dark:text-white">GASTOS FIJOS / RECURRENTES</h3>
+                <p className="text-[9px] font-bold text-[#9B9A97] dark:text-white/40 uppercase">ALQUILER, LUZ, SERVICIOS, SUELDOS</p>
               </div>
               <button
                 onClick={() => setShowExpenseModal(true)}
@@ -475,8 +490,8 @@ const Finance: React.FC = () => {
           </div>
 
           {/* Re-using the spot of "Origen de Pedidos" for Top Products */}
-          <div className="lg:col-span-4 bg-[#141714] border border-white/5 p-6 rounded-3xl shadow-soft">
-            <h3 className="text-lg font-black italic uppercase text-white mb-4">PRODUCTOS TOP</h3>
+          <div className="lg:col-span-4 bg-white dark:bg-[#141714] border border-gray-200 dark:border-white/5 p-6 rounded-3xl shadow-xl dark:shadow-soft">
+            <h3 className="text-lg font-black italic uppercase text-[#37352F] dark:text-white mb-4">PRODUCTOS TOP</h3>
             <div className="space-y-3">
               {topProducts.length > 0 ? (
                 topProducts.map((prod, idx) => (

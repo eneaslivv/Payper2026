@@ -28,7 +28,8 @@ interface OrderPickupTicketProps {
 }
 
 export const OrderPickupTicket = ({ order, storeSlug, theme }: OrderPickupTicketProps) => {
-    const isDelivered = order.delivery_status === 'delivered' || order.delivery_status === 'burned';
+    const isDelivered = order.delivery_status === 'delivered';
+    const isCancelled = order.delivery_status === 'burned';
 
     const backgroundColor = theme?.backgroundColor || '#000000';
     const textColor = theme?.textColor || '#FFFFFF';
@@ -77,6 +78,62 @@ export const OrderPickupTicket = ({ order, storeSlug, theme }: OrderPickupTicket
         return () => clearInterval(interval);
     }, [order.created_at, isDelivered, estimatedMinutes]);
 
+    // CANCELLED ORDER UI
+    if (isCancelled) {
+        const cancelledColor = '#ef4444'; // Red
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen text-center p-8 relative overflow-hidden animate-in fade-in duration-1000" style={{ backgroundColor, color: textColor }}>
+                {/* Background Decorations */}
+                <div className="absolute top-[-10%] left-[-20%] w-[60%] h-[40%] blur-[120px] rounded-full" style={{ backgroundColor: `${cancelledColor}1A` }} />
+                <div className="absolute bottom-[-10%] right-[-20%] w-[60%] h-[40%] blur-[120px] rounded-full" style={{ backgroundColor: `${cancelledColor}1A` }} />
+
+                {/* Main Cancel Icon */}
+                <div className="relative mb-12 z-10">
+                    <div className="absolute inset-0 blur-[60px] rounded-full opacity-20 animate-pulse" style={{ backgroundColor: cancelledColor }} />
+                    <div className="relative w-32 h-32 rounded-[2.5rem] border flex items-center justify-center shadow-2xl" style={{ backgroundColor: surfaceColor, borderColor: `${textColor}1A` }}>
+                        <span className="material-symbols-outlined text-7xl animate-in zoom-in duration-700" style={{ color: cancelledColor }}>cancel</span>
+                    </div>
+                </div>
+
+                {/* Text Content */}
+                <div className="relative z-10 mb-16">
+                    <h2 className="text-4xl font-black italic uppercase tracking-[-0.05em] mb-4 leading-[0.85]" style={{ color: textColor }}>
+                        PEDIDO<br />
+                        <span style={{ color: cancelledColor }}>CANCELADO</span>
+                    </h2>
+                    <p className="text-sm max-w-xs leading-relaxed" style={{ color: `${textColor}80` }}>
+                        Tu pedido ha sido cancelado. Si tienes dudas, contacta al local.
+                    </p>
+                </div>
+
+                {/* Action Button */}
+                <div className="relative z-10 w-full max-w-[280px]">
+                    <button
+                        onClick={() => {
+                            if (storeSlug) {
+                                window.location.hash = `/m/${storeSlug}`;
+                            } else {
+                                const currentHash = window.location.hash;
+                                window.location.hash = currentHash.split('/order/')[0];
+                            }
+                        }}
+                        className="group relative w-full py-5 text-black rounded-[2rem] overflow-hidden active:scale-[0.97] transition-all shadow-xl flex items-center justify-center gap-3"
+                        style={{ backgroundColor: accentColor, boxShadow: `0 20px 40px ${accentColor}40` }}
+                    >
+                        <span className="relative text-xs font-black uppercase tracking-[0.15em] italic" style={{ color: '#000' }}>Volver al Menú</span>
+                        <span className="material-symbols-outlined relative text-xl font-black" style={{ color: '#000' }}>arrow_forward</span>
+                    </button>
+                </div>
+
+                {/* Order Reference */}
+                <p className="mt-8 text-[10px] font-mono uppercase" style={{ color: `${textColor}40` }}>
+                    Orden #{getDisplayId(order)}
+                </p>
+            </div>
+        );
+    }
+
+    // DELIVERED ORDER UI
     if (isDelivered) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen text-center p-8 relative overflow-hidden animate-in fade-in duration-1000" style={{ backgroundColor, color: textColor }}>
@@ -105,7 +162,7 @@ export const OrderPickupTicket = ({ order, storeSlug, theme }: OrderPickupTicket
                     </h2>
                     <div className="flex items-center justify-center gap-2 mb-2">
                         <div className="h-px w-8 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-                        <p className="font-black uppercase tracking-[0.3em] text-[10px]" style={{ color: `${textColor}99` }}>Pedido Finalizado</p>
+                        <p className="font-black uppercase tracking-[0.3em] text-[10px]" style={{ color: `${textColor}99` }}>Pedido Entregado</p>
                         <div className="h-px w-8 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
                     </div>
                 </div>

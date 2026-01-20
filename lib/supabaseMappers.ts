@@ -24,6 +24,8 @@ export const mapStatusFromSupabase = (status: string): OrderStatus => {
     switch (status) {
         case 'pending': return 'Pendiente';
         case 'received': return 'Pendiente'; // Map 'received' to 'Pendiente' for Admin Board
+        case 'paid': return 'Pendiente'; // New paid orders should show as Pending for prep
+        case 'bill_requested': return 'Pendiente'; // Handle bill requested
         case 'preparing': return 'En Preparación';
         case 'ready': return 'Listo';
         case 'served': return 'Entregado';
@@ -34,25 +36,32 @@ export const mapStatusFromSupabase = (status: string): OrderStatus => {
 };
 
 export const mapOrderToSupabase = (order: Order, storeId: string): any => {
-    // Try to get node_id and session_id from QR context
-    let nodeId = null;
-    let sessionId = null;
+    // Priority 1: Direct node_id on order (Manual creation from Admin)
+    // Priority 2: QR Context (Client scan)
+    let nodeId = order.node_id || null;
 
-    try {
-        const qrContextStr = localStorage.getItem('qr_context');
-        if (qrContextStr) {
-            const qrContext = JSON.parse(qrContextStr);
-            if (qrContext.node_id) {
-                nodeId = qrContext.node_id;
+    if (!nodeId) {
+        try {
+            const qrContextStr = localStorage.getItem('qr_context');
+            if (qrContextStr) {
+                const qrContext = JSON.parse(qrContextStr);
+                if (qrContext.node_id) {
+                    nodeId = qrContext.node_id;
+                }
             }
+        } catch (e) {
+            console.warn('[mapOrderToSupabase] Error reading QR context:', e);
         }
-        // Also check for session_id
+    }
+    // Also check for session_id
+    let sessionId = null;
+    try {
         const clientSessionId = localStorage.getItem('client_session_id');
         if (clientSessionId) {
             sessionId = clientSessionId;
         }
     } catch (e) {
-        console.warn('[mapOrderToSupabase] Error reading QR context:', e);
+        console.warn('[mapOrderToSupabase] Error reading session ID:', e);
     }
 
     return {

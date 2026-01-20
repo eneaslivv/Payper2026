@@ -1,0 +1,25 @@
+{
+    "rules": [
+        ".agent/rules/reglas-maestras.md",
+        ".agent/rules/error-reporting.md"
+    ],
+    "context": {
+        "always_include": [
+            "PRD.md",
+            "DOCUMENTACION_SISTEMA.md",
+            "docs/audit/known-gaps.md",
+            "supabaseTypes.ts",
+            "types.ts"
+        ],
+        "ignore": [
+            "node_modules",
+            "dist",
+            ".git"
+        ]
+    },
+    "behavior": {
+        "confirm_before_edit": true,
+        "max_file_changes_per_response": 3,
+        "require_test_for_fix": false
+    }
+}

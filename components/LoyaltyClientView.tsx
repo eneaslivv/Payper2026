@@ -210,9 +210,30 @@ export const LoyaltyClientView: React.FC<LoyaltyClientViewProps> = ({ theme, sto
                                             color: canAfford ? '#000' : theme.textColor,
                                             border: canAfford ? 'none' : `1px solid ${theme.textColor}20`
                                         }}
-                                        onClick={() => {
-                                            if (canAfford) alert('¡Canje solicitado! Muestra este código al cajero.');
-                                            // TODO: Implement actual redemption logic (QR code modal)
+                                        onClick={async () => {
+                                            if (!canAfford) return;
+
+                                            // Optimistic UI update or loading state could go here
+                                            const confirmRedeem = window.confirm(`¿Canjear ${reward.name} por ${reward.points} puntos?`);
+                                            if (!confirmRedeem) return;
+
+                                            try {
+                                                const { data, error } = await supabase.rpc('redeem_points', { p_reward_id: reward.id }) as any;
+
+                                                if (error) throw error;
+
+                                                // Update local state
+                                                if (data && data.success) {
+                                                    setPoints(data.new_balance);
+                                                    alert(`¡Canje Exitoso! \n\n${data.message}`);
+                                                    // Optional: Refresh rewards or show a "Code" modal outcome
+                                                } else {
+                                                    throw new Error(data?.error || 'Error desconocido');
+                                                }
+                                            } catch (err: any) {
+                                                console.error('Redemption error:', err);
+                                                alert(`Error al canjear: ${err.message}`);
+                                            }
                                         }}
                                     >
                                         {canAfford ? 'Canjear' : 'Falta'}

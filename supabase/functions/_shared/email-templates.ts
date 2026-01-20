@@ -7,19 +7,19 @@
 // PAYMENT REJECTED
 // ============================================
 interface PaymentRejectedVars {
-    store_name: string;
-    customer_name: string;
-    order_number: number;
-    amount: number;
-    currency: string;
-    rejection_reason?: string;
-    retry_url?: string;
+  store_name: string;
+  customer_name: string;
+  order_number: number;
+  amount: number;
+  currency: string;
+  rejection_reason?: string;
+  retry_url?: string;
 }
 
 export function generatePaymentRejectedHtml(vars: PaymentRejectedVars): string {
-    const formattedAmount = `$${vars.amount.toLocaleString('es-AR')}`;
+  const formattedAmount = `$${vars.amount.toLocaleString('es-AR')}`;
 
-    return `
+  return `
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -85,28 +85,28 @@ export function generatePaymentRejectedHtml(vars: PaymentRejectedVars): string {
 }
 
 export function getPaymentRejectedSubject(vars: PaymentRejectedVars): string {
-    return `⚠️ Pago no procesado - Pedido #${vars.order_number} | ${vars.store_name}`;
+  return `⚠️ Pago no procesado - Pedido #${vars.order_number} | ${vars.store_name}`;
 }
 
 // ============================================
 // PAYMENT REFUNDED
 // ============================================
 interface PaymentRefundedVars {
-    store_name: string;
-    customer_name: string;
-    order_number: number;
-    refund_amount: number;
-    original_amount: number;
-    currency: string;
-    is_partial: boolean;
-    refund_reason?: string;
+  store_name: string;
+  customer_name: string;
+  order_number: number;
+  refund_amount: number;
+  original_amount: number;
+  currency: string;
+  is_partial: boolean;
+  refund_reason?: string;
 }
 
 export function generatePaymentRefundedHtml(vars: PaymentRefundedVars): string {
-    const formattedRefund = `$${vars.refund_amount.toLocaleString('es-AR')}`;
-    const formattedOriginal = `$${vars.original_amount.toLocaleString('es-AR')}`;
+  const formattedRefund = `$${vars.refund_amount.toLocaleString('es-AR')}`;
+  const formattedOriginal = `$${vars.original_amount.toLocaleString('es-AR')}`;
 
-    return `
+  return `
 <!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
@@ -161,32 +161,32 @@ export function generatePaymentRefundedHtml(vars: PaymentRefundedVars): string {
 }
 
 export function getPaymentRefundedSubject(vars: PaymentRefundedVars): string {
-    return `↩ Reembolso procesado - Pedido #${vars.order_number} | ${vars.store_name}`;
+  return `↩ Reembolso procesado - Pedido #${vars.order_number} | ${vars.store_name}`;
 }
 
 // ============================================
 // USER INVITATION
 // ============================================
 interface InviteUserVars {
-    store_name: string;
-    inviter_name: string;
-    invited_role: string;
-    accept_url: string;
-    expires_in_days: number;
+  store_name: string;
+  inviter_name: string;
+  invited_role: string;
+  accept_url: string;
+  expires_in_days: number;
 }
 
 export function generateInviteUserHtml(vars: InviteUserVars): string {
-    const roleMap: Record<string, string> = {
-        'admin': 'Administrador',
-        'manager': 'Gerente',
-        'staff': 'Staff',
-        'cashier': 'Cajero',
-        'kitchen': 'Cocina',
-        'waiter': 'Mesero'
-    };
-    const roleName = roleMap[vars.invited_role] || vars.invited_role;
+  const roleMap: Record<string, string> = {
+    'admin': 'Administrador',
+    'manager': 'Gerente',
+    'staff': 'Staff',
+    'cashier': 'Cajero',
+    'kitchen': 'Cocina',
+    'waiter': 'Mesero'
+  };
+  const roleName = roleMap[vars.invited_role] || vars.invited_role;
 
-    return `
+  return `
 <!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
@@ -236,34 +236,34 @@ export function generateInviteUserHtml(vars: InviteUserVars): string {
 }
 
 export function getInviteUserSubject(vars: InviteUserVars): string {
-    return `📨 ${vars.inviter_name} te invitó a ${vars.store_name}`;
+  return `📨 ${vars.inviter_name} te invitó a ${vars.store_name}`;
 }
 
 // ============================================
 // ORDER CONFIRMATION
 // ============================================
 interface OrderConfirmationVars {
-    store_name: string;
-    customer_name: string;
-    order_number: number;
-    items: Array<{ name: string; qty: number; price: number }>;
-    subtotal: number;
-    total: number;
-    delivery_mode: 'dine_in' | 'takeaway' | 'delivery';
-    table_number?: string;
-    pickup_code?: string;
-    estimated_time?: string;
+  store_name: string;
+  customer_name: string;
+  order_number: number;
+  items: Array<{ name: string; qty: number; price: number }>;
+  subtotal: number;
+  total: number;
+  delivery_mode: 'dine_in' | 'takeaway' | 'delivery';
+  table_number?: string;
+  pickup_code?: string;
+  estimated_time?: string;
 }
 
 export function generateOrderConfirmationHtml(vars: OrderConfirmationVars): string {
-    const formattedTotal = `$${vars.total.toLocaleString('es-AR')}`;
-    const deliveryModeText: Record<string, string> = {
-        'dine_in': 'Para consumir en el local',
-        'takeaway': 'Para llevar',
-        'delivery': 'Delivery'
-    };
+  const formattedTotal = `$${vars.total.toLocaleString('es-AR')}`;
+  const deliveryModeText: Record<string, string> = {
+    'dine_in': 'Para consumir en el local',
+    'takeaway': 'Para llevar',
+    'delivery': 'Delivery'
+  };
 
-    const itemsHtml = vars.items.map(item => `
+  const itemsHtml = vars.items.map(item => `
     <tr>
       <td style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
         <span style="color: #333;">${item.name}</span>
@@ -275,7 +275,7 @@ export function generateOrderConfirmationHtml(vars: OrderConfirmationVars): stri
     </tr>
   `).join('');
 
-    return `
+  return `
 <!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
@@ -342,5 +342,137 @@ export function generateOrderConfirmationHtml(vars: OrderConfirmationVars): stri
 }
 
 export function getOrderConfirmationSubject(vars: OrderConfirmationVars): string {
-    return `🧾 Pedido #${vars.order_number} confirmado | ${vars.store_name}`;
+  return `🧾 Pedido #${vars.order_number} confirmado | ${vars.store_name}`;
+}
+
+// ============================================
+// WELCOME CLIENT (New Registration)
+// ============================================
+interface WelcomeClientVars {
+  store_name: string;
+  customer_name: string;
+  login_url: string;
+}
+
+export function generateWelcomeClientHtml(vars: WelcomeClientVars): string {
+  return `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background-color: #f5f5f5;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td style="padding: 40px 20px;">
+        <table role="presentation" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          
+          <!-- Banner Image (Placeholder for Store/Payper Branding) -->
+          <tr>
+             <td style="background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%); padding: 40px; text-align: center;">
+                 <h1 style="color: white; font-size: 28px; margin: 0; font-weight: 800; letter-spacing: -0.5px;">Payper</h1>
+                 <p style="color: #888; margin: 5px 0 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: 2px;">The Future of Payments</p>
+             </td>
+          </tr>
+
+          <tr>
+            <td style="padding: 40px;">
+              <h2 style="margin: 0 0 16px 0; color: #111; font-size: 24px; font-weight: 700;">
+                ¡Bienvenido a ${vars.store_name}, ${vars.customer_name.split(' ')[0]}!
+              </h2>
+              <p style="margin: 0 0 24px 0; color: #666; font-size: 16px; line-height: 1.6;">
+                Gracias por registrarte. Ahora podrás realizar pedidos, acumular puntos y disfrutar de la mejor experiencia en nuestro local.
+              </p>
+              
+              <a href="${vars.login_url}" style="display: block; background: #000000; color: white; text-align: center; padding: 18px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 16px; margin-bottom: 32px;">
+                Ir a la Carta Digital
+              </a>
+
+              <div style="border-top: 1px solid #f0f0f0; padding-top: 24px;">
+                <p style="margin: 0; color: #888; font-size: 14px;"><strong>¿Sabías que?</strong> Acumulas puntos con cada compra que puedes canjear por productos gratis.</p>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="background: #f9fafb; padding: 24px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #888; font-size: 12px;">Enviado por <strong>Payper</strong> para ${vars.store_name}</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
+export function getWelcomeClientSubject(vars: WelcomeClientVars): string {
+  return `👋 ¡Bienvenido a ${vars.store_name}!`;
+}
+
+// ============================================
+// WELCOME OWNER (New Account)
+// ============================================
+interface WelcomeOwnerVars {
+  owner_name: string;
+  dashboard_url: string;
+}
+
+export function generateWelcomeOwnerHtml(vars: WelcomeOwnerVars): string {
+  return `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background-color: #f5f5f5;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td style="padding: 40px 20px;">
+        <table role="presentation" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          
+          <!-- Payper Branding -->
+          <tr>
+             <td style="background: #000000; padding: 40px; text-align: center;">
+                 <h1 style="color: white; font-size: 32px; margin: 0; font-weight: 800;">Payper</h1>
+                 <p style="color: #666; margin: 8px 0 0 0; font-size: 13px; text-transform: uppercase;">Business Suite</p>
+             </td>
+          </tr>
+
+          <tr>
+            <td style="padding: 40px;">
+              <h2 style="margin: 0 0 16px 0; color: #111; font-size: 24px; font-weight: 700;">
+                ¡Bienvenido a bordo, ${vars.owner_name.split(' ')[0]}!
+              </h2>
+              <p style="margin: 0 0 24px 0; color: #666; font-size: 16px; line-height: 1.6;">
+                Has dado el primer paso para transformar la gestión de tu negocio. Tu cuenta de Payper está lista.
+              </p>
+              
+              <div style="background: #f9fafb; border-left: 4px solid #000; padding: 20px; margin-bottom: 24px;">
+                <h3 style="margin: 0 0 8px 0; font-size: 16px; color: #111;">Primeros pasos recomendados:</h3>
+                <ul style="margin: 0; padding-left: 20px; color: #666; font-size: 14px;">
+                  <li style="margin-bottom: 8px;">Configura tu menú y productos.</li>
+                  <li style="margin-bottom: 8px;">Personaliza la apariencia de tu local.</li>
+                  <li>Invita a tu staff.</li>
+                </ul>
+              </div>
+
+              <a href="${vars.dashboard_url}" style="display: block; background: #000000; color: white; text-align: center; padding: 18px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 16px; margin-bottom: 32px;">
+                Ir al Panel de Control
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td style="background: #f9fafb; padding: 24px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #888; font-size: 12px;">© 2026 Payper Inc.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
+export function getWelcomeOwnerSubject(vars: WelcomeOwnerVars): string {
+  return `🚀 Bienvenido a Payper - Tu cuenta está lista`;
 }

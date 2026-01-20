@@ -17,6 +17,7 @@ interface CreateOrderOptions {
     tableNumber?: string;
     locationIdentifier?: string;
     deliveryMode?: 'local' | 'delivery' | 'takeaway';
+    sourceLocationId?: string;  // NEW: Inventory storage location (for bar-specific stock)
 }
 
 interface UseCreateOrderReturn {
@@ -36,6 +37,7 @@ export function useCreateOrder(): UseCreateOrderReturn {
         tableNumber,
         locationIdentifier,
         deliveryMode = 'local',
+        sourceLocationId,  // NEW
     }: CreateOrderOptions): Promise<Order | null> => {
         if (!storeId || items.length === 0) {
             setError('Datos insuficientes para crear la orden');
@@ -60,6 +62,7 @@ export function useCreateOrder(): UseCreateOrderReturn {
                 p_table_number: tableNumber || null,
                 p_location_identifier: locationIdentifier || null,
                 p_delivery_mode: deliveryMode,
+                p_source_location_id: sourceLocationId || null,  // NEW
             });
 
             if (rpcError) throw rpcError;
