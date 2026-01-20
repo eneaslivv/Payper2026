@@ -20,3 +20,17 @@
 
 **Estado:** ✅ Resuelto
 **Fecha:** 2026-01-20
+
+## 2026-01-20 — Fix Redirect Auth (Email Verification)
+
+**Problema:** Al verificar email, el usuario era redirigido al admin panel o site root en lugar de volver al menú.
+
+**Causa raíz:** falta de parámetro `emailRedirectTo` en `supabase.auth.signUp()`.
+
+**Solución aplicada:**
+1. Modificado `pages/client/AuthPage.tsx`:
+   - Agregado `emailRedirectTo: \`\${window.location.origin}/#/m/\${slug}\``
+
+**Acción Manual Requerida:**
+- Configurar "Redirect URLs" en Supabase Auth Dashboard.
+- Agregar: `http://localhost:3005/#/m/*` y dominio producción.

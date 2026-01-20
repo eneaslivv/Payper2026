@@ -47,6 +47,7 @@ const AuthPage: React.FC = () => {
           email,
           password,
           options: {
+            emailRedirectTo: `${window.location.origin}/#/m/${slug}`,
             data: {
               full_name: name,
               role: 'client', // Critical for RLS policies
