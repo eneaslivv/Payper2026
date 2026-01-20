@@ -458,7 +458,76 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     await loadAllProducts();
                 }
 
-                // Helper: Load all products directly (fallback)
+                // Helper: Load products using new availability RPC
+                async function loadProductsWithAvailability() {
+                    console.log('[ClientContext] Loading products with real-time availability check...');
+
+                    const { data: productsData, error } = await (supabase.rpc as any)(
+                        'get_products_with_availability',
+                        { p_store_id: store.id }
+                    );
+
+                    if (error) {
+                        console.error('[ClientContext] Error loading products with availability:', error);
+                        // Fallback to regular load
+                        await loadAllProducts();
+                        return;
+                    }
+
+                    if (productsData && productsData.length > 0) {
+                        const mappedProducts: MenuItem[] = productsData.map((item: any) => {
+                            const catName = item.category_id ? categoryMap[item.category_id] : 'General';
+                            return {
+                                id: item.id,
+                                name: item.name,
+                                description: item.description || '',
+                                price: item.price || 0,
+                                image: item.image_url || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
+                                category: catName,
+                                isPopular: false,
+                                isOutOfStock: !item.is_available,  // ✅ Calculado en tiempo real por RPC
+                                variants: [],
+                                addons: [],
+                                item_type: 'product' as const,
+                            };
+                        });
+
+                        // Also load sellable inventory items
+                        const { data: inventoryData } = await (supabase.from('inventory_items') as any)
+                            .select('*')
+                            .eq('store_id', store.id)
+                            .eq('is_menu_visible', true)
+                            .gt('price', 0)
+                            .order('name', { ascending: true });
+
+                        const inventoryProducts: MenuItem[] = (inventoryData || [])
+                            .filter((item: any) => item.price > 0)
+                            .map((item: any) => {
+                                const catName = item.category_id ? categoryMap[item.category_id] : 'General';
+                                return {
+                                    id: item.id,
+                                    name: item.name,
+                                    description: item.description || '',
+                                    price: item.price || 0,
+                                    image: item.image_url || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
+                                    category: catName,
+                                    isPopular: item.is_popular || false,
+                                    isOutOfStock: (item.current_stock !== undefined && item.current_stock <= 0),
+                                    variants: item.variants || [],
+                                    addons: item.addons || [],
+                                    item_type: 'sellable' as const,
+                                };
+                            });
+
+                        setProducts([...mappedProducts, ...inventoryProducts]);
+                        console.log('[ClientContext] Products loaded with availability:', mappedProducts.length, 'products,', inventoryProducts.length, 'inventory items');
+                    } else {
+                        console.warn('[ClientContext] No products found, falling back to loadAllProducts');
+                        await loadAllProducts();
+                    }
+                }
+
+                // Helper: Load all products directly (fallback) with RPC availability check
                 async function loadAllProducts() {
                     // Load inventory items
                     const { data: inventoryData, error: invError } = await (supabase.from('inventory_items') as any)
@@ -496,20 +565,21 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                         };
                     });
 
-                    // Map products (recipes)
+                    // Map products (recipes) - is_available now comes from DB trigger that validates recipe ingredients
                     const recipeProducts: MenuItem[] = (productsData || []).map((item: any) => {
+                        const catName = item.category_id ? categoryMap[item.category_id] : (item.category || 'General');
                         return {
                             id: item.id,
                             name: item.name,
                             description: item.description || '',
-                            price: item.base_price || 0,
+                            price: item.price || item.base_price || 0,
                             image: item.image_url || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
-                            category: item.category || 'General',
-                            isPopular: false,
-                            isOutOfStock: !item.is_available,
-                            variants: [],
-                            addons: [],
-                            item_type: 'product' as const, // Mark as product (has recipe)
+                            category: catName,
+                            isPopular: item.is_popular || false,
+                            isOutOfStock: !item.is_available,  // ✅ Ahora is_available viene calculado por trigger
+                            variants: item.product_variants || [],
+                            addons: item.product_addons || [],
+                            item_type: 'product' as const,
                         };
                     });
 
@@ -536,6 +606,33 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             }
         };
         fetchData();
+
+        // Subscribe to product availability changes
+        const productsChannel = supabase
+            .channel('products-availability')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'products',
+                    filter: `store_id=eq.${store.id}`
+                },
+                (payload) => {
+                    console.log('[ClientContext] Product availability changed:', payload.new);
+                    // Update specific product in state
+                    setProducts(prev => prev.map(p =>
+                        p.id === payload.new.id
+                            ? { ...p, isOutOfStock: !payload.new.is_available }
+                            : p
+                    ));
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(productsChannel);
+        };
     }, [store?.id]);
 
     const addToCart = (item: MenuItem, quantity: number, customs: string[], size: string, notes: string) => {
