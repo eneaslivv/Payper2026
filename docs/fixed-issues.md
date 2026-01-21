@@ -52,3 +52,25 @@ Resultado: Adiciones ignoradas por el sistema de sincronización.
 **Acción Manual Requerida:**
 - Ejecutar migración V22.
 - **IMPORTANTE:** El stock agregado anteriormente se "perdió" (no se registró en la tabla correcta). Se requiere un conteo y ajuste manual de stock para los ítems afectados (ej. "Panceta") para corregir los saldos actuales.
+
+## 2026-01-21 — Fix Transfer Stock Modal (Multiple Bugs)
+
+**Problema:** El modal de transferencia de stock entre ubicaciones no funcionaba correctamente:
+1. Checkboxes seleccionaban todos los items (bug de `item_id` undefined)
+2. Stock disponible siempre mostraba 0
+3. La transferencia fallaba con error 404
+4. Los movimientos no quedaban trazados en el historial
+
+**Causa raíz (múltiples):**
+1. **Checkbox bug:** RPC `get_location_stock_details` devuelve `res_item_id` pero el frontend buscaba `item_id`
+2. **Stock 0:** RPC `get_store_stock` declaraba `closed_units integer` pero la columna es `numeric`
+3. **404 en transfer:** Frontend usaba parámetros incorrectos (`p_from_location` vs `p_from_location_id`)
+4. **Sin trazabilidad:** Función `log_inventory_action` no existía
+
+**Solución aplicada:**
+1. `LogisticsView.tsx`: Cambiar mapping de `item.item_id` → `item.res_item_id`
+2. SQL: Recrear `get_store_stock` con `closed_units numeric`
+3. `TransferStockModal.tsx`: Corregir parámetros de RPC (`p_from_location_id`, `p_to_location_id`, etc.)
+4. SQL: Crear función `log_inventory_action` para insertar en `inventory_audit_logs`
+5. `TransferStockModal.tsx`: Usar `createPortal` para centrar modal correctamente
+

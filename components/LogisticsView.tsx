@@ -153,12 +153,12 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
             console.error(error);
         } else {
             const formatted = (data || []).map((item: any) => ({
-                id: item.id,
-                item_id: item.item_id,
+                id: item.res_id,
+                item_id: item.res_item_id,
                 closed_units: item.closed_units,
                 open_packages: item.open_packages,
                 inventory_items: {
-                    id: item.item_id,
+                    id: item.res_item_id,
                     name: item.item_name,
                     unit_type: item.item_unit_type,
                     image_url: item.item_image_url,
@@ -330,9 +330,9 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
                                         {selectedItemIds.length === locationStock.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
                                     </button>
                                 </div>
-                                {locationStock.map(stock => (
+                                {locationStock.map((stock, idx) => (
                                     <div
-                                        key={stock.item_id}
+                                        key={stock.item_id || `stock-${idx}`}
                                         className={`flex items-center justify-between bg-white/[0.02] p-3 rounded-xl border transition-all ${selectedItemIds.includes(stock.item_id) ? 'border-neon/50 bg-neon/5' : 'border-white/5 hover:bg-white/[0.04]'}`}
                                     >
                                         <div className="flex items-center gap-3">

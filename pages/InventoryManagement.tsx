@@ -131,15 +131,15 @@ function LocationStockBreakdown({ itemId, unitType, packageSize, onLocationClick
   return (
     <div className="grid grid-cols-2 gap-2">
       {locations.map((loc) => {
-        // Calculate open package details
-        const closedUnits = Math.floor(Number(loc.closed_units || 0));
+        // Calculate open package details - using numeric values correctly
+        const closedUnits = Number(loc.closed_units || 0);
         const openPackagesCount = Number(loc.open_packages_count || 0);
+        const openRemainingSum = Number(loc.open_remaining_sum || 0);
         const effectiveStock = Number(loc.effective_stock || 0);
-        const totalCapacity = closedUnits * packageSize;
-        const openRemainingUnits = effectiveStock - totalCapacity;
-        // Calculate percentage of open package remaining
+
+        // Calculate percentage using the actual remaining sum from RPC
         const openPackagePercentage = openPackagesCount > 0 && packageSize > 0
-          ? Math.round((openRemainingUnits / (openPackagesCount * packageSize)) * 100)
+          ? Math.round((openRemainingSum / (openPackagesCount * packageSize)) * 100)
           : 0;
 
         return (
@@ -180,7 +180,7 @@ function LocationStockBreakdown({ itemId, unitType, packageSize, onLocationClick
                   />
                 </div>
                 <span className="text-[8px] text-white/20 mt-0.5 block">
-                  ~{Math.round(openRemainingUnits)} {unitType} restantes
+                  ~{openRemainingSum.toFixed(1)} {unitType} restantes
                 </span>
               </div>
             )}
@@ -691,8 +691,10 @@ const InventoryManagement: React.FC = () => {
       });
 
       // Filter out deleted items (is_active=false or name starts with [ELIMINADO])
+      // BUT keep sellable items (products) even if inactive, so they appear in RECETAS
       const activeItems = finalItems.filter((item: any) =>
-        item.is_active !== false && !item.name?.startsWith('[ELIMINADO]')
+        (item.item_type === 'sellable' || item.is_active !== false) &&
+        !item.name?.startsWith('[ELIMINADO]')
       );
       setItems(activeItems);
 

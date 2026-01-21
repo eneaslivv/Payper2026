@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { useToast } from './ToastSystem';
 
@@ -119,12 +120,14 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
                     }
 
                     const { error } = await (supabase.rpc as any)('transfer_stock', {
-                        p_from_location: fromLocation,
-                        p_to_location: toLocation,
                         p_item_id: itemId,
+                        p_from_location_id: fromLocation,
+                        p_to_location_id: toLocation,
                         p_quantity: qty,
-                        p_reason: reason,
-                        p_source_ui: 'locations'
+                        p_user_id: null,
+                        p_notes: `Transferencia desde ubicaciones: ${reason}`,
+                        p_movement_type: 'transfer',
+                        p_reason: reason
                     });
                     if (error) throw error;
                 });
@@ -133,12 +136,14 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
                 addToast(`✓ ${preselectedItemIds.length} productos transferidos`, 'success');
             } else {
                 const { error } = await (supabase.rpc as any)('transfer_stock', {
-                    p_from_location: fromLocation,
-                    p_to_location: toLocation,
                     p_item_id: selectedItem,
+                    p_from_location_id: fromLocation,
+                    p_to_location_id: toLocation,
                     p_quantity: parseInt(quantity) || 1,
-                    p_reason: reason,
-                    p_source_ui: 'locations'
+                    p_user_id: null,
+                    p_notes: `Transferencia desde ubicaciones: ${reason}`,
+                    p_movement_type: 'transfer',
+                    p_reason: reason
                 });
 
                 if (error) throw error;
@@ -165,21 +170,28 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
         setReason('');
     };
 
-    if (!isOpen) return null;
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+        return () => setMounted(false);
+    }, []);
+
+    if (!isOpen || !mounted) return null;
 
     const selectedItemData = items.find(i => i.id === selectedItem);
     const fromLocationData = locations.find(l => l.id === fromLocation);
     const toLocationData = locations.find(l => l.id === toLocation);
 
-    return (
-        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4">
+    const modalContent = (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
             {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose} />
 
             {/* Modal */}
-            <div className="relative z-10 bg-[#0D0F0D] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4">
-                {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-white/5">
+            <div className="relative z-10 bg-[#0D0F0D] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+                {/* Header - Fixed */}
+                <div className="flex items-center justify-between p-6 border-b border-white/5 shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="size-10 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
                             <span className="material-symbols-outlined text-blue-500">swap_horiz</span>
@@ -194,8 +206,8 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
                     </button>
                 </div>
 
-                {/* Body */}
-                <div className="p-6 space-y-5">
+                {/* Body - Scrollable */}
+                <div className="p-6 space-y-5 overflow-y-auto">
                     {/* Item Select OR Bulk List */}
                     {!isBulk ? (
                         <>
@@ -351,7 +363,6 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
                     </div>
 
                     {/* Preview */}
-                    {/* Preview (Shown in simple mode or if fully configured) */}
                     {!isBulk && selectedItem && fromLocation && toLocation && (
                         <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
                             <p className="text-[10px] text-blue-400 font-bold mb-2">Vista previa:</p>
@@ -365,8 +376,8 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
                     )}
                 </div>
 
-                {/* Footer */}
-                <div className="p-6 pt-0 flex gap-3">
+                {/* Footer - Fixed */}
+                <div className="p-6 pt-0 flex gap-3 shrink-0">
                     <button
                         onClick={onClose}
                         className="flex-1 py-4 rounded-xl border border-white/10 text-white/60 text-[10px] font-black uppercase tracking-widest hover:bg-white/5 transition-all"
@@ -384,4 +395,6 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
             </div>
         </div>
     );
+
+    return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : null;
 };

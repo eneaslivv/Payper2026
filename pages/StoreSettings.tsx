@@ -71,14 +71,19 @@ const StoreSettings: React.FC = () => {
         if (!isAdmin && profile?.role !== 'store_owner') return;
 
         const fetchAuditLogs = async () => {
+            if (!profile?.store_id) return;
+
             const { data, error } = await supabase
                 .from('audit_logs' as any)
-                .select(`
-                    *,
-                    profiles:user_id ( full_name, role, email )
-                `)
+                .select('*')
+                .eq('store_id', profile.store_id)
                 .order('created_at', { ascending: false })
                 .limit(100);
+
+            if (error) {
+                console.error('[Audit] Error fetching logs:', error);
+                return;
+            }
 
             if (data) {
                 // Import dynamically to avoid circular deps if any, or just use standard import

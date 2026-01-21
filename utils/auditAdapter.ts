@@ -5,22 +5,18 @@ export interface RawAuditLog {
     created_at: string;
     store_id: string;
     user_id: string;
+    user_name: string; // From VIEW
+    user_role: string; // From VIEW
     table_name: string;
-    operation: 'INSERT' | 'UPDATE' | 'DELETE';
+    operation: 'INSERT' | 'UPDATE' | 'DELETE' | string;
     old_data: any;
     new_data: any;
-    // Joins
-    profiles?: {
-        full_name: string;
-        role: string;
-        email: string; // Helpful for backup identification
-    };
 }
 
 export const formatAuditLog = (log: RawAuditLog): AuditLogEntry => {
-    const userName = log.profiles?.full_name || log.profiles?.email || 'Sistema / Desconocido';
+    const userName = log.user_name || 'Sistema';
     // Map internal roles to human readable
-    const rawRole = log.profiles?.role || 'system';
+    const rawRole = log.user_role || 'system';
     const userRole = rawRole === 'store_owner' ? 'Dueño' :
         rawRole === 'super_admin' ? 'Super Admin' :
             rawRole === 'staff' ? 'Staff' : 'Sistema';
@@ -40,11 +36,27 @@ export const formatAuditLog = (log: RawAuditLog): AuditLogEntry => {
         category = 'orders';
         entity = 'PEDIDO';
     } else if (log.table_name === 'profiles') {
-        category = 'staff'; // Or 'finance' if balance is touched
+        category = 'staff';
         entity = 'USUARIO';
     } else if (log.table_name === 'stores') {
         category = 'system';
         entity = 'CONFIGURACIÓN';
+    } else if (log.table_name === 'wallet_transactions') {
+        category = 'finance';
+        entity = 'BILLETERA';
+        const amount = log.new_data?.amount || 0;
+        const type = log.new_data?.type || 'payment';
+        action = type === 'topup' ? 'CARGA SALDO' : 'PAGO';
+        detail = `${action}: $${amount}`;
+        impact = type === 'topup' ? 'positive' : 'neutral';
+    } else if (log.table_name === 'loyalty_transactions') {
+        category = 'finance';
+        entity = 'FIDELIDAD';
+        const points = log.new_data?.points || 0;
+        const type = log.new_data?.type || 'earn';
+        action = type === 'earn' ? 'PUNTOS GANADOS' : 'CANJE';
+        detail = `${points} puntos`;
+        impact = type === 'earn' ? 'positive' : 'neutral';
     }
 
     // --- DETAILED LOGIC ---
@@ -125,18 +137,50 @@ export const formatAuditLog = (log: RawAuditLog): AuditLogEntry => {
         }
     }
 
-    // 4. INVENTORY
+    // 4. INVENTORY (including stock movements)
     else if (log.table_name === 'inventory_items') {
-        if (log.operation === 'UPDATE') {
-            const oldStock = Number(log.old_data?.current_stock || 0);
-            const newStock = Number(log.new_data?.current_stock || 0);
+        const itemName = log.new_data?.name || 'Insumo';
+        const quantity = log.new_data?.quantity || log.new_data?.quantity_delta || 0;
+        const reason = log.new_data?.reason || '';
 
-            if (oldStock !== newStock) {
-                const diff = newStock - oldStock;
-                action = 'AJUSTE STOCK';
-                detail = `${log.new_data.name}: ${diff > 0 ? '+' : ''}${diff} ${log.new_data.unit_type}`;
-                if (diff < 0) impact = 'neutral'; // Consumption
-            }
+        // Handle specific operation types from VIEW
+        switch (log.operation) {
+            case 'WASTE':
+                action = 'BAJA POR MERMA';
+                detail = `${itemName}: ${quantity} - ${reason}`;
+                impact = 'critical';
+                break;
+            case 'LOSS_EXPIRED':
+                action = 'VENCIMIENTO';
+                detail = `${itemName}: Producto vencido`;
+                impact = 'critical';
+                break;
+            case 'TRANSFER':
+                action = 'TRANSFERENCIA';
+                detail = `${itemName}: ${reason}`;
+                impact = 'neutral';
+                break;
+            case 'RESTOCK':
+            case 'INSERT':
+                action = 'INGRESO STOCK';
+                detail = `${itemName}: +${Math.abs(quantity)}`;
+                impact = 'positive';
+                break;
+            case 'CONSUMPTION':
+            case 'DELETE':
+                action = 'CONSUMO';
+                detail = `${itemName}: ${quantity}`;
+                impact = 'neutral';
+                break;
+            case 'ADJUSTMENT':
+                action = 'AJUSTE MANUAL';
+                detail = `${itemName}: ${quantity} - ${reason}`;
+                impact = 'neutral';
+                break;
+            default:
+                // Fallback for UPDATE or unknown
+                action = log.operation || 'MOVIMIENTO';
+                detail = `${itemName}: ${reason || 'Operación registrada'}`;
         }
     }
 

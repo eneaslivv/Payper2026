@@ -24,7 +24,7 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
 
     // States
     const [scanValue, setScanValue] = useState('');
-    const [status, setStatus] = useState<'idle' | 'loading' | 'preview' | 'success' | 'error'>('idle');
+    const [status, setStatus] = useState<'idle' | 'loading' | 'preview' | 'success' | 'error' | 'assigned'>('idle');
     const [scannedOrder, setScannedOrder] = useState<any>(null);
     const [errorMessage, setErrorMessage] = useState('');
 
@@ -308,16 +308,16 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
                     setErrorMessage('Error al asignar estación');
                 } else {
                     console.log("✅ Order auto-assigned to station:", currentStation);
-                    setStatus('success');
+                    // Show the order details in 'assigned' state instead of 'success'
+                    data.dispatch_station = currentStation; // Update local data
+                    setScannedOrder(data);
+                    setStatus('assigned');
                     toast.success(`📍 #${data.order_number || '---'} → ${currentStation}`, {
                         description: 'Escanea nuevamente para entregar'
                     });
                     await refreshOrders();
-                    setTimeout(() => {
-                        resetModal();
-                    }, 1500); // Faster reset for workflow
                 }
-                return; // Exit early - no popup needed for first scan
+                return; // Exit early - show assigned state
             }
 
             // CASE B: Order already assigned to this station → Show preview for delivery (2nd scan)
@@ -564,6 +564,74 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
                                     Escanear Siguiente
                                 </span>
                             </button>
+                        </div>
+                    )}
+
+                    {/* ASSIGNED STATE - First scan from station */}
+                    {status === 'assigned' && scannedOrder && (
+                        <div className="w-full space-y-6 animate-in slide-in-from-bottom-4 duration-300 z-10 relative">
+                            {/* Assigned Banner */}
+                            <div className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 flex items-center gap-4">
+                                <div className="size-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-blue-400 text-2xl">location_on</span>
+                                </div>
+                                <div>
+                                    <p className="text-blue-400 font-black uppercase text-sm">Pedido Asignado</p>
+                                    <p className="text-blue-300/60 text-[10px] uppercase tracking-widest">Escanea nuevamente para confirmar entrega</p>
+                                </div>
+                            </div>
+
+                            {/* Order Summary Card */}
+                            <div className="bg-[#1A1C1A] border border-white/10 rounded-2xl p-5 shadow-2xl">
+                                <div className="flex justify-between items-start mb-4 border-b border-white/5 pb-4">
+                                    <div>
+                                        <p className="text-[9px] font-bold text-blue-400 uppercase tracking-widest mb-1">En Proceso</p>
+                                        <h3 className="text-3xl font-black text-white italic-black tracking-tighter">#{scannedOrder.order_number}</h3>
+                                        {scannedOrder.customer_name && (
+                                            <p className="text-[10px] text-white/50 uppercase font-bold mt-1 max-w-[150px] truncate">
+                                                {scannedOrder.customer_name}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="px-3 py-1 rounded-lg border bg-blue-500/10 text-blue-400 border-blue-500/20 text-[9px] font-black uppercase tracking-widest">
+                                        {(scannedOrder as any).dispatch_station || activeStation}
+                                    </div>
+                                </div>
+
+                                {/* Items */}
+                                <div className="bg-black/20 rounded-xl p-3 max-h-[150px] overflow-y-auto custom-scrollbar space-y-2">
+                                    {scannedOrder.order_items && scannedOrder.order_items.length > 0 ? (
+                                        scannedOrder.order_items.map((item: any, idx: number) => (
+                                            <div key={idx} className="flex justify-between text-sm py-1 border-b border-white/5 last:border-0 items-center">
+                                                <div className="flex items-center gap-2 flex-1">
+                                                    <span className="size-5 rounded bg-white/10 flex items-center justify-center text-[10px] font-black text-white">{item.quantity}</span>
+                                                    <span className="text-white/80 font-medium text-xs truncate max-w-[180px]">
+                                                        {(item as any).enriched_name || item.name || 'Producto desconocido'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="text-white/40 text-xs text-center py-4">Sin productos</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    onClick={resetModal}
+                                    className="py-4 rounded-xl bg-white/5 text-white/40 font-black text-[10px] uppercase tracking-widest hover:bg-white/10 hover:text-white transition-all"
+                                >
+                                    Escanear Otro
+                                </button>
+                                <button
+                                    onClick={onClose}
+                                    className="py-4 rounded-xl bg-blue-500/20 text-blue-400 font-black text-[10px] uppercase tracking-widest hover:bg-blue-500/30 transition-all"
+                                >
+                                    Cerrar
+                                </button>
+                            </div>
                         </div>
                     )}
 

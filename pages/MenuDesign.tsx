@@ -99,8 +99,10 @@ interface MenuProduct {
 
 const WEEKDAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
-const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId }) => {
+const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propStoreId }) => {
     const { addToast } = useToast();
+    const { profile } = useAuth();
+    const storeId = propStoreId || profile?.store_id;
     const [menus, setMenus] = useState<Menu[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedMenu, setSelectedMenu] = useState<Menu | null>(null);
@@ -112,6 +114,7 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId }) => {
     const [editForm, setEditForm] = useState({ name: '', description: '', priority: 100 });
     const [activeSubTab, setActiveSubTab] = useState<'products' | 'rules'>('products');
     const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
+    const [productSearch, setProductSearch] = useState('');
 
 
 
@@ -136,8 +139,18 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId }) => {
     };
 
     const fetchVenueNodes = async () => {
-        const { data } = await supabase.from('venue_nodes').select('id, label, node_type').eq('store_id', storeId).order('label');
-        setVenueNodes(data || []);
+        // Use VIEW active_venue_states to align with VenueSystem and avoid RLS issues on raw table
+        const { data } = await supabase.from('active_venue_states').select('node_id, label, type').eq('store_id', storeId).order('label');
+
+        if (data) {
+            setVenueNodes(data.map((d: any) => ({
+                id: d.node_id,
+                label: d.label,
+                node_type: d.type
+            })));
+        } else {
+            setVenueNodes([]);
+        }
     };
 
     const fetchMenuProducts = async (menuId: string) => {
@@ -270,9 +283,9 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId }) => {
     );
 
     return (
-        <div className="flex h-full animate-in fade-in duration-500">
+        <div className="flex flex-col md:flex-row h-full animate-in fade-in duration-500">
             {/* LEFT: Menu List */}
-            <div className="w-80 border-r border-white/10 flex flex-col bg-gradient-to-b from-[#0D0F0D] to-[#141714]">
+            <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-white/10 flex flex-col bg-gradient-to-b from-[#0D0F0D] to-[#141714] max-h-[40vh] md:max-h-none">\
                 {/* Header */}
                 <div className="p-4 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-[#4ADE80]/5 to-transparent">
                     <div className="flex items-center gap-3">
@@ -302,36 +315,88 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId }) => {
 
                 {/* Menu List */}
                 <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                    {menus.map((menu, idx) => (
-                        <button
-                            key={menu.id}
-                            onClick={() => handleSelectMenu(menu)}
-                            className={`
-                                w-full p-4 rounded-2xl text-left transition-all duration-300 group
+                    {menus.map((menu, idx) => {
+                        // Check if currently active (Time/Day)
+                        const now = new Date();
+                        const currentDay = now.getDay(); // 0-6
+                        const currentTime = now.getHours() * 60 + now.getMinutes(); // minutes from midnight
+
+                        const timeRule = menu.rules?.find(r => r.rule_type === 'time_range');
+                        const dayRule = menu.rules?.find(r => r.rule_type === 'weekdays');
+
+                        let isTimeMatching = true;
+                        if (timeRule?.rule_config?.from && timeRule?.rule_config?.to) {
+                            const [fh, fm] = timeRule.rule_config.from.split(':').map(Number);
+                            const [th, tm] = timeRule.rule_config.to.split(':').map(Number);
+                            const fromMinutes = fh * 60 + fm;
+                            const toMinutes = th * 60 + tm;
+                            isTimeMatching = currentTime >= fromMinutes && currentTime <= toMinutes;
+                        }
+
+                        let isDayMatching = true;
+                        if (dayRule?.rule_config?.days && Array.isArray(dayRule.rule_config.days)) {
+                            isDayMatching = dayRule.rule_config.days.includes(currentDay);
+                        }
+
+                        const isLive = menu.is_active && isTimeMatching && isDayMatching;
+
+                        return (
+                            <button
+                                key={menu.id}
+                                onClick={() => handleSelectMenu(menu)}
+                                className={`
+                                w-full p-4 rounded-2xl text-left transition-all duration-300 group relative overflow-hidden
                                 ${selectedMenu?.id === menu.id
-                                    ? 'bg-gradient-to-r from-[#4ADE80]/15 to-[#4ADE80]/5 border border-[#4ADE80]/30 shadow-lg shadow-[#4ADE80]/10 scale-[1.02]'
-                                    : 'bg-white/[0.02] border border-white/5 hover:bg-white/5 hover:border-white/10 hover:scale-[1.01]'}
+                                        ? 'bg-gradient-to-r from-[#4ADE80]/15 to-[#4ADE80]/5 border-2 border-[#4ADE80] shadow-lg shadow-[#4ADE80]/20 scale-[1.02]'
+                                        : isLive
+                                            ? 'bg-green-500/5 border border-green-500/30 hover:bg-green-500/10'
+                                            : menu.is_fallback
+                                                ? 'bg-yellow-500/5 border border-yellow-500/30 hover:bg-yellow-500/10'
+                                                : 'bg-white/[0.02] border border-white/5 hover:bg-white/5 hover:border-white/10 hover:scale-[1.01]'}
                             `}
-                            style={{ animationDelay: `${idx * 50}ms` }}
-                        >
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="font-bold text-white text-sm truncate group-hover:text-[#4ADE80] transition-colors">{menu.name}</span>
-                                <div className="flex items-center gap-2">
-                                    {menu.is_fallback && (
-                                        <span className="px-2 py-0.5 bg-gradient-to-r from-yellow-500/30 to-yellow-500/10 text-yellow-400 text-[8px] font-black rounded-full uppercase tracking-wide">
-                                            Default
+                                style={{ animationDelay: `${idx * 50}ms` }}
+                            >
+                                {isLive && (
+                                    <div className="absolute top-0 right-0 p-1.5 opacity-50 group-hover:opacity-100 transition-opacity">
+                                        <span className="relative flex h-2 w-2">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                                         </span>
-                                    )}
-                                    <span className={`w-3 h-3 rounded-full transition-all duration-300 ${menu.is_active ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-white/20'}`} />
+                                    </div>
+                                )}
+
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="font-bold text-white text-sm truncate group-hover:text-[#4ADE80] transition-colors">{menu.name}</span>
+                                    <div className="flex items-center gap-2">
+                                        {menu.is_fallback && (
+                                            <span className="px-2 py-0.5 bg-gradient-to-r from-yellow-500/30 to-yellow-500/10 text-yellow-400 text-[8px] font-black rounded-full uppercase tracking-wide">
+                                                Default
+                                            </span>
+                                        )}
+                                        <span className={`w-3 h-3 rounded-full transition-all duration-300 ${menu.is_active ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-white/20'}`} />
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-[10px] text-white/50 bg-white/5 px-2 py-0.5 rounded-full">{menu.product_count} productos</span>
-                                <span className="text-[10px] text-white/50 bg-white/5 px-2 py-0.5 rounded-full">P:{menu.priority}</span>
-                                {menu.rules?.filter(r => r.is_active).slice(0, 2).map(r => getRuleBadge(r))}
-                            </div>
-                        </button>
-                    ))}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-[10px] text-white/50 bg-white/5 px-2 py-0.5 rounded-full">{menu.product_count} productos</span>
+
+                                    {/* Rule Icons */}
+                                    {menu.rules?.some(r => r.rule_type === 'tables' && r.is_active) && (
+                                        <span className="p-1 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20" title="Ubicaciones específicas"><MapPin size={10} /></span>
+                                    )}
+                                    {menu.rules?.some(r => r.rule_type === 'weekdays' && r.is_active) && (
+                                        <span className="p-1 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20" title="Días específicos"><Calendar size={10} /></span>
+                                    )}
+                                    {menu.rules?.some(r => r.rule_type === 'time_range' && r.is_active) && (
+                                        <span className="p-1 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20" title="Horario específico"><Clock size={10} /></span>
+                                    )}
+
+                                    {/* Remove detailed badges to simplify sidebar view as requested, keep priority */}
+                                    <span className="text-[10px] text-white/50 bg-white/5 px-2 py-0.5 rounded-full">P:{menu.priority}</span>
+                                    {isLive && <span className="text-[9px] text-green-400 font-bold ml-1 animate-pulse">EN VIVO</span>}
+                                </div>
+                            </button>
+                        );
+                    })}
 
                     {menus.length === 0 && (
                         <div className="text-center py-12">
@@ -348,8 +413,8 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId }) => {
                 {selectedMenu ? (
                     <div className="animate-in fade-in slide-in-from-right-2 duration-500 flex flex-col h-full">
                         {/* Header */}
-                        <div className="p-6 border-b border-white/10 bg-gradient-to-r from-white/[0.02] to-transparent">
-                            <div className="flex items-start justify-between">
+                        <div className="p-3 md:p-6 border-b border-white/10 bg-gradient-to-r from-white/[0.02] to-transparent">\
+                            <div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-3">\
                                 <div className="flex-1">
                                     {isEditing ? (
                                         <input
@@ -397,7 +462,7 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId }) => {
                         </div>
 
                         {/* Tabs */}
-                        <div className="px-6 py-4 flex gap-2 border-b border-white/5">
+                        <div className="px-3 md:px-6 py-4 flex gap-2 border-b border-white/5 overflow-x-auto">\
                             <button
                                 onClick={() => setActiveSubTab('products')}
                                 className={`px-5 py-2.5 rounded-xl text-[11px] font-bold transition-all duration-300 ${activeSubTab === 'products'
@@ -425,217 +490,405 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId }) => {
                         </div>
 
                         {/* Content */}
-                        <div className="flex-1 overflow-y-auto p-6">
+                        <div className="flex-1 overflow-y-auto p-3 md:p-6">\
                             {activeSubTab === 'products' && (
-                                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                    {/* Add Product Dropdown */}
-                                    <select
-                                        onChange={e => { if (e.target.value) handleAddProduct(e.target.value); e.target.value = ''; }}
-                                        className="w-full bg-gradient-to-r from-[#4ADE80]/10 to-transparent border border-[#4ADE80]/20 rounded-xl px-4 py-3 text-white text-xs cursor-pointer hover:border-[#4ADE80]/40 transition-all focus:outline-none focus:ring-2 focus:ring-[#4ADE80]/30"
-                                    >
-                                        <option value="" className="bg-[#141714]">+ Agregar producto al menú...</option>
-                                        {allProducts.filter(p => !menuProducts.find(mp => mp.product_id === p.id)).map(p => (
-                                            <option key={p.id} value={p.id} className="bg-[#141714]">{p.name} - ${p.base_price}</option>
-                                        ))}
-                                    </select>
-
-                                    {/* Product List */}
-                                    {menuProducts.map((mp, idx) => (
-                                        <div
-                                            key={mp.id}
-                                            className="flex items-center gap-4 p-4 bg-gradient-to-r from-white/[0.03] to-transparent border border-white/10 rounded-2xl group hover:border-white/20 hover:bg-white/[0.04] transition-all duration-300"
-                                            style={{ animationDelay: `${idx * 30}ms` }}
-                                        >
-                                            <div className="p-2 bg-white/5 rounded-xl cursor-grab">
-                                                <GripVertical size={16} className="text-white/20 group-hover:text-white/40 transition-colors" />
-                                            </div>
-                                            <div className="w-10 h-10 bg-gradient-to-br from-[#4ADE80]/20 to-[#4ADE80]/5 rounded-xl flex items-center justify-center">
-                                                <Coffee size={16} className="text-[#4ADE80]/60" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <p className="text-sm font-bold text-white">{mp.product?.name}</p>
-                                                <p className="text-[10px] text-white/40">{mp.product?.category}</p>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-[11px] text-white/40 bg-white/5 px-2 py-1 rounded-lg">${mp.product?.base_price}</span>
-                                                <input
-                                                    type="number"
-                                                    placeholder="Override"
-                                                    value={mp.price_override ?? ''}
-                                                    onChange={e => handleUpdatePriceOverride(mp.id, e.target.value ? parseFloat(e.target.value) : null)}
-                                                    className="w-24 bg-black/50 border border-white/20 rounded-xl px-3 py-1.5 text-white text-[11px] focus:outline-none focus:border-[#4ADE80]/50 transition-colors"
-                                                />
-                                                <button
-                                                    onClick={() => handleRemoveProduct(mp.id)}
-                                                    className="p-2 text-red-400/40 hover:text-red-400 hover:bg-red-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-all"
-                                                >
-                                                    <X size={14} />
-                                                </button>
-                                            </div>
+                                <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                    {/* 1. Search Bar */}
+                                    <div className="p-4 border-b border-white/5 bg-white/[0.02]">
+                                        <div className="relative">
+                                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+                                            <input
+                                                type="text"
+                                                placeholder="Buscar productos..."
+                                                value={productSearch}
+                                                onChange={e => setProductSearch(e.target.value)}
+                                                className="w-full bg-black/50 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#4ADE80]/50 transition-all placeholder:text-white/20"
+                                            />
                                         </div>
-                                    ))}
+                                    </div>
 
-                                    {menuProducts.length === 0 && (
-                                        <div className="text-center py-16">
-                                            <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                                <Package size={24} className="text-white/20" />
+                                    {/* 2. Bulk List */}
+                                    <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                                        {allProducts
+                                            .filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()))
+                                            .map(product => {
+                                                const menuProduct = menuProducts.find(mp => mp.product_id === product.id);
+                                                const isSelected = !!menuProduct;
+
+                                                return (
+                                                    <div
+                                                        key={product.id}
+                                                        className={`
+                                                            flex items-center gap-3 p-2 rounded-xl border transition-all duration-200
+                                                            ${isSelected
+                                                                ? 'bg-[#4ADE80]/10 border-[#4ADE80]/30'
+                                                                : 'bg-transparent border-transparent hover:bg-white/5 hover:border-white/5'}
+                                                        `}
+                                                    >
+                                                        {/* Toggle Checkbox */}
+                                                        <button
+                                                            onClick={() => isSelected ? handleRemoveProduct(menuProduct!.id) : handleAddProduct(product.id)}
+                                                            className={`
+                                                                w-10 h-10 rounded-xl flex items-center justify-center transition-all shrink-0
+                                                                ${isSelected
+                                                                    ? 'bg-[#4ADE80] text-black shadow-[0_0_10px_rgba(74,222,128,0.3)]'
+                                                                    : 'bg-white/5 text-white/20 hover:bg-white/10'}
+                                                            `}
+                                                        >
+                                                            {isSelected ? <Check size={18} strokeWidth={3} /> : <Plus size={18} />}
+                                                        </button>
+
+                                                        {/* Product Info */}
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className={`text-sm font-bold truncate ${isSelected ? 'text-white' : 'text-white/60'}`}>
+                                                                {product.name}
+                                                            </p>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[10px] text-white/30 bg-white/5 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                                                    {product.category}
+                                                                </span>
+                                                                <span className="text-[10px] text-white/40 font-mono">
+                                                                    ${product.base_price}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Inline Price Override (Only if selected) */}
+                                                        {isSelected && (
+                                                            <div className="flex flex-col items-end gap-1 animate-in slide-in-from-right-2 duration-200">
+                                                                <span className="text-[9px] text-[#4ADE80] uppercase font-bold tracking-wider">Precio Menu</span>
+                                                                <input
+                                                                    type="number"
+                                                                    placeholder="Original"
+                                                                    value={menuProduct.price_override ?? ''}
+                                                                    onBlur={e => handleUpdatePriceOverride(menuProduct.id, e.target.value ? parseFloat(e.target.value) : null)}
+                                                                    onChange={e => {
+                                                                        // Optimistic typing? Or just allow typing and save on blur
+                                                                        // Since we rely on 'menuProduct' from props which comes from DB, 
+                                                                        // typing might be janky if we don't have local state.
+                                                                        // But 'menuProduct.price_override' is from 'menuProducts' state.
+                                                                        // We need to update that state locally for smooth typing.
+                                                                        // Ideally, handleUpdatePriceOverride should be debounced or just set local state.
+
+                                                                        // For now, let's use a "save on enter/blur" approach better, 
+                                                                        // OR assume handleUpdatePriceOverride updates local state fast enough? 
+                                                                        // No, it awaits DB.
+
+                                                                        // FIX: The value is bound to `menuProduct.price_override`. 
+                                                                        // If we want smooth typing, we need to bypass the parent state or update it locally without fetch.
+                                                                        // Given the component structure, let's just trigger update on Blur to avoid re-renders while typing.
+                                                                        // So usage: type value, it's uncontrolled while typing? No, value is bound.
+                                                                        // If I type, onChange fires, if I don't update state, input won't change.
+                                                                        // I must update state.
+
+                                                                        // Workaround: We'll update the local 'menuProducts' state immediately, then debounce save.
+                                                                        // But 'handleUpdatePriceOverride' does fetch.
+                                                                        // Let's rely on standard html valid: Use 'defaultValue' and update on Blur.
+                                                                    }}
+                                                                    className="w-20 bg-[#0A0B09] border border-[#4ADE80]/30 rounded-lg px-2 py-1 text-right text-xs text-[#4ADE80] font-bold focus:outline-none focus:ring-1 focus:ring-[#4ADE80]"
+                                                                    // Key hack to allow typing without controlling every keystroke via DB
+                                                                    defaultValue={menuProduct.price_override ?? ''}
+                                                                    key={menuProduct.price_override}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+
+                                        {allProducts.length === 0 && (
+                                            <div className="text-center py-12 text-white/30">
+                                                <p>No hay productos en el sistema.</p>
                                             </div>
-                                            <p className="text-white/30 text-sm mb-2">Sin productos en este menú</p>
-                                            <p className="text-white/20 text-xs">Usá el selector de arriba para agregar</p>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
                             )}
 
                             {activeSubTab === 'rules' && (
-                                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                    {/* Rule Buttons */}
-                                    <div className="flex flex-wrap gap-2 p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
-                                        <button onClick={() => handleAddRule('time_range', { from: '18:00', to: '23:59' })} className="px-4 py-2.5 bg-gradient-to-r from-purple-500/20 to-purple-500/10 text-purple-400 rounded-xl text-[11px] font-bold flex items-center gap-2 hover:from-purple-500/30 hover:to-purple-500/15 transition-all shadow-lg shadow-purple-500/10"><Clock size={14} /> Horario</button>
-                                        <button onClick={() => handleAddRule('weekdays', { days: [5, 6] })} className="px-4 py-2.5 bg-gradient-to-r from-blue-500/20 to-blue-500/10 text-blue-400 rounded-xl text-[11px] font-bold flex items-center gap-2 hover:from-blue-500/30 hover:to-blue-500/15 transition-all shadow-lg shadow-blue-500/10"><Calendar size={14} /> Días</button>
-                                        <button onClick={() => handleAddRule('session_type', { values: ['table'] })} className="px-4 py-2.5 bg-gradient-to-r from-green-500/20 to-green-500/10 text-green-400 rounded-xl text-[11px] font-bold flex items-center gap-2 hover:from-green-500/30 hover:to-green-500/15 transition-all shadow-lg shadow-green-500/10"><MapPin size={14} /> Tipo Sesión</button>
-                                        <button onClick={() => setShowNodeSelector(true)} className="px-4 py-2.5 bg-gradient-to-r from-orange-500/20 to-orange-500/10 text-orange-400 rounded-xl text-[11px] font-bold flex items-center gap-2 hover:from-orange-500/30 hover:to-orange-500/15 transition-all shadow-lg shadow-orange-500/10"><StoreIcon size={14} /> Barras/Mesas</button>
-                                        <button onClick={() => handleAddRule('manual_override', { enabled: true })} className="px-4 py-2.5 bg-gradient-to-r from-red-500/20 to-red-500/10 text-red-400 rounded-xl text-[11px] font-bold flex items-center gap-2 hover:from-red-500/30 hover:to-red-500/15 transition-all shadow-lg shadow-red-500/10"><Star size={14} /> Override</button>
+                                selectedMenu.is_fallback ? (
+                                    <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in-95 duration-500">
+                                        <div className="w-20 h-20 rounded-full bg-yellow-500/5 border border-yellow-500/20 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(234,179,8,0.1)]">
+                                            <Star size={32} className="text-yellow-400 drop-shadow-[0_0_10px_rgba(234,179,8,0.5)]" />
+                                        </div>
+                                        <h3 className="text-xl font-black text-white mb-3">Menú por Defecto</h3>
+                                        <div className="max-w-xs space-y-4">
+                                            <p className="text-sm text-white/60 leading-relaxed">
+                                                Este menú está activo <strong>globalmente</strong> siempre que no haya otra regla específica (Ubicación, Día u Hora) que aplique.
+                                            </p>
+                                            <div className="p-3 bg-white/5 rounded-lg border border-white/5 text-xs text-white/40 italic">
+                                                "Es el menú de respaldo que nunca falla"
+                                            </div>
+                                        </div>
                                     </div>
+                                ) : (
+                                    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300 p-2">
 
-                                    {/* Node Selector Modal - IMPROVED */}
-                                    {showNodeSelector && (
-                                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center animate-in fade-in duration-200" onClick={() => { setShowNodeSelector(false); setSelectedNodeIds([]); }}>
-                                            <div className="bg-gradient-to-b from-[#1a1d1a] to-[#141714] border border-white/10 rounded-3xl p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
-                                                <h3 className="text-lg font-black text-white mb-2 flex items-center gap-2">
-                                                    <StoreIcon size={20} className="text-orange-400" />
-                                                    Asignar Mesas/Barras a este Menú
-                                                </h3>
-                                                <p className="text-[11px] text-white/40 mb-4">Seleccioná las ubicaciones donde se va a mostrar este menú</p>
+                                        {/* 1. DÍAS ACTIVO */}
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Calendar size={16} className="text-blue-400" />
+                                                <h3 className="text-sm font-bold text-white">Días Activo</h3>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                {WEEKDAY_LABELS.map((day, idx) => {
+                                                    // Check if day is active
+                                                    const weekdayRule = selectedMenu.rules?.find(r => r.rule_type === 'weekdays');
+                                                    const activeDays = weekdayRule?.rule_config?.days || [];
+                                                    // If no rule exists, it implies ALL days (or none? usually none means always active if no restrictions, but here we want explicit control).
+                                                    // actually, existing logic: no rule = always.
+                                                    // UX decision: Show as "All active" if no rule, or force user to select?
+                                                    // Let's assume if no rule exists, it's ON for everyone.
+                                                    // BUT for editing, we want to toggle.
+                                                    // If no rule exists, we treat it as "All Selected" visually? 
+                                                    // Better: If no rule, creating one means restricting. 
+                                                    // Let's make it so clicking toggles the restriction.
 
-                                                {/* Quick Actions */}
-                                                {venueNodes.length > 0 && (
-                                                    <div className="flex gap-2 mb-4">
+                                                    const isSelected = !weekdayRule || activeDays.includes(idx);
+
+                                                    return (
                                                         <button
-                                                            onClick={() => setSelectedNodeIds(venueNodes.map(n => n.id))}
-                                                            className="flex-1 py-2 px-3 bg-[#4ADE80]/10 text-[#4ADE80] rounded-xl text-[10px] font-bold hover:bg-[#4ADE80]/20 transition-all"
+                                                            key={idx}
+                                                            onClick={async () => {
+                                                                let newDays = [...activeDays];
+                                                                if (!weekdayRule) {
+                                                                    // Converting from "No Rule" (All) to "Specific Days"
+                                                                    // If I click one, does it mean I only want that one? or I'm removing it?
+                                                                    // Standard UX: If "All" are implicitly active, clicking one usually toggles it OFF?
+                                                                    // Let's stick to explicit: If no rule, create one with ALL days except the clicked one (if unselecting) or just logic is tricky.
+                                                                    // EASIER: Create rule with all days first if not exists.
+                                                                    newDays = [0, 1, 2, 3, 4, 5, 6].filter(d => d !== idx);
+                                                                    await handleAddRule('weekdays', { days: newDays });
+                                                                } else {
+                                                                    if (isSelected) {
+                                                                        newDays = newDays.filter(d => d !== idx);
+                                                                    } else {
+                                                                        newDays.push(idx);
+                                                                    }
+
+                                                                    if (newDays.length === 7) {
+                                                                        // If all selected, delete rule to cleanup?
+                                                                        await handleDeleteRule(weekdayRule.id);
+                                                                    } else {
+                                                                        // Update rule
+                                                                        await supabase.from('menu_rules').update({ rule_config: { days: newDays } }).eq('id', weekdayRule.id);
+                                                                        fetchMenus();
+                                                                    }
+                                                                }
+                                                            }}
+                                                            className={`
+                                                            flex-1 py-3 rounded-xl text-xs font-black uppercase transition-all
+                                                            ${isSelected
+                                                                    ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
+                                                                    : 'bg-white/5 text-white/20 hover:bg-white/10'}
+                                                        `}
                                                         >
-                                                            ✓ Seleccionar Todas
+                                                            {day}
                                                         </button>
-                                                        <button
-                                                            onClick={() => setSelectedNodeIds(venueNodes.filter(n => n.node_type === 'table').map(n => n.id))}
-                                                            className="flex-1 py-2 px-3 bg-blue-500/10 text-blue-400 rounded-xl text-[10px] font-bold hover:bg-blue-500/20 transition-all"
-                                                        >
-                                                            Solo Mesas
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setSelectedNodeIds(venueNodes.filter(n => n.node_type === 'bar').map(n => n.id))}
-                                                            className="flex-1 py-2 px-3 bg-purple-500/10 text-purple-400 rounded-xl text-[10px] font-bold hover:bg-purple-500/20 transition-all"
-                                                        >
-                                                            Solo Barras
-                                                        </button>
-                                                        {selectedNodeIds.length > 0 && (
+                                                    );
+                                                })}
+                                            </div>
+                                            <p className="text-[10px] text-white/30 px-1">
+                                                {selectedMenu.rules?.find(r => r.rule_type === 'weekdays')
+                                                    ? 'Menú activo solo en los días seleccionados.'
+                                                    : 'Menú activo todos los días.'}
+                                            </p>
+                                        </div>
+
+                                        <div className="h-px bg-white/5" />
+
+                                        {/* 2. HORARIO */}
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Clock size={16} className="text-purple-400" />
+                                                <h3 className="text-sm font-bold text-white">Horario Disponibilidad</h3>
+                                            </div>
+
+                                            {(() => {
+                                                const timeRule = selectedMenu.rules?.find(r => r.rule_type === 'time_range');
+                                                const from = timeRule?.rule_config?.from || '';
+                                                const to = timeRule?.rule_config?.to || '';
+
+                                                // Helper to saving time
+                                                const saveTime = async (newFrom: string, newTo: string) => {
+                                                    if (!newFrom && !newTo) {
+                                                        if (timeRule) await handleDeleteRule(timeRule.id);
+                                                        return;
+                                                    }
+                                                    const config = { from: newFrom || '00:00', to: newTo || '23:59' };
+                                                    if (timeRule) {
+                                                        await supabase.from('menu_rules').update({ rule_config: config }).eq('id', timeRule.id);
+                                                        fetchMenus();
+                                                    } else {
+                                                        await handleAddRule('time_range', config);
+                                                    }
+                                                };
+
+                                                return (
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="flex-1 bg-white/5 rounded-xl border border-white/10 p-2 flex items-center gap-2">
+                                                            <span className="text-[10px] text-white/40 uppercase font-bold pl-2">Desde</span>
+                                                            <input
+                                                                type="time"
+                                                                value={from}
+                                                                onChange={e => saveTime(e.target.value, to)}
+                                                                className="bg-transparent text-white font-mono text-sm focus:outline-none w-full text-right"
+                                                            />
+                                                        </div>
+                                                        <span className="text-white/20">-</span>
+                                                        <div className="flex-1 bg-white/5 rounded-xl border border-white/10 p-2 flex items-center gap-2">
+                                                            <span className="text-[10px] text-white/40 uppercase font-bold pl-2">Hasta</span>
+                                                            <input
+                                                                type="time"
+                                                                value={to}
+                                                                onChange={e => saveTime(from, e.target.value)}
+                                                                className="bg-transparent text-white font-mono text-sm focus:outline-none w-full text-right"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
+                                            <p className="text-[10px] text-white/30 px-1">
+                                                Si dejás los horarios vacíos, el menú estará activo todo el día.
+                                            </p>
+                                        </div>
+
+                                        <div className="h-px bg-white/5" />
+
+                                        {/* 3. UBICACIÓN */}
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <StoreIcon size={16} className="text-orange-400" />
+                                                <h3 className="text-sm font-bold text-white">Ubicaciones</h3>
+                                            </div>
+
+                                            {(() => {
+                                                const locRule = selectedMenu.rules?.find(r => r.rule_type === 'tables');
+                                                const activeIds = locRule?.rule_config?.table_ids || [];
+                                                const isAllLocations = !locRule;
+                                                const selectedNodes = venueNodes.filter(n => activeIds.includes(n.id));
+
+                                                return (
+                                                    <div className="space-y-3">\
+                                                        <div className="flex p-1 bg-white/5 rounded-xl border border-white/5">
                                                             <button
-                                                                onClick={() => setSelectedNodeIds([])}
-                                                                className="py-2 px-3 bg-white/5 text-white/40 rounded-xl text-[10px] font-bold hover:bg-white/10 transition-all"
+                                                                onClick={async () => {
+                                                                    if (locRule) await handleDeleteRule(locRule.id);
+                                                                }}
+                                                                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${isAllLocations ? 'bg-orange-500 text-black shadow' : 'text-white/40 hover:text-white'}`}
                                                             >
-                                                                Limpiar
+                                                                Todo el Local
                                                             </button>
+                                                            <button
+                                                                onClick={() => setShowNodeSelector(true)}
+                                                                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${!isAllLocations ? 'bg-orange-500 text-black shadow' : 'text-white/40 hover:text-white'}`}
+                                                            >
+                                                                Zonas Específicas {activeIds.length > 0 && `(${activeIds.length})`}
+                                                            </button>
+                                                        </div>
+
+                                                        {/* Visual Summary */}
+                                                        {!isAllLocations && selectedNodes.length > 0 && (
+                                                            <div className="p-3 bg-orange-500/5 border border-orange-500/20 rounded-xl animate-in slide-in-from-top-2 duration-200">
+                                                                <p className="text-[9px] text-orange-400 uppercase font-bold mb-2">Mesas/Barras Habilitadas:</p>
+                                                                <div className="flex flex-wrap gap-1.5">
+                                                                    {selectedNodes.map(node => (
+                                                                        <span key={node.id} className="px-2 py-1 bg-orange-500/10 text-orange-300 text-[10px] rounded-lg font-medium border border-orange-500/30">
+                                                                            {node.label}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                                <button onClick={() => setShowNodeSelector(true)} className="mt-2 text-[9px] text-orange-400 hover:text-orange-300 underline">
+                                                                    Editar selección
+                                                                </button>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Explanation */}
+                                                        <p className="text-[10px] text-white/30 px-1">
+                                                            {isAllLocations
+                                                                ? '✅ Este menú se mostrará en todas las ubicaciones.'
+                                                                : selectedNodes.length > 0
+                                                                    ? `📍 Solo en ${selectedNodes.length} ubicación(es) seleccionada(s).`
+                                                                    : '⚠️ Hacé clic en "Zonas Específicas" para elegir.'}
+                                                        </p>
+
+                                                        {/* Node Selector Modal */}
+                                                        {showNodeSelector && (
+                                                            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center animate-in fade-in duration-200 p-4" onClick={() => setShowNodeSelector(false)}>
+                                                                <div className="bg-[#141714] border border-white/10 rounded-3xl p-4 md:p-6 max-w-lg w-full shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                                                                    <div className="mb-4">
+                                                                        <h3 className="text-lg font-black text-white mb-1">🗺️ Seleccionar Ubicaciones</h3>
+                                                                        <p className="text-[11px] text-white/50">Marcá las mesas/barras donde querés que aparezca este menú</p>
+                                                                    </div>
+
+                                                                    {venueNodes.length === 0 ? (
+                                                                        <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
+                                                                            <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-4">
+                                                                                <StoreIcon size={32} className="text-white/20" />
+                                                                            </div>
+                                                                            <p className="text-white/40 text-sm mb-2">No hay mesas ni barras configuradas</p>
+                                                                            <p className="text-white/30 text-xs max-w-[280px]">Primero tenés que crear mesas/barras en "Mesas y Salones"</p>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="flex-1 overflow-y-auto grid grid-cols-2 gap-2 mb-4">
+                                                                            {venueNodes.map(node => {
+                                                                                const isSelected = activeIds.includes(node.id);
+                                                                                return (
+                                                                                    <button
+                                                                                        key={node.id}
+                                                                                        onClick={() => {
+                                                                                            const newIds = isSelected
+                                                                                                ? activeIds.filter((id: string) => id !== node.id)
+                                                                                                : [...activeIds, node.id];
+                                                                                            // Update immediately for UX in modal? Or wait to save?
+                                                                                            // To simplify, let's update temporary state or use the same quick save logic
+                                                                                            // Here we need to update the rule (or create it)
+                                                                                            // But if we are in "All Locations" mode, clicking here switches to custom?
+                                                                                            // Let's assume we are editing the rule.
+                                                                                            // Ideally use local state for modal, simplified for now:
+
+                                                                                            // If rule doesn't exist, create it with this single ID
+                                                                                            // If rule exists, update IDs
+
+                                                                                            const upsert = async () => {
+                                                                                                if (!locRule) {
+                                                                                                    await handleAddRule('tables', { table_ids: [node.id] });
+                                                                                                } else {
+                                                                                                    if (newIds.length === 0) {
+                                                                                                        // If unselecting last one, maybe warn or delete rule? If delete rule, goes back to ALL.
+                                                                                                        // User might want "None"? No, usually menu must be somewhere.
+                                                                                                        // Let's allow empty rule (effectively nowhere? or fix logic)
+                                                                                                        await supabase.from('menu_rules').update({ rule_config: { table_ids: [] } }).eq('id', locRule.id);
+                                                                                                        fetchMenus();
+                                                                                                    } else {
+                                                                                                        await supabase.from('menu_rules').update({ rule_config: { table_ids: newIds } }).eq('id', locRule.id);
+                                                                                                        fetchMenus();
+                                                                                                    }
+                                                                                                }
+                                                                                            };
+                                                                                            upsert();
+                                                                                        }}
+                                                                                        className={`p-3 rounded-xl border text-left flex items-center gap-3 ${isSelected ? 'bg-orange-500/20 border-orange-500/50' : 'bg-white/5 border-white/5'}`}
+                                                                                    >
+                                                                                        {isSelected && <Check size={14} className="text-orange-400" />}
+                                                                                        <span className={isSelected ? 'text-white font-bold' : 'text-white/60'}>{node.label}</span>
+                                                                                    </button>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    )}\
+                                                                    <button onClick={() => setShowNodeSelector(false)} className="w-full py-3 bg-white/10 text-white font-bold rounded-xl">Listo</button>
+                                                                </div>
+                                                            </div>
                                                         )}
                                                     </div>
-                                                )}
-
-                                                {/* Nodes List */}
-                                                <div className="flex-1 overflow-y-auto space-y-2 mb-4 max-h-[40vh]">
-                                                    {venueNodes.length === 0 ? (
-                                                        <p className="text-white/40 text-xs text-center py-8">No hay barras/mesas configuradas.<br />Andá a Mesas y Salones para crear.</p>
-                                                    ) : (
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            {venueNodes.map((node) => {
-                                                                const isSelected = selectedNodeIds.includes(node.id);
-                                                                const isTable = node.node_type === 'table';
-                                                                return (
-                                                                    <button
-                                                                        key={node.id}
-                                                                        onClick={() => {
-                                                                            setSelectedNodeIds(prev =>
-                                                                                isSelected ? prev.filter(id => id !== node.id) : [...prev, node.id]
-                                                                            );
-                                                                        }}
-                                                                        className={`
-                                                                            p-3 rounded-xl border text-left transition-all flex items-center gap-3
-                                                                            ${isSelected
-                                                                                ? 'bg-[#4ADE80]/20 border-[#4ADE80]/50 ring-1 ring-[#4ADE80]/30'
-                                                                                : 'bg-white/[0.03] border-white/10 hover:bg-white/[0.06] hover:border-white/20'}
-                                                                        `}
-                                                                    >
-                                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isTable ? 'bg-blue-500/20' : 'bg-purple-500/20'}`}>
-                                                                            {isTable ? (
-                                                                                <span className="text-blue-400 text-xs font-black">M</span>
-                                                                            ) : (
-                                                                                <span className="text-purple-400 text-xs font-black">B</span>
-                                                                            )}
-                                                                        </div>
-                                                                        <div className="flex-1 min-w-0">
-                                                                            <p className="text-[11px] font-bold text-white truncate">{node.label}</p>
-                                                                            <p className="text-[9px] text-white/30 uppercase">{node.node_type}</p>
-                                                                        </div>
-                                                                        {isSelected && (
-                                                                            <Check size={14} className="text-[#4ADE80] shrink-0" />
-                                                                        )}
-                                                                    </button>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                {/* Footer */}
-                                                <div className="flex gap-2 pt-4 border-t border-white/10">
-                                                    <button
-                                                        onClick={() => { setShowNodeSelector(false); setSelectedNodeIds([]); }}
-                                                        className="flex-1 py-3 bg-white/5 text-white/60 rounded-xl text-xs font-bold hover:bg-white/10 transition-all"
-                                                    >
-                                                        Cancelar
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            if (selectedNodeIds.length > 0) {
-                                                                handleAddRule('tables', { table_ids: selectedNodeIds });
-                                                            }
-                                                            setShowNodeSelector(false);
-                                                            setSelectedNodeIds([]);
-                                                        }}
-                                                        disabled={selectedNodeIds.length === 0}
-                                                        className="flex-1 py-3 bg-[#4ADE80] text-black rounded-xl text-xs font-black hover:bg-[#3dd06e] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                                                    >
-                                                        Confirmar ({selectedNodeIds.length})
-                                                    </button>
-                                                </div>
-                                            </div>
+                                                );
+                                            })()}
                                         </div>
-                                    )}
 
-                                    {/* Rules List */}
-                                    {selectedMenu.rules?.map((rule, idx) => (
-                                        <div
-                                            key={rule.id}
-                                            className="flex items-center gap-4 p-4 bg-gradient-to-r from-white/[0.03] to-transparent border border-white/10 rounded-2xl group hover:border-white/20 transition-all"
-                                            style={{ animationDelay: `${idx * 30}ms` }}
-                                        >
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-2">{getRuleBadge(rule)}</div>
-                                                <p className="text-sm text-white font-medium">{getRuleDescription(rule)}</p>
-                                            </div>
-                                            <button onClick={() => handleDeleteRule(rule.id)} className="p-2.5 text-red-400/40 hover:text-red-400 hover:bg-red-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={16} /></button>
-                                        </div>
-                                    ))}
-
-                                    {(!selectedMenu.rules || selectedMenu.rules.length === 0) && (
-                                        <div className="text-center py-12">
-                                            <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                                <Clock size={24} className="text-white/20" />
-                                            </div>
-                                            <p className="text-white/30 text-sm mb-2">Sin reglas de activación</p>
-                                            <p className="text-white/20 text-xs">Agregá reglas para que este menú aparezca<br />según horario, días o ubicaciones específicas</p>
-                                        </div>
-                                    )}
-                                </div>
+                                    </div>
+                                )
                             )}
                         </div>
                     </div>
