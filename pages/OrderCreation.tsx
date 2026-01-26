@@ -7,6 +7,7 @@ import { useToast } from '../components/ToastSystem';
 import { useOffline } from '../contexts/OfflineContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import PaymentQRModal from '../components/PaymentQRModal';
 
 type PaymentMethod = 'cash' | 'card' | 'qr' | 'wallet';
 
@@ -41,6 +42,7 @@ const OrderCreation: React.FC = () => {
   const [lastOrderTotal, setLastOrderTotal] = useState(0);
   const [showMultipleOrderWarning, setShowMultipleOrderWarning] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+  const [showQRModal, setShowQRModal] = useState(false);
 
   // Camera Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -265,6 +267,15 @@ const OrderCreation: React.FC = () => {
     setIsSubmitting(true);
 
     try {
+      // 0. QR Interception
+      if (paymentMethod === 'qr' && !force && !showQRModal) {
+        setShowQRModal(true);
+        setIsSubmitting(false); // Cancel submit lock until confirmed
+        // Close other potential blockers
+        setShowMultipleOrderWarning(false);
+        return;
+      }
+
       // WALLET VALIDATION
       if (paymentMethod === 'wallet') {
         if (!selectedClient) {
@@ -294,7 +305,10 @@ const OrderCreation: React.FC = () => {
 
       // 1. Prepare Order Object with Client-Side ID
       const orderId = crypto.randomUUID();
-      const isPaidOnCreation = paymentMethod !== 'qr';
+      // Logic update: If we are here and method is 'qr', it means we passed the modal confirmation, so it IS paid.
+      // If method is cash/card/wallet, they are also considered paid immediately for manual orders (unless pending is desired for cash, but previous fix implies consistency).
+      // Assuming Manual 'QR' = Paid via external app -> User confirms -> Paid.
+      const isPaidOnCreation = true; // For Cash, Card, QR, Wallet in manual mode, we treat as paid if confirmed.
 
       const newOrder: Order = {
         id: orderId,
@@ -894,7 +908,20 @@ const OrderCreation: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+
+
+      {/* QR PAYMENT MODAL */}
+      <PaymentQRModal
+        isOpen={showQRModal}
+        onClose={() => setShowQRModal(false)}
+        onConfirm={() => {
+          setShowQRModal(false);
+          // Only trigger confirm if modal is open, using timeout to allow state verification
+          setTimeout(() => handleConfirmSale(true), 100);
+        }}
+        total={total}
+      />
+    </div >
   );
 }; // End Component
 
