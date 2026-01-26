@@ -300,6 +300,7 @@ const OrderCreation: React.FC = () => {
         id: orderId,
         store_id: profile.store_id, // Ensure store_id is set
         customer: selectedClient?.name || 'Cliente Ocasional',
+        client_id: selectedClient?.id,
         client_email: selectedClient?.email, // Add if available
         table: tableNum,
         node_id: selectedTable?.id,

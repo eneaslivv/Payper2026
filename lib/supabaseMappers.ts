@@ -67,6 +67,7 @@ export const mapOrderToSupabase = (order: Order, storeId: string): any => {
     return {
         id: order.id,
         store_id: storeId,
+        client_id: order.client_id || null,
         // customer_name column does not exist in DB
         total_amount: order.amount,
         status: mapStatusToSupabase(order.status),

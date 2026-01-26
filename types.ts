@@ -408,6 +408,7 @@ export interface Order {
   id: string;
   store_id?: string; // Added for context
   customer: string;
+  client_id?: string; // Linked client ID
   client_email?: string; // New field for registered users
   time: string;
   items: OrderItem[];
