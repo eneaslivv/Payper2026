@@ -110,9 +110,9 @@ const ActiveOrderWidget: React.FC<ActiveOrderWidgetProps> = ({ hasActiveOrder, s
     switch (s) {
       case 'pending': return { label: 'PENDIENTE', icon: 'hourglass_empty', color: '#9ca3af', sub: 'Procesando pago...' };
       case 'received': return { label: 'RECIBIDO', icon: 'schedule', color: '#60a5fa', sub: 'Confirmando orden...' };
-      case 'preparing': case 'En Preparación': return { label: 'PREPARANDO', icon: 'coffee_maker', color: '#fbbf24', sub: 'En proceso artesanal.' };
-      case 'ready': case 'Listo': return { label: '¡LISTO!', icon: 'auto_awesome', color: accentColor, sub: 'Retira en barra.' };
-      case 'delivered': case 'Entregado': case 'served': return { label: 'ENTREGADO', icon: 'task_alt', color: accentColor, sub: '¡Que lo disfrutetes!' };
+      case 'preparing': return { label: 'PREPARANDO', icon: 'coffee_maker', color: '#fbbf24', sub: 'En proceso artesanal.' };
+      case 'ready': return { label: '¡LISTO!', icon: 'auto_awesome', color: accentColor, sub: 'Retira en barra.' };
+      case 'delivered': case 'Entregado': case 'served': return { label: 'ENTREGADO', icon: 'task_alt', color: accentColor, sub: '¡Que lo disfrutes!' };
       default: return { label: 'ESTADO', icon: 'info', color: accentColor, sub: 'Actualizando...' };
     }
   };
@@ -268,10 +268,10 @@ const ActiveOrderWidget: React.FC<ActiveOrderWidgetProps> = ({ hasActiveOrder, s
                     // Logic to handle both internal keys and DB strings
                     const currentStatus = (activeOrders.find(o => o.id === activeOrderId)?.status || status).toLowerCase();
                     const normalizedStatus =
-                      (currentStatus === 'received' || currentStatus === 'pendiente') ? 'received' :
+                      (currentStatus === 'received' || currentStatus === 'pending' || currentStatus === 'pendiente') ? 'received' :
                         (currentStatus === 'preparing' || currentStatus === 'en preparación' || currentStatus === 'preparando') ? 'preparing' :
                           (currentStatus === 'ready' || currentStatus === 'listo') ? 'ready' :
-                            (currentStatus === 'delivered' || currentStatus === 'entregado' || currentStatus === 'served') ? 'delivered' : 'received';
+                            (currentStatus === 'served' || currentStatus === 'delivered' || currentStatus === 'entregado') ? 'delivered' : 'received';
 
                     const isActive = states.indexOf(normalizedStatus) >= i;
                     const isCurrent = states.indexOf(normalizedStatus) === i;

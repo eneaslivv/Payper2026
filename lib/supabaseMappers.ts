@@ -1,5 +1,5 @@
 
-import { Order, OrderItem, OrderStatus, Table } from '../types';
+import { Order, OrderItem, OrderStatus } from '../types';
 import { Database } from '../supabaseTypes';
 
 // Types from Supabase
@@ -9,33 +9,22 @@ type SupabaseOrderItem = Database['public']['Tables']['order_items']['Insert'];
 // Mappers
 
 export const mapStatusToSupabase = (status: OrderStatus): string => {
-    switch (status) {
-        case 'Pendiente': return 'pending';
-        case 'En Preparación': return 'preparing';
-        case 'Listo': return 'ready';
-        case 'Entregado': return 'served';
-        case 'Cancelado': return 'cancelled';
-        case 'Demorado': return 'pending';
-        default: return 'pending';
-    }
+    // Already in English/Lower if using typed OrderStatus
+    return status.toLowerCase();
 };
 
 export const mapStatusFromSupabase = (status: string): OrderStatus => {
-    switch (status) {
-        case 'pending': return 'Pendiente';
-        case 'received': return 'Pendiente'; // Map 'received' to 'Pendiente' for Admin Board
-        case 'paid': return 'Pendiente'; // New paid orders should show as Pending for prep
-        case 'bill_requested': return 'Pendiente'; // Handle bill requested
-        case 'preparing': return 'En Preparación';
-        case 'ready': return 'Listo';
-        case 'served': return 'Entregado';
-        case 'delivered': return 'Entregado'; // Handle both 'served' and 'delivered'
-        case 'cancelled': return 'Cancelado';
-        default: return 'Pendiente';
+    const s = status.toLowerCase();
+    switch (s) {
+        case 'received': return 'pending'; // Map 'received' to 'pending' for consistency
+        case 'paid': return 'pending'; // New paid orders should show as pending for prep
+        case 'bill_requested': return 'pending';
+        case 'delivered': return 'served'; // Handle both 'served' and 'delivered'
+        default: return s as OrderStatus;
     }
 };
 
-export const mapOrderToSupabase = (order: Order, storeId: string): any => {
+export const mapOrderToSupabase = (order: Order, storeId: string): SupabaseOrder => {
     // Priority 1: Direct node_id on order (Manual creation from Admin)
     // Priority 2: QR Context (Client scan)
     let nodeId = order.node_id || null;
@@ -77,10 +66,10 @@ export const mapOrderToSupabase = (order: Order, storeId: string): any => {
         payment_method: order.paymentMethod || null,
         payment_provider: order.payment_provider || null,
         is_paid: order.is_paid || false,
-    };
+    } as SupabaseOrder;
 };
 
-export const mapOrderItemToSupabase = (item: OrderItem, orderId: string, storeId: string): any => {
+export const mapOrderItemToSupabase = (item: OrderItem, orderId: string, storeId: string): SupabaseOrderItem => {
     return {
         order_id: orderId,
         store_id: storeId,
@@ -90,5 +79,5 @@ export const mapOrderItemToSupabase = (item: OrderItem, orderId: string, storeId
         unit_price: item.price_unit,
         total_price: (item.price_unit || 0) * item.quantity,
         notes: (item as any).notes || (item as any).note || null,
-    };
+    } as SupabaseOrderItem;
 };

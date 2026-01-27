@@ -1,5 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { initMonitoring, captureException } from "../_shared/monitoring.ts";
+
+const FUNCTION_NAME = 'mp-webhook';
+initMonitoring(FUNCTION_NAME);
 
 // ============================================
 // EMAIL TEMPLATE: Payment Approved
@@ -233,6 +237,20 @@ function generatePaymentRefundedHtml(vars: PaymentRefundedVars): string {
   `.trim();
 }
 
+interface MercadoPagoPayment {
+  id: number | string;
+  status: 'approved' | 'rejected' | 'refunded' | 'cancelled' | 'pending' | 'in_process';
+  status_detail: string;
+  external_reference: string;
+  transaction_amount: number;
+  currency_id: string;
+  payment_method_id: string;
+  payment_type_id: string;
+  date_approved: string | null;
+  payer?: { email: string };
+  refunds?: Array<{ amount: number }>;
+}
+
 serve(async (req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -292,7 +310,7 @@ serve(async (req) => {
         });
 
         if (mpRes.ok) {
-          const p = await mpRes.json();
+          const p: MercadoPagoPayment = await mpRes.json();
           const externalRef = p.external_reference;
 
           console.log(`Payment ${id}: status=${p.status}, external_ref=${externalRef}`);
@@ -343,110 +361,11 @@ serve(async (req) => {
             // ========================================
             // PHASE 1: EMAIL PAYMENT APPROVED
             // ========================================
-            if (p.status === 'approved' && !verifyError) {
-              try {
-                // 1. Get order + client details for email
-                const { data: orderData } = await supabase
-                  .from('orders')
-                  .select(`
-                                        id, order_number, total_amount, items,
-                                        client:clients(id, email, full_name),
-                                        store:stores(id, name, logo_url)
-                                    `)
-                  .eq('id', orderId)
-                  .single();
-
-                if (orderData?.client?.email) {
-                  const idempotencyKey = `payment_approved_${id}_${orderId}`;
-
-                  // 2. Create email log with idempotency
-                  const { data: emailLogResult } = await supabase.rpc('create_email_log', {
-                    p_store_id: store_id,
-                    p_recipient_email: orderData.client.email,
-                    p_recipient_name: orderData.client.full_name || null,
-                    p_recipient_type: 'client',
-                    p_event_type: 'payment.approved',
-                    p_event_id: id.toString(),
-                    p_event_entity: 'payment',
-                    p_template_key: 'payment_approved',
-                    p_payload_core: {
-                      store_name: orderData.store?.name || 'Tienda',
-                      store_logo_url: orderData.store?.logo_url || null,
-                      customer_name: orderData.client.full_name || '',
-                      order_number: orderData.order_number,
-                      order_id: orderId,
-                      payment_id: id.toString(),
-                      amount: p.transaction_amount,
-                      currency: p.currency_id || 'ARS',
-                      payment_method: p.payment_method_id || 'Mercado Pago',
-                      date_approved: p.date_approved || new Date().toISOString(),
-                      items: orderData.items || []
-                    },
-                    p_idempotency_key: idempotencyKey,
-                    p_triggered_by: 'webhook',
-                    p_trigger_source: 'mp-webhook'
-                  });
-
-                  const logRow = emailLogResult?.[0];
-
-                  // 3. If not duplicate, send email
-                  if (logRow && !logRow.already_exists) {
-                    console.log(`Sending payment approved email, log_id=${logRow.log_id}`);
-
-                    // Import template and generate HTML
-                    const emailPayload = {
-                      to: orderData.client.email,
-                      subject: `✓ Pago Confirmado - Pedido #${orderData.order_number} | ${orderData.store?.name || 'Tienda'}`,
-                      html: generatePaymentApprovedHtml({
-                        store_name: orderData.store?.name || 'Tienda',
-                        store_logo_url: orderData.store?.logo_url,
-                        customer_name: orderData.client.full_name || '',
-                        order_number: orderData.order_number,
-                        order_id: orderId,
-                        payment_id: id.toString(),
-                        amount: p.transaction_amount,
-                        currency: p.currency_id || 'ARS',
-                        payment_method: p.payment_method_id || 'Mercado Pago',
-                        date_approved: p.date_approved || new Date().toISOString(),
-                        items: orderData.items || []
-                      }),
-                      text: `Pago confirmado para pedido #${orderData.order_number}. Total: $${p.transaction_amount}`
-                    };
-
-                    // 4. Invoke send-email function
-                    const emailRes = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
-                      },
-                      body: JSON.stringify(emailPayload)
-                    });
-
-                    const emailResult = await emailRes.json();
-
-                    // 5. Update email log status
-                    await supabase.rpc('update_email_log_status', {
-                      p_log_id: logRow.log_id,
-                      p_status: emailRes.ok ? 'sent' : 'failed',
-                      p_resend_id: emailResult?.id || null,
-                      p_resend_response: emailResult,
-                      p_error_message: emailRes.ok ? null : (emailResult?.error || 'Send failed'),
-                      p_error_code: emailRes.ok ? null : emailRes.status.toString()
-                    });
-
-                    console.log(`Email ${emailRes.ok ? 'sent' : 'failed'} for payment ${id}`);
-                  } else {
-                    console.log(`Email already sent for payment ${id}, skipping (idempotency)`);
-                  }
-                } else {
-                  console.log(`No client email found for order ${orderId}, skipping email`);
-                }
-              } catch (emailError: any) {
-                console.error('Email dispatch error:', emailError.message);
-                // Email failure should NOT affect payment processing
-              }
-            }
+            // MODIFICACIÓN SEGURIDAD: Ya no enviamos email directamente desde aquí.
+            // Al llamar a verify_payment() arriba, la DB actualiza is_paid = true.
+            // Un trigger en la tabla 'orders' (trg_after_payment_success) encola 
+            // automáticamente el email en la tabla email_queue para un envío garantizado y seguro.
+            // ========================================
             // ========================================
 
             // ========================================
@@ -519,7 +438,7 @@ serve(async (req) => {
                     console.log(`Rejected email ${emailRes.ok ? 'sent' : 'failed'} for payment ${id}`);
                   }
                 }
-              } catch (e: any) { console.error('Rejected email error:', e.message); }
+              } catch (e) { console.error('Rejected email error:', (e as Error).message); }
             }
 
             // ========================================
@@ -593,7 +512,7 @@ serve(async (req) => {
                     console.log(`Refund email ${emailRes.ok ? 'sent' : 'failed'} for payment ${id}`);
                   }
                 }
-              } catch (e: any) { console.error('Refund email error:', e.message); }
+              } catch (e) { console.error('Refund email error:', (e as Error).message); }
             }
             // ========================================
 
@@ -614,8 +533,9 @@ serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ received: true }), { status: 200 });
-  } catch (error: any) {
-    console.error("Webhook Error:", error);
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  } catch (error) {
+    console.error("Webhook Error:", (error as Error).message);
+    await captureException(error, req, FUNCTION_NAME);
+    return new Response(JSON.stringify({ error: (error as Error).message }), { status: 500 });
   }
 });

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { InventoryItem, ProductVariant, ProductAddon, UnitType, RecipeComponent, Store } from '../types';
+import { InventoryItem, ProductVariant, ProductAddon, UnitType, RecipeComponent, Store, MenuTheme } from '../types';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { PaymentCapabilityBadge } from '../components/PaymentCapabilityBadge';
 import { MenuRenderer } from '../components/MenuRenderer';
@@ -33,36 +33,7 @@ import {
     GripVertical
 } from 'lucide-react';
 
-interface MenuTheme {
-    // Marca
-    storeName: string;
-    logoUrl: string;
-    headerImage: string;
-    headerOverlay: number;
 
-    // Colores
-    accentColor: string;
-    backgroundColor: string;
-    surfaceColor: string;
-    textColor: string;
-
-    // Layout & Forma
-    layoutMode: 'grid' | 'list';
-    columns: 1 | 2;
-    cardStyle: 'glass' | 'solid' | 'minimal' | 'border' | 'floating';
-    borderRadius: 'none' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
-
-    // Visibilidad
-    showImages: boolean;
-    showPrices: boolean;
-    showDescription: boolean;
-    showAddButton: boolean;
-    showBadges: boolean;
-
-    // Preserved fields from previous version
-    headerAlignment: 'left' | 'center';
-    fontStyle: 'modern' | 'serif' | 'mono';
-}
 
 // ==========================================
 // INLINE MENU MANAGEMENT PANEL
@@ -97,6 +68,12 @@ interface MenuProduct {
     product?: { name: string; base_price: number; category: string };
 }
 
+interface VenueNode {
+    id: string;
+    label: string;
+    node_type: string;
+}
+
 const WEEKDAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
 const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propStoreId }) => {
@@ -107,8 +84,8 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
     const [loading, setLoading] = useState(true);
     const [selectedMenu, setSelectedMenu] = useState<Menu | null>(null);
     const [menuProducts, setMenuProducts] = useState<MenuProduct[]>([]);
-    const [allProducts, setAllProducts] = useState<any[]>([]);
-    const [venueNodes, setVenueNodes] = useState<any[]>([]);
+    const [allProducts, setAllProducts] = useState<any[]>([]); // Using any for large mixed results for now
+    const [venueNodes, setVenueNodes] = useState<VenueNode[]>([]);
     const [showNodeSelector, setShowNodeSelector] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState({ name: '', description: '', priority: 100 });
@@ -143,7 +120,7 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
         const { data } = await supabase.from('active_venue_states').select('node_id, label, type').eq('store_id', storeId).order('label');
 
         if (data) {
-            setVenueNodes(data.map((d: any) => ({
+            setVenueNodes((data as any[]).map((d) => ({
                 id: d.node_id,
                 label: d.label,
                 node_type: d.type
@@ -1445,7 +1422,7 @@ const MenuDesign: React.FC = () => {
             // Update Local State
             setItems(prev => prev.filter(i => i.id !== item.id));
             setEditingId(null);
-            setSelectedItem(null); // Assuming logic uses finding from items, but safe to clear
+            // setSelectedItem(null); // Removed: selectedItem is derived from editingId, so clearing editingId is enough
             addToast('Producto eliminado', 'success');
 
         } catch (err) {
@@ -1559,10 +1536,14 @@ const MenuDesign: React.FC = () => {
         if (!selectedItem) return;
         const newVariant: ProductVariant = {
             id: crypto.randomUUID(),
+            product_id: selectedItem.id,
             name: 'Nueva Variante',
             price_adjustment: 0,
-            recipe_overrides: []
-        };
+            price_delta: 0,
+            recipe_overrides: [],
+            active: true,
+            created_at: new Date().toISOString()
+        } as ProductVariant;
         updateItemImmediate(selectedItem.id, { variants: [...(selectedItem.variants || []), newVariant] });
     };
 
@@ -2578,7 +2559,7 @@ const MenuDesign: React.FC = () => {
                                             {/* FINANCIAL DASHBOARD - SYNCHRONIZED */}
                                             {(() => {
                                                 let currentCost = selectedItem.cost || 0;
-                                                const breakdown: { name: string, qty: string, cost: number }[] = [];
+                                                const breakdown: { name: string, qty: string, cost: number, unit?: string }[] = [];
 
                                                 if (selectedItem.id_source === 'product') {
                                                     let theoretical = 0;

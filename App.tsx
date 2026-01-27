@@ -613,8 +613,8 @@ const MainRouter: React.FC = () => {
   const isPotentialStoreRoute = window.location.hash.match(/^#\/[^/]+$/) &&
     !['#/login', '#/join', '#/setup-owner', '#/dashboard', '#/admin'].includes(window.location.hash);
 
-  // 🚨 GOD MODE: Never block the super admin
-  const isGodModeUser = user?.email === 'livvadm@gmail.com' || user?.email === 'livveneas@gmail.com';
+  // 🚨 GOD MODE REMOVED: Security Hardening
+  // const isGodModeUser = ... (Removed)
 
   // RECALCULATE client route check here to be absolutely sure
   const isClientRoute = window.location.hash.includes('#/m/') || window.location.hash.includes('/order/') || window.location.hash.includes('/orden/');
@@ -622,8 +622,8 @@ const MainRouter: React.FC = () => {
   // Also exempt checkout return URLs (Mercado Pago redirects often land here with specific params)
   const isCheckoutReturn = window.location.hash.includes('collection_id') || window.location.hash.includes('preference_id');
 
-  // Skip profile check if: god mode, client route, or potential store route
-  if (user && !profile && !isClientRoute && !isPotentialStoreRoute && !isGodModeUser && !isCheckoutReturn) {
+  // Skip profile check if: client route, or potential store route
+  if (user && !profile && !isClientRoute && !isPotentialStoreRoute && !isCheckoutReturn) {
     return (
       <div className="flex flex-col h-screen w-full items-center justify-center bg-black gap-6 p-6 text-center">
         <div className="relative size-20">
@@ -659,8 +659,8 @@ const MainRouter: React.FC = () => {
     );
   }
 
-  // Pending Approval or Inactive Check (Skip for super_admin AND GOD MODE user)
-  if (profile && !profile.is_active && !isAdmin && !isGodModeUser) {
+  // Pending Approval or Inactive Check (Skip for super_admin)
+  if (profile && !profile.is_active && !isAdmin) {
     return (
       <div className="flex flex-col h-screen w-full items-center justify-center bg-black text-white p-6 text-center space-y-4">
         <span className="material-symbols-outlined text-6xl text-red-500">gpp_bad</span>

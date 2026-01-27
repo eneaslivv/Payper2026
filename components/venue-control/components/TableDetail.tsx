@@ -139,7 +139,7 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
         .select('id, order_number, total_amount, status, created_at')
         .eq('store_id', profile.store_id)
         .eq('node_id', table.id)
-        .in('status', ['draft', 'pending', 'preparing', 'ready', 'served', 'delivered', 'bill_requested', 'Pendiente', 'En Preparación', 'Listo', 'Entregado'])
+        .in('status', ['draft', 'pending', 'preparing', 'ready', 'served', 'delivered', 'bill_requested'])
         .order('created_at', { ascending: false });
 
       if (data) {
@@ -327,8 +327,8 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
     }
   };
 
-  const activeOrders = orderItems.filter(o => !['served', 'delivered', 'Entregado', 'cancelled', 'paid'].includes(o.status));
-  const deliveredOrders = orderItems.filter(o => ['served', 'delivered', 'Entregado', 'delivered'].includes(o.status));
+  const activeOrders = orderItems.filter(o => !['served', 'delivered', 'cancelled', 'paid'].includes(o.status));
+  const deliveredOrders = orderItems.filter(o => ['served', 'delivered'].includes(o.status));
 
   const subtotal = table.totalAmount; // This might be aggregate from view, but we are paying specific order.
   // Actually, we should calculate subtotal from orderItems of SELECTED order
@@ -380,7 +380,7 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
         .from('orders' as any)
         .update({ status: 'cancelled' })
         .eq('node_id', table.id)
-        .in('status', ['draft', 'pending', 'preparing', 'ready', 'served', 'delivered', 'bill_requested', 'Pendiente', 'En Preparación', 'Listo', 'Entregado']);
+        .in('status', ['draft', 'pending', 'preparing', 'ready', 'served', 'delivered', 'bill_requested']);
 
       if (error) throw error;
 

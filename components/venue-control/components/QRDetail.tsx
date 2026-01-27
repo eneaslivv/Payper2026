@@ -3,7 +3,6 @@ import React, { useRef, useEffect, useState } from 'react';
 import { QR, Bar, AppMode } from '../types';
 import { X, QrCode, TrendingUp, Settings2, Power, History, Menu as MenuIcon, FileText, Image as ImageIcon, Box, ChevronDown, Plus, ShoppingCart, Bell } from 'lucide-react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
-import { jsPDF } from 'jspdf';
 import { supabase } from '../../../lib/supabase';
 
 interface QRDetailProps {
@@ -54,7 +53,7 @@ const QRDetail: React.FC<QRDetailProps> = ({ qr, bars = [], mode, storeSlug = 'd
   const barName = activeBar?.name || "SIN ASIGNAR";
   const activeMenu = MOCK_MENUS.find(m => m.id === qr.menuId)?.name || "MENÚ ESTÁNDAR";
   const isEditMode = mode === AppMode.EDIT;
-  const isOperativeMode = mode === AppMode.OPERATE;
+  const isOperativeMode = mode === AppMode.VIEW;
 
   // Generate QR URL
   const qrUrl = `${window.location.origin}/#/m/${storeSlug}?table=${qr.name}`;
@@ -81,7 +80,7 @@ const QRDetail: React.FC<QRDetailProps> = ({ qr, bars = [], mode, storeSlug = 'd
         setOrders(formattedOrders);
 
         const totalRevenue = ordersData.reduce((sum: number, o: any) => sum + (o.total_amount || 0), 0);
-        const activeOrders = ordersData.filter((o: any) => ['pending', 'in_progress', 'preparing'].includes(o.status)).length;
+        const activeOrders = ordersData.filter((o: any) => ['pending', 'preparing'].includes(o.status)).length;
         setStats({
           totalOrders: ordersData.length,
           totalRevenue,
@@ -168,7 +167,8 @@ const QRDetail: React.FC<QRDetailProps> = ({ qr, bars = [], mode, storeSlug = 'd
   };
 
   // Download as PDF
-  const downloadPDF = () => {
+  const downloadPDF = async () => {
+    const { jsPDF } = await import('jspdf');
     const canvas = document.querySelector('#qr-canvas canvas') as HTMLCanvasElement;
     if (!canvas) return;
 
@@ -266,7 +266,7 @@ const QRDetail: React.FC<QRDetailProps> = ({ qr, bars = [], mode, storeSlug = 'd
   const statusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'text-yellow-500';
-      case 'in_progress': case 'preparing': return 'text-blue-500';
+      case 'preparing': return 'text-blue-500';
       case 'completed': case 'delivered': return 'text-green-500';
       case 'cancelled': return 'text-red-500';
       default: return 'text-zinc-500';

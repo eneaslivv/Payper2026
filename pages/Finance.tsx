@@ -1,13 +1,16 @@
 
-import React, { useState, useEffect } from 'react';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, AreaChart, Area
-} from 'recharts';
+import React, { useState, useEffect, Suspense } from 'react';
 import { CashRegisterSession } from '../types';
 import DateRangeSelector from '../components/DateRangeSelector';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+
+const AreaChart = React.lazy(() => import('recharts').then((mod) => ({ default: mod.AreaChart })));
+const Area = React.lazy(() => import('recharts').then((mod) => ({ default: mod.Area })));
+const XAxis = React.lazy(() => import('recharts').then((mod) => ({ default: mod.XAxis })));
+const CartesianGrid = React.lazy(() => import('recharts').then((mod) => ({ default: mod.CartesianGrid })));
+const Tooltip = React.lazy(() => import('recharts').then((mod) => ({ default: mod.Tooltip })));
+const ResponsiveContainer = React.lazy(() => import('recharts').then((mod) => ({ default: mod.ResponsiveContainer })));
 
 const PIE_COLORS = ['#4ADE80', '#B4965C', '#3B4D35'];
 
@@ -316,47 +319,53 @@ const Finance: React.FC = () => {
               </div>
             </div>
             <div className="h-96 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={performanceData}>
-                  <defs>
-                    <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#00ff9d" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#00ff9d" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="colorMp" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="colorCash" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ffffff" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#ffffff" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.02)" strokeDasharray="5 5" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71766F', fontWeight: 800 }} />
-                  <Tooltip contentStyle={{ backgroundColor: '#141714', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', fontSize: '10px' }} />
+              <Suspense fallback={
+                <div className="h-full w-full flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-[#71766F]">
+                  Cargando gráfico...
+                </div>
+              }>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={performanceData}>
+                    <defs>
+                      <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#00ff9d" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#00ff9d" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="colorMp" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="colorCash" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ffffff" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#ffffff" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.02)" strokeDasharray="5 5" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71766F', fontWeight: 800 }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#141714', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', fontSize: '10px' }} />
 
-                  {chartFilter === 'total' && (
-                    <Area type="monotone" dataKey="total_revenue" stroke="#00ff9d" strokeWidth={3} fillOpacity={1} fill="url(#colorTotal)" animationDuration={1500} />
-                  )}
-                  {chartFilter === 'mercadopago' && (
-                    <Area type="monotone" dataKey="mercadopago" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorMp)" animationDuration={1000} />
-                  )}
-                  {chartFilter === 'cash' && (
-                    <>
-                      <Area type="monotone" dataKey="cash_sales" stackId="1" stroke="#ffffff" strokeWidth={2} fillOpacity={1} fill="url(#colorCash)" name="Ventas Efectivo" />
-                      <Area type="monotone" dataKey="cash_topups" stackId="1" stroke="#ffffff" strokeWidth={2} strokeDasharray="5 5" fill="transparent" name="Cargas Efectivo" />
-                    </>
-                  )}
-                  {chartFilter === 'wallet' && (
-                    <>
-                      <Area type="monotone" dataKey="wallet_sales" stroke="#8b5cf6" strokeWidth={3} fillOpacity={0.2} fill="#8b5cf6" name="Consumo Wallet" />
-                      <Area type="monotone" dataKey="cash_topups" stroke="#4ade80" strokeWidth={2} strokeDasharray="5 5" fill="transparent" name="Cargas Efectivo" />
-                      <Area type="monotone" dataKey="transfer_topups" stroke="#facc15" strokeWidth={2} strokeDasharray="5 5" fill="transparent" name="Cargas Transfer" />
-                    </>
-                  )}
-                </AreaChart>
-              </ResponsiveContainer>
+                    {chartFilter === 'total' && (
+                      <Area type="monotone" dataKey="total_revenue" stroke="#00ff9d" strokeWidth={3} fillOpacity={1} fill="url(#colorTotal)" animationDuration={1500} />
+                    )}
+                    {chartFilter === 'mercadopago' && (
+                      <Area type="monotone" dataKey="mercadopago" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorMp)" animationDuration={1000} />
+                    )}
+                    {chartFilter === 'cash' && (
+                      <>
+                        <Area type="monotone" dataKey="cash_sales" stackId="1" stroke="#ffffff" strokeWidth={2} fillOpacity={1} fill="url(#colorCash)" name="Ventas Efectivo" />
+                        <Area type="monotone" dataKey="cash_topups" stackId="1" stroke="#ffffff" strokeWidth={2} strokeDasharray="5 5" fill="transparent" name="Cargas Efectivo" />
+                      </>
+                    )}
+                    {chartFilter === 'wallet' && (
+                      <>
+                        <Area type="monotone" dataKey="wallet_sales" stroke="#8b5cf6" strokeWidth={3} fillOpacity={0.2} fill="#8b5cf6" name="Consumo Wallet" />
+                        <Area type="monotone" dataKey="cash_topups" stroke="#4ade80" strokeWidth={2} strokeDasharray="5 5" fill="transparent" name="Cargas Efectivo" />
+                        <Area type="monotone" dataKey="transfer_topups" stroke="#facc15" strokeWidth={2} strokeDasharray="5 5" fill="transparent" name="Cargas Transfer" />
+                      </>
+                    )}
+                  </AreaChart>
+                </ResponsiveContainer>
+              </Suspense>
             </div>
           </div>
 

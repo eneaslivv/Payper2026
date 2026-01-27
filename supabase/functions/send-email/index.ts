@@ -1,5 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
+import { initMonitoring, captureException } from "../_shared/monitoring.ts";
+
+const FUNCTION_NAME = 'send-email';
+initMonitoring(FUNCTION_NAME);
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -43,6 +47,7 @@ serve(async (req) => {
         });
     } catch (error) {
         console.error("Server Error:", error);
+        await captureException(error, req, FUNCTION_NAME);
         return new Response(JSON.stringify({ error: error.message }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },

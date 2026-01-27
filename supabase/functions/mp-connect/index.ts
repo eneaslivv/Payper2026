@@ -1,5 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { initMonitoring, captureException } from "../_shared/monitoring.ts";
+
+const FUNCTION_NAME = 'mp-connect';
+initMonitoring(FUNCTION_NAME);
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -86,6 +90,7 @@ serve(async (req) => {
 
     } catch (error: any) {
         console.error("Function Error:", error);
+        await captureException(error, req, FUNCTION_NAME);
         return new Response(
             JSON.stringify({ success: false, error: error.message }),
             {

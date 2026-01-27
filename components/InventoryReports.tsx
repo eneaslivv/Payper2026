@@ -1,6 +1,15 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, Suspense } from 'react';
 import { InventoryItem, Category } from '../types';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
+
+const BarChart = React.lazy(() => import('recharts').then((mod) => ({ default: mod.BarChart })));
+const Bar = React.lazy(() => import('recharts').then((mod) => ({ default: mod.Bar })));
+const XAxis = React.lazy(() => import('recharts').then((mod) => ({ default: mod.XAxis })));
+const YAxis = React.lazy(() => import('recharts').then((mod) => ({ default: mod.YAxis })));
+const Tooltip = React.lazy(() => import('recharts').then((mod) => ({ default: mod.Tooltip })));
+const ResponsiveContainer = React.lazy(() => import('recharts').then((mod) => ({ default: mod.ResponsiveContainer })));
+const Cell = React.lazy(() => import('recharts').then((mod) => ({ default: mod.Cell })));
+const PieChart = React.lazy(() => import('recharts').then((mod) => ({ default: mod.PieChart })));
+const Pie = React.lazy(() => import('recharts').then((mod) => ({ default: mod.Pie })));
 
 interface InventoryReportsProps {
     items: InventoryItem[];
@@ -84,22 +93,28 @@ export const InventoryReports: React.FC<InventoryReportsProps> = ({ items, categ
                 <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-6">
                     <h4 className="text-xs font-black text-white/50 uppercase tracking-widest mb-6">Valor por Categoría</h4>
                     <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={metrics.valueByCategory} layout="vertical" margin={{ left: 0, right: 30, top: 0, bottom: 0 }}>
-                                <XAxis type="number" hide />
-                                <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10, fill: '#666', fontWeight: 700 }} tickLine={false} axisLine={false} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '8px' }}
-                                    itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
-                                    formatter={(value: number) => formatCurrency(value)}
-                                />
-                                <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
-                                    {metrics.valueByCategory.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
+                        <Suspense fallback={
+                            <div className="h-full w-full flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-white/40">
+                                Cargando gráfico...
+                            </div>
+                        }>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={metrics.valueByCategory} layout="vertical" margin={{ left: 0, right: 30, top: 0, bottom: 0 }}>
+                                    <XAxis type="number" hide />
+                                    <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10, fill: '#666', fontWeight: 700 }} tickLine={false} axisLine={false} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '8px' }}
+                                        itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
+                                        formatter={(value: number) => formatCurrency(value)}
+                                    />
+                                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
+                                        {metrics.valueByCategory.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </Suspense>
                     </div>
                 </div>
 
@@ -107,27 +122,33 @@ export const InventoryReports: React.FC<InventoryReportsProps> = ({ items, categ
                 <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-6">
                     <h4 className="text-xs font-black text-white/50 uppercase tracking-widest mb-6">Distribución de Items</h4>
                     <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={metrics.countByCategory}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={80}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                >
-                                    {metrics.countByCategory.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
-                                    ))}
-                                </Pie>
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '8px' }}
-                                    itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
-                                />
-                            </PieChart>
-                        </ResponsiveContainer>
+                        <Suspense fallback={
+                            <div className="h-full w-full flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-white/40">
+                                Cargando gráfico...
+                            </div>
+                        }>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={metrics.countByCategory}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={80}
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                    >
+                                        {metrics.countByCategory.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '8px' }}
+                                        itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </Suspense>
                     </div>
                 </div>
             </div>

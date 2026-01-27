@@ -1,5 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import * as Sentry from '@sentry/react';
 import { supabase } from '../lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
 import { useToast } from '../components/ToastSystem';
@@ -7,6 +8,8 @@ import { useToast } from '../components/ToastSystem';
 import { Store, RolePermissions, SectionSlug } from '../types';
 
 export type UserRole = 'super_admin' | 'store_owner' | 'staff' | 'customer';
+
+const SENTRY_ENABLED = Boolean(import.meta.env.VITE_SENTRY_DSN);
 
 export interface UserProfile {
     id: string;
@@ -62,6 +65,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (user?.id) userIdRef.current = user.id;
         else userIdRef.current = null;
     }, [user]);
+
+    useEffect(() => {
+        if (!SENTRY_ENABLED) return;
+        if (user?.id) {
+            Sentry.setUser({ id: user.id });
+        } else {
+            Sentry.setUser(null);
+        }
+
+        if (profile?.store_id) {
+            Sentry.setTag('store_id', profile.store_id);
+            Sentry.setTag('tenant_unassigned', 'false');
+        } else {
+            Sentry.setTag('store_id', 'unassigned');
+            Sentry.setTag('tenant_unassigned', 'true');
+        }
+
+        if (profile?.role) {
+            Sentry.setTag('role', profile.role);
+        }
+    }, [profile, user]);
 
     useEffect(() => {
         let mounted = true;

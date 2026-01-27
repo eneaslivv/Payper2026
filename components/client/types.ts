@@ -1,5 +1,5 @@
 
-export type OrderStatus = 'received' | 'preparing' | 'ready' | 'delivered';
+export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'served';
 
 export interface MenuItem {
   id: string;

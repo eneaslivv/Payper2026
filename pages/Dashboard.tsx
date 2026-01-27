@@ -1,11 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { sendEmailNotification } from '../lib/notifications';
 import SmartInsights from '../components/SmartInsights';
+
+const AreaChart = React.lazy(() => import('recharts').then((mod) => ({ default: mod.AreaChart })));
+const Area = React.lazy(() => import('recharts').then((mod) => ({ default: mod.Area })));
+const XAxis = React.lazy(() => import('recharts').then((mod) => ({ default: mod.XAxis })));
+const YAxis = React.lazy(() => import('recharts').then((mod) => ({ default: mod.YAxis })));
+const CartesianGrid = React.lazy(() => import('recharts').then((mod) => ({ default: mod.CartesianGrid })));
+const Tooltip = React.lazy(() => import('recharts').then((mod) => ({ default: mod.Tooltip })));
+const ResponsiveContainer = React.lazy(() => import('recharts').then((mod) => ({ default: mod.ResponsiveContainer })));
 
 // Empty initial data for chart
 const initialChartData = [
@@ -328,21 +335,27 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
           <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="neonGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={isDarkMode ? "#4ADE80" : "#059669"} stopOpacity={0.1} />
-                    <stop offset="95%" stopColor={isDarkMode ? "#4ADE80" : "#059669"} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid vertical={false} stroke={isDarkMode ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.05)"} strokeDasharray="5 5" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: isDarkMode ? '#71766F' : '#9B9A97', fontWeight: 800 }} />
-                <YAxis hide />
-                <Tooltip contentStyle={{ backgroundColor: isDarkMode ? '#141714' : '#FFFFFF', borderRadius: '0.75rem', border: isDarkMode ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.1)', color: isDarkMode ? '#fff' : '#1A1D19', fontSize: '10px' }} />
-                <Area type="monotone" dataKey="value" stroke={isDarkMode ? "#4ADE80" : "#059669"} strokeWidth={2} fillOpacity={1} fill="url(#neonGradient)" dot={{ r: 3, fill: isDarkMode ? '#4ADE80' : '#059669', strokeWidth: 1, stroke: isDarkMode ? '#141714' : '#FFFFFF' }} />
-              </AreaChart>
-            </ResponsiveContainer>
+            <Suspense fallback={
+              <div className="h-full w-full flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-[#9B9A97] dark:text-[#71766F]">
+                Cargando gráfico...
+              </div>
+            }>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData}>
+                  <defs>
+                    <linearGradient id="neonGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={isDarkMode ? "#4ADE80" : "#059669"} stopOpacity={0.1} />
+                      <stop offset="95%" stopColor={isDarkMode ? "#4ADE80" : "#059669"} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid vertical={false} stroke={isDarkMode ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.05)"} strokeDasharray="5 5" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: isDarkMode ? '#71766F' : '#9B9A97', fontWeight: 800 }} />
+                  <YAxis hide />
+                  <Tooltip contentStyle={{ backgroundColor: isDarkMode ? '#141714' : '#FFFFFF', borderRadius: '0.75rem', border: isDarkMode ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.1)', color: isDarkMode ? '#fff' : '#1A1D19', fontSize: '10px' }} />
+                  <Area type="monotone" dataKey="value" stroke={isDarkMode ? "#4ADE80" : "#059669"} strokeWidth={2} fillOpacity={1} fill="url(#neonGradient)" dot={{ r: 3, fill: isDarkMode ? '#4ADE80' : '#059669', strokeWidth: 1, stroke: isDarkMode ? '#141714' : '#FFFFFF' }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </Suspense>
           </div>
         </div>
 

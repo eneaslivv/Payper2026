@@ -19,7 +19,7 @@ const OrderBoard: React.FC = () => {
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [incomingOrder, setIncomingOrder] = useState<any>(null);
+  const [incomingOrder, setIncomingOrder] = useState<Order | null>(null);
   const [activeColumn, setActiveColumn] = useState<OrderStatus | null>(null);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'TODOS'>('TODOS');
   const [showHistory, setShowHistory] = useState(false);
@@ -51,7 +51,7 @@ const OrderBoard: React.FC = () => {
       .eq('is_visible', true)
       .order('sort_order', { ascending: true })
       .then(({ data }) => {
-        if (data) setAvailableStations(data.map((s: any) => s.name));
+        if (data) setAvailableStations((data as any as { name: string }[]).map(s => s.name));
       });
   }, [profile?.store_id]);
 
@@ -106,9 +106,9 @@ const OrderBoard: React.FC = () => {
         filter: `store_id=eq.${profile.store_id}`
       }, (payload) => {
         console.log('[REALTIME] New order received:', payload.new);
-        setIncomingOrder(payload.new);
+        setIncomingOrder(payload.new as Order);
         refreshOrders();
-        addToast('NUEVO PEDIDO', 'success', `Pedido #${(payload.new as any).order_number || 'nuevo'} recibido`);
+        addToast('NUEVO PEDIDO', 'success', `Pedido #${(payload.new as Order).order_number || 'nuevo'} recibido`);
         playNotificationSound();
       })
       .on('postgres_changes', {
@@ -140,16 +140,16 @@ const OrderBoard: React.FC = () => {
   }, [profile?.store_id]);
 
   const stats = useMemo(() => ({
-    total: orders.filter(o => o.status !== 'Entregado' && o.status !== 'Cancelado').length,
-    pendientes: orders.filter(o => o.status === 'Pendiente').length,
-    proceso: orders.filter(o => o.status === 'En Preparación').length,
-    listos: orders.filter(o => o.status === 'Listo').length,
+    total: orders.filter(o => o.status !== 'served' && o.status !== 'cancelled').length,
+    pendientes: orders.filter(o => o.status === 'pending').length,
+    proceso: orders.filter(o => o.status === 'preparing').length,
+    listos: orders.filter(o => o.status === 'ready').length,
     // History Stats
-    entregados: orders.filter(o => o.status === 'Entregado').length,
-    cancelados: orders.filter(o => o.status === 'Cancelado').length,
+    entregados: orders.filter(o => o.status === 'served').length,
+    cancelados: orders.filter(o => o.status === 'cancelled').length,
   }), [orders]);
 
-  const handleOpenIncoming = (rawOrder: any) => {
+  const handleOpenIncoming = (rawOrder: Order) => {
     const fullOrder = orders.find(o => o.id === rawOrder.id);
     if (fullOrder) {
       setSelectedOrder(fullOrder);
@@ -172,7 +172,7 @@ const OrderBoard: React.FC = () => {
   }, [orders, selectedOrder?.id]);
 
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
-    if (newStatus === 'Entregado') {
+    if (newStatus === 'served') {
       const staffId = profile?.id || user?.id;
 
       if (!staffId) {
@@ -194,7 +194,7 @@ const OrderBoard: React.FC = () => {
 
   const confirmCancelOrder = () => {
     if (orderToCancel) {
-      handleStatusChange(orderToCancel.id, 'Cancelado');
+      handleStatusChange(orderToCancel.id, 'cancelled');
       setOrderToCancel(null);
       if (selectedOrder?.id === orderToCancel.id) setSelectedOrder(null);
     }
@@ -206,10 +206,10 @@ const OrderBoard: React.FC = () => {
       if (orderToCancel) return;
 
       switch (e.key.toUpperCase()) {
-        case '1': handleStatusChange(selectedOrder.id, 'Pendiente'); break;
-        case '2': handleStatusChange(selectedOrder.id, 'En Preparación'); break;
-        case '3': handleStatusChange(selectedOrder.id, 'Listo'); break;
-        case '4': handleStatusChange(selectedOrder.id, 'Entregado'); break;
+        case '1': handleStatusChange(selectedOrder.id, 'pending'); break;
+        case '2': handleStatusChange(selectedOrder.id, 'preparing'); break;
+        case '3': handleStatusChange(selectedOrder.id, 'ready'); break;
+        case '4': handleStatusChange(selectedOrder.id, 'served'); break;
         case 'X': setOrderToCancel(selectedOrder); break;
         case 'ESCAPE': setSelectedOrder(null); break;
       }
@@ -224,22 +224,22 @@ const OrderBoard: React.FC = () => {
     if (!order) return;
 
     // Fase 3 Plan L: Block advancing unpaid MP orders
-    const provider = (order as any).payment_provider;
-    const isPaid = (order as any).is_paid || order.payment_status === 'approved' || order.payment_status === 'paid';
+    const provider = order.payment_provider;
+    const isPaid = order.is_paid || order.payment_status === 'approved' || order.payment_status === 'paid';
 
     if (provider === 'mercadopago' && !isPaid) {
       addToast("PAGO PENDIENTE", 'error', "Este pedido requiere pago de Mercado Pago antes de avanzar");
       return;
     }
 
-    if (order.status === 'Pendiente') {
-      handleStatusChange(id, 'En Preparación');
+    if (order.status === 'pending') {
+      handleStatusChange(id, 'preparing');
       addToast("INICIANDO", 'status', "Protocolo de preparación activo");
-    } else if (order.status === 'En Preparación') {
-      handleStatusChange(id, 'Listo');
+    } else if (order.status === 'preparing') {
+      handleStatusChange(id, 'ready');
       addToast("PEDIDO LISTO", 'success', "Notificando al cliente");
-    } else if (order.status === 'Listo') {
-      handleStatusChange(id, 'Entregado');
+    } else if (order.status === 'ready') {
+      handleStatusChange(id, 'served');
       addToast("ENTREGADO", 'status', "Ciclo completado");
     }
     if (selectedOrder?.id === id) setSelectedOrder(null);
@@ -259,7 +259,7 @@ const OrderBoard: React.FC = () => {
     try {
       // Get IDs of all completed orders (Entregado or Cancelado) that are not already archived
       const completedOrderIds = orders
-        .filter(o => (o.status === 'Entregado' || o.status === 'Cancelado') && !(o as any).archived_at)
+        .filter(o => (o.status === 'served' || o.status === 'cancelled') && !o.archived_at)
         .map(o => o.id);
 
       if (completedOrderIds.length === 0) {
@@ -271,7 +271,7 @@ const OrderBoard: React.FC = () => {
       const { error } = await (supabase
         .from('orders')
         .update({ archived_at: new Date().toISOString() } as any)
-        .in('id', completedOrderIds) as any);
+        .in('id', completedOrderIds));
 
       if (error) throw error;
 
@@ -288,8 +288,8 @@ const OrderBoard: React.FC = () => {
 
   const filteredOrders = useMemo(() => {
     return orders.filter(o => {
-      const isHistoryStatus = o.status === 'Entregado' || o.status === 'Cancelado';
-      const isArchived = !!(o as any).archived_at;
+      const isHistoryStatus = o.status === 'served' || o.status === 'cancelled';
+      const isArchived = !!o.archived_at;
 
       // Mode Filter - In active mode, exclude archived and history orders
       if (!showHistory) {
@@ -311,7 +311,7 @@ const OrderBoard: React.FC = () => {
       // In "ALL" view: show all orders (assigned + unassigned)
       // In specific station view: ONLY show orders that have been assigned to that exact station
       if (!showHistory && locationFilter !== 'ALL') {
-        const orderStation = (o as any).dispatch_station;
+        const orderStation = o.dispatch_station;
         // Strict match: order must have the exact station assigned to appear in this view
         // Unassigned orders (null/undefined) will only be visible in the "ALL" view
         if (!orderStation || orderStation.trim().toLowerCase() !== locationFilter.toLowerCase()) {
@@ -331,14 +331,11 @@ const OrderBoard: React.FC = () => {
       const matchesStatus = showHistory ? true : (statusFilter === 'TODOS' ? true : o.status === statusFilter);
 
       // Payment Filter: Hide Unpaid MercadoPago Orders
-      // TEMPORARILY DISABLED FOR DEBUGGING - uncomment when payment verification works
       // If provider is 'mercadopago' and it's NOT paid, hide it from the board.
-      /*
-      const isMP = (o as any).payment_provider === 'mercadopago' || (o as any).payment_method === 'mercadopago';
-      const isPaid = (o as any).is_paid === true || (o as any).payment_status === 'approved' || (o as any).payment_status === 'paid';
+      const isMP = o.payment_provider === 'mercadopago' || o.paymentMethod === 'mercadopago';
+      const isPaid = o.is_paid === true || o.payment_status === 'approved' || o.payment_status === 'paid';
 
       if (isMP && !isPaid) return false;
-      */
 
       return matchesSearch && matchesStatus;
     });
@@ -948,7 +945,7 @@ const Column: React.FC<{
 };
 
 // NEW ORDER NOTIFICATION MODAL
-const NewOrderAlert: React.FC<{ order: any, onOpen: () => void, onClose: () => void }> = ({ order, onOpen, onClose }) => {
+const NewOrderAlert: React.FC<{ order: Order, onOpen: () => void, onClose: () => void }> = ({ order, onOpen, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, 10000); // Auto close after 10s
     return () => clearTimeout(timer);
@@ -989,7 +986,7 @@ const getDisplayId = (order: Order) => {
 
 // Returns delay in minutes if delayed, otherwise 0
 const getDelayStatus = (order: Order, activeOrdersCount: number) => {
-  if (order.status === 'Listo' || order.status === 'Entregado' || order.status === 'Cancelado') return 0;
+  if (order.status === 'ready' || order.status === 'served' || order.status === 'cancelled') return 0;
 
   const created = new Date(order.created_at).getTime();
   const now = new Date().getTime();
@@ -1009,9 +1006,9 @@ const getDelayStatus = (order: Order, activeOrdersCount: number) => {
 
 const getStatusStyles = (status: string) => {
   switch (status) {
-    case 'Pendiente': return 'bg-orange-500/10 text-orange-500 border-orange-500/20';
-    case 'En Preparación': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
-    case 'Listo': return 'bg-neon/10 text-neon border-neon/20';
+    case 'pending': return 'bg-orange-500/10 text-orange-500 border-orange-500/20';
+    case 'preparing': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+    case 'ready': return 'bg-neon/10 text-neon border-neon/20';
     default: return 'bg-white/5 text-white/40 border-white/10';
   }
 };

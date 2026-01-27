@@ -540,7 +540,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
                     // Also load products table (recipes/composed items)
                     const { data: productsData, error: prodError } = await (supabase.from('products') as any)
-                        .select('*')
+                        .select('*, product_variants(*)')
                         .eq('store_id', store.id)
                         .eq('active', true)
                         .eq('is_visible', true)
@@ -569,6 +569,13 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     // Map products (recipes) - is_available now comes from DB trigger that validates recipe ingredients
                     const recipeProducts: MenuItem[] = (productsData || []).map((item: any) => {
                         const catName = item.category_id ? categoryMap[item.category_id] : (item.category || 'General');
+
+                        // FIX: Ensure variants are mapped correctly with price_adjustment alias
+                        const mappedVariants = (item.product_variants || []).map((v: any) => ({
+                            ...v,
+                            price_adjustment: v.price_delta // Map DB field to Frontend field
+                        }));
+
                         return {
                             id: item.id,
                             name: item.name,
@@ -578,7 +585,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                             category: catName,
                             isPopular: item.is_popular || false,
                             isOutOfStock: !item.is_available,  // ✅ Ahora is_available viene calculado por trigger
-                            variants: item.product_variants || [],
+                            variants: mappedVariants,
                             addons: item.product_addons || [],
                             item_type: 'product' as const,
                         };

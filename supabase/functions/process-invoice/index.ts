@@ -4,6 +4,10 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@0.21.0'
+import { initMonitoring, captureException } from '../_shared/monitoring.ts'
+
+const FUNCTION_NAME = 'process-invoice'
+initMonitoring(FUNCTION_NAME)
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -214,6 +218,7 @@ NOTAS:
 
     } catch (error) {
         console.error('Process invoice error:', error)
+        await captureException(error, req, FUNCTION_NAME)
 
         // Try to update status to error if we have invoice_id
         try {

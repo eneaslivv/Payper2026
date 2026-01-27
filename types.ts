@@ -1,88 +1,14 @@
 
-export type ItemType = 'ingredient' | 'sellable' | 'prepared' | 'final_product' | 'pack';
-export type UnitType = 'unit' | 'gram' | 'ml' | 'kg' | 'oz' | 'liter';
-export type MovementType = 'purchase' | 'manual_adjustment' | 'recipe_consumption' | 'sale' | 'waste' | 'return' | 'TRANSFER' | 'PURCHASE' | 'WASTE' | 'ADJUSTMENT';
+import { Database } from './supabaseTypes';
 
-// --- SAAS & TENANT CONTROL ---
+// --- HYBRID INTERFACES (Supabase + Manual Overrides) ---
 
-export interface MenuLogic {
-  // 1. Operación General
-  operation: {
-    isOpen: boolean; // Master switch
-    messageClosed?: string; // "Cerrado por reformas", etc.
-    estimatedWaitMinutes?: number;
-  };
-
-  // 2. Gestión de Canales (Gatekeepers)
-  channels: {
-    dineIn: {
-      enabled: boolean; // "Mesa"
-      allowOrdering: boolean; // Si false, solo ver carta
-    };
-    takeaway: {
-      enabled: boolean; // "Para llevar"
-      minTimeMinutes?: number;
-    };
-    delivery: {
-      enabled: boolean;
-      radiusKm?: number;
-      minOrderAmount?: number;
-    };
-    staff?: {
-      enabled: boolean;
-      requirePin: boolean;
-    };
-  };
-
-  // 3. Experiencia Cliente (Features)
-  features: {
-    wallet: {
-      allowTopUp: boolean; // "Cargar saldo"
-      allowPayment: boolean; // "Pagar con saldo"
-    };
-    loyalty: {
-      enabled: boolean; // "Programa de puntos"
-      showPoints: boolean; // Mostrar puntos en header
-    };
-    guestMode: {
-      enabled: boolean; // Permitir entrar sin login
-      allowOrdering: boolean; // Permitir pedir sin login (poco común, pero posible)
-    };
-  };
-
-  // 4. Reglas de Menú
-  rules: {
-    hideOutofStock: boolean; // Si true, items con stock <= 0 desaparecen
-    enforceStock: boolean; // Si true, bloquea add-to-cart si stock <= 0 (aunque se vea)
-    showCalories: boolean;
-    showAllergens: boolean;
-  };
-
-  // 5. Menús Dinámicos (New)
-  dynamic_menus?: {
-    enabled: boolean;
-    menus: {
-      id: string;
-      name: string; // "Almuerzo", "Cena", "VIP", "Terraza"
-      isActive: boolean;
-      schedule?: {
-        enabled: boolean;
-        days: number[]; // 0=Sun, 1=Mon...
-        start: string; // '00:00'
-        end: string; // '23:59'
-      };
-      node_ids?: string[]; // Specific tables/nodes (if empty, applies generally if schedule matches)
-      category_ids?: string[]; // Whitelist: only show these categories
-    }[];
-  };
-}
 export interface MenuTheme {
   // Marca
   storeName: string;
-  logoUrl?: string;
-  headerImage?: string;
-  headerOverlay?: number;
-  headerAlignment?: 'left' | 'center';
+  logoUrl: string;
+  headerImage: string;
+  headerOverlay: number;
 
   // Colores
   accentColor: string;
@@ -95,7 +21,6 @@ export interface MenuTheme {
   columns: 1 | 2;
   cardStyle: 'glass' | 'solid' | 'minimal' | 'border' | 'floating';
   borderRadius: 'none' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
-  fontStyle: 'modern' | 'serif' | 'mono' | 'sans';
 
   // Visibilidad
   showImages: boolean;
@@ -108,6 +33,40 @@ export interface MenuTheme {
   showQuickAdd?: boolean;
   showPromoBanner?: boolean; // New: Controls visibility for registered users
   promoBannerUrl?: string; // New: Custom image for the banner
+
+  // Preserved fields from previous version
+  headerAlignment: 'left' | 'center';
+  fontStyle: 'modern' | 'serif' | 'mono';
+}
+
+export interface MenuLogic {
+  breadcrumbs: boolean;
+  search_enabled: boolean;
+  filters_enabled: boolean;
+  cart_enabled: boolean;
+  favorites_enabled: boolean;
+  // New fields
+  show_stock_out: boolean;
+  allow_guest_orders: boolean;
+  require_auth_for_prices: boolean;
+}
+
+// Helper to get raw rows
+type StoreRow = Database['public']['Tables']['stores']['Row'];
+type ProductVariantRow = Database['public']['Tables']['product_variants']['Row'];
+
+export interface Store extends Omit<StoreRow, 'menu_theme' | 'menu_logic' | 'service_mode' | 'mp_connected_at' | 'mp_email' | 'mp_nickname' | 'mp_user_id'> {
+  // Manual overrides for stricter typing than Json | null
+  menu_theme?: MenuTheme;
+  menu_logic?: MenuLogic;
+  service_mode?: 'counter' | 'table' | 'club';
+
+  // Legacy/Frontend fields not in DB or aliased
+  mp_connected?: boolean;
+  mp_user_id?: string;
+  mp_nickname?: string;
+  mp_email?: string;
+  mp_connected_at?: string;
 }
 
 export type TenantPlan = 'free' | 'trial' | 'basic' | 'pro' | 'enterprise';
@@ -157,29 +116,6 @@ export interface Tenant {
     monthly_revenue: number;
   };
   feature_flags: TenantFeatureFlags;
-}
-
-export interface Store {
-  id: string;
-  name: string;
-  slug: string;
-  logo_url?: string;
-  address?: string;
-  tax_info?: string;
-  owner_email?: string;
-  plan?: string;
-  onboarding_status?: string;
-  service_mode?: 'counter' | 'table' | 'club';
-  menu_theme?: any;
-  menu_logic?: MenuLogic;
-  created_at: string;
-  updated_at: string;
-  // Mercado Pago Fields
-  mp_connected?: boolean;
-  mp_user_id?: string;
-  mp_nickname?: string;
-  mp_email?: string;
-  mp_connected_at?: string;
 }
 
 // --- IA CONFIG ---
@@ -321,12 +257,12 @@ export interface ClosedPackageCount {
   count: number;
 }
 
-export interface ProductVariant {
-  id: string;
-  name: string;
-  price_adjustment: number;
-  recipe_multiplier?: number; // NEW: Multiplies ALL base recipe ingredients (e.g., 1.5 for "Grande")
-  // Permite definir que esta variante consume X cantidad más/menos de un ingrediente base
+export interface ProductVariant extends Omit<ProductVariantRow, 'recipe_overrides' | 'price_delta'> {
+  // Alias for manual mapped fields
+  price_adjustment: number; // Mapped from price_delta
+  price_delta?: number;     // Optional to allow transition
+
+  // Stricter typing for JSON
   recipe_overrides?: {
     ingredient_id: string;
     consumption_type?: 'fixed' | 'multiplier'; // NEW: 'fixed' (+50ml) or 'multiplier' (x1.5)
@@ -430,9 +366,45 @@ export interface Order {
   payment_provider?: string;
   payment_status?: string;
   is_paid?: boolean;
+  archived_at?: string;
+  dispatch_station?: string;
 }
 
-export type OrderStatus = 'Pendiente' | 'En Preparación' | 'Listo' | 'Entregado' | 'Cancelado' | 'Demorado';
+export interface SupabaseOrder {
+  id: string;
+  store_id: string;
+  status: string;
+  total_amount: number;
+  created_at: string;
+  payment_status: string | null;
+  payment_method: string | null;
+  payment_provider: string | null;
+  is_paid: boolean;
+  order_number: number;
+  table_number: string | null;
+  node_id: string | null;
+  archived_at: string | null;
+  dispatch_station: string | null;
+  items: any; // JSONB
+  customer_name?: string; // Sometimes joined or available in payload
+}
+
+export interface SupabaseProduct {
+  id: string;
+  store_id: string;
+  name: string;
+  price: number;
+  sku: string | null;
+  category: string | null;
+  image_url: string | null;
+  image: string | null;
+  stock: number;
+  available: boolean;
+  variants: any[];
+  addons: any[];
+}
+
+export type OrderStatus = 'draft' | 'pending' | 'paid' | 'preparing' | 'ready' | 'served' | 'cancelled' | 'refunded';
 
 export interface OrderItem {
   id: string;
@@ -449,56 +421,25 @@ export interface OrderItem {
 }
 
 export interface OrderActivity {
-  id: string;
-  type: string;
-  user: string;
+  status: OrderStatus;
   timestamp: string;
-  detail: string;
+  staff?: string;
 }
 
-export type TableStatus = 'Libre' | 'Ocupada' | 'Lista para cerrar';
+export type ItemType = 'single_product' | 'composite_product';
+export type UnitType = 'u' | 'kg' | 'g' | 'L' | 'ml';
+export type MovementType = 'entry' | 'exit' | 'adjustment' | 'sale' | 'waste';
 
-export interface Table {
-  id: string;
+export interface Staff {
+  id: number;
   name: string;
-  zone: string;
-  status: TableStatus;
-  type: 'table' | 'area';
-  active: boolean;
-  lastScan: string;
-  qrCodeUrl: string;
-}
-
-export interface StoreTable {
-  id: string;
-  store_id: string;
-  label: string;
-  qr_code_url: string | null;
-  is_active: boolean;
-  created_at?: string;
-}
-
-export interface Reward {
-  id: string;
-  name: string;
-  points: number;
-  image: string;
-  is_active: boolean;
-}
-
-export interface Client {
-  id: string;
-  name: string;
+  role: 'Admin' | 'Manager' | 'Staff';
+  status: 'Activo' | 'Inactivo';
   email: string;
-  join_date: string;
-  last_visit: string;
-  total_spent: number;
-  orders_count: number;
-  points_balance: number;
-  wallet_balance: number; // NUEVO: saldo de wallet
-  status: 'active' | 'blocked';
+  lastActive: string;
+  avatar: string;
   is_vip: boolean;
-  notes: any[];
+  notes: Record<string, any>[];
 }
 
 export interface CashRegisterSession {
@@ -516,6 +457,14 @@ export interface CafeNode {
   name: string;
   location: string;
   status: 'online' | 'offline';
+}
+
+export interface DispatchStation {
+  id: string;
+  store_id: string;
+  name: string;
+  is_visible: boolean;
+  sort_order: number;
 }
 
 export interface CustomRole {
@@ -665,4 +614,4 @@ export interface InvoiceAnalysis {
   invoiceNumber: string;
   date: string;
   items: ExtractedInvoiceItem[];
-}
+}  

@@ -46,80 +46,51 @@ const QRResolver: React.FC = () => {
         try {
             setState('loading');
 
-            // 1. Query qr_codes by hash (NEW TABLE)
-            const { data: qrCode, error: qrError } = await supabase
-                .from('qr_codes' as any)
-                .select('id, store_id, qr_type, table_id, bar_id, location_id, label, is_active')
-                .eq('code_hash', qrHash)
-                .maybeSingle();
+            // 1. Call the SECURE SQL RPC we just created (uses Upstash Redis via SQL)
+            const { data, error } = await (supabase.rpc as any)('secure_log_qr_scan', {
+                p_qr_hash: qrHash,
+                p_client_ip: 'anonymous_client',
+                p_user_agent: navigator.userAgent
+            });
 
-            if (qrError) {
-                console.error('QR fetch error:', qrError);
+            if (error) {
+                console.error('QR RPC error:', error);
                 setErrorMessage('Error al verificar el código QR');
                 setState('error');
                 return;
             }
 
-            if (!qrCode) {
-                // Fallback: try legacy qr_links table
-                const { data: legacyQr } = await supabase
-                    .from('qr_links' as any)
-                    .select('id, store_id, target_node_id, code_hash, target_type, is_active')
-                    .eq('code_hash', qrHash)
-                    .maybeSingle();
-
-                if (!legacyQr) {
+            if (!data.success) {
+                if (data.error === 'TOO_MANY_REQUESTS') {
+                    setErrorMessage('Demasiados intentos. Por favor, aguarda un minuto antes de reintentar.');
+                    setState('error');
+                } else if (data.error === 'NOT_FOUND') {
                     setState('not_found');
-                    return;
+                } else {
+                    setErrorMessage('Código QR no válido o desactivado');
+                    setState('error');
                 }
-
-                // Handle legacy QR (without session system)
-                console.warn('[QRResolver] Using legacy qr_links - no session created');
-                await handleLegacyQR(legacyQr as any, qrHash);
                 return;
             }
 
-            const qr = qrCode as any;
+            const qr = data.qr;
+            const session = data.session;
+            const sessionId = session?.session_id || null;
 
-            // 2. Check if QR is active
-            if (!qr.is_active) {
-                setState('inactive');
-                return;
-            }
-
-            // 3. Get store data (slug needed for redirect)
-            const { data: store, error: storeError } = await supabase
+            // 2. Get store data for redirect
+            const { data: store } = await supabase
                 .from('stores')
                 .select('id, slug, name')
                 .eq('id', qr.store_id)
                 .single();
 
-            if (storeError || !store) {
-                console.error('Store fetch error:', storeError);
+            if (!store) {
                 setErrorMessage('Tienda no encontrada');
                 setState('error');
                 return;
             }
 
-            const storeData = store as StoreData;
-
-            // 4. Call log_qr_scan RPC (creates session + audit log)
-            const { data: scanResult, error: scanError } = await (supabase.rpc as any)('log_qr_scan', {
-                p_qr_id: qr.id,
-                p_source: 'camera',
-                p_user_agent: navigator.userAgent,
-                p_create_session: true
-            });
-
-            if (scanError) {
-                console.error('Scan log error:', scanError);
-                // Continue anyway - session creation is not blocking
-            }
-
-            const sessionId = scanResult?.session_id || null;
-            const context = scanResult?.context || {};
-
-            // 5. Determine channel based on qr_type
+            // 3. Determine channel based on qr_type
             let channel: QRContext['channel'] = 'qr';
             let nodeType: QRContext['node_type'] = null;
 
@@ -134,10 +105,10 @@ const QRResolver: React.FC = () => {
                 nodeType = 'pickup_zone';
             }
 
-            // 6. Save context to localStorage (includes session_id)
-            const savedContext = setQRContext({
-                store_id: storeData.id,
-                store_slug: storeData.slug,
+            // 4. Save context to localStorage
+            setQRContext({
+                store_id: store.id,
+                store_slug: store.slug,
                 qr_hash: qrHash,
                 qr_id: qr.id,
                 node_id: qr.table_id || qr.bar_id || null,
@@ -146,15 +117,13 @@ const QRResolver: React.FC = () => {
                 channel: channel,
             });
 
-            // Also save session_id separately for order creation
             if (sessionId) {
                 localStorage.setItem('client_session_id', sessionId);
                 console.log('[QRResolver] Session created:', sessionId);
             }
 
-            // 7. Redirect to menu
             setState('success');
-            navigate(`/m/${storeData.slug}`, { replace: true });
+            navigate(`/m/${store.slug}`, { replace: true });
 
         } catch (e) {
             console.error('QR resolve error:', e);

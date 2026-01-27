@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { dbOps, DBOrder, SyncEvent } from '../lib/db';
-import { Order, OrderStatus, Product } from '../types';
+import { Order, OrderStatus, Product, SupabaseOrder, SupabaseProduct } from '../types';
 import { useToast } from '../components/ToastSystem';
 import { MOCK_ORDERS, MOCK_PRODUCTS } from '../constants';
 import { supabase } from '../lib/supabase';
@@ -97,8 +97,8 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 product:inventory_items(name)
               )
             `)
-            .is('archived_at', null) // Sincroniza SOLO pedidos activos (no archivados)
-            .order('created_at', { ascending: false });
+            .is('archived_at', null)
+            .order('created_at', { ascending: false }) as any;
           // Eliminado .range(0, 49) para asegurar que NINGÚN pedido activo quede fuera de vista
 
 
@@ -106,17 +106,17 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
           if (!error && remoteOrders) {
             // Merge strategy: Server is truth for 'synced' orders. Keep local 'pending' sync orders.
-            const mappedRemote: DBOrder[] = remoteOrders.map((ro: any) => ({
+            const mappedRemote: DBOrder[] = (remoteOrders as any as SupabaseOrder[]).map((ro) => ({
               id: ro.id,
               store_id: ro.store_id, // CRITICAL: Persist store_id
-              customer: ro.client?.name || 'Cliente',
-              client_email: ro.client?.email,
+              customer: (ro as any).client?.name || ro.customer_name || 'Cliente',
+              client_email: (ro as any).client?.email,
               table: ro.table_number,
-              status: ro.status ? mapStatusFromSupabase(ro.status) : 'Pendiente',
+              status: ro.status ? mapStatusFromSupabase(ro.status as any) : 'pending',
               type: ro.table_number ? 'dine-in' : 'takeaway',
               paid: ro.is_paid || ro.payment_status === 'approved' || ro.payment_status === 'paid',
-              items: (ro.order_items && ro.order_items.length > 0)
-                ? ro.order_items.map((i: any) => ({
+              items: ((ro as any).order_items && (ro as any).order_items.length > 0)
+                ? ((ro as any).order_items as any[]).map((i) => ({
                   id: i.id || 'unknown',
                   name: i.product?.name || 'Ítem',
                   quantity: i.quantity,
@@ -124,24 +124,24 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                   productId: i.product_id,
                   inventory_items_to_deduct: []
                 }))
-                : (Array.isArray(ro.items) ? ro.items.map((i: any) => ({
+                : (Array.isArray(ro.items) ? (ro.items as any[]).map((i) => ({
                   id: i.id || 'unknown',
                   name: i.name || 'Ítem',
                   quantity: i.quantity,
                   price_unit: i.price_unit || i.price || 0,
-                  productId: i.id,
+                  productId: i.productId || i.id,
                   inventory_items_to_deduct: []
                 })) : []),
               amount: ro.total_amount || 0,
               time: new Date(ro.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              paymentMethod: ro.payment_method,
-              payment_provider: ro.payment_provider,
-              payment_status: ro.payment_status,
+              paymentMethod: ro.payment_method || undefined,
+              payment_provider: ro.payment_provider || undefined,
+              payment_status: ro.payment_status || undefined,
               is_paid: ro.is_paid,
               order_number: ro.order_number,
-              table_number: ro.table_number,
-              archived_at: ro.archived_at,
-              dispatch_station: ro.dispatch_station,
+              table_number: ro.table_number || undefined,
+              archived_at: ro.archived_at || undefined,
+              dispatch_station: ro.dispatch_station || undefined,
               created_at: ro.created_at,
               syncStatus: 'synced',
               lastModified: new Date(ro.created_at).getTime()
@@ -187,7 +187,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
           if (!error && remoteProducts && remoteProducts.length > 0) {
             // Map Supabase 'products' rows back to 'Product' type
-            const mapped: Product[] = remoteProducts.map((rp: any) => ({
+            const mapped: Product[] = (remoteProducts as any as SupabaseProduct[]).map((rp) => ({
               id: rp.id,
               name: rp.name,
               price: rp.price,
@@ -241,18 +241,18 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
             if (payload.eventType === 'INSERT') {
               // New order arrived - show immediately with available data as optimistic update
-              const newOrder = payload.new as any;
+              const newOrder = payload.new as any as SupabaseOrder;
 
               // Create immediate partial order to show right away
               const immediateOrder: DBOrder = {
                 id: newOrder.id,
                 store_id: newOrder.store_id,
-                customer: newOrder.customer_name || 'Nuevo Pedido...',
-                table: newOrder.table_number,
-                status: newOrder.status ? mapStatusFromSupabase(newOrder.status) : 'Pendiente',
+                customer: (newOrder as any).customer_name || 'Nuevo Pedido...',
+                table: newOrder.table_number || undefined,
+                status: newOrder.status ? mapStatusFromSupabase(newOrder.status as any) : 'pending',
                 type: (newOrder.table_number || newOrder.node_id) ? 'dine-in' : 'takeaway',
-                paid: newOrder.is_paid || newOrder.payment_status === 'approved' || newOrder.payment_status === 'paid',
-                items: Array.isArray(newOrder.items) ? newOrder.items.map((i: any) => ({
+                paid: newOrder.is_paid || (newOrder as any).payment_status === 'approved' || (newOrder as any).payment_status === 'paid',
+                items: Array.isArray(newOrder.items) ? (newOrder.items as any[]).map((i) => ({
                   id: i.id || i.product_id || 'unknown',
                   name: i.name || 'Ítem',
                   quantity: i.quantity || 1,
@@ -262,13 +262,13 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 })) : [],
                 amount: newOrder.total_amount || 0,
                 time: new Date(newOrder.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                paymentMethod: newOrder.payment_method,
-                payment_provider: newOrder.payment_provider,
-                payment_status: newOrder.payment_status,
+                paymentMethod: (newOrder as any).payment_method || undefined,
+                payment_provider: newOrder.payment_provider || undefined,
+                payment_status: newOrder.payment_status || undefined,
                 is_paid: newOrder.is_paid,
                 order_number: newOrder.order_number,
-                table_number: newOrder.table_number,
-                dispatch_station: newOrder.dispatch_station,
+                table_number: newOrder.table_number || undefined,
+                dispatch_station: newOrder.dispatch_station || undefined,
                 created_at: newOrder.created_at,
                 syncStatus: 'synced',
                 lastModified: new Date(newOrder.created_at).getTime()
@@ -318,7 +318,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                   customer: orderData.client?.name || 'Cliente',
                   client_email: orderData.client?.email,
                   table: orderData.table_number,
-                  status: orderData.status ? mapStatusFromSupabase(orderData.status) : 'Pendiente',
+                  status: orderData.status ? mapStatusFromSupabase(orderData.status) : 'pending',
                   type: orderData.table_number ? 'dine-in' : 'takeaway',
                   paid: orderData.is_paid || orderData.payment_status === 'approved' || orderData.payment_status === 'paid',
                   items: (orderData.order_items && orderData.order_items.length > 0)
@@ -398,7 +398,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                     customer: orderData.client?.name || 'Cliente',
                     client_email: orderData.client?.email,
                     table: orderData.table_number,
-                    status: orderData.status ? mapStatusFromSupabase(orderData.status) : 'Pendiente',
+                    status: orderData.status ? mapStatusFromSupabase(orderData.status) : 'pending',
                     type: orderData.table_number ? 'dine-in' : 'takeaway',
                     paid: true,
                     items: (orderData.order_items && orderData.order_items.length > 0)
@@ -680,7 +680,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (isOnline) {
       try {
         const { error } = await supabase.from('orders')
-          .update({ status: mapStatusToSupabase(status) })
+          .update({ status: mapStatusToSupabase(status) as any })
           .eq('id', orderId);
 
         if (error) throw error;
@@ -721,7 +721,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Optimistic Update
     const updatedOrder: DBOrder = {
       ...order,
-      status: 'Entregado',
+      status: 'served',
       syncStatus: 'pending',
       lastModified: Date.now()
     };
@@ -835,7 +835,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         } else if (event.type === 'UPDATE_STATUS') {
           const { orderId, status } = event.payload;
           const { error } = await supabase.from('orders')
-            .update({ status: mapStatusToSupabase(status) })
+            .update({ status: mapStatusToSupabase(status) as any })
             .eq('id', orderId);
           if (error) throw error;
 

@@ -277,7 +277,7 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
             }
 
             // Check if already delivered
-            if (data.status === 'delivered' || data.status === 'Entregado') {
+            if (data.status === 'served') {
                 setStatus('error');
                 setErrorMessage('Esta orden YA FUE ENTREGADA.');
                 setScannedOrder(data);
@@ -288,7 +288,7 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
             // TWO-SCAN AUTOMATIC FLOW FOR STATIONS
             // ============================================
             const currentStation = activeStation && activeStation !== 'ALL' ? activeStation : null;
-            const orderStation = data.dispatch_station;
+            const orderStation = (data as any).dispatch_station;
 
             // CASE A: Station selected AND order NOT yet assigned to this station → AUTO-ASSIGN (1st scan)
             if (currentStation && (!orderStation || orderStation !== currentStation)) {
@@ -309,7 +309,7 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
                 } else {
                     console.log("✅ Order auto-assigned to station:", currentStation);
                     // Show the order details in 'assigned' state instead of 'success'
-                    data.dispatch_station = currentStation; // Update local data
+                    (data as any).dispatch_station = currentStation; // Update local data
                     setScannedOrder(data);
                     setStatus('assigned');
                     toast.success(`📍 #${data.order_number || '---'} → ${currentStation}`, {

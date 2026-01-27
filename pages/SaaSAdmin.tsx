@@ -10,7 +10,7 @@ import payperLogo from '../src/assets/payper-logo.png';
 
 type SaasTab = 'dashboard' | 'tenants' | 'users' | 'plans' | 'audit' | 'metrics';
 
-export interface ExtendedStore extends Store {
+export interface ExtendedStore extends Omit<Store, 'is_active'> {
    is_active?: boolean;
 }
 
@@ -52,9 +52,9 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
       setIsLoading(true);
       try {
          // Fetch only active stores
-         const { data: dbStores, error } = await (supabase
+         const { data: dbStores, error } = await supabase
             .from('stores')
-            .select('*') as any)
+            .select('*')
             .eq('is_active', true)
             .order('created_at', { ascending: false });
 
@@ -66,19 +66,19 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
          }
 
          // Fetch metrics
-         const { count: storeCount } = await (supabase
+         const { count: storeCount } = await supabase
             .from('stores')
-            .select('*', { count: 'exact', head: true }) as any)
+            .select('*', { count: 'exact', head: true })
             .eq('is_active', true);
 
-         const { count: userCount } = await (supabase
+         const { count: userCount } = await supabase
             .from('profiles')
-            .select('*', { count: 'exact', head: true }) as any);
+            .select('*', { count: 'exact', head: true });
 
          // Calculate MRR (PRO = $50/month, FREE = $0)
-         const { data: proStores } = await (supabase
+         const { data: proStores } = await supabase
             .from('stores')
-            .select('id') as any)
+            .select('id')
             .eq('is_active', true)
             .eq('plan', 'PRO');
 
@@ -98,12 +98,12 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
 
          if (!profilesError && allProfiles) {
             // Get all stores to map store names
-            const storeMap = new Map((dbStores || []).map((s: any) => [s.id, s]));
+            const storeMap = new Map((dbStores || []).map((s) => [s.id, s]));
 
-            const usersWithStores = allProfiles.map((p: any) => ({
+            const usersWithStores = allProfiles.map((p) => ({
                ...p,
-               store_name: (storeMap.get(p.store_id) as any)?.name || null,
-               store_slug: (storeMap.get(p.store_id) as any)?.slug || null
+               store_name: storeMap.get(p.store_id || '')?.name || null,
+               store_slug: storeMap.get(p.store_id || '')?.slug || null
             }));
             setGlobalUsers(usersWithStores);
          }
@@ -154,7 +154,7 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
       }
       setIsSaving(true);
       try {
-         const { error } = await supabase.from('stores').update(updates).eq('id', storeId);
+         const { error } = await supabase.from('stores').update(updates as any).eq('id', storeId);
          if (error) throw error;
          setStores(prev => prev.map(s => s.id === storeId ? { ...s, ...updates } : s));
          addToast('Éxito', 'success', 'Sincronizado con la red');
@@ -176,7 +176,7 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
 
       setIsSaving(true);
       try {
-         const { error } = await supabase.from('stores').update({ is_active: false } as any).eq('id', storeId);
+         const { error } = await supabase.from('stores').update({ is_active: false }).eq('id', storeId);
          if (error) throw error;
          setStores(prev => prev.filter(s => s.id !== storeId));
          addToast('Nodo Desactivado', 'success', 'El local ha sido ocultado de la red');
@@ -214,7 +214,7 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
             .ilike('slug', `${baseSlug}%`);
 
          if (existingStores && existingStores.length > 0) {
-            const existingSlugs = new Set(existingStores.map((s: any) => s.slug));
+            const existingSlugs = new Set(existingStores.map((s) => s.slug));
             if (existingSlugs.has(baseSlug)) {
                // Find next available number
                let counter = 2;
@@ -289,7 +289,7 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
       if (!planModalStore) return;
       setIsSaving(true);
       try {
-         const { error } = await supabase.from('stores').update({ plan } as any).eq('id', planModalStore.id);
+         const { error } = await supabase.from('stores').update({ plan }).eq('id', planModalStore.id);
          if (error) throw error;
          setStores(prev => prev.map(s => s.id === planModalStore.id ? { ...s, plan } : s));
          setShowPlanModal(false);

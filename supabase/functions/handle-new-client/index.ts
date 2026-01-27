@@ -1,5 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { generateWelcomeClientHtml, getWelcomeClientSubject } from "../_shared/email-templates.ts";
+import { initMonitoring, captureException } from "../_shared/monitoring.ts";
+
+const FUNCTION_NAME = 'handle-new-client';
+initMonitoring(FUNCTION_NAME);
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -72,6 +76,7 @@ serve(async (req) => {
         });
 
     } catch (error) {
+        await captureException(error, req, FUNCTION_NAME);
         return new Response(JSON.stringify({ error: error.message }), {
             headers: { 'Content-Type': 'application/json' },
             status: 400,

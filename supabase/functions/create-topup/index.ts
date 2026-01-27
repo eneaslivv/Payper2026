@@ -1,5 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { initMonitoring, captureException } from "../_shared/monitoring.ts";
+
+const FUNCTION_NAME = 'create-topup';
+initMonitoring(FUNCTION_NAME);
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -143,6 +147,7 @@ serve(async (req) => {
 
     } catch (error: any) {
         console.error("Create Topup Error:", error);
+        await captureException(error, req, FUNCTION_NAME);
         return new Response(
             JSON.stringify({ error: error.message }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
