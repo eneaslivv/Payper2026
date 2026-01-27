@@ -11,7 +11,8 @@ const MenuPage: React.FC = () => {
   const {
     store, products, user, hasActiveOrder, setIsHubOpen, cart,
     getMenuRule, isOrderingAllowed, serviceMode, tableLabel,
-    showSessionSelector, setShowSessionSelector, onSessionCreated
+    showSessionSelector, setShowSessionSelector, onSessionCreated,
+    disconnectTable
   } = useClient();
 
   const [selectedCategory, setSelectedCategory] = useState('Todos');
@@ -148,10 +149,35 @@ const MenuPage: React.FC = () => {
         userBalance={user?.balance}
       />
 
+      {/* CONTEXT BANNER (Always visible to clarify state) */}
+      <div className="fixed top-0 left-0 right-0 z-[60] flex justify-center pointer-events-none">
+        <div className={`mt-[calc(env(safe-area-inset-top)+1rem)] pointer-events-auto backdrop-blur-md border rounded-full py-2 px-4 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 ${tableLabel ? 'bg-[#1a1c1a]/90 border-white/10' : 'bg-black/80 border-white/5'}`}>
+          <div className="flex flex-col items-center leading-none">
+            <span className="text-[8px] uppercase tracking-widest text-white/50 font-bold mb-0.5">Ubicación</span>
+            <span className={`text-sm font-black tracking-wide ${tableLabel ? 'text-neon shadow-neon-soft' : 'text-white/80'}`}>
+              {tableLabel || 'QR LIBRE'}
+            </span>
+          </div>
+
+          {/* Only show disconnect X if actually connected to a table */}
+          {tableLabel && (
+            <>
+              <div className="h-6 w-px bg-white/10 mx-1"></div>
+              <button
+                onClick={disconnectTable}
+                className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
       {/* USER HUB BUTTON (Floating Overlay) */}
       <div className="fixed top-[calc(1.2rem+env(safe-area-inset-top))] right-6 z-[60]">
         <div className="flex items-center gap-3">
-          {user ? (
+          {user && (hasActiveOrder || tableLabel) ? (
             <button
               onClick={() => setIsHubOpen(true)}
               className={`relative flex items-center justify-center h-14 w-14 ${radiusClass} border active:scale-90 transition-all group shadow-2xl backdrop-blur-xl`}

@@ -116,7 +116,7 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
                         className={`absolute inset-0 p-6 flex flex-col justify-end ${theme.headerAlignment === 'center' ? 'items-center text-center' : 'items-start text-left'}`}
                     >
                         {(logoUrl || theme.logoUrl) && (
-                            <img src={logoUrl || theme.logoUrl} className="w-16 h-16 rounded-full object-cover border-2 border-white/10 mb-4 shadow-xl" />
+                            <img src={logoUrl || theme.logoUrl} className="w-16 h-16 rounded-xl object-contain bg-black/20 border-2 border-white/10 mb-4 shadow-xl" />
                         )}
                         <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter leading-none mb-1 shadow-black drop-shadow-lg">
                             {(serviceMode === 'table' && tableLabel) ? (
@@ -140,7 +140,7 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
                             animate={{ scale: 1, opacity: 1 }}
                             transition={{ type: "spring", stiffness: 200, damping: 20 }}
                             src={logoUrl || theme.logoUrl}
-                            className="w-16 h-16 rounded-full object-cover border-2 border-white/10 mb-4 shadow-xl"
+                            className="w-16 h-16 rounded-xl object-contain bg-black/20 border-2 border-white/10 mb-4 shadow-xl"
                         />
                     )}
                     <h1 className="text-4xl font-black uppercase tracking-tighter leading-none mb-2" style={{ color: theme.textColor }}>

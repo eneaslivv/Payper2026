@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Order, OrderStatus } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '../components/ToastSystem';
@@ -13,9 +14,7 @@ const OrderBoard: React.FC = () => {
   const { profile, user } = useAuth();
   const [now, setNow] = useState(new Date());
 
-  // Safe navigation fallback
-  const navigate = (window as any).useNavigate ? (window as any).useNavigate() : (path: string) => window.location.href = path;
-  // NOTE: If using strict react-router-dom, import { useNavigate } from 'react-router-dom';
+  const navigate = useNavigate();
 
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [searchTerm, setSearchTerm] = useState('');
@@ -539,7 +538,7 @@ const OrderBoard: React.FC = () => {
                     <tr key={o.id} onClick={() => setSelectedOrder(o)} className="hover:bg-white/[0.01] transition-colors cursor-pointer">
                       <td className="px-6 py-4 text-xs font-black text-white italic tracking-tighter">#{getDisplayId(o)}</td>
                       <td className="px-6 py-4 text-[10px] font-bold text-white uppercase">{o.customer}</td>
-                      <td className="px-6 py-4 text-[9px] font-bold text-neon/60 uppercase">{o.table ? `Mesa ${o.table}` : 'Takeaway'}</td>
+                      <td className="px-6 py-4 text-[9px] font-bold text-neon/60 uppercase">{o.table ? `Mesa ${o.table}` : 'QR LIBRE'}</td>
                       <td className="px-6 py-4">
                         <span className={`text-[7px] font-black uppercase px-2 py-0.5 rounded border ${getStatusStyles(o.status)}`}>{o.status}</span>
                       </td>
@@ -585,7 +584,7 @@ const OrderBoard: React.FC = () => {
                     <p className="text-[10px] font-bold text-white/50 lowercase tracking-wider mb-1">{selectedOrder.client_email}</p>
                   )}
                 </div>
-                <p className="text-[10px] text-neon font-bold uppercase tracking-widest">{selectedOrder.table ? `UBICACIÓN: MESA ${selectedOrder.table}` : 'MODALIDAD: PARA LLEVAR'}</p>
+                <p className="text-[10px] text-neon font-bold uppercase tracking-widest">{selectedOrder.table ? `UBICACIÓN: MESA ${selectedOrder.table}` : 'MODALIDAD: QR LIBRE / MOSTRADOR'}</p>
               </div>
 
               <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4">
@@ -712,10 +711,10 @@ const OrderBoard: React.FC = () => {
                 <button onClick={() => setShowCloseShiftConfirm(false)} className="py-4 rounded-xl border border-white/10 text-white/60 hover:text-white hover:bg-white/5 font-bold uppercase tracking-widest text-xs transition-colors">Cancelar</button>
                 <div className="flex gap-2">
                   <button onClick={handleCloseShift} disabled={isClosingShift} className="flex-1 py-4 rounded-xl border border-orange-500/30 text-orange-500 hover:bg-orange-500/10 font-bold uppercase tracking-widest text-[10px] transition-colors">
-                    Solo Limpiar Tablero
+                    {isClosingShift ? 'Procesando...' : 'Solo Limpiar Tablero'}
                   </button>
                   <button
-                    onClick={() => window.location.href = '/finance'} // Simple nav for now, preferably useNavigate if available
+                    onClick={() => navigate('/finance')}
                     className="flex-1 py-4 rounded-xl bg-neon text-black font-black uppercase tracking-widest text-[10px] shadow-neon-soft hover:scale-105 transition-all flex items-center justify-center gap-2"
                   >
                     <span className="material-symbols-outlined text-sm">payments</span>

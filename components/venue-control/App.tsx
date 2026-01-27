@@ -140,7 +140,7 @@ const App: React.FC = () => {
             rotation,
             shape,
             totalAmount: node.current_total || 0,
-            orders: [],
+            orders: [], // Will be populated by fetchActiveOrders
             activeOrderId: node.active_order_id,
             openedAt: node.order_start_time ? new Date(node.order_start_time) : undefined,
             lastUpdate: new Date(node.updated_at || new Date())
@@ -214,11 +214,54 @@ const App: React.FC = () => {
   }, [profile?.store_id]);
 
   // Initial Load
+  const [activeOrders, setActiveOrders] = useState<any[]>([]);
+
+  const fetchActiveOrders = useCallback(async () => {
+    if (!profile?.store_id) return;
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('store_id', profile.store_id)
+        .in('status', ['pending', 'preparing', 'ready'])
+        .is('archived_at', null);
+
+      if (error) throw error;
+      setActiveOrders(data || []);
+    } catch (err) {
+      console.error('Error fetching active orders:', err);
+    }
+  }, [profile?.store_id]);
+
+  const tablesWithOrders = useMemo(() => {
+    return tables.map(table => {
+      // Logic to match orders to tables: try by ID first, then by name
+      const tableOrders = activeOrders.filter(o =>
+        (o.table_id && o.table_id === table.id) ||
+        (!o.table_id && o.table_number === table.name)
+      );
+
+      return {
+        ...table,
+        orders: tableOrders.map((o: any) => ({
+          id: o.id,
+          name: `Order #${o.order_number}`,
+          price: o.total_amount,
+          quantity: 1,
+          status: o.status as OrderStatus,
+          timestamp: new Date(o.created_at)
+        })),
+      };
+    });
+  }, [tables, activeOrders]);
+
+  // Initial Load
   useEffect(() => {
     if (profile?.store_id) {
       fetchZones();
       fetchNodes();
       fetchNotifications();
+      fetchActiveOrders();
       // Fetch store slug for QR URLs
       supabase.from('stores').select('slug').eq('id', profile.store_id).single().then(({ data }) => {
         if (data?.slug) setStoreSlug(data.slug);
@@ -232,7 +275,7 @@ const App: React.FC = () => {
 
     const channel = supabase.channel('venue_updates')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'venue_nodes', filter: `store_id=eq.${profile.store_id}` }, () => fetchNodes())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `store_id=eq.${profile.store_id}` }, () => fetchNodes())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `store_id=eq.${profile.store_id}` }, () => { fetchNodes(); fetchActiveOrders(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'venue_zones', filter: `store_id=eq.${profile.store_id}` }, () => fetchZones())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'venue_notifications', filter: `store_id=eq.${profile.store_id}` }, () => fetchNotifications())
       .subscribe();
@@ -506,7 +549,7 @@ const App: React.FC = () => {
               </div>
             ) : (
               <TableMap
-                tables={tables.filter(t => t.zoneId === activeZoneId)}
+                tables={tablesWithOrders.filter(t => t.zoneId === activeZoneId)}
                 bars={bars.filter(b => b.zoneId === activeZoneId)}
                 qrs={qrs.filter(q => q.zoneId === activeZoneId)}
                 mode={mode}

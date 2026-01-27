@@ -2011,7 +2011,7 @@ const MenuDesign: React.FC = () => {
                                         <label className="text-[9px] font-black text-[#52525B] uppercase tracking-widest mb-1.5 block">Logo del Local</label>
                                         <div className="flex items-center gap-3">
                                             <div
-                                                className="size-14 rounded-full bg-black/40 border border-white/10 overflow-hidden cursor-pointer hover:border-[#4ADE80]/50 transition-all flex items-center justify-center"
+                                                className="size-14 rounded-xl bg-black/40 border border-white/10 overflow-hidden cursor-pointer hover:border-[#4ADE80]/50 transition-all flex items-center justify-center"
                                                 onClick={() => document.getElementById('logo-input')?.click()}
                                             >
                                                 {theme.logoUrl ? (

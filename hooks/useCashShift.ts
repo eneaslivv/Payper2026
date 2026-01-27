@@ -122,9 +122,14 @@ export const useCashShift = () => {
         await refreshData();
     };
 
-    // 3. Close Session
+    // 3. Close Session (Robust)
     const closeSession = async (sessionId: string, realCash: number, expectedCash: number, notes?: string) => {
-        if (!profile?.store_id || !profile?.id) throw new Error('No user context');
+        if (!profile?.store_id || !profile?.id) throw new Error('No hay contexto de usuario para cerrar caja');
+        if (!sessionId) throw new Error('ID de sesión inválido');
+
+        // Force numeric types
+        const safeReal = Number(realCash) || 0;
+        const safeExpected = Number(expectedCash) || 0;
 
         // Transact: Update Session -> Create Closure
         const { error: sessionError } = await supabase
@@ -136,19 +141,27 @@ export const useCashShift = () => {
             })
             .eq('id', sessionId);
 
-        if (sessionError) throw sessionError;
+        if (sessionError) {
+            console.error('Error cerrando sesión:', sessionError);
+            throw sessionError;
+        }
 
         const { error: closureError } = await supabase
             .from('cash_closures')
             .insert({
                 store_id: profile.store_id,
                 session_id: sessionId,
-                expected_cash: expectedCash,
-                real_cash: realCash,
-                notes: notes
+                expected_cash: safeExpected,
+                real_cash: safeReal,
+                notes: notes || ''
             });
 
-        if (closureError) throw closureError;
+        if (closureError) {
+            console.error('Error creando registro de cierre:', closureError);
+            // Note: Session is already closed, so this is a partial failure state.
+            // Ideally we should rollback or alert admin, but for now we throw to alert UI.
+            throw closureError;
+        }
 
         await refreshData();
     };

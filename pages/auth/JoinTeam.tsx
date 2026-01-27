@@ -112,13 +112,32 @@ const JoinTeam = () => {
 
             // User created (Trigger created profile automatically)
             if (authData?.user) {
+                // FORCE PROFILE ACTIVATION
+                // The trigger might default is_active to false. We override it here since they have a valid token.
+                const { error: activateError } = await supabase
+                    .from('profiles')
+                    .update({
+                        is_active: true,
+                        role: 'staff',
+                        role_id: invitation.role,
+                        store_id: invitation.store_id
+                    })
+                    .eq('id', authData.user.id);
+
+                if (activateError) {
+                    console.error('Error activating profile:', activateError);
+                    // We don't block flow, but we warn (AuthContext auto-heal might pick it up later)
+                } else {
+                    console.log('Profile explicitly activated via JoinTeam');
+                }
+
                 // Update invitation status
                 await supabase
                     .from('team_invitations' as any)
                     .update({ status: 'accepted' })
                     .eq('token', token);
 
-                addToast('¡Cuenta creada exitosamente! Redirigiendo...', 'success');
+                addToast('¡Cuenta creada y activada! Redirigiendo...', 'success');
 
                 // Redirect
                 setTimeout(() => {

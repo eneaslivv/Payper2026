@@ -12,7 +12,7 @@ export default function OrderStatusPage() {
     const { addToast } = useToast();
     const { isLoading: authLoading } = useAuth();
     // Use Client Context for theme
-    const { store } = useClient();
+    const { store, disconnectTable, tableLabel } = useClient();
 
     const [order, setOrder] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
@@ -290,7 +290,14 @@ export default function OrderStatusPage() {
                     <div className="h-full w-1/3 animate-[loading_1s_ease-in-out_infinite]" style={{ backgroundColor: accentColor }}></div>
                 </div>
             )}
-            <OrderPickupTicket order={mappedOrder} storeSlug={slug} theme={store?.menu_theme} />
+            <OrderPickupTicket
+                order={mappedOrder}
+                storeSlug={slug}
+                theme={store?.menu_theme}
+                allowDisconnect={!!tableLabel}
+                tableLabel={tableLabel}
+                onDisconnect={disconnectTable}
+            />
 
             {/* Manual Verify Button (Only if pending for > 5s? Or always visible small?) */}
             {/* Only show if pending and not verifying */}

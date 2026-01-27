@@ -83,18 +83,22 @@ const VenueItem: React.FC<VenueItemProps> = ({
                     absolute node-element flex flex-col items-center justify-center
                     shadow-2xl transition-all group
                     ${table.shape === 'circle' ? 'rounded-full' : 'rounded-[24px]'}
-                    ${STATUS_BG_COLORS[table.status] || 'bg-[#080808] border-zinc-900'}
+                    ${/* Base Color Logic with Alert Overrides */ ''}
+                    ${isBillRequested ? '!bg-cyan-950/80 !border-cyan-400' :
+                        isCallWaiter ? '!bg-amber-950/80 !border-amber-500' :
+                            activeOrdersCount > 0 ? 'bg-emerald-950/40 border-emerald-500/50' : // Active Order Tint
+                                STATUS_BG_COLORS[table.status] || 'bg-[#080808] border-zinc-900'}
+                    
                     ${isSelected ? 'ring-4 ring-[#36e27b]/20 !border-[#36e27b]' : ''}
                     ${mode === AppMode.EDIT ? 'cursor-move hover:border-[#36e27b]/40' : 'cursor-pointer hover:scale-105 active:scale-95'}
-                    ${isBillRequested ? '!border-cyan-400 !bg-cyan-950/40' : ''}
-                    ${isCallWaiter ? '!border-amber-500 !bg-amber-950/40' : ''}
                 `}
             >
                 {/* Integrated Status Icons (Background) */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+                <div className="absolute inset-0 flex items-center justify-center opacity-30 group-hover:opacity-40 transition-opacity pointer-events-none">
                     {isBillRequested ? <Receipt size={table.size.w * 0.4} className="text-cyan-400" /> :
                         isCallWaiter ? <Hand size={table.size.w * 0.4} className="text-amber-500" /> :
-                            isReady ? <Bell size={table.size.w * 0.4} className="text-[#36e27b]" /> : null}
+                            activeOrdersCount > 0 ? <Beer size={table.size.w * 0.3} className="text-emerald-500" /> : // Active Order Icon
+                                isReady ? <Bell size={table.size.w * 0.4} className="text-[#36e27b]" /> : null}
                 </div>
 
                 {/* Notifications badge count */}

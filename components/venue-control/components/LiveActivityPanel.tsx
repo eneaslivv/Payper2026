@@ -56,6 +56,7 @@ const LiveActivityPanel: React.FC<LiveActivityPanelProps> = ({
         `)
                 .eq('store_id', storeId)
                 .in('status', ['pending', 'preparing', 'ready'])
+                .is('archived_at', null)
                 .order('created_at', { ascending: false })
                 .limit(50);
 

@@ -555,9 +555,11 @@ const FinanceCashManager: React.FC<{
         if (onUpdate) onUpdate(); // Trigger refresh
       }
       setAmount('');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Action failed:', err);
       // alert('Error al procesar la acción');
+      // Ideally useToast, but for now standard alert or rely on parent
+      window.alert(`Error: ${err.message || 'No se pudo procesar la acción'}`);
     }
   };
 

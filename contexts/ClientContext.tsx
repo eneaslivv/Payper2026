@@ -55,6 +55,7 @@ interface ClientContextType {
     onSessionCreated: (sessionId: string, sessionType: string, label: string | null) => void;
     // Dynamic Menu System
     menuId: string | null;
+    disconnectTable: () => void;
 }
 
 
@@ -765,6 +766,15 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
 
         console.log('[Session] Created:', newSessionId, sessionType, label);
+    };
+
+    // QR Context Helper
+    const disconnectTable = () => {
+        clearQRContext();
+        setQRContextState(null);
+        setTableLabel(null);
+        setOrderChannel('takeaway'); // Default fallback
+        window.location.reload(); // Hard reload to ensure clean state for all components
     };
 
     return (

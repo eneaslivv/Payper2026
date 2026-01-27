@@ -19,6 +19,10 @@ interface OrderPickupTicketProps {
         }>;
     };
     storeSlug?: string;
+    // New Props for Disconnection
+    allowDisconnect?: boolean;
+    tableLabel?: string | null;
+    onDisconnect?: () => void;
     theme?: {
         backgroundColor?: string;
         textColor?: string;
@@ -27,7 +31,7 @@ interface OrderPickupTicketProps {
     };
 }
 
-export const OrderPickupTicket = ({ order, storeSlug, theme }: OrderPickupTicketProps) => {
+export const OrderPickupTicket = ({ order, storeSlug, theme, allowDisconnect, tableLabel, onDisconnect }: OrderPickupTicketProps) => {
     const isDelivered = order.delivery_status === 'delivered';
     const isCancelled = order.delivery_status === 'burned';
 
@@ -187,6 +191,20 @@ export const OrderPickupTicket = ({ order, storeSlug, theme }: OrderPickupTicket
                         <span className="relative text-xs font-black uppercase tracking-[0.15em] italic" style={{ color: '#000' }}>Pedir algo más</span>
                         <span className="material-symbols-outlined relative text-xl font-black group-hover:translate-x-1 transition-transform" style={{ color: '#000' }}>arrow_forward</span>
                     </button>
+
+                    {/* DISCONNECT TABLE BUTTON */}
+                    {allowDisconnect && onDisconnect && tableLabel && (
+                        <button
+                            onClick={onDisconnect}
+                            className="mt-4 w-full py-3 rounded-[1.5rem] border border-white/10 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group/disc"
+                            style={{ backgroundColor: `${textColor}0A` }}
+                        >
+                            <span className="material-symbols-outlined text-sm transition-colors group-hover/disc:text-red-400" style={{ color: `${textColor}66` }}>logout</span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] transition-colors group-hover/disc:text-red-400" style={{ color: `${textColor}80` }}>
+                                Dejar {tableLabel}
+                            </span>
+                        </button>
+                    )}
 
                     <button
                         onClick={() => window.location.reload()}
