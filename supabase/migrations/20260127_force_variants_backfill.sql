@@ -1,7 +1,8 @@
 BEGIN;
 
 -- 1. Limpiar tabla por si acaso (Idempotencia)
-TRUNCATE TABLE product_variants;
+-- Usamos DELETE en lugar de TRUNCATE para evitar error por FK de order_items
+DELETE FROM product_variants;
 
 -- 2. Insertar DIRECTAMENTE desde el JSON (Bypassing trigger logic, reproducing the logic)
 INSERT INTO product_variants (id, product_id, tenant_id, name, price_delta, recipe_overrides)
@@ -18,6 +19,7 @@ SELECT
 FROM inventory_items ii,
      jsonb_array_elements(ii.variants) v
 WHERE ii.variants IS NOT NULL 
-  AND jsonb_array_length(ii.variants) > 0;
+  AND jsonb_array_length(ii.variants) > 0
+  AND EXISTS (SELECT 1 FROM products p WHERE p.id = ii.id); -- Safety Check: Only insert if product exists
 
 COMMIT;

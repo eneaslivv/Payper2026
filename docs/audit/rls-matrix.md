@@ -171,7 +171,7 @@ USING (client_id = auth.uid())
 | `order_items` | Via order join | Via order join | Via order join | Via order join | - |
 | **Clients** |||||
 | `clients` | Store-isolated | Store-isolated | Store-isolated | Store-isolated | Super Admin bypass |
-| `wallet_transactions` | Store-isolated | Store-isolated | - | - | Clients see own |
+| `wallet_transactions` | Store-isolated + client own + super admin | Service role | Service role | Service role | Clients see own |
 | `loyalty_transactions` | Clients see own + Staff see all | System only | - | - | Ledger (append-only) |
 | `loyalty_redemptions` | Clients see own + Staff see all | System only | - | - | Via transaction join |
 | `loyalty_rewards` | Store-isolated | Store-isolated | Store-isolated | Store-isolated | - |
@@ -188,7 +188,7 @@ USING (client_id = auth.uid())
 | `cash_sessions` | Store-isolated | Store-isolated | Store-isolated | - | - |
 | `cash_closures` | Store-isolated | Store-isolated | - | - | Append-only |
 | `day_closures` | Store-isolated | Store-isolated | - | - | Append-only |
-| `dispatch_sessions` | Store-isolated | Store-isolated | Store-isolated | - | - |
+| `dispatch_sessions` | Store-isolated + super admin | Store-isolated + super admin | Store-isolated + super admin | Super admin | - |
 | `zones` (cash) | Store-isolated | Store-isolated | Store-isolated | Store-isolated | - |
 | **Security** |||||
 | `cafe_roles` | Store-isolated | Store-isolated | Store-isolated | Store-isolated | - |
@@ -196,7 +196,7 @@ USING (client_id = auth.uid())
 | `audit_logs` | Staff only (store-isolated) | System only | - | - | Append-only |
 | **System** |||||
 | `email_logs` | Staff only (store-isolated) | Service role | Service role | - | System managed |
-| `payment_webhooks` | Service role | Service role | Service role | - | System only |
+| `payment_webhooks` | Store members + super admin + service role | Service role | Service role | Service role | System only |
 
 ---
 
@@ -443,6 +443,43 @@ EXISTS (
 
 ---
 
+### dispatch_sessions
+
+**Policies (4):**
+1. "Store members can view dispatch sessions" — SELECT (store_id = get_user_store_id())
+2. "Store members can insert dispatch sessions" — INSERT (store_id = get_user_store_id())
+3. "Store members can update dispatch sessions" — UPDATE (store_id = get_user_store_id())
+4. "Super admins can manage dispatch sessions" — ALL for super_admin
+
+**File:** `supabase/migrations/20260128_add_missing_rls_policies.sql`
+
+**Note:** No DELETE for store members
+
+---
+
+### wallet_transactions
+
+**Policies (4):**
+1. "Store members can view wallet transactions" — SELECT (store_id or wallet/client join)
+2. "Clients can view own wallet transactions" — SELECT (user_id or client auth_user_id)
+3. "Super admins can view wallet transactions" — SELECT for super_admin
+4. "Service role can manage wallet transactions" — ALL for service_role
+
+**File:** `supabase/migrations/20260128_add_missing_rls_policies.sql`
+
+---
+
+### payment_webhooks
+
+**Policies (3):**
+1. "Store members can view payment webhooks" — SELECT (store_id = get_user_store_id())
+2. "Super admins can view payment webhooks" — SELECT for super_admin
+3. "Service role can manage payment webhooks" — ALL for service_role
+
+**File:** `supabase/migrations/20260128_add_missing_rls_policies.sql`
+
+---
+
 ## RLS Status Summary
 
 **Tables with RLS:** ~30  
@@ -462,9 +499,6 @@ EXISTS (
 
 **❓ UNKNOWN:**
 - Whether `auth.is_super_admin()` function exists or if role check is inline
-- RLS on `payment_webhooks` table
-- RLS on `wallet_transactions` table
-- Whether `dispatch_sessions` has RLS
 - Full list of tables NOT protected by RLS (assumed: lookup tables, enums)
 
 **⚠️ NOTES:**

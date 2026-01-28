@@ -204,3 +204,15 @@
 
 **Estado:** ✅ Aplicado
 **Fecha:** 2026-01-21
+
+---
+
+## 2026-01-28 — Implementadas políticas RLS faltantes
+
+**Decisión:** Implementadas políticas RLS faltantes
+**Contexto:** Auditoría detectó gap en payment_webhooks y wallet_transactions
+**Solución:** 7 políticas granulares (store members, clients, super_admin, service_role)
+**Impacto:** Protección multi-tenant completa
+
+**Estado:** ✅ DEPLOYED
+**Fecha:** 2026-01-28
