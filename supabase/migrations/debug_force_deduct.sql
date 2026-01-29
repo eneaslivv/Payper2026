@@ -17,9 +17,10 @@ BEGIN
     WHERE store_id = v_order.store_id AND is_default = TRUE LIMIT 1;
     
     RAISE NOTICE 'Default Location Found: %', v_default_loc;
-    RAISE NOTICE 'Order Location: %', v_order.location_id;
+    RAISE NOTICE 'Default Location Found: %', v_default_loc;
+    -- RAISE NOTICE 'Order Location: %', v_order.location_id; -- Column does not exist
 
-    v_target_loc := COALESCE(v_order.location_id, v_default_loc);
+    v_target_loc := v_default_loc;
     
     IF v_target_loc IS NULL THEN
         RAISE WARNING 'CRITICAL: No Target Location resolved!';

@@ -81,15 +81,16 @@ const OrderBoard: React.FC = () => {
         oscillator.connect(gainNode);
         gainNode.connect(audioCtx.destination);
 
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(500, audioCtx.currentTime);
-        oscillator.frequency.exponentialRampToValueAtTime(1000, audioCtx.currentTime + 0.1);
+        // More bell-like sound: higher frequency + faster decay
+        oscillator.type = 'triangle';
+        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+        oscillator.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.5); // A4
 
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+        gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8);
 
         oscillator.start();
-        oscillator.stop(audioCtx.currentTime + 0.5);
+        oscillator.stop(audioCtx.currentTime + 0.8);
 
       } catch (e) {
         console.error("Audio play failed", e);
@@ -139,15 +140,30 @@ const OrderBoard: React.FC = () => {
     };
   }, [profile?.store_id]);
 
-  const stats = useMemo(() => ({
-    total: orders.filter(o => o.status !== 'served' && o.status !== 'cancelled').length,
-    pendientes: orders.filter(o => o.status === 'pending' || o.status === 'paid').length,
-    proceso: orders.filter(o => o.status === 'preparing').length,
-    listos: orders.filter(o => o.status === 'ready').length,
-    // History Stats
-    entregados: orders.filter(o => o.status === 'served').length,
-    cancelados: orders.filter(o => o.status === 'cancelled').length,
-  }), [orders]);
+  const stats = useMemo(() => {
+    // Helper to determine if an order is visible on the active board
+    const isVisibleActive = (o: Order) => {
+      const isMP = o.payment_provider === 'mercadopago' || (o as any).paymentMethod === 'mercadopago' || (o as any).payment_method === 'mercadopago';
+      const isPaid = o.is_paid === true || o.payment_status === 'approved' || o.payment_status === 'paid';
+
+      // Hide unpaid MP orders from active stats
+      if (isMP && !isPaid) return false;
+
+      return o.status !== 'served' && o.status !== 'cancelled' && !o.archived_at;
+    };
+
+    const activeOrders = orders.filter(isVisibleActive);
+
+    return {
+      total: activeOrders.length,
+      pendientes: activeOrders.filter(o => o.status === 'pending' || o.status === 'paid').length,
+      proceso: activeOrders.filter(o => o.status === 'preparing').length,
+      listos: activeOrders.filter(o => o.status === 'ready').length,
+      // History Stats (raw counts for the footer/modals)
+      entregados: orders.filter(o => o.status === 'served').length,
+      cancelados: orders.filter(o => o.status === 'cancelled').length,
+    };
+  }, [orders]);
 
   const handleOpenIncoming = (rawOrder: Order) => {
     const fullOrder = orders.find(o => o.id === rawOrder.id);
@@ -902,32 +918,40 @@ const Column: React.FC<{
                 )}
               </div>
 
-              <div className="flex justify-between items-center pt-4 border-t border-white/5">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-3 pt-4 border-t border-white/5">
+                {/* ROW 1: PRICE & ACTION */}
+                <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[14px] text-neon opacity-70">payments</span>
-                    <span className="text-[11px] font-black text-white opacity-80">${order.amount.toFixed(2)}</span>
+                    <span className="material-symbols-outlined text-[16px] text-neon opacity-70">payments</span>
+                    <span className="text-[14px] font-black text-white opacity-90">${order.amount.toFixed(2)}</span>
                   </div>
+
+                  <button
+                    onClick={(e) => onAdvance(order.id, e)}
+                    title={order.status === 'Listo' ? "Entregar Pedido" : "Avanzar Estado"}
+                    className={`group/btn flex items-center justify-center h-8 px-4 rounded-lg border transition-all shadow-neon-soft gap-2 ${order.status === 'Listo' ? 'bg-neon text-black border-neon' : 'bg-neon/10 text-neon border-neon/20 hover:bg-neon hover:text-black'
+                      }`}
+                  >
+                    <span className="text-[9px] font-black uppercase tracking-wider">
+                      {order.status === 'Listo' ? 'ENTREGAR' : 'AVANZAR'}
+                    </span>
+                    <span className="material-symbols-outlined text-sm group-hover/btn:translate-x-0.5 transition-transform">
+                      {order.status === 'Listo' ? 'check_circle' : 'arrow_forward'}
+                    </span>
+                  </button>
+                </div>
+
+                {/* ROW 2: BADGES (WRAPPABLE) */}
+                <div className="flex flex-wrap items-center gap-2">
                   <PaymentBadge order={order} />
 
                   {/* UNASSIGNED STATION BADGE */}
                   {!(order as any).dispatch_station && (
-                    <span className="text-[7px] font-black uppercase px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                    <span className="text-[7px] font-black uppercase px-2 py-1 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
                       Sin Asignar
                     </span>
                   )}
                 </div>
-
-                <button
-                  onClick={(e) => onAdvance(order.id, e)}
-                  title={order.status === 'Listo' ? "Entregar Pedido" : "Avanzar Estado"}
-                  className={`group/btn flex items-center justify-center size-9 rounded-xl border transition-all shadow-neon-soft ${order.status === 'Listo' ? 'bg-neon text-black border-neon' : 'bg-neon/10 text-neon border-neon/20 hover:bg-neon hover:text-black'
-                    }`}
-                >
-                  <span className="material-symbols-outlined text-xl group-hover/btn:translate-x-0.5 transition-transform">
-                    {order.status === 'Listo' ? 'check_circle' : 'arrow_forward'}
-                  </span>
-                </button>
               </div>
             </motion.div>
           ))}

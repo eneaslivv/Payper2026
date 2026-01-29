@@ -52,13 +52,15 @@
         v_store_id := NEW.store_id;
         v_items := NEW.items;
 
-        -- A. Determine Target Location (Priority: Order Location > Default Store Location)
+        -- A. Determine Target Location (Priority: Default Store Location)
+        -- NOTE: 'location_id' column does not exist on orders table yet. 
+        -- We default to the primary storage location for the store.
         SELECT id INTO v_default_location_id 
         FROM storage_locations 
         WHERE store_id = v_store_id AND is_default = TRUE 
         LIMIT 1;
         
-        v_target_location_id := COALESCE(NEW.location_id, v_default_location_id);
+        v_target_location_id := v_default_location_id;
 
         -- If no location found, we can still deduct from global inventory_items, but we log a warning.
         IF v_target_location_id IS NULL THEN

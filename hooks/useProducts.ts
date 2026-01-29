@@ -69,7 +69,8 @@ export function useProducts({
                         store_id
                     `)
                     .eq('store_id', storeId)
-                    .eq('is_menu_visible', true);
+                    .eq('is_menu_visible', true)
+                    .eq('is_active', true);
 
                 // 3. Fetch CATEGORIES to map IDs to Names
                 const categoriesPromise = (supabase as any)
@@ -142,6 +143,7 @@ export function useProducts({
                     `)
                     .eq('store_id', storeId)
                     .eq('is_menu_visible', true)
+                    .eq('is_active', true)
                     .order('name', { ascending: true });
 
                 if (fetchError) throw fetchError;

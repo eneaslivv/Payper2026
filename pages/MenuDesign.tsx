@@ -1052,9 +1052,25 @@ const MenuDesign: React.FC = () => {
                 }
             };
 
-            // 1. Fetch Store Details
-            console.log('[MenuDesign] Fetching store...');
-            const stores = await fetchWithTimeout(`${baseUrl}/stores?id=eq.${storeId}`);
+            // PARALLEL FETCHING OPTIMIZATION
+            // Fetch all independent data sources simultaneously to reduce load time
+            console.log('[MenuDesign] Starting parallel data fetch...');
+
+            const [stores, inventoryItems, products, categoriesData, recipesData] = await Promise.all([
+                // 1. Fetch Store Details
+                fetchWithTimeout(`${baseUrl}/stores?id=eq.${storeId}`),
+                // 2. Fetch INVENTORY items
+                fetchWithTimeout(`${baseUrl}/inventory_items?store_id=eq.${storeId}&order=name.asc`),
+                // 2b. Fetch PRODUCTS
+                fetchWithTimeout(`${baseUrl}/products?store_id=eq.${storeId}&order=name.asc`),
+                // 3. Fetch CATEGORIES
+                fetchWithTimeout(`${baseUrl}/categories?store_id=eq.${storeId}&is_active=eq.true&order=position.asc`),
+                // 4. Fetch RECIPES
+                fetchWithTimeout(`${baseUrl}/product_recipes`)
+            ]);
+
+            console.log('[MenuDesign] Parallel fetch complete.');
+
             const store = stores && stores.length > 0 ? stores[0] : null;
 
             if (store) {
@@ -1140,28 +1156,7 @@ const MenuDesign: React.FC = () => {
                 }
             }
 
-            // 2. Fetch INVENTORY items directly via REST
-            console.log('[MenuDesign] Fetching inventory items via REST...');
-            const inventoryItems = await fetchWithTimeout(
-                `${baseUrl}/inventory_items?store_id=eq.${storeId}&order=name.asc`
-            );
-
-            // 2b. Fetch PRODUCTS (Recipes/Sellables)
-            console.log('[MenuDesign] Fetching products...');
-            const products = await fetchWithTimeout(
-                `${baseUrl}/products?store_id=eq.${storeId}&order=name.asc`
-            );
-
-            // 3. Fetch CATEGORIES (New Sync)
-            console.log('[MenuDesign] Fetching categories...');
-            const categoriesData = await fetchWithTimeout(
-                `${baseUrl}/categories?store_id=eq.${storeId}&is_active=eq.true&order=position.asc`
-            );
             setCategories(categoriesData || []);
-
-            // 4. Fetch RECIPES for cost calculation
-            console.log('[MenuDesign] Fetching recipes...');
-            const recipesData = await fetchWithTimeout(`${baseUrl}/product_recipes`);
 
             // Cast raw data and Map to InventoryItem
 
@@ -1226,7 +1221,7 @@ const MenuDesign: React.FC = () => {
                     sku: 'SKU-' + (p.id || '').slice(0, 4).toUpperCase(),
                     item_type: 'sellable' as const,
                     unit_type: 'unit' as UnitType,
-                    image_url: p.image_url || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
+                    image_url: p.image || p.image_url || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
                     is_active: p.is_available,
                     is_menu_visible: p.is_visible, // Map from 'is_visible' column in products table
                     min_stock: 0,
@@ -1300,7 +1295,14 @@ const MenuDesign: React.FC = () => {
             const dbUpdates: any = {};
             if (updates.name !== undefined) dbUpdates.name = updates.name;
             if (updates.description !== undefined) dbUpdates.description = updates.description;
-            if (updates.image_url !== undefined) dbUpdates.image_url = updates.image_url;
+            if (updates.image_url !== undefined) {
+                // Fix: explicit column mapping for products table (image) vs inventory_items (image_url)
+                if (table === 'products') {
+                    dbUpdates.image = updates.image_url;
+                } else {
+                    dbUpdates.image_url = updates.image_url;
+                }
+            }
             if (updates.price !== undefined) {
                 // Fix: Verify target table to map column correctly
                 if (table === 'products') {

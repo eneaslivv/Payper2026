@@ -96,7 +96,7 @@ const OrderCreation: React.FC = () => {
       // 3. Fetch Menu Products from both products and inventory_items
       const { data: productsData } = await supabase
         .from('products')
-        .select(`id, name, base_price, image_url, description, category`)
+        .select(`id, name, base_price, image, description, category`)
         .eq('store_id', profile.store_id)
         .eq('is_visible', true)
         // .eq('active', true) // TEMPORARILY DISABLED
@@ -123,7 +123,7 @@ const OrderCreation: React.FC = () => {
             id: p.id,
             name: p.name,
             price: parseFloat(p.base_price) || 0,
-            image: p.image_url || '',
+            image: p.image || '',
             category: p.category || 'General',
             description: p.description,
             sellable_type: 'product'
@@ -321,7 +321,7 @@ const OrderCreation: React.FC = () => {
         client_email: selectedClient?.email, // Add if available
         table: tableNum,
         node_id: selectedTable?.id,
-        status: isPaidOnCreation ? 'En Preparación' : 'Pendiente', // Auto-advance if paid
+        status: isPaidOnCreation ? 'preparing' : 'pending', // Auto-advance if paid
         type: selectedTable ? 'dine-in' : 'takeaway',
         paid: isPaidOnCreation,
         items: cart.map(item => ({

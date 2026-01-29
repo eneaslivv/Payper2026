@@ -18,8 +18,8 @@ const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const { cart, isRedeemingPoints, clearCart, setHasActiveOrder, store, user, qrContext, tableLabel: qrTableLabel, orderChannel } = useClient();
-  // Use QR context if available, otherwise fallback to manual input
-  const initialTable = qrTableLabel || '05';
+  // Use QR context if available, otherwise it's generic
+  const initialTable = qrTableLabel || '';
 
   // Theme support
   const theme = store?.menu_theme || {};
@@ -36,7 +36,7 @@ const CheckoutPage: React.FC = () => {
   const { addToast } = useToast();
 
   // Gestión de ubicación dinámica
-  const [currentTable, setCurrentTable] = useState(initialTable || '05');
+  const [currentTable, setCurrentTable] = useState(initialTable);
   const [currentBar, setCurrentBar] = useState('01');
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [tempValue, setTempValue] = useState('');
@@ -318,9 +318,9 @@ const CheckoutPage: React.FC = () => {
   const saveLocation = () => {
     if (tempValue.trim()) {
       if (deliveryMode === 'local') {
-        setCurrentTable(tempValue.padStart(2, '0'));
+        setCurrentTable(tempValue.trim());
       } else {
-        setCurrentBar(tempValue.padStart(2, '0'));
+        setCurrentBar(tempValue.trim());
       }
       setIsEditingLocation(false);
     }
@@ -389,7 +389,9 @@ const CheckoutPage: React.FC = () => {
                 >
                   <span className="w-2 h-2 rounded-full animate-pulse shadow-lg" style={{ backgroundColor: accentColor, boxShadow: `0 0 8px ${accentColor}` }}></span>
                   <span className="text-[10px] font-black uppercase tracking-widest italic leading-none" style={{ color: accentColor }}>
-                    {deliveryMode === 'local' ? `MESA ${currentTable}` : `BARRA ${currentBar}`}
+                    {deliveryMode === 'local'
+                      ? (currentTable ? `MESA ${currentTable}` : 'SIN MESA')
+                      : (currentBar ? `BARRA ${currentBar}` : 'SIN BARRA')}
                   </span>
                   <span className="material-symbols-outlined text-[14px] opacity-30 group-hover/loc:opacity-100 transition-opacity" style={{ color: accentColor }}>edit</span>
                 </button>

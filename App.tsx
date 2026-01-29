@@ -853,9 +853,27 @@ const MainRouter: React.FC = () => {
   );
 };
 
-const App: React.FC = () => {
+  const App: React.FC = () => {
   // PWA & Store Logic
   useEffect(() => {
+    // 0. SAFETY: Cleanup Legacy Cache (Fix Quota Exceeded)
+    try {
+      // Remove specific large caches that cause issues
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('inventory_cache_v5_')) {
+          keysToRemove.push(key);
+        }
+      }
+      if (keysToRemove.length > 0) {
+        console.log('[CACHE] Cleaning up legacy inventory cache:', keysToRemove.length);
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+      }
+    } catch (e) {
+      console.warn('Cache cleanup failed:', e);
+    }
+
     // 1. Save last visited store logic
     const hash = window.location.hash;
     if (hash.includes('/m/')) {

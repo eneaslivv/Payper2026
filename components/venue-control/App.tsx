@@ -68,7 +68,7 @@ const App: React.FC = () => {
         setZones(data as unknown as Zone[]);
         // Set active zone if not set or invalid
         if (!activeZoneId || !(data as any[]).find(z => z.id === activeZoneId)) {
-          if (data.length > 0) setActiveZoneId(data[0].id);
+          if (data && (data as any[]).length > 0) setActiveZoneId((data as any[])[0].id);
         }
       }
     } catch (err) {
@@ -562,6 +562,7 @@ const App: React.FC = () => {
                 onSelectQr={handleSelectQr}
                 onUpdatePosition={updatePosition}
                 onUpdateProperty={updateNodeProperty}
+                onTableAction={handleUpdateTableStatus}
                 onDeleteNode={deleteNode}
                 zoom={zoom}
                 setZoom={setZoom}

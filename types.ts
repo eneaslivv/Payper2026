@@ -406,6 +406,24 @@ export interface SupabaseProduct {
 
 export type OrderStatus = 'draft' | 'pending' | 'paid' | 'preparing' | 'ready' | 'served' | 'cancelled' | 'refunded';
 
+export interface Client {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  wallet_balance?: number;
+}
+
+export interface Table {
+  id: string;
+  name: string;
+  label?: string;
+  status: string;
+  type: string;
+  store_id?: string;
+}
+
+
 export interface OrderItem {
   id: string;
   productId?: string;

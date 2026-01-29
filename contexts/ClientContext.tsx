@@ -483,7 +483,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                                 name: item.name,
                                 description: item.description || '',
                                 price: item.price || 0,
-                                image: item.image_url || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
+                                image: item.image || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
                                 category: catName,
                                 isPopular: false,
                                 isOutOfStock: !item.is_available,  // ✅ Calculado en tiempo real por RPC
@@ -581,7 +581,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                             name: item.name,
                             description: item.description || '',
                             price: item.price || item.base_price || 0,
-                            image: item.image_url || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
+                            image: item.image || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
                             category: catName,
                             isPopular: item.is_popular || false,
                             isOutOfStock: !item.is_available,  // ✅ Ahora is_available viene calculado por trigger
@@ -642,6 +642,57 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             supabase.removeChannel(productsChannel);
         };
     }, [store?.id]);
+
+    // REAL-TIME: Listen for Order updates for the active user
+    useEffect(() => {
+        if (!store?.id || !user?.id) return;
+
+        console.log('[ClientContext] Subscribing to orders for client:', user.id);
+        const ordersChannel = supabase
+            .channel(`client-orders-${user.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'orders',
+                    filter: `store_id=eq.${store.id}`
+                },
+                (payload) => {
+                    // We check if the order belongs to our client (filter doesn't support JSONB or complex checks easily, so we check locally)
+                    const orderData = payload.new as any;
+                    if (orderData.client_id !== user.id) return;
+
+                    console.log('[ClientContext] Order update received:', payload.event, orderData.id, orderData.status);
+
+                    if (payload.event === 'INSERT') {
+                        setActiveOrders(prev => [orderData, ...prev]);
+                        setHasActiveOrder(true);
+                        setActiveOrderId(orderData.id);
+                        setOrderStatus(orderData.status as OrderStatus);
+                    } else if (payload.event === 'UPDATE') {
+                        setActiveOrders(prev => prev.map(o => o.id === orderData.id ? { ...o, ...orderData } : o));
+
+                        // If it's the current order, update main status
+                        if (orderData.id === activeOrderId) {
+                            setOrderStatus(orderData.status as OrderStatus);
+                        }
+
+                        // Check if we should clear active orders (if all finalized/cancelled)
+                        const activeFinal = ['delivered', 'cancelled', 'served'].includes(orderData.status);
+                        if (activeFinal) {
+                            // Fetch fresh list to be safe instead of just filtering local state
+                            fetchUserProfile(user.id);
+                        }
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(ordersChannel);
+        };
+    }, [store?.id, user?.id, activeOrderId]);
 
     const addToCart = (item: MenuItem, quantity: number, customs: string[], size: string, notes: string) => {
         setCart(prev => [...prev, { ...item, quantity, customizations: customs, size, notes }]);

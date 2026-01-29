@@ -1,0 +1,6 @@
+--- ORDERS ---
+column orders.no_col does not exist
+
+--- ORDER_ITEMS ---
+column order_items.no_col does not exist
+

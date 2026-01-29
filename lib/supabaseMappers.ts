@@ -66,6 +66,8 @@ export const mapOrderToSupabase = (order: Order, storeId: string): SupabaseOrder
         payment_method: order.paymentMethod || null,
         payment_provider: order.payment_provider || null,
         is_paid: order.is_paid || false,
+        order_number: null, // Let DB trigger handle the serial sequence
+        table_number: order.table || null,
         // CRITICAL FIX: Stop writing to legacy JSONB items column
         items: []
     } as SupabaseOrder;

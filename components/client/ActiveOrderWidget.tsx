@@ -175,7 +175,7 @@ const ActiveOrderWidget: React.FC<ActiveOrderWidgetProps> = ({ hasActiveOrder, s
                   </p>
                 </div>
                 <div className="pr-2 flex flex-col items-end gap-1">
-                  <span className="text-[7px] font-black text-slate-700 uppercase tracking-widest italic">Mesa {tableNumber || '00'}</span>
+                  <span className="text-[7px] font-black text-slate-700 uppercase tracking-widest italic">Mesa {tableNumber || 'QR'}</span>
                   <span className="material-symbols-outlined transition-colors text-xl" style={{ color: accentColor }}>drag_handle</span>
                 </div>
               </>

@@ -44,20 +44,22 @@ BEGIN
             INSERT INTO products (
                 store_id, 
                 name, 
-                description, -- Si inventory tiene desc, usarla
-                price, -- Usar precio por defecto o NULL
+                description,
+                base_price,
                 image, 
                 category,
-                available,
+                active,
+                is_visible,
                 created_at,
                 updated_at
             ) VALUES (
                 v_inv_item.store_id,
                 v_inv_item.name,
                 v_inv_item.description,
-                0, -- Precio desconocido desde inventory_items, poner 0 o Flag
+                v_inv_item.price,
                 v_inv_item.image_url,
-                COALESCE(v_inv_item.category_id::text, 'General'), -- Fallback category
+                COALESCE(v_inv_item.category_id::text, 'General'),
+                TRUE,
                 TRUE,
                 NOW(),
                 NOW()

@@ -1,0 +1,6 @@
+--- ORDERS COLUMNS ---
+RPC failed: Could not find the function public.get_table_columns(table_name) in the schema cache
+
+--- ORDER_ITEMS COLUMNS ---
+RPC failed: Could not find the function public.get_table_columns(table_name) in the schema cache
+OrderItems Keys: id, tenant_id, order_id, product_id, variant_id, quantity, unit_price, total_price, notes, created_at, store_id, status

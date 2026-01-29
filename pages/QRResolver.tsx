@@ -46,12 +46,30 @@ const QRResolver: React.FC = () => {
         try {
             setState('loading');
 
-            // 1. Call the SECURE SQL RPC we just created (uses Upstash Redis via SQL)
-            const { data, error } = await (supabase.rpc as any)('secure_log_qr_scan', {
+            // 1. Call the SECURE SQL RPC with TIMEOUT
+            const rpcPromise = (supabase.rpc as any)('secure_log_qr_scan', {
                 p_qr_hash: qrHash,
                 p_client_ip: 'anonymous_client',
                 p_user_agent: navigator.userAgent
             });
+
+            // Timeout of 10 seconds
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('TIMEOUT')), 10000)
+            );
+
+            let data, error;
+            try {
+                const result: any = await Promise.race([rpcPromise, timeoutPromise]);
+                data = result.data;
+                error = result.error;
+            } catch (err: any) {
+                if (err.message === 'TIMEOUT') {
+                    console.warn('[QRResolver] RPC Timeout, falling back to direct resolution');
+                    return await resolveFallback(qrHash);
+                }
+                throw err;
+            }
 
             if (error) {
                 console.error('QR RPC error:', error);
@@ -128,6 +146,73 @@ const QRResolver: React.FC = () => {
         } catch (e) {
             console.error('QR resolve error:', e);
             setErrorMessage('Error inesperado');
+            setState('error');
+        }
+    };
+
+    const resolveFallback = async (qrHash: string) => {
+        try {
+            console.log('[QRResolver] Running Fallback Resolution for hash:', qrHash);
+
+            // 1. Direct query to qr_codes (emergency path)
+            const { data: qr, error: qrError } = await supabase
+                .from('qr_codes')
+                .select('*')
+                .eq('code_hash', qrHash)
+                .is('is_active', true)
+                .maybeSingle();
+
+            if (qrError || !qr) {
+                console.error('[QRResolver] Fallback found no active QR:', qrError);
+                setState('not_found');
+                return;
+            }
+
+            // 2. Get minimal store data
+            const { data: store } = await supabase
+                .from('stores')
+                .select('id, slug, name')
+                .eq('id', qr.store_id)
+                .single();
+
+            if (!store) {
+                setErrorMessage('Tienda no encontrada');
+                setState('error');
+                return;
+            }
+
+            // 3. Determine context
+            let channel: QRContext['channel'] = 'qr';
+            let nodeType: QRContext['node_type'] = null;
+
+            if (qr.qr_type === 'table') {
+                channel = 'table';
+                nodeType = 'table';
+            } else if (qr.qr_type === 'bar') {
+                channel = 'qr';
+                nodeType = 'bar';
+            } else if (qr.qr_type === 'pickup') {
+                channel = 'takeaway';
+                nodeType = 'pickup_zone';
+            }
+
+            setQRContext({
+                store_id: store.id,
+                store_slug: store.slug,
+                qr_hash: qrHash,
+                qr_id: qr.id,
+                node_id: qr.table_id || qr.bar_id || null,
+                node_label: qr.label,
+                node_type: nodeType,
+                channel: channel,
+            });
+
+            setState('success');
+            navigate(`/m/${store.slug}`, { replace: true });
+
+        } catch (e) {
+            console.error('[QRResolver] Fallback fatal error:', e);
+            setErrorMessage('Error al verificar QR (Fallback)');
             setState('error');
         }
     };
