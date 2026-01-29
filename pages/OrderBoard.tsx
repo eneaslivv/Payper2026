@@ -141,7 +141,7 @@ const OrderBoard: React.FC = () => {
 
   const stats = useMemo(() => ({
     total: orders.filter(o => o.status !== 'served' && o.status !== 'cancelled').length,
-    pendientes: orders.filter(o => o.status === 'pending').length,
+    pendientes: orders.filter(o => o.status === 'pending' || o.status === 'paid').length,
     proceso: orders.filter(o => o.status === 'preparing').length,
     listos: orders.filter(o => o.status === 'ready').length,
     // History Stats
@@ -328,7 +328,11 @@ const OrderBoard: React.FC = () => {
         (cleanNumber.length > 0 && o.order_number?.toString().includes(cleanNumber));
 
       // Status Filter (Only applies in Active Mode)
-      const matchesStatus = showHistory ? true : (statusFilter === 'TODOS' ? true : o.status === statusFilter);
+      const matchesStatus = showHistory ? true : (
+        statusFilter === 'TODOS' ? true :
+          statusFilter === 'pending' ? (o.status === 'pending' || o.status === 'paid') :
+            o.status === statusFilter
+      );
 
       // Payment Filter: Hide Unpaid MercadoPago Orders
       // If provider is 'mercadopago' and it's NOT paid, hide it from the board.
@@ -430,9 +434,9 @@ const OrderBoard: React.FC = () => {
           {!showHistory ? (
             <>
               <KpiBox label="TOTAL ACTIVO" value={stats.total} onClick={() => setStatusFilter('TODOS')} active={statusFilter === 'TODOS'} border="border-neon/20" />
-              <KpiBox label="PENDIENTES" value={stats.pendientes} onClick={() => setStatusFilter('Pendiente')} active={statusFilter === 'Pendiente'} textColor="text-orange-500" border="border-orange-500/20" />
-              <KpiBox label="EN PROCESO" value={stats.proceso} onClick={() => setStatusFilter('En Preparación')} active={statusFilter === 'En Preparación'} textColor="text-blue-500" border="border-blue-500/20" />
-              <KpiBox label="LISTOS" value={stats.listos} onClick={() => setStatusFilter('Listo')} active={statusFilter === 'Listo'} textColor="text-neon" border="border-neon/20" />
+              <KpiBox label="PENDIENTES" value={stats.pendientes} onClick={() => setStatusFilter('pending')} active={statusFilter === 'pending'} textColor="text-orange-500" border="border-orange-500/20" />
+              <KpiBox label="EN PROCESO" value={stats.proceso} onClick={() => setStatusFilter('preparing')} active={statusFilter === 'preparing'} textColor="text-blue-500" border="border-blue-500/20" />
+              <KpiBox label="LISTOS" value={stats.listos} onClick={() => setStatusFilter('ready')} active={statusFilter === 'ready'} textColor="text-neon" border="border-neon/20" />
             </>
           ) : (
             <>
@@ -500,20 +504,20 @@ const OrderBoard: React.FC = () => {
             <div className="flex gap-5 h-full min-w-max">
               {!showHistory ? (
                 <>
-                  {(statusFilter === 'TODOS' || statusFilter === 'Pendiente') && (
-                    <Column title="PENDIENTES" status="Pendiente" dotColor="bg-orange-500" orders={filteredOrders.filter(o => o.status === 'Pendiente')} onClickCard={setSelectedOrder} onAdvance={handleAdvanceStatus} onMove={handleMoveOrder} isActive={activeColumn === 'Pendiente'} setActiveColumn={setActiveColumn} />
+                  {(statusFilter === 'TODOS' || statusFilter === 'pending') && (
+                    <Column title="PENDIENTES" status="pending" dotColor="bg-orange-500" orders={filteredOrders.filter(o => o.status === 'pending' || o.status === 'paid')} onClickCard={setSelectedOrder} onAdvance={handleAdvanceStatus} onMove={handleMoveOrder} isActive={activeColumn === 'pending'} setActiveColumn={setActiveColumn} />
                   )}
-                  {(statusFilter === 'TODOS' || statusFilter === 'En Preparación') && (
-                    <Column title="PROCESO" status="En Preparación" dotColor="bg-blue-500" orders={filteredOrders.filter(o => o.status === 'En Preparación')} onClickCard={setSelectedOrder} onAdvance={handleAdvanceStatus} onMove={handleMoveOrder} isActive={activeColumn === 'En Preparación'} setActiveColumn={setActiveColumn} />
+                  {(statusFilter === 'TODOS' || statusFilter === 'preparing') && (
+                    <Column title="PROCESO" status="preparing" dotColor="bg-blue-500" orders={filteredOrders.filter(o => o.status === 'preparing')} onClickCard={setSelectedOrder} onAdvance={handleAdvanceStatus} onMove={handleMoveOrder} isActive={activeColumn === 'preparing'} setActiveColumn={setActiveColumn} />
                   )}
-                  {(statusFilter === 'TODOS' || statusFilter === 'Listo') && (
-                    <Column title="LISTO" status="Listo" dotColor="bg-neon" orders={filteredOrders.filter(o => o.status === 'Listo')} onClickCard={setSelectedOrder} onAdvance={handleAdvanceStatus} onMove={handleMoveOrder} isActive={activeColumn === 'Listo'} setActiveColumn={setActiveColumn} />
+                  {(statusFilter === 'TODOS' || statusFilter === 'ready') && (
+                    <Column title="LISTO" status="ready" dotColor="bg-neon" orders={filteredOrders.filter(o => o.status === 'ready')} onClickCard={setSelectedOrder} onAdvance={handleAdvanceStatus} onMove={handleMoveOrder} isActive={activeColumn === 'ready'} setActiveColumn={setActiveColumn} />
                   )}
                 </>
               ) : (
                 <>
-                  <Column title="ENTREGADOS" status="Entregado" dotColor="bg-green-500" orders={filteredOrders.filter(o => o.status === 'Entregado')} onClickCard={setSelectedOrder} onAdvance={handleAdvanceStatus} onMove={handleMoveOrder} isActive={activeColumn === 'Entregado'} setActiveColumn={setActiveColumn} />
-                  <Column title="CANCELADOS" status="Cancelado" dotColor="bg-red-500" orders={filteredOrders.filter(o => o.status === 'Cancelado')} onClickCard={setSelectedOrder} onAdvance={handleAdvanceStatus} onMove={handleMoveOrder} isActive={activeColumn === 'Cancelado'} setActiveColumn={setActiveColumn} />
+                  <Column title="ENTREGADOS" status="served" dotColor="bg-green-500" orders={filteredOrders.filter(o => o.status === 'served')} onClickCard={setSelectedOrder} onAdvance={handleAdvanceStatus} onMove={handleMoveOrder} isActive={activeColumn === 'served'} setActiveColumn={setActiveColumn} />
+                  <Column title="CANCELADOS" status="cancelled" dotColor="bg-red-500" orders={filteredOrders.filter(o => o.status === 'cancelled')} onClickCard={setSelectedOrder} onAdvance={handleAdvanceStatus} onMove={handleMoveOrder} isActive={activeColumn === 'cancelled'} setActiveColumn={setActiveColumn} />
                 </>
               )}
             </div>

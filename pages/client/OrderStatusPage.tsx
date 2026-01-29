@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { OrderPickupTicket } from "../../components/client/OrderPickupTicket";
@@ -17,6 +17,7 @@ export default function OrderStatusPage() {
     const [order, setOrder] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
     const [isVerifying, setIsVerifying] = useState(false);
+    const hasToastedSuccess = useRef(false);
 
     // Determine theme colors
     const accentColor = store?.menu_theme?.accentColor || '#36e27b';
@@ -108,7 +109,10 @@ export default function OrderStatusPage() {
             console.log("[OrderStatusPage] Verification Result:", data);
 
             if (data?.success && data?.status === 'approved') {
-                addToast("¡Pago confirmado! Tu pedido está en marcha.", "success");
+                if (!hasToastedSuccess.current) {
+                    addToast("¡Pago confirmado! Tu pedido está en marcha.", "success");
+                    hasToastedSuccess.current = true;
+                }
                 // Re-fetch immediately
                 fetchOrder();
             } else if (data?.status === 'pending') {

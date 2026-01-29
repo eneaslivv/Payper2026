@@ -495,7 +495,9 @@ const MainRouter: React.FC = () => {
   // PUBLIC ROUTES - These must work regardless of auth status!
   // Check BEFORE any auth logic so logged-in users can also access client menu
   const isClientMenu = window.location.hash.includes('#/m/');
-  const isOrderRoute = window.location.hash.includes('#/orden/') || window.location.hash.includes('/order/');
+  const isOrderRoute = window.location.hash.includes('#/orden/') ||
+    window.location.hash.includes('/order/') ||
+    window.location.hash.includes('/tracking/');
   const isQRRoute = window.location.hash.includes('#/qr/');
 
   // DEBUG: Log routing decision
@@ -617,13 +619,24 @@ const MainRouter: React.FC = () => {
   // const isGodModeUser = ... (Removed)
 
   // RECALCULATE client route check here to be absolutely sure
-  const isClientRoute = window.location.hash.includes('#/m/') || window.location.hash.includes('/order/') || window.location.hash.includes('/orden/');
+  const isClientRoute = window.location.hash.includes('#/m/') ||
+    window.location.hash.includes('/order/') ||
+    window.location.hash.includes('/orden/') ||
+    window.location.hash.includes('/tracking/') ||
+    window.location.hash.includes('/cart/') ||
+    window.location.hash.includes('/checkout/');
 
-  // Also exempt checkout return URLs (Mercado Pago redirects often land here with specific params)
-  const isCheckoutReturn = window.location.hash.includes('collection_id') || window.location.hash.includes('preference_id');
+  // Also exempt checkout return URLs (Mercado Pago redirects अक्सर land here with specific params)
+  const isCheckoutReturn = window.location.hash.includes('collection_id') ||
+    window.location.hash.includes('preference_id') ||
+    window.location.hash.includes('external_reference');
 
   // Skip profile check if: client route, or potential store route
-  if (user && !profile && !isClientRoute && !isPotentialStoreRoute && !isCheckoutReturn) {
+  // A store route is usually #/store-slug. We regex for anything that DOESN'T look like a system route.
+  const isStoreDirectLink = window.location.hash.match(/^#\/[^/]+(?:\/|\?|$)/) &&
+    !['#/login', '#/join', '#/setup-owner', '#/dashboard', '#/admin', '#/inventory', '#/finance', '#/orders', '#/tables', '#/design'].some(r => window.location.hash.startsWith(r));
+
+  if (user && !profile && !isClientRoute && !isStoreDirectLink && !isCheckoutReturn) {
     return (
       <div className="flex flex-col h-screen w-full items-center justify-center bg-black gap-6 p-6 text-center">
         <div className="relative size-20">

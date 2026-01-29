@@ -115,10 +115,10 @@ const OrderCreation: React.FC = () => {
 
       let unifiedProducts: any[] = [];
 
-      // Process Products table items
+      // Process Products table items FIRST (priority)
       if (productsData) {
         unifiedProducts = [...unifiedProducts, ...productsData
-          .filter((p: any) => !p.name?.startsWith('[ELIMINADO]')) // Client-side filter
+          .filter((p: any) => !p.name?.startsWith('[ELIMINADO]'))
           .map((p: any) => ({
             id: p.id,
             name: p.name,
@@ -130,9 +130,10 @@ const OrderCreation: React.FC = () => {
           }))];
       }
 
-      // Process Inventory Items table items
+      // Process Inventory Items - SKIP if already in products
       if (inventoryData) {
-        // Fetch categories for inventory items
+        const productIds = new Set(unifiedProducts.map(p => p.id));
+
         const categoryIds = [...new Set(inventoryData.map((item: any) => item.category_id).filter(Boolean))];
         let categoriesMap: Record<string, string> = {};
 
@@ -147,7 +148,8 @@ const OrderCreation: React.FC = () => {
         }
 
         unifiedProducts = [...unifiedProducts, ...inventoryData
-          .filter((item: any) => !item.name?.startsWith('[ELIMINADO]')) // Client-side filter
+          .filter((item: any) => !item.name?.startsWith('[ELIMINADO]'))
+          .filter((item: any) => !productIds.has(item.id)) // SKIP DUPLICATES
           .map((item: any) => ({
             id: item.id,
             name: item.name,
@@ -159,6 +161,7 @@ const OrderCreation: React.FC = () => {
           }))];
       }
 
+      console.log('[OrderCreation] Unified products (deduplicated):', unifiedProducts.length);
       setMenuProducts(unifiedProducts);
     };
 
