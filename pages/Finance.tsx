@@ -1,9 +1,10 @@
-
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { CashRegisterSession } from '../types';
 import DateRangeSelector from '../components/DateRangeSelector';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useCashShift, Zone } from '../hooks/useCashShift';
 
 const AreaChart = React.lazy(() => import('recharts').then((mod) => ({ default: mod.AreaChart })));
 const Area = React.lazy(() => import('recharts').then((mod) => ({ default: mod.Area })));
@@ -16,7 +17,23 @@ const PIE_COLORS = ['#4ADE80', '#B4965C', '#3B4D35'];
 
 const Finance: React.FC = () => {
   const { profile } = useAuth();
-  const [activeTab, setActiveTab] = useState<'analytics' | 'caja'>('analytics');
+  const location = useLocation();
+
+  // Tab sync from query params
+  const [activeTab, setActiveTab] = useState<'analytics' | 'caja'>(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('tab') === 'caja' ? 'caja' : 'analytics';
+  });
+
+  // Sync tab if URL changes without unmount
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab === 'caja' || tab === 'analytics') {
+      setActiveTab(tab as any);
+    }
+  }, [location.search]);
+
   const [sessions] = useState<CashRegisterSession[]>([]);
   const [dateRange, setDateRange] = useState(() => {
     const start = new Date();
@@ -65,7 +82,8 @@ const Finance: React.FC = () => {
         p_category: expenseForm.category,
         p_description: expenseForm.description,
         p_date: new Date().toISOString(),
-        p_is_recurring: false
+        p_is_recurring: false,
+        p_recurrence_frequency: 'monthly'
       });
 
       if (error) throw error;
@@ -530,52 +548,193 @@ const Finance: React.FC = () => {
   );
 };
 
-// --- SUB-COMPONENTS ---
+/* Operational Insights Component (Summary of Closures) */
+const OperationalInsights: React.FC<{ dateRange: { start: string | Date; end: string | Date } }> = ({ dateRange }) => {
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    orderCount: 0,
+    totalDiscrepancy: 0,
+    sessionsCount: 0,
+    avgTicket: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const { profile } = useAuth();
 
-/* Cash Manager Component */
-import { useCashShift, Zone } from '../hooks/useCashShift';
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!profile?.store_id) return;
+      setLoading(true);
+      try {
+        const start = new Date(dateRange.start).toISOString();
+        const end = new Date(dateRange.end).toISOString();
+
+        // 1. Fetch Closures for Discrepancy
+        const { data: closures } = await supabase
+          .from('cash_closures')
+          .select('real_cash, expected_cash')
+          .eq('store_id', profile.store_id)
+          .gte('created_at', start)
+          .lte('created_at', end);
+
+        // 2. Fetch Orders for total revenue and count in the period
+        const { data: orders } = await supabase
+          .from('orders')
+          .select('total_amount')
+          .eq('store_id', profile.store_id)
+          .gte('created_at', start)
+          .lte('created_at', end)
+          .not('status', 'eq', 'cancelled');
+
+        const totalRevenue = (orders || []).reduce((acc, o) => acc + (o.total_amount || 0), 0);
+        const orderCount = orders?.length || 0;
+        const totalDiscrepancy = (closures || []).reduce((acc, c) => acc + (Number(c.real_cash) - Number(c.expected_cash)), 0);
+        const sessionsCount = closures?.length || 0;
+        const avgTicket = orderCount > 0 ? totalRevenue / orderCount : 0;
+
+        setStats({
+          totalRevenue,
+          orderCount,
+          totalDiscrepancy,
+          sessionsCount,
+          avgTicket
+        });
+      } catch (err) {
+        console.error('Error fetching operational insights:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, [dateRange, profile?.store_id]);
+
+  if (loading) return null;
+
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="bg-white/5 border border-white/5 p-5 rounded-3xl">
+        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Pedidos Totales</span>
+        <div className="flex items-end gap-2">
+          <span className="text-2xl font-black text-white">{stats.orderCount}</span>
+          <span className="text-[10px] font-bold text-white/20 uppercase mb-1">Items</span>
+        </div>
+      </div>
+      <div className="bg-white/5 border border-white/5 p-5 rounded-3xl">
+        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Ticket Promedio</span>
+        <div className="flex items-end gap-2">
+          <span className="text-2xl font-black text-white">${stats.avgTicket.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</span>
+        </div>
+      </div>
+      <div className="bg-white/5 border border-white/5 p-5 rounded-3xl">
+        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Facturación Periodo</span>
+        <div className="flex items-end gap-2">
+          <span className="text-2xl font-black text-white">${stats.totalRevenue.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</span>
+        </div>
+      </div>
+      <div className={`border p-5 rounded-3xl ${stats.totalDiscrepancy === 0 ? 'bg-white/5 border-white/5' : stats.totalDiscrepancy > 0 ? 'bg-neon/10 border-neon/30' : 'bg-red-500/10 border-red-500/30'}`}>
+        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-1">Diferencia / Variación</span>
+        <div className="flex items-end gap-2">
+          <span className={`text-2xl font-black ${stats.totalDiscrepancy >= 0 ? 'text-neon' : 'text-red-500'}`}>
+            {stats.totalDiscrepancy > 0 ? '+' : ''}${stats.totalDiscrepancy.toLocaleString('es-AR')}
+          </span>
+          <span className="text-[10px] font-bold text-white/20 uppercase mb-1">Acumulado</span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const FinanceCashManager: React.FC<{
   dateRange: { start: string | Date; end: string | Date };
   onUpdate?: () => void;
 }> = ({ dateRange, onUpdate }) => {
-  const { zones, activeSessions, loading, openSession, closeSession } = useCashShift();
+  const { zones, activeSessions, loading, openSession, closeSession, refreshData } = useCashShift();
 
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
   const [isClosing, setIsClosing] = useState<string | null>(null); // sessionId being closed
+  const [summaries, setSummaries] = useState<Record<string, any>>({});
+  const [loadingSummaries, setLoadingSummaries] = useState(false);
+
+  // Fetch summaries for all active sessions
+  const fetchAllSummaries = async () => {
+    if (activeSessions.length === 0) return;
+    setLoadingSummaries(true);
+    const newSummaries: Record<string, any> = {};
+
+    await Promise.all(activeSessions.map(async (session) => {
+      const { data, error } = await (supabase as any).rpc('get_session_cash_summary', { query_session_id: session.id });
+      if (!error && data) {
+        newSummaries[session.id] = data;
+      }
+    }));
+
+    setSummaries(newSummaries);
+    setLoadingSummaries(false);
+  };
+
+  useEffect(() => {
+    fetchAllSummaries();
+    // Auto refresh every 45 seconds
+    const interval = setInterval(fetchAllSummaries, 45000);
+    return () => clearInterval(interval);
+  }, [activeSessions.length]); // Re-fetch if session list changes
+
+  const globalTotal = useMemo(() => {
+    return Object.values(summaries).reduce((acc, curr: any) => acc + (curr.expected_total || 0), 0);
+  }, [summaries]);
 
   const handleAction = async () => {
     try {
       if (isClosing) {
-        // Close Logic
-        // Calculate expected cash from backend
-        // @ts-ignore
-        const { data: expectedData } = await supabase.rpc('get_session_expected_cash', { query_session_id: isClosing });
-        const expected = Number(expectedData) || 0;
-
+        const expected = summaries[isClosing]?.expected_total || 0;
         await closeSession(isClosing, Number(amount), expected, "Cierre manual");
         setIsClosing(null);
-        if (onUpdate) onUpdate(); // Trigger refresh
+        if (onUpdate) onUpdate();
       } else if (selectedZone) {
-        // Open Logic
         await openSession(selectedZone, Number(amount));
         setSelectedZone(null);
-        if (onUpdate) onUpdate(); // Trigger refresh
+        if (onUpdate) onUpdate();
       }
       setAmount('');
+      refreshData();
     } catch (err: any) {
       console.error('Action failed:', err);
-      // alert('Error al procesar la acción');
-      // Ideally useToast, but for now standard alert or rely on parent
       window.alert(`Error: ${err.message || 'No se pudo procesar la acción'}`);
     }
   };
 
-  if (loading) return <div className="text-white">Cargando datos operativos...</div>;
+  if (loading) return <div className="text-white opacity-40 animate-pulse uppercase font-black text-[10px] tracking-widest text-center py-20">Cargando datos operativos...</div>;
 
   return (
     <div className="space-y-10 animate-in slide-in-from-bottom-4 duration-500">
+
+      {/* GLOBAL SUMMARY HEADER */}
+      <div className="bg-[#141714] border border-neon/20 p-8 rounded-3xl shadow-neon-soft flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="flex gap-10 items-center">
+          <div>
+            <h2 className="text-xs font-black text-neon uppercase tracking-[0.3em] mb-1">Total Efectivo Actual</h2>
+            <p className="text-4xl font-black italic-black text-white leading-none">${globalTotal.toLocaleString('es-AR')}</p>
+          </div>
+          <div className="h-12 w-px bg-white/10 hidden md:block" />
+          <div className="space-y-1">
+            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest block">Sesiones Activas</span>
+            <div className="flex items-center gap-2">
+              <span className="size-2 rounded-full bg-neon animate-pulse"></span>
+              <span className="text-sm font-black text-white uppercase">{activeSessions.length} ABIERTAS</span>
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={fetchAllSummaries}
+          disabled={loadingSummaries}
+          className="size-14 rounded-2xl bg-neon text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-neon-soft disabled:opacity-50"
+        >
+          <span className={`material-symbols-outlined text-2xl ${loadingSummaries ? 'animate-spin' : ''}`}>sync</span>
+        </button>
+      </div>
+
+      {/* OPERATIONAL INSIGHTS (SUMMARY OF CLOSED SESSIONS) */}
+      <OperationalInsights dateRange={dateRange} />
 
       {/* 1. ZONES GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -583,17 +742,15 @@ const FinanceCashManager: React.FC<{
           const session = activeSessions.find(s => s.zone_id === zone.id);
           const isActive = !!session;
           const hasPendingOrders = (session?.pending_orders_count || 0) > 0;
+          const summary = session ? summaries[session.id] : null;
 
-          // Status Visualization Logic
-          let statusColor = 'border-black/5 dark:border-white/5 bg-white dark:bg-surface-dark opacity-60'; // Closed
+          let statusColor = 'border-black/5 dark:border-white/5 bg-white dark:bg-surface-dark opacity-60';
           let statusDot = 'bg-red-500';
-          let shadow = '';
 
           if (isActive) {
             if (hasPendingOrders) {
               statusColor = 'bg-[#1a0505] border-red-500/50 shadow-[0_0_30px_rgba(239,68,68,0.2)] animate-pulse-slow';
               statusDot = 'bg-red-500 animate-ping';
-              shadow = 'shadow-[0_0_30px_rgba(239,68,68,0.2)]';
             } else {
               statusColor = 'bg-[#051a05] border-neon/50 shadow-[0_0_20px_rgba(74,222,128,0.1)]';
               statusDot = 'bg-neon animate-pulse';
@@ -601,7 +758,7 @@ const FinanceCashManager: React.FC<{
           }
 
           return (
-            <div key={zone.id} className={`p-6 rounded-2xl border transition-all relative overflow-hidden group ${statusColor}`}>
+            <div key={zone.id} className={`p-6 rounded-3xl border transition-all relative overflow-hidden group ${statusColor}`}>
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <h3 className="text-xl font-black uppercase italic-black tracking-tight dark:text-white mb-1">{zone.name}</h3>
@@ -609,13 +766,12 @@ const FinanceCashManager: React.FC<{
                     <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{zone.type}</span>
                     {isActive && (
                       <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${hasPendingOrders ? 'bg-red-500 text-white' : 'bg-neon/10 text-neon'}`}>
-                        {hasPendingOrders ? 'BUSY' : 'OPEN'}
+                        {hasPendingOrders ? 'Ocupado' : 'Abierto'}
                       </span>
                     )}
                   </div>
                 </div>
 
-                {/* Status Indicator */}
                 <div className="relative">
                   <div className={`size-3 rounded-full ${isActive ? (hasPendingOrders ? 'bg-red-500' : 'bg-neon') : 'bg-bg-dark'}`}></div>
                   {isActive && <div className={`absolute inset-0 size-3 rounded-full ${statusDot} opacity-75`}></div>}
@@ -624,8 +780,39 @@ const FinanceCashManager: React.FC<{
 
               {isActive ? (
                 <div className="space-y-6">
-                  {/* Timer & Operator */}
-                  <div className="flex justify-between items-center pb-4 border-b border-white/5">
+                  {/* ADVANCED STATS GRID */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white/5 rounded-2xl p-3 border border-white/5">
+                      <span className="text-[8px] text-white/30 font-black uppercase tracking-[0.2em] block mb-1">Efectivo (Caja)</span>
+                      <p className="text-xl font-black text-neon shadow-neon-soft font-mono">
+                        ${(summary?.expected_total || session.start_amount || 0).toLocaleString('es-AR')}
+                      </p>
+                    </div>
+                    <div className="bg-white/5 rounded-2xl p-3 border border-white/5">
+                      <span className="text-[8px] text-white/30 font-black uppercase tracking-[0.2em] block mb-1">Facturación Total</span>
+                      <p className="text-xl font-black text-white font-mono">
+                        ${(summary?.total_revenue || 0).toLocaleString('es-AR')}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* MINI BREAKDOWN */}
+                  <div className="bg-black/20 rounded-2xl p-4 border border-white/5 space-y-2">
+                    <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider">
+                      <span className="text-white/40">Pedidos Realizados</span>
+                      <span className="text-white">{summary?.order_count || 0}</span>
+                    </div>
+                    <div className="pt-2 border-t border-white/5 flex flex-wrap gap-2">
+                      {summary?.payment_methods && Object.entries(summary.payment_methods).map(([method, total]: [string, any]) => (
+                        <div key={method} className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-lg">
+                          <span className="text-[8px] font-black uppercase text-white/40">{method}</span>
+                          <span className="text-[9px] font-black text-neon">${total.toLocaleString('es-AR')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center pb-4 border-b border-white/5 px-1">
                     <div className="flex flex-col">
                       <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest mb-1">Operador</span>
                       <div className="flex items-center gap-2">
@@ -634,13 +821,11 @@ const FinanceCashManager: React.FC<{
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest mb-1">Tiempo Activo</span>
-                      {/* Simple Duration Calc (Could be extracted to component for real-time tick) */}
+                      <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest mb-1">Tiempo</span>
                       <SessionTimer openedAt={session.opened_at} />
                     </div>
                   </div>
 
-                  {/* Pending Orders Alert */}
                   {hasPendingOrders && (
                     <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-center justify-between animate-pulse">
                       <div className="flex items-center gap-3">
@@ -653,17 +838,17 @@ const FinanceCashManager: React.FC<{
 
                   <button
                     onClick={() => setIsClosing(session.id)}
-                    className="w-full py-3 rounded-xl bg-white/5 hover:bg-red-500/20 text-white/40 hover:text-red-500 border border-white/5 hover:border-red-500/30 text-[10px] font-black uppercase tracking-widest transition-all mb-0"
+                    className="w-full py-4 rounded-2xl bg-white/5 hover:bg-red-500/20 text-white/40 hover:text-red-500 border border-white/5 hover:border-red-500/30 text-[10px] font-black uppercase tracking-widest transition-all"
                   >
-                    Cerrar Caja
+                    Arqueo de Caja
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={() => setSelectedZone(zone.id)}
-                  className="w-full mt-4 py-3 rounded-xl bg-black/[0.02] dark:bg-white/5 border border-black/10 dark:border-white/10 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-white hover:bg-neon/10 hover:border-neon/30 transition-all"
+                  className="w-full mt-4 py-4 rounded-2xl bg-black/[0.02] dark:bg-white/5 border border-black/10 dark:border-white/10 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-white hover:bg-neon/10 hover:border-neon/30 transition-all"
                 >
-                  Abrir Caja
+                  Abrir Turno
                 </button>
               )}
             </div>
@@ -671,34 +856,29 @@ const FinanceCashManager: React.FC<{
         })}
       </div>
 
-      {/* 2. ACTION MODAL (Simple Inline for now) */}
-      {
-        (selectedZone || isClosing) && (
-          <CashShiftModal
-            isClosing={!!isClosing}
-            sessionId={isClosing}
-            zoneId={selectedZone}
-            onClose={() => { setSelectedZone(null); setIsClosing(null); }}
-            onConfirm={async (amount, expected, notes) => {
-              if (isClosing) {
-                await closeSession(isClosing, amount, expected || 0, notes);
-                setIsClosing(null);
-                if (onUpdate) onUpdate();
-              } else if (selectedZone) {
-                await openSession(selectedZone, amount);
-                setSelectedZone(null);
-                if (onUpdate) onUpdate();
-              }
-            }}
-          />
-        )
-      }
+      {(selectedZone || isClosing) && (
+        <CashShiftModal
+          isClosing={!!isClosing}
+          sessionId={isClosing}
+          zoneId={selectedZone}
+          onClose={() => { setSelectedZone(null); setIsClosing(null); }}
+          onConfirm={async (amount, expected, notes) => {
+            if (isClosing) {
+              await closeSession(isClosing, amount, expected || 0, notes);
+              setIsClosing(null);
+              if (onUpdate) onUpdate();
+            } else if (selectedZone) {
+              await openSession(selectedZone, amount);
+              setSelectedZone(null);
+              if (onUpdate) onUpdate();
+            }
+            refreshData();
+          }}
+        />
+      )}
 
-      {/* 3. SHIFTS HISTORY */}
       <CashAuditTable dateRange={dateRange} />
-
-
-    </div >
+    </div>
   );
 };
 
@@ -752,16 +932,29 @@ const CashShiftModal: React.FC<{
 }> = ({ isClosing, sessionId, zoneId, onClose, onConfirm }) => {
   const [amount, setAmount] = useState('');
   const [notes, setNotes] = useState('');
-  const [expectedCash, setExpectedCash] = useState<number | null>(null);
+  const [expectedCashDetail, setExpectedCashDetail] = useState<{
+    start_amount: number,
+    cash_sales: number,
+    cash_topups: number,
+    expected_total: number,
+    order_count?: number,
+    total_revenue?: number
+  } | null>(null);
   const [loadingExpected, setLoadingExpected] = useState(false);
 
   useEffect(() => {
     if (isClosing && sessionId) {
       const fetchExpected = async () => {
         setLoadingExpected(true);
-        // @ts-ignore
-        const { data } = await supabase.rpc('get_session_expected_cash', { query_session_id: sessionId });
-        setExpectedCash(data || 0);
+        // Using new RPC for detailed breakdown
+        const { data, error } = await (supabase as any).rpc('get_session_cash_summary', { query_session_id: sessionId });
+        if (error) {
+          console.error("Error fetching cash summary:", error);
+          // Fallback or just 0
+          setExpectedCashDetail({ start_amount: 0, cash_sales: 0, cash_topups: 0, expected_total: 0 });
+        } else {
+          setExpectedCashDetail(data);
+        }
         setLoadingExpected(false);
       };
       fetchExpected();
@@ -769,74 +962,110 @@ const CashShiftModal: React.FC<{
   }, [isClosing, sessionId]);
 
   const realAmount = Number(amount) || 0;
-  const expected = expectedCash || 0;
+  const expected = expectedCashDetail?.expected_total || 0;
   const difference = realAmount - expected;
   const diffColor = difference === 0 ? 'text-white' : difference > 0 ? 'text-neon' : 'text-red-500';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-[#141414] border border-white/10 p-8 rounded-2xl w-full max-w-md shadow-2xl relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in transition-all">
+      <div className="bg-[#141414] border border-white/10 p-8 rounded-3xl w-full max-w-md shadow-2xl relative overflow-hidden">
+        {/* Decorative Background */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-neon/10 blur-[80px] -mr-16 -mt-16 pointer-events-none" />
+
         <button onClick={onClose} className="absolute top-4 right-4 text-white/20 hover:text-white transition-colors">
           <span className="material-symbols-outlined">close</span>
         </button>
 
-        <h3 className="text-xl font-black uppercase italic text-white mb-2">
-          {isClosing ? 'Cierre de Caja' : 'Apertura de Caja'}
+        <h3 className="text-xl font-black uppercase italic-black text-white mb-2 tracking-tight">
+          {isClosing ? 'Arqueo de Caja' : 'Apertura de Turno'}
         </h3>
-        <p className="text-[11px] text-white/50 mb-6 uppercase tracking-wider">
-          {isClosing ? 'Verifique el efectivo físico contra el sistema.' : 'Ingrese el monto inicial (Fondo).'}
+        <p className="text-[11px] text-white/50 mb-6 uppercase tracking-wider font-bold">
+          {isClosing ? 'Verifique el efectivo físico contra el sistema.' : 'Ingrese el fondo inicial de la caja.'}
         </p>
 
         <div className="space-y-6">
           {/* Comparison Display (Only for Closing) */}
           {isClosing && (
-            <div className="grid grid-cols-2 gap-4 bg-white/5 p-4 rounded-xl border border-white/5">
-              <div>
-                <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest block mb-1">Esperado (Sistema)</span>
-                {loadingExpected ? (
-                  <span className="text-sm text-white/20 animate-pulse">Calculando...</span>
-                ) : (
-                  <span className="text-xl font-black text-white/80">${expected.toLocaleString('es-AR')}</span>
-                )}
+            <div className="space-y-4">
+              {/* PRIMARY STATS GRID */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                  <span className="text-[9px] font-black text-white/40 uppercase tracking-widest block mb-1">Pedidos del Turno</span>
+                  <span className="text-xl font-black text-white leading-none">{expectedCashDetail?.order_count || 0}</span>
+                </div>
+                <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                  <span className="text-[9px] font-black text-white/40 uppercase tracking-widest block mb-1">Facturación Total</span>
+                  <span className="text-xl font-black text-white leading-none">${(expectedCashDetail?.total_revenue || 0).toLocaleString('es-AR')}</span>
+                </div>
               </div>
-              <div className="text-right">
-                <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest block mb-1">Diferencia</span>
-                <span className={`text-xl font-black ${diffColor}`}>
-                  {difference > 0 ? '+' : ''}${difference.toLocaleString('es-AR')}
-                </span>
+
+              {/* CASH BREAKDOWN */}
+              <div className="bg-white/5 p-5 rounded-2xl border border-white/5 space-y-3">
+                <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Fondo Inicial</span>
+                  <span className="text-sm font-black text-white/80">${(expectedCashDetail?.start_amount || 0).toLocaleString('es-AR')}</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Ventas Efectivo</span>
+                  <span className="text-sm font-black text-white/80">${(expectedCashDetail?.cash_sales || 0).toLocaleString('es-AR')}</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Cargas Wallet</span>
+                  <span className="text-sm font-black text-white/80">${(expectedCashDetail?.cash_topups || 0).toLocaleString('es-AR')}</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mt-2 pt-2">
+                  <div>
+                    <span className="text-[9px] font-bold text-neon uppercase tracking-widest block mb-1">Esperado en Caja</span>
+                    {loadingExpected ? (
+                      <span className="text-sm text-white/20 animate-pulse uppercase font-black">Calculando...</span>
+                    ) : (
+                      <span className="text-2xl font-black text-neon shadow-neon-soft font-mono">${expected.toLocaleString('es-AR')}</span>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest block mb-1">Diferencia</span>
+                    <span className={`text-2xl font-black font-mono ${diffColor}`}>
+                      {difference > 0 ? '+' : ''}${difference.toLocaleString('es-AR')}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
-          <div>
-            <label className="text-[9px] font-bold text-neon uppercase tracking-widest block mb-2">
-              Monto {isClosing ? 'Real (Físico)' : 'Inicial'}
+          <div className="relative group">
+            <label className="text-[9px] font-black text-neon uppercase tracking-[0.2em] block mb-2">
+              Contaje {isClosing ? 'Real (Físico)' : 'Inicial'}
             </label>
-            <input
-              type="number"
-              value={amount}
-              onChange={e => setAmount(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-white font-bold outline-none focus:border-neon/50 text-2xl"
-              placeholder="0.00"
-              autoFocus
-            />
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-white/20 group-focus-within:text-neon transition-colors">$</span>
+              <input
+                type="number"
+                value={amount}
+                onChange={e => setAmount(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-10 pr-4 py-6 text-white font-black outline-none focus:border-neon/50 focus:bg-neon/5 text-4xl placeholder:text-white/5 transition-all font-mono"
+                placeholder="0"
+                autoFocus
+              />
+            </div>
           </div>
 
           {isClosing && (
             <div>
-              <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest block mb-2">Notas / Observaciones</label>
+              <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] block mb-2 leading-none">Observaciones del Turno</label>
               <textarea
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-white/20 min-h-[80px]"
-                placeholder="Ej. Falta cambio, retiro parcial..."
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 text-white text-xs font-bold outline-none focus:border-white/20 min-h-[100px] transition-all"
+                placeholder="Ej. Falta cambio, retiro parcial, merma encontrada..."
               />
             </div>
           )}
 
           <button
             onClick={() => onConfirm(realAmount, expected, notes)}
-            className="w-full py-4 rounded-xl bg-neon text-black font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-neon-soft group flex items-center justify-center gap-2"
+            className="w-full py-5 rounded-2xl bg-neon text-black font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-neon-soft group flex items-center justify-center gap-2"
           >
             {isClosing ? 'Confirmar Cierre' : 'Confirmar Apertura'}
             <span className="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>

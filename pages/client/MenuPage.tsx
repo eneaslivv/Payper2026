@@ -177,18 +177,22 @@ const MenuPage: React.FC = () => {
       {/* USER HUB BUTTON (Floating Overlay) */}
       <div className="fixed top-[calc(1.2rem+env(safe-area-inset-top))] right-6 z-[60]">
         <div className="flex items-center gap-3">
-          {user && (hasActiveOrder || tableLabel) ? (
-            <button
-              onClick={() => setIsHubOpen(true)}
-              className={`relative flex items-center justify-center h-14 w-14 ${radiusClass} border active:scale-90 transition-all group shadow-2xl backdrop-blur-xl`}
-              style={{ backgroundColor: `${textColor}10`, borderColor: `${textColor}20` }}
-            >
-              <span className="material-symbols-outlined text-xl" style={{ color: textColor }}>room_service</span>
-              {hasActiveOrder && (
-                <div className="absolute top-3 right-3 w-1.5 h-1.5 rounded-full animate-ping" style={{ backgroundColor: accentColor }} />
-              )}
-            </button>
+          {user ? (
+            // User is logged in
+            (hasActiveOrder || tableLabel) ? (
+              <button
+                onClick={() => setIsHubOpen(true)}
+                className={`relative flex items-center justify-center h-14 w-14 ${radiusClass} border active:scale-90 transition-all group shadow-2xl backdrop-blur-xl`}
+                style={{ backgroundColor: `${textColor}10`, borderColor: `${textColor}20` }}
+              >
+                <span className="material-symbols-outlined text-xl" style={{ color: textColor }}>room_service</span>
+                {hasActiveOrder && (
+                  <div className="absolute top-3 right-3 w-1.5 h-1.5 rounded-full animate-ping" style={{ backgroundColor: accentColor }} />
+                )}
+              </button>
+            ) : null // User logged in but no active order/table -> show nothing (bottom bar handles profile)
           ) : (
+            // User NOT logged in
             <button
               onClick={() => navigate(`/m/${slug}/auth`)}
               className={`h-14 px-8 ${radiusClass} text-black text-[10px] font-black uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl`}

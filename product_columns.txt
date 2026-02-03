@@ -1,0 +1,16 @@
+id
+store_id
+name
+description
+sku
+base_price
+active
+category
+tax_rate
+created_at
+updated_at
+is_available
+category_slug
+customs_options
+is_visible
+image

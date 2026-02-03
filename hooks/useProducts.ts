@@ -48,14 +48,16 @@ export function useProducts({
                         is_available,
                         is_visible,
                         active,
-                        store_id
+                        store_id,
+                        image_url,
+                        image
                     `)
                     .eq('store_id', storeId)
                     .eq('active', true)
                     .eq('is_visible', true);
 
-                // 2. Fetch INVENTORY items (Recipes/Sellables) that are enabled for menu
-                // This covers items created in Editor that aren't in 'products' yet
+                // 2. Fetch ALL INVENTORY items (for enrichment, ignore visibility)
+                // We need all items to find images/stock even if they are not explicitly "menu visible" as standalone items
                 const inventoryPromise = (supabase as any)
                     .from('inventory_items')
                     .select(`
@@ -69,7 +71,6 @@ export function useProducts({
                         store_id
                     `)
                     .eq('store_id', storeId)
-                    .eq('is_menu_visible', true)
                     .eq('is_active', true);
 
                 // 3. Fetch CATEGORIES to map IDs to Names
@@ -91,6 +92,12 @@ export function useProducts({
                 const rawInventory = inventoryReq.data || [];
                 const categories = categoriesReq.data || [];
 
+                // Create Inventory Map for faster lookup (by name)
+                const inventoryMap = new Map<string, any>();
+                rawInventory.forEach((item: any) => {
+                    inventoryMap.set(item.name.trim().toLowerCase(), item);
+                });
+
                 // Create Category Map
                 const categoryMap = new Map<string, { id: string; name: string; slug: string }>();
                 categories.forEach((c: any) => {
@@ -100,7 +107,23 @@ export function useProducts({
                 // Helper to check duplicates
                 const productNames = new Set(rawProducts.map((p: any) => p.name.trim().toLowerCase()));
 
-                // Map Inventory to Product Shape
+                // ENRICH PRODUCTS: If product image is missing, try to find it in inventory
+                const enrichedProducts = rawProducts.map((p: any) => {
+                    // Normalize image field
+                    if (!p.image_url && p.image) {
+                        p.image_url = p.image;
+                    }
+
+                    if (!p.image_url || p.image_url === '') {
+                        const invItem = inventoryMap.get(p.name.trim().toLowerCase());
+                        if (invItem && invItem.image_url) {
+                            return { ...p, image_url: invItem.image_url };
+                        }
+                    }
+                    return p;
+                });
+
+                // Map Inventory to Product Shape (Only for items NOT in products)
                 const mappedInventory = rawInventory
                     .filter((item: any) => !productNames.has(item.name.trim().toLowerCase())) // Deduplicate
                     .map((item: any) => {
@@ -121,7 +144,7 @@ export function useProducts({
                     });
 
                 // Combine and Sort
-                const combined = [...rawProducts, ...mappedInventory].sort((a, b) =>
+                const combined = [...enrichedProducts, ...mappedInventory].sort((a, b) =>
                     (a.category || '').localeCompare(b.category || '') || a.name.localeCompare(b.name)
                 );
 

@@ -1,0 +1,77 @@
+{
+  "products": [
+    {
+      "id": "4b42df12-371c-42b6-8e0e-0cff6bd75a06",
+      "store_id": "f5e3bfcf-3ccc-4464-9eb5-431fa6e26533",
+      "name": "holis",
+      "description": "Holis: Dulce abrazo de café. Notas de caramelo, miel y un toque cítrico. Sol radiante en cada sorbo.",
+      "sku": null,
+      "base_price": 500,
+      "active": true,
+      "category": "e7f02692-9a5b-423b-ac94-caa661153c5a",
+      "tax_rate": 0,
+      "created_at": "2026-01-29T07:35:28.151009+00:00",
+      "updated_at": "2026-01-29T07:35:28.151009+00:00",
+      "is_available": true,
+      "category_slug": null,
+      "customs_options": [],
+      "is_visible": true,
+      "image": "https://yjxjyxhksedwfeueduwl.supabase.co/storage/v1/object/public/product-images/temp/93cd9acf-93f5-4961-b31f-2a468850058b-1766548859466.jpeg?t=1766548860736"
+    }
+  ],
+  "inventory_items": [
+    {
+      "id": "93cd9acf-93f5-4961-b31f-2a468850058b",
+      "name": "holis",
+      "sku": null,
+      "unit_type": "kilo",
+      "cost": 8372,
+      "current_stock": -5,
+      "min_stock_alert": 5,
+      "store_id": "f5e3bfcf-3ccc-4464-9eb5-431fa6e26533",
+      "created_at": "2025-12-24T02:52:26.542205+00:00",
+      "updated_at": "2026-01-30T12:25:52.763485+00:00",
+      "category_id": "e7f02692-9a5b-423b-ac94-caa661153c5a",
+      "addons": [
+        {
+          "id": "96c36720-9c74-48c8-9669-229fd3e77a4a",
+          "name": "test",
+          "price": 26.84,
+          "inventory_item_id": "cb7f1eb2-5317-4833-8969-1d61d2f125f6",
+          "quantity_consumed": 0.001
+        }
+      ],
+      "variants": [
+        {
+          "id": "bdafff82-dfc5-4c92-bc72-8746d95d71fe",
+          "name": "Nueva Variante",
+          "price_adjustment": 0,
+          "recipe_overrides": []
+        }
+      ],
+      "combo_items": [],
+      "is_menu_visible": false,
+      "description": "Holis: Dulce abrazo de café. Notas de caramelo, miel y un toque cítrico. Sol radiante en cada sorbo.",
+      "image_url": "https://yjxjyxhksedwfeueduwl.supabase.co/storage/v1/object/public/product-images/temp/93cd9acf-93f5-4961-b31f-2a468850058b-1766548859466.jpeg?t=1766548860736",
+      "price": 500,
+      "open_count": 0,
+      "open_packages": [],
+      "closed_stock": -4,
+      "package_size": 1,
+      "content_unit": "un",
+      "min_packages": 1,
+      "last_supplier_id": null,
+      "last_purchase_price": null,
+      "item_type": "ingredient",
+      "min_stock": 0,
+      "max_stock": null,
+      "ideal_stock": null,
+      "reorder_point": null,
+      "is_active": true,
+      "is_recommended": false,
+      "is_new": false,
+      "is_promo": false,
+      "sort_order": 0
+    }
+  ]
+}

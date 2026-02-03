@@ -47,7 +47,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { addToast } = useToast();
 
     // FAILSAFE ABSOLUTO: Si pasan 8 segundos y sigue cargando, forzamos el render.
-    // Esto evita que te quedes en negro para siempre si Supabase no responde un evento.
     useEffect(() => {
         const timer = setTimeout(() => {
             if (isLoading) {
@@ -58,7 +57,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return () => clearTimeout(timer);
     }, [isLoading]);
 
-    // Use Ref to track current user ID to avoid stale closures in onAuthStateChange
     const userIdRef = useRef<string | null>(null);
 
     useEffect(() => {
@@ -130,29 +128,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
             if (!mounted) return;
-            // console.log("Supabase Auth Event:", event); // Reduced heavy logging
 
-            // CRITICAL: Ignore initial events
             if (event === 'SIGNED_IN' && !initComplete) return;
 
             if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
                 const newUserId = newSession?.user?.id;
                 const currentUserId = userIdRef.current;
 
-                // SMART CHECK: Only act if User ID CHANGED
                 if (newUserId && newUserId === currentUserId) {
-                    // Same user - just update session/token silently. DO NOT CLEAR PROFILE.
-                    if (event !== 'TOKEN_REFRESHED') console.log('[AUTH] Re-auth for same user. Keeping profile.');
                     setSession(newSession);
                     setUser(newSession.user);
                     return;
                 }
 
-                // If different user (or first login), THEN fetch
                 console.log('[AUTH] New User detected (or fresh login). Fetching profile...');
-                setIsLoading(true); // Only lock for NEW users
+                setIsLoading(true);
                 setIsRecovery(false);
-                setProfile(null); // Clear old profile
+                setProfile(null);
                 setSession(newSession);
                 setUser(newSession?.user || null);
                 userIdRef.current = newSession?.user?.id || null;
@@ -181,24 +173,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     const fetchProfile = async (userId: string, emailArg?: string) => {
-        // SKIP if we already have a valid profile for this user
-        if (profile && profile.id === userId) {
-            console.log('[AUTH] Profile already loaded for this user. Skipping fetch.');
-            return;
-        }
+        if (profile && profile.id === userId) return;
 
         console.log('[AUTH] 🔍 fetchProfile called with userId:', userId);
 
-        // STEP 1: Always try to fetch existing profile from database FIRST
         let attempts = 0;
         const maxAttempts = 3;
 
         while (attempts < maxAttempts) {
             attempts++;
             try {
-                console.log(`[AUTH] Attempting to fetch profile from DB (Attempt ${attempts}/${maxAttempts})...`);
-
-                // Add timeout to prevent infinite hang
                 const timeoutPromise = new Promise((_, reject) =>
                     setTimeout(() => reject(new Error('Profile fetch timeout after 5s')), 5000)
                 );
@@ -213,20 +197,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const { data: existingProfile, error: profileError } = result;
 
                 if (!profileError && existingProfile) {
-                    console.log('[AUTH] ✅ Loaded existing profile from DB:', existingProfile.email, 'role:', existingProfile.role, 'store_id:', existingProfile.store_id);
-
                     const userProfile = existingProfile as UserProfile;
-
-                    // Check for Impersonation (only for super_admin or store_owner)
                     const impersonatedStoreId = localStorage.getItem('impersonated_store_id');
                     if (impersonatedStoreId && (userProfile.role === 'super_admin' || userProfile.role === 'store_owner')) {
-                        console.log('[AUTH] 🕵️ Impersonation Active. Target Store:', impersonatedStoreId);
                         userProfile.store_id = impersonatedStoreId;
                     }
 
                     setProfile(userProfile);
 
-                    // Fetch Permissions if role_id exists (and not overridden by failsafe)
                     if (userProfile.role_id) {
                         const { data: permData } = await supabase
                             .from('cafe_role_permissions')
@@ -246,77 +224,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             setPermissions(permMap);
                         }
                     } else if (userProfile.role === 'store_owner' || userProfile.role === 'super_admin') {
-                        setPermissions(null); // Full access
+                        setPermissions(null);
                     }
-                    return; // Done - profile loaded successfully
+                    return;
                 }
-
-                // If we got here, profile is null or error occurred.
-                console.warn(`[AUTH] Profile fetch attempt ${attempts} failed or returned null.`);
-                if (attempts < maxAttempts) {
-                    console.log(`[AUTH] Retrying in 1000ms...`);
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                }
-
+                if (attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, 1000));
             } catch (err: any) {
-                console.log(`[AUTH] Profile fetch error on attempt ${attempts}:`, err.message);
-                if (attempts < maxAttempts) {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                }
+                if (attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, 1000));
             }
         }
 
-        // STEP 2: Profile fetch failed - Database might be unreachable or profile missing
         const userEmail = session?.user?.email || user?.email;
-        console.log('[AUTH] DB fetch failed. User:', userEmail);
-
-
-        // STEP 3: Profile not found after retries -> AUTO-HEAL 🏳️
-        // Instead of leaving the user in limbo, we create a basic profile row.
         console.warn(`[AUTH] ⚠️ Profile missing for ${userEmail}. Initiating AUTO-HEALING...`);
 
-        const autoHealProfile: UserProfile = {
+        const autoHealProfile: any = {
             id: userId,
             email: userEmail || `user_${userId.substr(0, 8)}@temp.livv`,
             full_name: session?.user?.user_metadata?.full_name || 'Nuevo Usuario',
-            // CRITICAL: Respect metadata role (e.g. for new store owners), fall back to customer
-            role: 'customer', // Default fallback
+            role: 'customer',
             is_active: true,
-            store_id: session?.user?.user_metadata?.store_id || undefined
-        } as unknown as UserProfile; // Force cast as we know this effectively matches what we need
+            store_id: session?.user?.user_metadata?.store_id || undefined,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
 
         try {
             const { data: newProfile, error: createError } = await supabase
                 .from('profiles')
-                .upsert(autoHealProfile) // Upsert is safer than insert
+                .upsert(autoHealProfile)
                 .select()
                 .single();
 
-            if (createError) {
-                console.error('[AUTH] Auto-heal failed:', createError);
-                throw createError;
-            }
-
+            if (createError) throw createError;
             if (newProfile) {
                 console.log('[AUTH] ✅ Profile AUTO-HEALED successfully.');
-                setProfile(newProfile as unknown as UserProfile);
-                setPermissions(null); // Customers usually have no special permissions
+                setProfile(newProfile as UserProfile);
+                setPermissions(null);
                 return;
             }
         } catch (healError) {
             console.error('[AUTH] Critical Auto-Heal Error:', healError);
-            // NOW we fall through to the manual error screen if even auto-heal fails
         }
     };
 
     const hasPermission = (slug: SectionSlug, action: 'view' | 'create' | 'edit' | 'delete' = 'view'): boolean => {
         if (isAdmin || profile?.role === 'store_owner') return true;
         if (!permissions) return false;
-
         const sectionPerms = permissions[slug];
-        if (!sectionPerms) return false;
-
-        return sectionPerms[action];
+        return sectionPerms ? sectionPerms[action] : false;
     };
 
     const refreshProfile = async () => {
@@ -324,44 +279,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const signOut = async () => {
-        console.log("AuthProvider: Iniciando proceso de cierre de sesión...");
         try {
-            // Solo borramos datos de autenticación, preservando datos offline
             const keysToRemove = Object.keys(localStorage).filter(key =>
                 key.startsWith('sb-') || key.includes('supabase') || key === 'impersonated_store_id'
             );
             keysToRemove.forEach(key => localStorage.removeItem(key));
             sessionStorage.clear();
-
             setProfile(null);
             setUser(null);
             setSession(null);
-
             await supabase.auth.signOut();
-            console.log("AuthProvider: Supabase signOut completado.");
         } catch (e) {
-            console.error("AuthProvider: Error en signOut:", e);
+            console.error(e);
         } finally {
             window.location.href = '#/';
             window.location.reload();
         }
     };
 
-    // --- ADMIN CHECK (STRICT - DB ROLE ONLY) ---
     const isAdmin = !!(user && profile && profile.id === user.id && profile.role === 'super_admin');
 
     return (
         <AuthContext.Provider value={{
-            session,
-            user,
-            profile,
-            permissions,
-            isLoading,
-            isAdmin,
-            isRecovery,
-            signOut,
-            refreshProfile,
-            hasPermission
+            session, user, profile, permissions, isLoading, isAdmin, isRecovery,
+            signOut, refreshProfile, hasPermission
         }}>
             {children}
         </AuthContext.Provider>
@@ -370,8 +311,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
-    if (context === undefined) {
-        throw new Error('useAuth must be used within an AuthProvider');
-    }
+    if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
     return context;
 };

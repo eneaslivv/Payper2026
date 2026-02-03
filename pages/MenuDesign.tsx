@@ -111,8 +111,63 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
     };
 
     const fetchAllProducts = async () => {
-        const { data } = await supabase.from('products').select('*').eq('store_id', storeId).eq('active', true).order('name');
-        setAllProducts(data || []);
+        // 1. Fetch Products
+        const productsReq = await supabase
+            .from('products')
+            .select('*, image') // Ensure image column is selected
+            .eq('store_id', storeId)
+            .eq('active', true)
+            .order('name');
+
+        // 2. Fetch Inventory Items (All active, for enrichment)
+        const inventoryReq = await supabase
+            .from('inventory_items')
+            .select('*')
+            .eq('store_id', storeId)
+            .eq('is_active', true); // Removed is_menu_visible filter to ensure we get images
+
+        const rawProducts = productsReq.data || [];
+        const rawInventory = inventoryReq.data || [];
+
+        // 3. Merge Logic (Same as useProducts.ts)
+        const inventoryMap = new Map<string, any>();
+        rawInventory.forEach((item: any) => {
+            inventoryMap.set(item.name.trim().toLowerCase(), item);
+        });
+
+        // Enrich Products with images from Inventory if missing
+        const enrichedProducts = rawProducts.map((p: any) => {
+            // Normalize image field
+            if (!p.image_url && p.image) {
+                p.image_url = p.image;
+            }
+
+            if (!p.image_url || p.image_url === '') {
+                const invItem = inventoryMap.get(p.name.trim().toLowerCase());
+                if (invItem && invItem.image_url) {
+                    return { ...p, image_url: invItem.image_url };
+                }
+            }
+            return p;
+        });
+
+        // Add "Sellable Inventory Items" that are NOT in products table yet
+        // (This happens if user created item in Inventory but didn't convert to Product)
+        // In MenuDesign, we usually only show 'products' table items because Menu is built on Products.
+        // BUT if we want to be consistent with Client Menu, we should allow adding pure inventory items too?
+        // Current system seems to favor Products for Menus.
+        // However, the client menu DOES show inventory items.
+        // If I want to add them to a menu, I need to treat them as potential targets.
+        // But `menu_products` links to `products` table (foreign key).
+        // Check `menu_products` definition: product_id REFERENCES products(id).
+        // SO: We CANNOT add pure inventory items to a menu unless they are in the products table.
+        //
+        // CONCLUSION: For MenuDesign, we only show enriched Products.
+        // Pure inventory items must be "Converted" to products first to be added here.
+        // (Unlike Client Menu which has a fallback to show raw inventory items if no menu is active or "All Items" mode).
+        // Since this is "Menu Management", we restrict to Products.
+
+        setAllProducts(enrichedProducts);
     };
 
     const fetchVenueNodes = async () => {
@@ -1170,7 +1225,7 @@ const MenuDesign: React.FC = () => {
                 // However, we preserve the price check just in case
                 item_type: (item.cost > 0 || item.price > 0) ? 'sellable' : 'ingredient',
                 unit_type: item.unit_type as UnitType,
-                image_url: item.image_url || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
+                image: item.image || item.image_url || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
                 is_active: true, // Default to true if not present
                 min_stock: item.min_stock_alert,
                 current_stock: item.current_stock,
@@ -1221,7 +1276,7 @@ const MenuDesign: React.FC = () => {
                     sku: 'SKU-' + (p.id || '').slice(0, 4).toUpperCase(),
                     item_type: 'sellable' as const,
                     unit_type: 'unit' as UnitType,
-                    image_url: p.image || p.image_url || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
+                    image: p.image || p.image_url || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
                     is_active: p.is_available,
                     is_menu_visible: p.is_visible, // Map from 'is_visible' column in products table
                     min_stock: 0,
@@ -1714,7 +1769,7 @@ const MenuDesign: React.FC = () => {
 
             // Construct Upload URL
             // Using /storage/v1/object/{bucket}/{filename}
-            const uploadUrl = `${supabaseUrl}/storage/v1/object/product-images/${filePath}`;
+            const uploadUrl = `${supabaseUrl}/storage/v1/object/products/${filePath}`;
 
             // Prepare Headers
             const headers: HeadersInit = {
@@ -1741,7 +1796,7 @@ const MenuDesign: React.FC = () => {
             }
 
             // Construct Public URL Manually
-            const publicUrl = `${supabaseUrl}/storage/v1/object/public/product-images/${filePath}`;
+            const publicUrl = `${supabaseUrl}/storage/v1/object/public/products/${filePath}`;
             const finalUrl = `${publicUrl}?t=${Date.now()}`;
 
             console.log('[ImageUpload] Success. URL:', finalUrl);

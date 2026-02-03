@@ -285,6 +285,8 @@ const InventoryManagement: React.FC = () => {
   const [showInsumoWizard, setShowInsumoWizard] = useState(false);
   const [wizardMethod, setWizardMethod] = useState<WizardMethod>('selector');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [aiGenerating, setAiGenerating] = useState(false);
 
   // Manual Creation State
@@ -299,8 +301,6 @@ const InventoryManagement: React.FC = () => {
     min_stock: 0,
     price: 0
   });
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Category Creation State
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -590,7 +590,7 @@ const InventoryManagement: React.FC = () => {
           sku: i.sku || 'N/A',
           item_type: 'ingredient' as const,
           unit_type: (i.unit_type || 'unit') as UnitType,
-          image_url: i.image_url || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
+          image_url: i.image_url || i.image || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
           is_active: true,
           is_menu_visible: i.is_menu_visible || false, // Map from 'is_menu_visible' column in inventory_items
           min_stock: i.min_stock_alert || 0,
@@ -641,7 +641,7 @@ const InventoryManagement: React.FC = () => {
             sku: 'SKU-' + (p.id || '').slice(0, 4).toUpperCase(),
             item_type: 'sellable' as const,
             unit_type: 'unit' as UnitType,
-            image_url: p.image_url || 'https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?auto=format&fit=crop&q=80&w=200',
+            image_url: p.image || p.image_url || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
             is_active: p.is_available, // Correctly mapped to DB column
             is_menu_visible: p.is_visible, // Map from 'is_visible' column in products table
             min_stock: 0,
@@ -1369,7 +1369,7 @@ const InventoryManagement: React.FC = () => {
 
         if (isFKError) {
           // Check if there are ACTIVE orders for this product
-          const activeStatuses = ['pending', 'preparing', 'ready', 'confirmed'];
+          const activeStatuses: any[] = ['pending', 'preparing', 'ready', 'paid'];
           const { data: activeOrders } = await supabase
             .from('order_items')
             .select('id, orders!inner(status)')
@@ -1437,6 +1437,58 @@ const InventoryManagement: React.FC = () => {
     }
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedItem) return;
+
+    // Validate type
+    if (!file.type.startsWith('image/')) {
+      addToast('Por favor, seleccioná una imagen (JPG, PNG, etc.)', 'warning');
+      return;
+    }
+
+    // Validate size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      addToast('La imagen no puede superar 2MB', 'warning');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    addToast('Subiendo imagen...', 'info');
+
+    try {
+      const storeId = profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${selectedItem.id}-${Date.now()}.${fileExt}`;
+      const filePath = `${storeId}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('products')
+        .upload(filePath, file, { cacheControl: '3600', upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('products')
+        .getPublicUrl(filePath);
+
+      // Update selectedItem state to show in UI immediately
+      setSelectedItem(prev => prev ? {
+        ...prev,
+        image_url: publicUrl, // For UI and inventory_items
+        image: publicUrl     // For products
+      } : null);
+
+      addToast('Imagen subida correctamente. No olvides Actualizar para guardar.', 'success');
+    } catch (err: any) {
+      console.error('[ImageUpload] Error:', err);
+      addToast(`Error al subir imagen: ${err.message}`, 'error');
+    } finally {
+      setIsUploadingImage(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const handleUpdateItem = async () => {
     if (!selectedItem) return;
     const storeId = profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
@@ -1458,9 +1510,16 @@ const InventoryManagement: React.FC = () => {
       };
 
       // Map UI unit values to DB enum
-      // The UI dropdown in lines 1893-1908 uses: unit, gram, kilo, ml, liter
-      // The DB expects the same values, so we use selectedItem.unit_type directly
-      let finalUnitType = selectedItem.unit_type || 'unit';
+      // The UI uses: unit, gram, kilo, ml, liter
+      // DB UnitType: 'u' | 'kg' | 'g' | 'L' | 'ml'
+      const unitMap: Record<string, UnitType> = {
+        'unit': 'u',
+        'gram': 'g',
+        'kilo': 'kg',
+        'ml': 'ml',
+        'liter': 'L'
+      };
+      let finalUnitType = unitMap[selectedItem.unit_type] || 'u';
 
       // CRITICAL: Sync content_unit with unit_type to ensure display consistency
       // Map unit_type to appropriate content_unit abbreviation
@@ -1480,7 +1539,8 @@ const InventoryManagement: React.FC = () => {
         cost: selectedItem.cost,
         package_size: selectedItem.package_size || selectedItem.unit_size || 1,
         content_unit: finalContentUnit, // Use synced value from unit_type
-        unit_type: finalUnitType
+        unit_type: finalUnitType,
+        [selectedItem.item_type === 'sellable' ? 'image' : 'image_url']: selectedItem.image_url || selectedItem.image
       };
 
       if (selectedItem.description) payload.description = selectedItem.description;
@@ -1494,6 +1554,24 @@ const InventoryManagement: React.FC = () => {
       });
 
       if (!response.ok) throw new Error('Error updating item');
+
+      // SYNC IMAGE: If we just updated an image, try to update the matching record in the other table
+      const hasImageUpdate = selectedItem.image_url || selectedItem.image;
+      if (hasImageUpdate) {
+        const otherTable = selectedItem.item_type === 'sellable' ? 'inventory_items' : 'products';
+        const otherImageColumn = selectedItem.item_type === 'sellable' ? 'image_url' : 'image';
+
+        // Try linking by SKU first, then by name
+        const filter = selectedItem.sku
+          ? `sku=eq.${selectedItem.sku}`
+          : `name=eq.${encodeURIComponent(selectedItem.name)}`;
+
+        await fetch(`https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/${otherTable}?${filter}&store_id=eq.${storeId}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ [otherImageColumn]: selectedItem.image_url || selectedItem.image })
+        }).catch(err => console.warn('Non-critical sync error:', err));
+      }
 
       // Update local items state explicitly with calculated values to ensure UI reflects changes immediately
       const updatedItem = {
@@ -2165,8 +2243,33 @@ const InventoryManagement: React.FC = () => {
         {selectedItem && (
           <>
             <div className="relative h-64 w-full shrink-0">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageUpload}
+                accept="image/*"
+                className="hidden"
+              />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0D0F0D] via-transparent to-transparent z-10" />
-              <img src={selectedItem.image_url} className="w-full h-full object-cover" />
+              <img
+                src={selectedItem.image_url || selectedItem.image}
+                className={`w-full h-full object-cover transition-all ${isUploadingImage ? 'opacity-30 blur-sm' : ''}`}
+              />
+
+              {/* Overlay Clickable para Upload */}
+              <div
+                onClick={() => !isUploadingImage && fileInputRef.current?.click()}
+                className="absolute inset-0 z-15 flex items-center justify-center cursor-pointer group/upload"
+              >
+                <div className="size-12 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white opacity-0 group-hover/upload:opacity-100 transition-all border border-white/20">
+                  {isUploadingImage ? (
+                    <div className="size-6 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                  ) : (
+                    <span className="material-symbols-outlined">add_a_photo</span>
+                  )}
+                </div>
+              </div>
+
               <button onClick={() => setSelectedItem(null)} className="absolute top-4 right-4 z-20 size-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white/60 hover:text-white transition-all">
                 <span className="material-symbols-outlined text-lg">close</span>
               </button>
@@ -2952,7 +3055,7 @@ const InventoryManagement: React.FC = () => {
                 {/* Unidad + Tamaño + Costo Unit. + Stock Inicial */}
                 {/* Unidad + Contenido/Tamaño */}
                 <div className="grid grid-cols-4 gap-3">
-                  <div className={newItemForm.unit_type === 'unit' ? 'col-span-1' : 'col-span-2'}>
+                  <div className={(newItemForm.unit_type as string) === 'unit' ? 'col-span-1' : 'col-span-2'}>
                     <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block mb-2">
                       Tipo de Unidad
                     </label>
@@ -2962,8 +3065,9 @@ const InventoryManagement: React.FC = () => {
                         const type = e.target.value as UnitType;
                         setNewItemForm({
                           ...newItemForm,
+                          // @ts-ignore
                           unit_type: type,
-                          content_unit: type === 'unit' ? (newItemForm.content_unit || 'ml') : '',
+                          content_unit: (type as string) === 'unit' ? (newItemForm.content_unit || 'ml') : '',
                           package_size: 0
                         });
                       }}
@@ -2977,7 +3081,7 @@ const InventoryManagement: React.FC = () => {
                     </select>
                   </div>
 
-                  {newItemForm.unit_type === 'unit' ? (
+                  {(newItemForm.unit_type as string) === 'unit' ? (
                     <>
                       <div className="col-span-2">
                         <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block mb-2">

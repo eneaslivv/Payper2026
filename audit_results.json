@@ -1,0 +1,1487 @@
+{
+  "stores": [
+    {
+      "id": "aaaaaaaa-0000-0000-0000-000000000001",
+      "name": "Demo Coffee Shop",
+      "slug": "demo",
+      "logo_url": null,
+      "address": null,
+      "tax_info": null,
+      "created_at": "2025-12-31T17:31:12.00334+00:00",
+      "updated_at": "2025-12-31T17:31:12.00334+00:00",
+      "owner_email": null,
+      "plan": "FREE",
+      "onboarding_status": "INVITED",
+      "menu_theme": {
+        "columns": 2,
+        "cardStyle": "solid",
+        "fontStyle": "sans",
+        "textColor": "#FFFFFF",
+        "layoutMode": "grid",
+        "showBadges": true,
+        "showImages": true,
+        "showPrices": true,
+        "accentColor": "#4ADE80",
+        "borderRadius": "xl",
+        "surfaceColor": "#141714",
+        "showAddButton": true,
+        "backgroundColor": "#0D0F0D",
+        "headerAlignment": "left",
+        "showDescription": true
+      },
+      "menu_logic": {},
+      "mp_access_token": null,
+      "mp_refresh_token": null,
+      "mp_user_id": null,
+      "mp_public_key": null,
+      "mp_connected_at": null,
+      "mp_expires_at": null,
+      "mp_nickname": null,
+      "mp_email": null,
+      "mp_first_name": null,
+      "mp_last_name": null,
+      "is_active": false,
+      "service_mode": "counter",
+      "business_hours": {
+        "timezone": "America/Argentina/Buenos_Aires",
+        "schedules": [
+          {
+            "day": 0,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Domingo",
+            "enabled": true
+          },
+          {
+            "day": 1,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Lunes",
+            "enabled": true
+          },
+          {
+            "day": 2,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Martes",
+            "enabled": true
+          },
+          {
+            "day": 3,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Miércoles",
+            "enabled": true
+          },
+          {
+            "day": 4,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Jueves",
+            "enabled": true
+          },
+          {
+            "day": 5,
+            "open": "09:00",
+            "close": "00:00",
+            "label": "Viernes",
+            "enabled": true
+          },
+          {
+            "day": 6,
+            "open": "10:00",
+            "close": "00:00",
+            "label": "Sábado",
+            "enabled": true
+          }
+        ],
+        "auto_close": true,
+        "delivery_hours": null
+      },
+      "cover_url": null
+    },
+    {
+      "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+      "name": "CoffeeSquad HQ",
+      "slug": "hq-demo",
+      "logo_url": null,
+      "address": null,
+      "tax_info": null,
+      "created_at": "2025-12-26T17:37:10.473137+00:00",
+      "updated_at": "2025-12-26T17:37:10.473137+00:00",
+      "owner_email": null,
+      "plan": "FREE",
+      "onboarding_status": "INVITED",
+      "menu_theme": {
+        "columns": 2,
+        "cardStyle": "solid",
+        "fontStyle": "sans",
+        "textColor": "#FFFFFF",
+        "layoutMode": "grid",
+        "showBadges": true,
+        "showImages": true,
+        "showPrices": true,
+        "accentColor": "#4ADE80",
+        "borderRadius": "xl",
+        "surfaceColor": "#141714",
+        "showAddButton": true,
+        "backgroundColor": "#0D0F0D",
+        "headerAlignment": "left",
+        "showDescription": true
+      },
+      "menu_logic": {},
+      "mp_access_token": null,
+      "mp_refresh_token": null,
+      "mp_user_id": null,
+      "mp_public_key": null,
+      "mp_connected_at": null,
+      "mp_expires_at": null,
+      "mp_nickname": null,
+      "mp_email": null,
+      "mp_first_name": null,
+      "mp_last_name": null,
+      "is_active": false,
+      "service_mode": "counter",
+      "business_hours": {
+        "timezone": "America/Argentina/Buenos_Aires",
+        "schedules": [
+          {
+            "day": 0,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Domingo",
+            "enabled": true
+          },
+          {
+            "day": 1,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Lunes",
+            "enabled": true
+          },
+          {
+            "day": 2,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Martes",
+            "enabled": true
+          },
+          {
+            "day": 3,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Miércoles",
+            "enabled": true
+          },
+          {
+            "day": 4,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Jueves",
+            "enabled": true
+          },
+          {
+            "day": 5,
+            "open": "09:00",
+            "close": "00:00",
+            "label": "Viernes",
+            "enabled": true
+          },
+          {
+            "day": 6,
+            "open": "10:00",
+            "close": "00:00",
+            "label": "Sábado",
+            "enabled": true
+          }
+        ],
+        "auto_close": true,
+        "delivery_hours": null
+      },
+      "cover_url": null
+    },
+    {
+      "id": "b939d49f-23ea-4b36-b10c-df0b5ee47b1f",
+      "name": "ciro test",
+      "slug": "ciro-test",
+      "logo_url": null,
+      "address": "uala",
+      "tax_info": "43720200",
+      "created_at": "2025-12-27T03:27:08.128741+00:00",
+      "updated_at": "2025-12-27T03:27:08.128741+00:00",
+      "owner_email": "caca@rrr",
+      "plan": "PRO",
+      "onboarding_status": "PENDING",
+      "menu_theme": {
+        "columns": 2,
+        "cardStyle": "solid",
+        "fontStyle": "sans",
+        "textColor": "#FFFFFF",
+        "layoutMode": "grid",
+        "showBadges": true,
+        "showImages": true,
+        "showPrices": true,
+        "accentColor": "#4ADE80",
+        "borderRadius": "xl",
+        "surfaceColor": "#141714",
+        "showAddButton": true,
+        "backgroundColor": "#0D0F0D",
+        "headerAlignment": "left",
+        "showDescription": true
+      },
+      "menu_logic": {},
+      "mp_access_token": null,
+      "mp_refresh_token": null,
+      "mp_user_id": null,
+      "mp_public_key": null,
+      "mp_connected_at": null,
+      "mp_expires_at": null,
+      "mp_nickname": null,
+      "mp_email": null,
+      "mp_first_name": null,
+      "mp_last_name": null,
+      "is_active": false,
+      "service_mode": "counter",
+      "business_hours": {
+        "timezone": "America/Argentina/Buenos_Aires",
+        "schedules": [
+          {
+            "day": 0,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Domingo",
+            "enabled": true
+          },
+          {
+            "day": 1,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Lunes",
+            "enabled": true
+          },
+          {
+            "day": 2,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Martes",
+            "enabled": true
+          },
+          {
+            "day": 3,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Miércoles",
+            "enabled": true
+          },
+          {
+            "day": 4,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Jueves",
+            "enabled": true
+          },
+          {
+            "day": 5,
+            "open": "09:00",
+            "close": "00:00",
+            "label": "Viernes",
+            "enabled": true
+          },
+          {
+            "day": 6,
+            "open": "10:00",
+            "close": "00:00",
+            "label": "Sábado",
+            "enabled": true
+          }
+        ],
+        "auto_close": true,
+        "delivery_hours": null
+      },
+      "cover_url": null
+    },
+    {
+      "id": "8019a776-4e8e-4eb1-8c00-29bbce9fbdcd",
+      "name": "testmails",
+      "slug": "testmails",
+      "logo_url": null,
+      "address": "tetsed",
+      "tax_info": "vrf",
+      "created_at": "2026-01-03T20:59:34.155947+00:00",
+      "updated_at": "2026-01-03T20:59:34.155947+00:00",
+      "owner_email": "eneaswebflow@gmail.com",
+      "plan": "FREE",
+      "onboarding_status": "PENDING",
+      "menu_theme": {
+        "columns": 2,
+        "cardStyle": "solid",
+        "fontStyle": "sans",
+        "textColor": "#FFFFFF",
+        "layoutMode": "grid",
+        "showBadges": true,
+        "showImages": true,
+        "showPrices": true,
+        "accentColor": "#4ADE80",
+        "borderRadius": "xl",
+        "surfaceColor": "#141714",
+        "showAddButton": true,
+        "backgroundColor": "#0D0F0D",
+        "headerAlignment": "left",
+        "showDescription": true
+      },
+      "menu_logic": {},
+      "mp_access_token": null,
+      "mp_refresh_token": null,
+      "mp_user_id": null,
+      "mp_public_key": null,
+      "mp_connected_at": null,
+      "mp_expires_at": null,
+      "mp_nickname": null,
+      "mp_email": null,
+      "mp_first_name": null,
+      "mp_last_name": null,
+      "is_active": true,
+      "service_mode": "counter",
+      "business_hours": {
+        "timezone": "America/Argentina/Buenos_Aires",
+        "schedules": [
+          {
+            "day": 0,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Domingo",
+            "enabled": true
+          },
+          {
+            "day": 1,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Lunes",
+            "enabled": true
+          },
+          {
+            "day": 2,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Martes",
+            "enabled": true
+          },
+          {
+            "day": 3,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Miércoles",
+            "enabled": true
+          },
+          {
+            "day": 4,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Jueves",
+            "enabled": true
+          },
+          {
+            "day": 5,
+            "open": "09:00",
+            "close": "00:00",
+            "label": "Viernes",
+            "enabled": true
+          },
+          {
+            "day": 6,
+            "open": "10:00",
+            "close": "00:00",
+            "label": "Sábado",
+            "enabled": true
+          }
+        ],
+        "auto_close": true,
+        "delivery_hours": null
+      },
+      "cover_url": null
+    },
+    {
+      "id": "294dcea2-313e-433b-a371-9bd4b75c05f8",
+      "name": "Local Demo - Prueba Visual",
+      "slug": "demo-visual",
+      "logo_url": null,
+      "address": null,
+      "tax_info": null,
+      "created_at": "2025-12-27T21:01:19.691288+00:00",
+      "updated_at": "2025-12-27T21:01:19.691288+00:00",
+      "owner_email": null,
+      "plan": "FREE",
+      "onboarding_status": "INVITED",
+      "menu_theme": {
+        "columns": 2,
+        "cardStyle": "solid",
+        "fontStyle": "sans",
+        "textColor": "#FFFFFF",
+        "layoutMode": "grid",
+        "showBadges": true,
+        "showImages": true,
+        "showPrices": true,
+        "accentColor": "#4ADE80",
+        "borderRadius": "xl",
+        "surfaceColor": "#141714",
+        "showAddButton": true,
+        "backgroundColor": "#0D0F0D",
+        "headerAlignment": "left",
+        "showDescription": true
+      },
+      "menu_logic": {},
+      "mp_access_token": null,
+      "mp_refresh_token": null,
+      "mp_user_id": null,
+      "mp_public_key": null,
+      "mp_connected_at": null,
+      "mp_expires_at": null,
+      "mp_nickname": null,
+      "mp_email": null,
+      "mp_first_name": null,
+      "mp_last_name": null,
+      "is_active": false,
+      "service_mode": "counter",
+      "business_hours": {
+        "timezone": "America/Argentina/Buenos_Aires",
+        "schedules": [
+          {
+            "day": 0,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Domingo",
+            "enabled": true
+          },
+          {
+            "day": 1,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Lunes",
+            "enabled": true
+          },
+          {
+            "day": 2,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Martes",
+            "enabled": true
+          },
+          {
+            "day": 3,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Miércoles",
+            "enabled": true
+          },
+          {
+            "day": 4,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Jueves",
+            "enabled": true
+          },
+          {
+            "day": 5,
+            "open": "09:00",
+            "close": "00:00",
+            "label": "Viernes",
+            "enabled": true
+          },
+          {
+            "day": 6,
+            "open": "10:00",
+            "close": "00:00",
+            "label": "Sábado",
+            "enabled": true
+          }
+        ],
+        "auto_close": true,
+        "delivery_hours": null
+      },
+      "cover_url": null
+    },
+    {
+      "id": "3863815f-0449-4352-aa61-1cf0f05ed7ed",
+      "name": "test",
+      "slug": "test",
+      "logo_url": null,
+      "address": "ded",
+      "tax_info": "de",
+      "created_at": "2025-12-27T03:55:41.478897+00:00",
+      "updated_at": "2025-12-27T03:55:41.478897+00:00",
+      "owner_email": "test@3test.com",
+      "plan": "PRO",
+      "onboarding_status": "PENDING",
+      "menu_theme": {
+        "columns": 2,
+        "cardStyle": "solid",
+        "fontStyle": "sans",
+        "textColor": "#FFFFFF",
+        "layoutMode": "grid",
+        "showBadges": true,
+        "showImages": true,
+        "showPrices": true,
+        "accentColor": "#4ADE80",
+        "borderRadius": "xl",
+        "surfaceColor": "#141714",
+        "showAddButton": true,
+        "backgroundColor": "#0D0F0D",
+        "headerAlignment": "left",
+        "showDescription": true
+      },
+      "menu_logic": {},
+      "mp_access_token": null,
+      "mp_refresh_token": null,
+      "mp_user_id": null,
+      "mp_public_key": null,
+      "mp_connected_at": null,
+      "mp_expires_at": null,
+      "mp_nickname": null,
+      "mp_email": null,
+      "mp_first_name": null,
+      "mp_last_name": null,
+      "is_active": false,
+      "service_mode": "counter",
+      "business_hours": {
+        "timezone": "America/Argentina/Buenos_Aires",
+        "schedules": [
+          {
+            "day": 0,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Domingo",
+            "enabled": true
+          },
+          {
+            "day": 1,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Lunes",
+            "enabled": true
+          },
+          {
+            "day": 2,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Martes",
+            "enabled": true
+          },
+          {
+            "day": 3,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Miércoles",
+            "enabled": true
+          },
+          {
+            "day": 4,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Jueves",
+            "enabled": true
+          },
+          {
+            "day": 5,
+            "open": "09:00",
+            "close": "00:00",
+            "label": "Viernes",
+            "enabled": true
+          },
+          {
+            "day": 6,
+            "open": "10:00",
+            "close": "00:00",
+            "label": "Sábado",
+            "enabled": true
+          }
+        ],
+        "auto_close": true,
+        "delivery_hours": null
+      },
+      "cover_url": null
+    },
+    {
+      "id": "01ade06c-b8ca-4704-9f42-2cba3459485e",
+      "name": "uala coffee",
+      "slug": "uala-coffee",
+      "logo_url": null,
+      "address": "",
+      "tax_info": "",
+      "created_at": "2025-12-27T03:16:35.954404+00:00",
+      "updated_at": "2025-12-27T03:16:35.954404+00:00",
+      "owner_email": "ciroaldabe1",
+      "plan": "FREE",
+      "onboarding_status": "PENDING",
+      "menu_theme": {
+        "columns": 2,
+        "cardStyle": "solid",
+        "fontStyle": "sans",
+        "textColor": "#FFFFFF",
+        "layoutMode": "grid",
+        "showBadges": true,
+        "showImages": true,
+        "showPrices": true,
+        "accentColor": "#4ADE80",
+        "borderRadius": "xl",
+        "surfaceColor": "#141714",
+        "showAddButton": true,
+        "backgroundColor": "#0D0F0D",
+        "headerAlignment": "left",
+        "showDescription": true
+      },
+      "menu_logic": {},
+      "mp_access_token": null,
+      "mp_refresh_token": null,
+      "mp_user_id": null,
+      "mp_public_key": null,
+      "mp_connected_at": null,
+      "mp_expires_at": null,
+      "mp_nickname": null,
+      "mp_email": null,
+      "mp_first_name": null,
+      "mp_last_name": null,
+      "is_active": false,
+      "service_mode": "counter",
+      "business_hours": {
+        "timezone": "America/Argentina/Buenos_Aires",
+        "schedules": [
+          {
+            "day": 0,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Domingo",
+            "enabled": true
+          },
+          {
+            "day": 1,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Lunes",
+            "enabled": true
+          },
+          {
+            "day": 2,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Martes",
+            "enabled": true
+          },
+          {
+            "day": 3,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Miércoles",
+            "enabled": true
+          },
+          {
+            "day": 4,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Jueves",
+            "enabled": true
+          },
+          {
+            "day": 5,
+            "open": "09:00",
+            "close": "00:00",
+            "label": "Viernes",
+            "enabled": true
+          },
+          {
+            "day": 6,
+            "open": "10:00",
+            "close": "00:00",
+            "label": "Sábado",
+            "enabled": true
+          }
+        ],
+        "auto_close": true,
+        "delivery_hours": null
+      },
+      "cover_url": null
+    },
+    {
+      "id": "3b93325d-c189-4134-8a2e-cb401f9192f0",
+      "name": "enero test",
+      "slug": "enero-test",
+      "logo_url": null,
+      "address": "",
+      "tax_info": "",
+      "created_at": "2026-01-04T02:39:59.642102+00:00",
+      "updated_at": "2026-01-04T02:39:59.642102+00:00",
+      "owner_email": "cacac@com.",
+      "plan": "FREE",
+      "onboarding_status": "PENDING",
+      "menu_theme": {
+        "columns": 2,
+        "cardStyle": "solid",
+        "fontStyle": "sans",
+        "textColor": "#FFFFFF",
+        "layoutMode": "grid",
+        "showBadges": true,
+        "showImages": true,
+        "showPrices": true,
+        "accentColor": "#4ADE80",
+        "borderRadius": "xl",
+        "surfaceColor": "#141714",
+        "showAddButton": true,
+        "backgroundColor": "#0D0F0D",
+        "headerAlignment": "left",
+        "showDescription": true
+      },
+      "menu_logic": {},
+      "mp_access_token": null,
+      "mp_refresh_token": null,
+      "mp_user_id": null,
+      "mp_public_key": null,
+      "mp_connected_at": null,
+      "mp_expires_at": null,
+      "mp_nickname": null,
+      "mp_email": null,
+      "mp_first_name": null,
+      "mp_last_name": null,
+      "is_active": false,
+      "service_mode": "counter",
+      "business_hours": {
+        "timezone": "America/Argentina/Buenos_Aires",
+        "schedules": [
+          {
+            "day": 0,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Domingo",
+            "enabled": true
+          },
+          {
+            "day": 1,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Lunes",
+            "enabled": true
+          },
+          {
+            "day": 2,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Martes",
+            "enabled": true
+          },
+          {
+            "day": 3,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Miércoles",
+            "enabled": true
+          },
+          {
+            "day": 4,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Jueves",
+            "enabled": true
+          },
+          {
+            "day": 5,
+            "open": "09:00",
+            "close": "00:00",
+            "label": "Viernes",
+            "enabled": true
+          },
+          {
+            "day": 6,
+            "open": "10:00",
+            "close": "00:00",
+            "label": "Sábado",
+            "enabled": true
+          }
+        ],
+        "auto_close": true,
+        "delivery_hours": null
+      },
+      "cover_url": null
+    },
+    {
+      "id": "f1cb2d7f-3835-4ef6-bf37-876224b3f094",
+      "name": "ciro coffee test",
+      "slug": "ciro-coffee-test",
+      "logo_url": null,
+      "address": "20437202002",
+      "tax_info": "cuit",
+      "created_at": "2025-12-27T03:17:50.235844+00:00",
+      "updated_at": "2025-12-27T03:17:50.235844+00:00",
+      "owner_email": "ciroaldabe1@gmail.com",
+      "plan": "DEMO",
+      "onboarding_status": "COMPLETED",
+      "menu_theme": {
+        "columns": 2,
+        "cardStyle": "solid",
+        "fontStyle": "sans",
+        "textColor": "#FFFFFF",
+        "layoutMode": "grid",
+        "showBadges": true,
+        "showImages": true,
+        "showPrices": true,
+        "accentColor": "#4ADE80",
+        "borderRadius": "xl",
+        "surfaceColor": "#141714",
+        "showAddButton": true,
+        "backgroundColor": "#0D0F0D",
+        "headerAlignment": "left",
+        "showDescription": true
+      },
+      "menu_logic": {},
+      "mp_access_token": null,
+      "mp_refresh_token": null,
+      "mp_user_id": null,
+      "mp_public_key": null,
+      "mp_connected_at": null,
+      "mp_expires_at": null,
+      "mp_nickname": null,
+      "mp_email": null,
+      "mp_first_name": null,
+      "mp_last_name": null,
+      "is_active": false,
+      "service_mode": "counter",
+      "business_hours": {
+        "timezone": "America/Argentina/Buenos_Aires",
+        "schedules": [
+          {
+            "day": 0,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Domingo",
+            "enabled": true
+          },
+          {
+            "day": 1,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Lunes",
+            "enabled": true
+          },
+          {
+            "day": 2,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Martes",
+            "enabled": true
+          },
+          {
+            "day": 3,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Miércoles",
+            "enabled": true
+          },
+          {
+            "day": 4,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Jueves",
+            "enabled": true
+          },
+          {
+            "day": 5,
+            "open": "09:00",
+            "close": "00:00",
+            "label": "Viernes",
+            "enabled": true
+          },
+          {
+            "day": 6,
+            "open": "10:00",
+            "close": "00:00",
+            "label": "Sábado",
+            "enabled": true
+          }
+        ],
+        "auto_close": true,
+        "delivery_hours": null
+      },
+      "cover_url": null
+    },
+    {
+      "id": "f5e3bfcf-3ccc-4464-9eb5-431fa6e26533",
+      "name": "CIRO",
+      "slug": "ciro-updated",
+      "logo_url": "https://yjxjyxhksedwfeueduwl.supabase.co/storage/v1/object/public/logos/f5e3bfcf-3ccc-4464-9eb5-431fa6e26533/logo-1768419094735.jpg",
+      "address": "123 New Address, City",
+      "tax_info": "20-12345678-9",
+      "created_at": "2025-12-23T00:45:46.846946+00:00",
+      "updated_at": "2026-01-29T13:24:28.676+00:00",
+      "owner_email": "livveneas@gmail.com",
+      "plan": "PRO",
+      "onboarding_status": "COMPLETED",
+      "menu_theme": {
+        "columns": 2,
+        "cardStyle": "glass",
+        "fontStyle": "modern",
+        "textColor": "#FFFFFF",
+        "layoutMode": "grid",
+        "showBadges": true,
+        "showImages": true,
+        "showPrices": true,
+        "accentColor": "#4ADE80",
+        "headerImage": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&q=80&w=600",
+        "borderRadius": "xl",
+        "surfaceColor": "#141714",
+        "headerOverlay": 0.5,
+        "showAddButton": true,
+        "backgroundColor": "#0D0F0D",
+        "headerAlignment": "left",
+        "showDescription": true
+      },
+      "menu_logic": {
+        "rules": {
+          "enforceStock": false,
+          "showCalories": false,
+          "showAllergens": true,
+          "hideOutofStock": false
+        },
+        "channels": {
+          "dineIn": {
+            "enabled": true,
+            "allowOrdering": true
+          },
+          "delivery": {
+            "enabled": true,
+            "radiusKm": 5,
+            "minOrderAmount": 0
+          },
+          "takeaway": {
+            "enabled": true,
+            "minTimeMinutes": 15
+          }
+        },
+        "features": {
+          "wallet": {
+            "allowTopUp": true,
+            "allowPayment": true
+          },
+          "loyalty": {
+            "enabled": true,
+            "showPoints": true
+          },
+          "guestMode": {
+            "enabled": true,
+            "allowOrdering": false
+          }
+        },
+        "operation": {
+          "isOpen": true,
+          "messageClosed": "",
+          "estimatedWaitMinutes": 20
+        },
+        "businessHours": {
+          "autoClose": true,
+          "schedules": [
+            {
+              "day": 0,
+              "open": "10:00",
+              "close": "22:00",
+              "label": "Dom",
+              "enabled": true
+            },
+            {
+              "day": 1,
+              "open": "09:00",
+              "close": "23:00",
+              "label": "Lun",
+              "enabled": true
+            },
+            {
+              "day": 2,
+              "open": "09:00",
+              "close": "23:00",
+              "label": "Mar",
+              "enabled": true
+            },
+            {
+              "day": 3,
+              "open": "09:00",
+              "close": "23:00",
+              "label": "Mié",
+              "enabled": true
+            },
+            {
+              "day": 4,
+              "open": "09:00",
+              "close": "23:00",
+              "label": "Jue",
+              "enabled": true
+            },
+            {
+              "day": 5,
+              "open": "09:00",
+              "close": "00:00",
+              "label": "Vie",
+              "enabled": true
+            },
+            {
+              "day": 6,
+              "open": "10:00",
+              "close": "00:00",
+              "label": "Sáb",
+              "enabled": true
+            }
+          ]
+        }
+      },
+      "mp_access_token": "APP_USR-2839669811317212-010421-6727a7af8928dbbce51a316ac3266ab6-620365978",
+      "mp_refresh_token": "TG-695b1a8a1d6b6e000106ca30-620365978",
+      "mp_user_id": "620365978",
+      "mp_public_key": "APP_USR-af136499-a676-4499-84b3-774dddf976ae",
+      "mp_connected_at": "2026-01-05T01:57:30.753+00:00",
+      "mp_expires_at": "2026-07-04T01:57:30.753+00:00",
+      "mp_nickname": "PALOMAVISONA",
+      "mp_email": "palovisona@gmail.com",
+      "mp_first_name": "Paloma",
+      "mp_last_name": "Visona",
+      "is_active": true,
+      "service_mode": "counter",
+      "business_hours": {
+        "timezone": "America/Argentina/Buenos_Aires",
+        "schedules": [
+          {
+            "day": 0,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Domingo",
+            "enabled": true
+          },
+          {
+            "day": 1,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Lunes",
+            "enabled": true
+          },
+          {
+            "day": 2,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Martes",
+            "enabled": true
+          },
+          {
+            "day": 3,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Miércoles",
+            "enabled": true
+          },
+          {
+            "day": 4,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Jueves",
+            "enabled": true
+          },
+          {
+            "day": 5,
+            "open": "09:00",
+            "close": "00:00",
+            "label": "Viernes",
+            "enabled": true
+          },
+          {
+            "day": 6,
+            "open": "10:00",
+            "close": "00:00",
+            "label": "Sábado",
+            "enabled": true
+          }
+        ],
+        "auto_close": true,
+        "delivery_hours": null
+      },
+      "cover_url": null
+    },
+    {
+      "id": "f1097064-302b-4851-a532-2dc4f44e5736",
+      "name": "TEST JET",
+      "slug": "test-ciro-enero",
+      "logo_url": "https://yjxjyxhksedwfeueduwl.supabase.co/storage/v1/object/public/store-logos/f1097064-302b-4851-a532-2dc4f44e5736/logo-1768878352249.png",
+      "address": "",
+      "tax_info": "",
+      "created_at": "2026-01-08T03:30:08.264397+00:00",
+      "updated_at": "2026-01-30T00:39:31.778+00:00",
+      "owner_email": "ciroaldabe1@gmail.com",
+      "plan": "PRO",
+      "onboarding_status": "COMPLETED",
+      "menu_theme": {
+        "columns": 2,
+        "cardStyle": "glass",
+        "fontStyle": "modern",
+        "textColor": "#ffffff",
+        "layoutMode": "list",
+        "showBadges": true,
+        "showImages": true,
+        "showPrices": true,
+        "accentColor": "#b57130",
+        "headerImage": "https://yjxjyxhksedwfeueduwl.supabase.co/storage/v1/object/public/store-covers/f1097064-302b-4851-a532-2dc4f44e5736/cover-1769688999501.jpeg?t=1769689003012",
+        "borderRadius": "sm",
+        "surfaceColor": "#111111",
+        "headerOverlay": 0.4,
+        "showAddButton": true,
+        "backgroundColor": "#000000",
+        "headerAlignment": "left",
+        "showDescription": true
+      },
+      "menu_logic": {
+        "rules": {
+          "enforceStock": false,
+          "showCalories": false,
+          "showAllergens": true,
+          "hideOutofStock": false
+        },
+        "channels": {
+          "dineIn": {
+            "enabled": true,
+            "allowOrdering": true
+          },
+          "delivery": {
+            "enabled": false,
+            "radiusKm": 0,
+            "minOrderAmount": 0
+          },
+          "takeaway": {
+            "enabled": true,
+            "minTimeMinutes": 15
+          }
+        },
+        "features": {
+          "wallet": {
+            "allowTopUp": true,
+            "allowPayment": true
+          },
+          "loyalty": {
+            "enabled": true,
+            "showPoints": true
+          },
+          "guestMode": {
+            "enabled": true,
+            "allowOrdering": true
+          }
+        },
+        "operation": {
+          "isOpen": true,
+          "messageClosed": "",
+          "estimatedWaitMinutes": 15
+        },
+        "businessHours": {
+          "autoClose": true,
+          "schedules": [
+            {
+              "day": 0,
+              "open": "10:00",
+              "close": "22:00",
+              "label": "Dom",
+              "enabled": true
+            },
+            {
+              "day": 1,
+              "open": "09:00",
+              "close": "23:00",
+              "label": "Lun",
+              "enabled": true
+            },
+            {
+              "day": 2,
+              "open": "09:00",
+              "close": "23:00",
+              "label": "Mar",
+              "enabled": true
+            },
+            {
+              "day": 3,
+              "open": "09:00",
+              "close": "23:00",
+              "label": "Mié",
+              "enabled": true
+            },
+            {
+              "day": 4,
+              "open": "09:00",
+              "close": "23:00",
+              "label": "Jue",
+              "enabled": true
+            },
+            {
+              "day": 5,
+              "open": "09:00",
+              "close": "00:00",
+              "label": "Vie",
+              "enabled": true
+            },
+            {
+              "day": 6,
+              "open": "10:00",
+              "close": "00:00",
+              "label": "Sáb",
+              "enabled": true
+            }
+          ]
+        }
+      },
+      "mp_access_token": "APP_USR-2839669811317212-010815-c818aee72aa2ab05d33e0d3f96185f98-185834228",
+      "mp_refresh_token": "TG-69600717115aae0001f5efb6-185834228",
+      "mp_user_id": "185834228",
+      "mp_public_key": "APP_USR-2fef4c8d-d8b3-4986-bab9-d9d4376a4cdd",
+      "mp_connected_at": "2026-01-08T19:35:51.584+00:00",
+      "mp_expires_at": "2026-07-07T19:35:51.583+00:00",
+      "mp_nickname": "LAUTAROYCIRO",
+      "mp_email": "ciroaldabe@hotmail.com",
+      "mp_first_name": "ciro",
+      "mp_last_name": "aldabe",
+      "is_active": true,
+      "service_mode": "counter",
+      "business_hours": {
+        "timezone": "America/Argentina/Buenos_Aires",
+        "schedules": [
+          {
+            "day": 0,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Domingo",
+            "enabled": true
+          },
+          {
+            "day": 1,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Lunes",
+            "enabled": true
+          },
+          {
+            "day": 2,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Martes",
+            "enabled": true
+          },
+          {
+            "day": 3,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Miércoles",
+            "enabled": true
+          },
+          {
+            "day": 4,
+            "open": "09:00",
+            "close": "23:00",
+            "label": "Jueves",
+            "enabled": true
+          },
+          {
+            "day": 5,
+            "open": "09:00",
+            "close": "00:00",
+            "label": "Viernes",
+            "enabled": true
+          },
+          {
+            "day": 6,
+            "open": "10:00",
+            "close": "00:00",
+            "label": "Sábado",
+            "enabled": true
+          }
+        ],
+        "auto_close": true,
+        "delivery_hours": null
+      },
+      "cover_url": null
+    }
+  ],
+  "menus": [
+    {
+      "id": "5d100913-1a13-469f-9048-b091a420d584",
+      "store_id": "f5e3bfcf-3ccc-4464-9eb5-431fa6e26533",
+      "name": "Menú General",
+      "description": "Menú principal (fallback automático)",
+      "is_active": true,
+      "priority": 1000,
+      "is_fallback": true,
+      "created_at": "2026-01-02T21:19:39.542924+00:00",
+      "updated_at": "2026-01-02T21:19:39.542924+00:00"
+    },
+    {
+      "id": "2d1619e9-e5c7-441b-b232-bfdfff4b9eeb",
+      "store_id": "01ade06c-b8ca-4704-9f42-2cba3459485e",
+      "name": "Menú General",
+      "description": "Menú principal (fallback automático)",
+      "is_active": true,
+      "priority": 1000,
+      "is_fallback": true,
+      "created_at": "2026-01-02T21:19:39.542924+00:00",
+      "updated_at": "2026-01-02T21:19:39.542924+00:00"
+    },
+    {
+      "id": "9f3fcbc2-94fb-46fb-af7e-6279693f5ffa",
+      "store_id": "f1cb2d7f-3835-4ef6-bf37-876224b3f094",
+      "name": "Menú General",
+      "description": "Menú principal (fallback automático)",
+      "is_active": true,
+      "priority": 1000,
+      "is_fallback": true,
+      "created_at": "2026-01-02T21:19:39.542924+00:00",
+      "updated_at": "2026-01-02T21:19:39.542924+00:00"
+    },
+    {
+      "id": "f90cdcc7-6527-427c-b36f-7cd24520fffd",
+      "store_id": "b939d49f-23ea-4b36-b10c-df0b5ee47b1f",
+      "name": "Menú General",
+      "description": "Menú principal (fallback automático)",
+      "is_active": true,
+      "priority": 1000,
+      "is_fallback": true,
+      "created_at": "2026-01-02T21:19:39.542924+00:00",
+      "updated_at": "2026-01-02T21:19:39.542924+00:00"
+    },
+    {
+      "id": "3eadd3ea-9049-42ba-8993-d4fd520b8df1",
+      "store_id": "3863815f-0449-4352-aa61-1cf0f05ed7ed",
+      "name": "Menú General",
+      "description": "Menú principal (fallback automático)",
+      "is_active": true,
+      "priority": 1000,
+      "is_fallback": true,
+      "created_at": "2026-01-02T21:19:39.542924+00:00",
+      "updated_at": "2026-01-02T21:19:39.542924+00:00"
+    },
+    {
+      "id": "cd30d28e-7da4-450b-9c5c-bc890d84a574",
+      "store_id": "294dcea2-313e-433b-a371-9bd4b75c05f8",
+      "name": "Menú General",
+      "description": "Menú principal (fallback automático)",
+      "is_active": true,
+      "priority": 1000,
+      "is_fallback": true,
+      "created_at": "2026-01-02T21:19:39.542924+00:00",
+      "updated_at": "2026-01-02T21:19:39.542924+00:00"
+    },
+    {
+      "id": "a4deab86-8612-4acc-837b-254885b2dd4f",
+      "store_id": "aaaaaaaa-0000-0000-0000-000000000001",
+      "name": "Menú General",
+      "description": "Menú principal (fallback automático)",
+      "is_active": true,
+      "priority": 1000,
+      "is_fallback": true,
+      "created_at": "2026-01-02T21:19:39.542924+00:00",
+      "updated_at": "2026-01-02T21:19:39.542924+00:00"
+    },
+    {
+      "id": "0f1b6073-54e3-4aa5-8c85-6e32302f3dd1",
+      "store_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+      "name": "Menú General",
+      "description": "Menú principal (fallback automático)",
+      "is_active": true,
+      "priority": 1000,
+      "is_fallback": true,
+      "created_at": "2026-01-02T21:19:39.542924+00:00",
+      "updated_at": "2026-01-02T21:19:39.542924+00:00"
+    },
+    {
+      "id": "22b7677a-a263-4731-a5d0-243a6a5a6d98",
+      "store_id": "f5e3bfcf-3ccc-4464-9eb5-431fa6e26533",
+      "name": "Nuevo Menú",
+      "description": null,
+      "is_active": true,
+      "priority": 100,
+      "is_fallback": false,
+      "created_at": "2026-01-02T21:55:19.65512+00:00",
+      "updated_at": "2026-01-02T21:55:19.65512+00:00"
+    },
+    {
+      "id": "af13361e-ba36-4f42-bd31-7e60c1f59166",
+      "store_id": "f1097064-302b-4851-a532-2dc4f44e5736",
+      "name": "Nuevo Menú",
+      "description": null,
+      "is_active": false,
+      "priority": 100,
+      "is_fallback": false,
+      "created_at": "2026-01-08T19:55:55.819885+00:00",
+      "updated_at": "2026-01-08T19:55:55.819885+00:00"
+    },
+    {
+      "id": "89d1fd5c-a1e1-460e-95f6-ed4985d593ee",
+      "store_id": "f5e3bfcf-3ccc-4464-9eb5-431fa6e26533",
+      "name": "Nuevo Menú",
+      "description": null,
+      "is_active": false,
+      "priority": 100,
+      "is_fallback": false,
+      "created_at": "2026-01-21T05:33:49.075626+00:00",
+      "updated_at": "2026-01-21T05:33:49.075626+00:00"
+    },
+    {
+      "id": "20f818b9-a4f2-43c2-9026-df3f8bf9bbd0",
+      "store_id": "f1097064-302b-4851-a532-2dc4f44e5736",
+      "name": "Nuevo Menú",
+      "description": null,
+      "is_active": true,
+      "priority": 100,
+      "is_fallback": true,
+      "created_at": "2026-01-08T17:36:31.873743+00:00",
+      "updated_at": "2026-01-08T17:36:31.873743+00:00"
+    },
+    {
+      "id": "e644815b-ac36-4016-b98e-7b599ef9764f",
+      "store_id": "f1097064-302b-4851-a532-2dc4f44e5736",
+      "name": "Nuevo Menú",
+      "description": null,
+      "is_active": false,
+      "priority": 100,
+      "is_fallback": false,
+      "created_at": "2026-01-29T12:44:31.664162+00:00",
+      "updated_at": "2026-01-29T12:44:31.664162+00:00"
+    },
+    {
+      "id": "0d1b003e-f7ce-4f79-959e-e75e5f986281",
+      "store_id": "f1097064-302b-4851-a532-2dc4f44e5736",
+      "name": "Nuevo Menú",
+      "description": null,
+      "is_active": false,
+      "priority": 100,
+      "is_fallback": false,
+      "created_at": "2026-01-29T12:44:31.88316+00:00",
+      "updated_at": "2026-01-29T12:44:31.88316+00:00"
+    },
+    {
+      "id": "e5d46d2b-62d5-4a8d-9958-5b8ab9bdc5a2",
+      "store_id": "f1097064-302b-4851-a532-2dc4f44e5736",
+      "name": "Nuevo Menú",
+      "description": null,
+      "is_active": false,
+      "priority": 100,
+      "is_fallback": false,
+      "created_at": "2026-01-29T12:52:15.338156+00:00",
+      "updated_at": "2026-01-29T12:52:15.338156+00:00"
+    },
+    {
+      "id": "23a4f70d-9e3e-4608-a87e-62f004004b56",
+      "store_id": "f1097064-302b-4851-a532-2dc4f44e5736",
+      "name": "Nuevo Menú",
+      "description": null,
+      "is_active": false,
+      "priority": 100,
+      "is_fallback": false,
+      "created_at": "2026-01-29T13:24:13.275683+00:00",
+      "updated_at": "2026-01-29T13:24:13.275683+00:00"
+    },
+    {
+      "id": "ee1dc010-17fd-4a17-9458-a98daed4fc73",
+      "store_id": "f1097064-302b-4851-a532-2dc4f44e5736",
+      "name": "Nuevo Menú",
+      "description": null,
+      "is_active": false,
+      "priority": 100,
+      "is_fallback": false,
+      "created_at": "2026-01-29T13:28:31.55983+00:00",
+      "updated_at": "2026-01-29T13:28:31.55983+00:00"
+    }
+  ]
+}

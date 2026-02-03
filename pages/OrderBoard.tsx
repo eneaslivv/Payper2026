@@ -269,17 +269,29 @@ const OrderBoard: React.FC = () => {
   // Shift Closing - Archive completed orders
   const [showCloseShiftConfirm, setShowCloseShiftConfirm] = useState(false);
   const [isClosingShift, setIsClosingShift] = useState(false);
+  const [forceArchiveAll, setForceArchiveAll] = useState(false);
+
+  // Compute counts for the modal
+  const activeOrdersCount = orders.filter(o =>
+    (o.status === 'pending' || o.status === 'paid' || o.status === 'preparing' || o.status === 'ready') && !o.archived_at
+  ).length;
+  const completedOrdersCount = orders.filter(o =>
+    (o.status === 'served' || o.status === 'cancelled') && !o.archived_at
+  ).length;
 
   const handleCloseShift = async () => {
     setIsClosingShift(true);
     try {
-      // Get IDs of all completed orders (Entregado or Cancelado) that are not already archived
-      const completedOrderIds = orders
-        .filter(o => (o.status === 'served' || o.status === 'cancelled') && !o.archived_at)
-        .map(o => o.id);
+      // If forceArchiveAll is true, archive ALL non-archived orders
+      // Otherwise, only archive completed orders (Entregado or Cancelado)
+      const ordersToArchive = orders.filter(o => {
+        if (o.archived_at) return false; // Already archived
+        if (forceArchiveAll) return true; // Archive everything
+        return o.status === 'served' || o.status === 'cancelled'; // Only completed
+      });
 
-      if (completedOrderIds.length === 0) {
-        addToast('NO HAY PEDIDOS', 'info', 'No hay pedidos completados para archivar');
+      if (ordersToArchive.length === 0) {
+        addToast('NO HAY PEDIDOS', 'info', 'No hay pedidos para archivar');
         setShowCloseShiftConfirm(false);
         return;
       }
@@ -287,13 +299,14 @@ const OrderBoard: React.FC = () => {
       const { error } = await (supabase
         .from('orders')
         .update({ archived_at: new Date().toISOString() } as any)
-        .in('id', completedOrderIds));
+        .in('id', ordersToArchive.map(o => o.id)));
 
       if (error) throw error;
 
-      addToast('TURNO CERRADO', 'success', `${completedOrderIds.length} pedidos archivados`);
+      addToast('TABLERO LIMPIO', 'success', `${ordersToArchive.length} pedidos archivados`);
       refreshOrders();
       setShowCloseShiftConfirm(false);
+      setForceArchiveAll(false); // Reset the checkbox
     } catch (err: any) {
       console.error('Close shift failed:', err);
       addToast('ERROR', 'error', 'No se pudo cerrar el turno');
@@ -714,8 +727,8 @@ const OrderBoard: React.FC = () => {
               <p className="text-white/60 text-sm mb-4">
                 Para un control seguro, recuerda realizar el <strong className="text-neon">Arqueo de Caja</strong> en Finanzas antes de irte.
               </p>
-              <div className="bg-white/5 rounded-xl p-4 mb-6 text-left">
-                <div className="flex justify-between text-sm mb-2">
+              <div className="bg-white/5 rounded-xl p-4 mb-4 text-left space-y-2">
+                <div className="flex justify-between text-sm">
                   <span className="text-white/40">Entregados</span>
                   <span className="text-neon font-bold">{stats.entregados}</span>
                 </div>
@@ -723,19 +736,49 @@ const OrderBoard: React.FC = () => {
                   <span className="text-white/40">Cancelados</span>
                   <span className="text-red-400 font-bold">{stats.cancelados}</span>
                 </div>
+                {activeOrdersCount > 0 && (
+                  <div className="flex justify-between text-sm border-t border-white/10 pt-2 mt-2">
+                    <span className="text-yellow-400 font-bold">⚠️ Pedidos Activos</span>
+                    <span className="text-yellow-400 font-bold">{activeOrdersCount}</span>
+                  </div>
+                )}
               </div>
+
+              {/* FORCE ARCHIVE CHECKBOX - Only show if there are active orders */}
+              {activeOrdersCount > 0 && (
+                <label className="flex items-center gap-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 mb-4 cursor-pointer hover:bg-yellow-500/20 transition-all text-left">
+                  <input
+                    type="checkbox"
+                    checked={forceArchiveAll}
+                    onChange={(e) => setForceArchiveAll(e.target.checked)}
+                    className="size-5 accent-yellow-500 shrink-0"
+                  />
+                  <div>
+                    <span className="text-yellow-400 font-bold text-xs uppercase tracking-wider block">Archivar también pedidos activos</span>
+                    <span className="text-white/40 text-[10px]">Esto limpiará el tablero incluyendo pedidos en proceso/listos.</span>
+                  </div>
+                </label>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
-                <button onClick={() => setShowCloseShiftConfirm(false)} className="py-4 rounded-xl border border-white/10 text-white/60 hover:text-white hover:bg-white/5 font-bold uppercase tracking-widest text-xs transition-colors">Cancelar</button>
+                <button onClick={() => { setShowCloseShiftConfirm(false); setForceArchiveAll(false); }} className="py-4 rounded-xl border border-white/10 text-white/60 hover:text-white hover:bg-white/5 font-bold uppercase tracking-widest text-xs transition-colors">Cancelar</button>
                 <div className="flex gap-2">
-                  <button onClick={handleCloseShift} disabled={isClosingShift} className="flex-1 py-4 rounded-xl border border-orange-500/30 text-orange-500 hover:bg-orange-500/10 font-bold uppercase tracking-widest text-[10px] transition-colors">
-                    {isClosingShift ? 'Procesando...' : 'Solo Limpiar Tablero'}
+                  <button
+                    onClick={handleCloseShift}
+                    disabled={isClosingShift || (completedOrdersCount === 0 && !forceArchiveAll)}
+                    className={`flex-1 py-4 rounded-xl border font-bold uppercase tracking-widest text-[10px] transition-colors ${forceArchiveAll
+                        ? 'border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10'
+                        : 'border-orange-500/30 text-orange-500 hover:bg-orange-500/10'
+                      } disabled:opacity-30 disabled:cursor-not-allowed`}
+                  >
+                    {isClosingShift ? 'Procesando...' : forceArchiveAll ? 'Limpiar TODO' : 'Limpiar Tablero'}
                   </button>
                   <button
-                    onClick={() => navigate('/finance')}
+                    onClick={() => navigate('/finance?tab=caja')}
                     className="flex-1 py-4 rounded-xl bg-neon text-black font-black uppercase tracking-widest text-[10px] shadow-neon-soft hover:scale-105 transition-all flex items-center justify-center gap-2"
                   >
                     <span className="material-symbols-outlined text-sm">payments</span>
-                    Ir a Arqueo de Caja
+                    Ir a Arqueo
                   </button>
                 </div>
               </div>

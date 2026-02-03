@@ -637,6 +637,13 @@ const MainRouter: React.FC = () => {
     !['#/login', '#/join', '#/setup-owner', '#/dashboard', '#/admin', '#/inventory', '#/finance', '#/orders', '#/tables', '#/design'].some(r => window.location.hash.startsWith(r));
 
   if (user && !profile && !isClientRoute && !isStoreDirectLink && !isCheckoutReturn) {
+    console.warn('[ROUTING] Profile barrier active. User found but profile null.', {
+      email: user.email,
+      isClientRoute,
+      isStoreDirectLink,
+      isCheckoutReturn,
+      hash: window.location.hash
+    });
     return (
       <div className="flex flex-col h-screen w-full items-center justify-center bg-black gap-6 p-6 text-center">
         <div className="relative size-20">
@@ -853,7 +860,7 @@ const MainRouter: React.FC = () => {
   );
 };
 
-  const App: React.FC = () => {
+const App: React.FC = () => {
   // PWA & Store Logic
   useEffect(() => {
     // 0. SAFETY: Cleanup Legacy Cache (Fix Quota Exceeded)

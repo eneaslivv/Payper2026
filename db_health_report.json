@@ -1,0 +1,56 @@
+{
+  "timestamp": "2026-02-02T03:06:20.245Z",
+  "tables": {
+    "stores": {
+      "status": "ok",
+      "count": 11
+    },
+    "profiles": {
+      "status": "ok",
+      "count": 0
+    },
+    "orders": {
+      "status": "ok",
+      "count": 0
+    },
+    "order_items": {
+      "status": "ok",
+      "count": 208
+    },
+    "products": {
+      "status": "ok",
+      "count": 14
+    },
+    "inventory_items": {
+      "status": "ok",
+      "count": 25
+    },
+    "clients": {
+      "status": "ok",
+      "count": 0
+    }
+  },
+  "rpcs": {
+    "confirm_order_delivery": {
+      "status": "missing",
+      "error": "Could not find the function public.confirm_order_delivery without parameters in the schema cache"
+    },
+    "get_menu_products": {
+      "status": "missing",
+      "error": "Could not find the function public.get_menu_products without parameters in the schema cache"
+    },
+    "get_public_order_status": {
+      "status": "missing",
+      "error": "Could not find the function public.get_public_order_status without parameters in the schema cache"
+    }
+  },
+  "integrity": {
+    "profiles_without_role": 0,
+    "orders_without_store_id": 0
+  },
+  "errors": [
+    "RPC confirm_order_delivery MISSING",
+    "RPC get_menu_products MISSING",
+    "RPC get_public_order_status MISSING"
+  ]
+}

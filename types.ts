@@ -217,6 +217,8 @@ export interface InventoryItem {
   is_recommended?: boolean;
   is_new?: boolean;
   is_promo?: boolean;
+  image?: string;
+  content_unit?: string;
   sort_order?: number;
   variants?: ProductVariant[];
   // Phase 4 & Locations fields
