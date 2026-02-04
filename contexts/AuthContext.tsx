@@ -51,17 +51,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const timer = setTimeout(() => {
             if (!isLoading) return;
 
-            console.warn("AuthContext: Tiempo de espera agotado (8s). Forzando render.");
+            const currentUser = userRef.current;
+            const currentProfile = profileRef.current;
+
+            console.warn("AuthContext: Tiempo de espera agotado (8s). Forzando render.", {
+                hasUser: Boolean(currentUser),
+                hasProfile: Boolean(currentProfile),
+                userId: currentUser?.id,
+                email: currentUser?.email
+            });
             setIsLoading(false);
 
-            if (user && !profile) {
+            if (currentUser && !currentProfile) {
+                const allowedRoles: UserRole[] = ['customer', 'store_owner', 'super_admin', 'staff'];
+                const metadataRole = currentUser.user_metadata?.role as UserRole | undefined;
+                const safeRole = allowedRoles.includes(metadataRole || 'customer')
+                    ? (metadataRole as UserRole)
+                    : 'customer';
+
                 const emergencyProfile: UserProfile = {
-                    id: user.id,
-                    email: user.email || `user_${user.id.slice(0, 8)}@temp.livv`,
-                    full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario',
-                    role: (user.user_metadata?.role as UserRole) || 'customer',
+                    id: currentUser.id,
+                    email: currentUser.email || `user_${currentUser.id.slice(0, 8)}@temp.livv`,
+                    full_name: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Usuario',
+                    role: safeRole,
                     is_active: true,
-                    store_id: user.user_metadata?.store_id
+                    store_id: currentUser.user_metadata?.store_id
                 };
 
                 void (async () => {
@@ -87,14 +101,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         }, 8000);
         return () => clearTimeout(timer);
-    }, [isLoading, user, profile]);
+    }, [isLoading]);
 
     const userIdRef = useRef<string | null>(null);
+    const userRef = useRef<User | null>(null);
+    const profileRef = useRef<UserProfile | null>(null);
 
     useEffect(() => {
         if (user?.id) userIdRef.current = user.id;
         else userIdRef.current = null;
-    }, [user]);
+
+        userRef.current = user;
+        profileRef.current = profile;
+    }, [user, profile]);
 
     useEffect(() => {
         if (!SENTRY_ENABLED) return;
@@ -300,11 +319,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
             } catch (healError) {
                 console.error('[AUTH] Critical Auto-Heal Error:', healError);
+                const allowedRoles: UserRole[] = ['customer', 'store_owner', 'super_admin', 'staff'];
+                const metadataRole = user?.user_metadata?.role as UserRole | undefined;
+                const safeRole = allowedRoles.includes(metadataRole || 'customer')
+                    ? (metadataRole as UserRole)
+                    : 'customer';
                 const fallbackProfile: UserProfile = {
                     id: userId,
                     email: userEmail || `user_${userId.substr(0, 8)}@temp.livv`,
                     full_name: user?.user_metadata?.full_name || userEmail?.split('@')[0] || 'Usuario',
-                    role: (user?.user_metadata?.role as UserRole) || 'customer',
+                    role: safeRole,
                     is_active: true,
                     store_id: user?.user_metadata?.store_id
                 };

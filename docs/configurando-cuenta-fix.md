@@ -25,10 +25,17 @@ Evitar que la pantalla de "Configurando Cuenta" quede bloqueada cuando el perfil
      - "Salir" (signOut)
      - Mensajes de guidance si tarda mas de 10 segundos.
 
+4) Ajustes menores aplicados (observaciones)
+   - Archivo: contexts/AuthContext.tsx
+   - El failsafe depende solo de `isLoading` y usa refs para leer user/profile actual.
+   - Logging del timeout incluye contexto (hasUser/hasProfile/userId/email).
+   - Validacion de role en perfil de emergencia y fallback.
+
 ## Archivos tocados
 - contexts/AuthContext.tsx
   - Failsafe de 8s con perfil de emergencia y guardado opcional.
   - `fetchProfile` con `finally` y fallback en memoria.
+  - Logging con contexto y validacion de role.
 - App.tsx
   - UI mejorada de "Configurando Cuenta" y boton de salida con `signOut()`.
 
