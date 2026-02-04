@@ -18,6 +18,22 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': path.resolve(__dirname, '.'),
       }
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            react: ['react', 'react-dom', 'react-router-dom'],
+            supabase: ['@supabase/supabase-js'],
+            sentry: ['@sentry/react'],
+            charts: ['recharts'],
+            motion: ['framer-motion'],
+            pdf: ['jspdf', 'html2canvas'],
+            qr: ['qrcode.react', 'react-qr-code', 'jsqr'],
+            icons: ['lucide-react']
+          }
+        }
+      }
     }
   };
 });

@@ -179,7 +179,6 @@ const LiveActivityPanel: React.FC<LiveActivityPanelProps> = ({
             case 'pending':
                 return { color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', label: 'PENDIENTE' };
             case 'preparing':
-            case 'preparing':
                 return { color: 'bg-blue-500/20 text-blue-400 border-blue-500/30', label: 'PREPARANDO' };
             case 'ready':
                 return { color: 'bg-green-500/20 text-green-400 border-green-500/30', label: 'LISTO' };

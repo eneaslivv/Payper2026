@@ -1,10 +1,11 @@
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { sendEmailNotification } from '../lib/notifications';
 import SmartInsights from '../components/SmartInsights';
+import { useToast } from '../components/ToastSystem';
 
 const AreaChart = React.lazy(() => import('recharts').then((mod) => ({ default: mod.AreaChart })));
 const Area = React.lazy(() => import('recharts').then((mod) => ({ default: mod.Area })));
@@ -27,8 +28,10 @@ const initialChartData = [
 const Dashboard: React.FC = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [isBriefing, setIsBriefing] = useState(false);
   const [briefingText, setBriefingText] = useState<string | null>(null);
+  const hasStockErrorAlerted = useRef(false);
 
   // Track theme for chart colors
   const [isDarkMode, setIsDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
@@ -41,6 +44,34 @@ const Dashboard: React.FC = () => {
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (!profile?.store_id || hasStockErrorAlerted.current) return;
+
+    const fetchStockErrors = async () => {
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from('stock_deduction_errors' as any)
+        .select('id, created_at')
+        .eq('store_id', profile.store_id)
+        .gte('created_at', since)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (error) {
+        console.warn('[Dashboard] Stock deduction errors fetch failed:', error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        addToast(`${data.length} errores de stock en últimas 24h`, 'warning', 'Revisar deducciones');
+      }
+
+      hasStockErrorAlerted.current = true;
+    };
+
+    fetchStockErrors();
+  }, [profile?.store_id, addToast]);
 
   const handleTestEmail = async () => {
     if (!profile?.email) return alert('No tienes email en tu perfil');
@@ -135,7 +166,7 @@ const Dashboard: React.FC = () => {
         .order('created_at', { ascending: false })
         .limit(10);
 
-      const uiOrders = (orders || []).map(o => ({
+      const uiOrders = (orders || []).map((o: any) => ({
         id: o.id.substring(0, 8),
         customer: o.customer_name || 'Cliente',
         status: o.status || 'pending',

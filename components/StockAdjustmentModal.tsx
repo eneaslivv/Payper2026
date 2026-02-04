@@ -127,23 +127,41 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                 }
             }
 
-            // Use transfer_stock RPC with unified signature
-            // Map RESTOCK to PURCHASE for RPC (both add stock, PURCHASE is already in all constraints)
-            const rpcMovementType = type === 'RESTOCK' ? 'PURCHASE' : type;
-            const { data, error } = await supabase.rpc('transfer_stock', {
-                p_item_id: item.id,
-                p_from_location_id: fromLocation,
-                p_to_location_id: toLocation,
-                p_quantity: parsedQty,
-                p_user_id: user?.id || null,
-                p_notes: `[${type}] ${notes}`.trim(), // Include original type in notes for tracking
-                p_movement_type: rpcMovementType,
-                p_reason: reason
-            });
+            const absoluteQty = Math.abs(parsedQty);
+            const shouldConsume = type === 'WASTE' || (type === 'ADJUSTMENT' && adjustmentType === 'REMOVE');
 
-            if (error) throw error;
-            const result = data as any;
-            if (result?.success === false) throw new Error(result.error);
+            if (shouldConsume) {
+                const reasonKey = type === 'WASTE' ? 'loss' : 'adjustment';
+                const { data, error } = await (supabase.rpc as any)('consume_from_smart_packages', {
+                    p_inventory_item_id: item.id,
+                    p_required_qty: absoluteQty,
+                    p_unit: item.unit_type,
+                    p_order_id: null,
+                    p_reason: reasonKey
+                });
+
+                if (error) throw error;
+                const result = data as any;
+                if (result?.success === false) throw new Error(result.error);
+            } else {
+                // Use transfer_stock RPC with unified signature
+                // Map RESTOCK to PURCHASE for RPC (both add stock, PURCHASE is already in all constraints)
+                const rpcMovementType = type === 'RESTOCK' ? 'PURCHASE' : type;
+                const { data, error } = await supabase.rpc('transfer_stock', {
+                    p_item_id: item.id,
+                    p_from_location_id: fromLocation,
+                    p_to_location_id: toLocation,
+                    p_quantity: parsedQty,
+                    p_user_id: user?.id || null,
+                    p_notes: `[${type}] ${notes}`.trim(), // Include original type in notes for tracking
+                    p_movement_type: rpcMovementType,
+                    p_reason: reason
+                });
+
+                if (error) throw error;
+                const result = data as any;
+                if (result?.success === false) throw new Error(result.error);
+            }
 
             // Log to inventory_audit_logs for full traceability
             // Defines default mapping
@@ -164,14 +182,20 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                 else rpcActionType = 'restock';
             }
 
+            const quantityDelta = (() => {
+                if (type === 'PURCHASE' || type === 'RESTOCK') return parsedQty;
+                if (type === 'ADJUSTMENT') return adjustmentType === 'ADDR' ? parsedQty : -parsedQty;
+                return -parsedQty; // WASTE
+            })();
+
             const { error: logError } = await supabase.rpc('log_inventory_action' as any, {
                 p_item_id: item.id,
                 p_action_type: rpcActionType,
-                p_quantity_delta: (type === 'PURCHASE' || type === 'RESTOCK') ? parsedQty : -parsedQty,
+                p_quantity_delta: quantityDelta,
                 p_reason: `${reason}${notes ? ': ' + notes : ''}`,
                 p_supplier_id: (type === 'PURCHASE' || type === 'RESTOCK') ? supplierId : null,
-                p_location_from: (type === 'PURCHASE' || type === 'RESTOCK') ? null : locationId,
-                p_location_to: (type === 'PURCHASE' || type === 'RESTOCK') ? locationId : null,
+                p_location_from: fromLocation,
+                p_location_to: toLocation,
                 p_source_ui: 'quick_action',
                 p_invoice_ref: (type === 'PURCHASE' || type === 'RESTOCK') ? invoiceRef || null : null,
                 p_unit_cost: (type === 'PURCHASE' || type === 'RESTOCK') ? parsedCost : null

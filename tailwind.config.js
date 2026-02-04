@@ -2,7 +2,16 @@
 export default {
     content: [
         "./index.html",
-        "./**/*.{js,ts,jsx,tsx}",
+        "./App.tsx",
+        "./index.tsx",
+        "./components/**/*.{js,ts,jsx,tsx}",
+        "./pages/**/*.{js,ts,jsx,tsx}",
+        "./contexts/**/*.{js,ts,jsx,tsx}",
+        "./features/**/*.{js,ts,jsx,tsx}",
+        "./lib/**/*.{js,ts,jsx,tsx}",
+        "./utils/**/*.{js,ts,jsx,tsx}",
+        "./types/**/*.{js,ts,jsx,tsx}",
+        "./src/**/*.{js,ts,jsx,tsx}",
     ],
     darkMode: 'class',
     theme: {

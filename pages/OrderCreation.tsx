@@ -14,7 +14,7 @@ type PaymentMethod = 'cash' | 'card' | 'qr' | 'wallet';
 const OrderCreation: React.FC = () => {
   const navigate = useNavigate();
   const { addToast } = useToast();
-  const { createOrder } = useOffline();
+  const { createOrder, isOnline } = useOffline();
   const [menuProducts, setMenuProducts] = useState<any[]>([]); // Real menu items from inventory
   const { profile } = useAuth();
   const [activeCategory, setActiveCategory] = useState('Todos');
@@ -104,9 +104,10 @@ const OrderCreation: React.FC = () => {
 
       const { data: inventoryData } = await supabase
         .from('inventory_items')
-        .select(`id, name, price, image_url, description, category_id, current_stock`)
+        .select(`id, name, price, image_url, description, category_id, current_stock, item_type`)
         .eq('store_id', profile.store_id)
         .eq('is_menu_visible', true)
+        .eq('item_type', 'sellable')
         // .eq('is_active', true) // TEMPORARILY DISABLED
         .not('name', 'ilike', '[ELIMINADO]%'); // Double check to exclude soft-deleted
       // Removed .gt('price', 0) so manual 'Menu ON' override works even for $0 items
@@ -133,6 +134,7 @@ const OrderCreation: React.FC = () => {
       // Process Inventory Items - SKIP if already in products
       if (inventoryData) {
         const productIds = new Set(unifiedProducts.map(p => p.id));
+        const productNames = new Set(unifiedProducts.map(p => (p.name || '').trim().toLowerCase()));
 
         const categoryIds = [...new Set(inventoryData.map((item: any) => item.category_id).filter(Boolean))];
         let categoriesMap: Record<string, string> = {};
@@ -150,6 +152,7 @@ const OrderCreation: React.FC = () => {
         unifiedProducts = [...unifiedProducts, ...inventoryData
           .filter((item: any) => !item.name?.startsWith('[ELIMINADO]'))
           .filter((item: any) => !productIds.has(item.id)) // SKIP DUPLICATES
+          .filter((item: any) => !productNames.has((item.name || '').trim().toLowerCase())) // SKIP NAME DUPLICATES
           .map((item: any) => ({
             id: item.id,
             name: item.name,
@@ -239,6 +242,93 @@ const OrderCreation: React.FC = () => {
 
   const total = cart.reduce((acc, item) => acc + (item.price_unit * item.quantity), 0);
 
+  const validateStockBeforeOrder = async (items: OrderItem[]) => {
+    if (!isOnline) {
+      addToast('MODO OFFLINE', 'info', 'Validación de stock omitida');
+      return;
+    }
+
+    if (!profile?.store_id || items.length === 0) return;
+
+    const directTotals: Record<string, number> = {};
+    const productTotals: Record<string, number> = {};
+
+    items.forEach(item => {
+      const qty = Number(item.quantity) || 0;
+      if (!item.productId || qty <= 0) return;
+
+      if (item.sellable_type === 'product') {
+        productTotals[item.productId] = (productTotals[item.productId] || 0) + qty;
+      } else {
+        directTotals[item.productId] = (directTotals[item.productId] || 0) + qty;
+      }
+    });
+
+    const directIds = Object.keys(directTotals);
+    if (directIds.length > 0) {
+      const { data: directItems, error } = await supabase
+        .from('inventory_items')
+        .select('id, name, current_stock, unit_type')
+        .eq('store_id', profile.store_id)
+        .in('id', directIds);
+
+      if (error) throw error;
+
+      const directMap = new Map((directItems || []).map((row: any) => [row.id, row]));
+      for (const itemId of directIds) {
+        const row = directMap.get(itemId);
+        const required = directTotals[itemId] || 0;
+        const currentStock = Number(row?.current_stock || 0);
+        if (!row) {
+          throw new Error('Stock no disponible para item directo');
+        }
+        if (currentStock < required) {
+          throw new Error(`Stock insuficiente: ${row.name} (${currentStock} ${row.unit_type})`);
+        }
+      }
+    }
+
+    const productIds = Object.keys(productTotals);
+    if (productIds.length > 0) {
+      const { data: recipeRows, error } = await supabase
+        .from('product_recipes')
+        .select('product_id, inventory_item_id, quantity_required, inventory_items(name, current_stock, unit_type)')
+        .in('product_id', productIds);
+
+      if (error) throw error;
+
+      const requiredByIngredient: Record<string, { required: number; name?: string; unit?: string; stock?: number }> = {};
+
+      (recipeRows || []).forEach((row: any) => {
+        const productQty = productTotals[row.product_id] || 0;
+        const qtyRequired = Number(row.quantity_required || 0) * productQty;
+        if (!qtyRequired) return;
+
+        const ingredient = row.inventory_items || {};
+        const entry = requiredByIngredient[row.inventory_item_id] || {
+          required: 0,
+          name: ingredient.name,
+          unit: ingredient.unit_type,
+          stock: Number(ingredient.current_stock || 0)
+        };
+
+        requiredByIngredient[row.inventory_item_id] = {
+          required: entry.required + qtyRequired,
+          name: entry.name || ingredient.name,
+          unit: entry.unit || ingredient.unit_type,
+          stock: Number(ingredient.current_stock || entry.stock || 0)
+        };
+      });
+
+      for (const [ingredientId, info] of Object.entries(requiredByIngredient)) {
+        const available = Number(info.stock || 0);
+        if (available < info.required) {
+          throw new Error(`Ingrediente insuficiente: ${info.name || ingredientId} (${available} ${info.unit || ''})`);
+        }
+      }
+    }
+  };
+
   const handleConfirmSale = async (force = false) => {
     if (cart.length === 0 || isSubmitting) return;
     if (!profile?.store_id) {
@@ -305,6 +395,8 @@ const OrderCreation: React.FC = () => {
           return;
         }
       }
+
+      await validateStockBeforeOrder(cart);
 
       // 1. Prepare Order Object with Client-Side ID
       const orderId = crypto.randomUUID();

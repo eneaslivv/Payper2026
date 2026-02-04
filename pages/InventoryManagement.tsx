@@ -25,6 +25,21 @@ interface StockMovement {
   order_id?: string;
 }
 
+const STOCK_MOVEMENT_REASON_LABELS: Record<string, string> = {
+  order_paid: 'Venta',
+  sale: 'Venta',
+  direct_sale: 'Venta Directa',
+  recipe_consumption: 'Receta',
+  variant_override: 'Variante',
+  open_package: 'Apertura Paquete',
+  adjustment: 'Ajuste',
+  restock: 'Reingreso',
+  purchase: 'Compra',
+  transfer: 'Transferencia',
+  loss: 'Pérdida',
+  waste: 'Pérdida'
+};
+
 // Auxiliary Components (Hoisted)
 function TabBtn({ active, onClick, children }: { active: boolean, onClick: () => void, children: React.ReactNode }) {
   return (
@@ -2903,7 +2918,7 @@ const InventoryManagement: React.FC = () => {
                                 <td className="p-3">
                                   <div className="flex flex-col">
                                     <span className={`text-[10px] font-black uppercase tracking-wider ${mov.qty_delta < 0 ? 'text-red-400' : 'text-neon'}`}>
-                                      {mov.reason === 'order_paid' ? 'VENTA' : mov.reason}
+                                      {STOCK_MOVEMENT_REASON_LABELS[mov.reason] || mov.reason}
                                     </span>
                                     <span className="text-[9px] text-white/30 font-mono mt-0.5">
                                       {new Date(mov.created_at).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}
