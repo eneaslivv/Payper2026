@@ -49,13 +49,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // FAILSAFE ABSOLUTO: Si pasan 8 segundos y sigue cargando, forzamos el render.
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (isLoading) {
-                console.warn("AuthContext: Tiempo de espera agotado (8s). Forzando render.");
-                setIsLoading(false);
+            if (!isLoading) return;
+
+            console.warn("AuthContext: Tiempo de espera agotado (8s). Forzando render.");
+            setIsLoading(false);
+
+            if (user && !profile) {
+                const emergencyProfile: UserProfile = {
+                    id: user.id,
+                    email: user.email || `user_${user.id.slice(0, 8)}@temp.livv`,
+                    full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario',
+                    role: (user.user_metadata?.role as UserRole) || 'customer',
+                    is_active: true,
+                    store_id: user.user_metadata?.store_id
+                };
+
+                void (async () => {
+                    try {
+                        const { data, error } = await supabase
+                            .from('profiles')
+                            .upsert(emergencyProfile)
+                            .select()
+                            .single();
+
+                        if (!error && data) {
+                            setProfile(data as UserProfile);
+                            setPermissions(null);
+                        } else {
+                            setProfile(emergencyProfile);
+                            setPermissions(null);
+                        }
+                    } catch {
+                        setProfile(emergencyProfile);
+                        setPermissions(null);
+                    }
+                })();
             }
         }, 8000);
         return () => clearTimeout(timer);
-    }, [isLoading]);
+    }, [isLoading, user, profile]);
 
     const userIdRef = useRef<string | null>(null);
 
@@ -173,97 +205,114 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     const fetchProfile = async (userId: string, emailArg?: string) => {
-        if (profile && profile.id === userId) return;
-
-        console.log('[AUTH] 🔍 fetchProfile called with userId:', userId);
-
-        let attempts = 0;
-        const maxAttempts = 3;
-
-        while (attempts < maxAttempts) {
-            attempts++;
-            try {
-                const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Profile fetch timeout after 5s')), 5000)
-                );
-
-                const fetchPromise = supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', userId)
-                    .single();
-
-                const result = await Promise.race([fetchPromise, timeoutPromise]) as any;
-                const { data: existingProfile, error: profileError } = result;
-
-                if (!profileError && existingProfile) {
-                    const userProfile = existingProfile as UserProfile;
-                    const impersonatedStoreId = localStorage.getItem('impersonated_store_id');
-                    if (impersonatedStoreId && (userProfile.role === 'super_admin' || userProfile.role === 'store_owner')) {
-                        userProfile.store_id = impersonatedStoreId;
-                    }
-
-                    setProfile(userProfile);
-
-                    if (userProfile.role_id) {
-                        const { data: permData } = await supabase
-                            .from('cafe_role_permissions')
-                            .select('section_slug, can_view, can_create, can_edit, can_delete')
-                            .eq('role_id', userProfile.role_id);
-
-                        if (permData) {
-                            const permMap: RolePermissions = {};
-                            permData.forEach((p: any) => {
-                                permMap[p.section_slug] = {
-                                    view: p.can_view,
-                                    create: p.can_create,
-                                    edit: p.can_edit,
-                                    delete: p.can_delete
-                                };
-                            });
-                            setPermissions(permMap);
-                        }
-                    } else if (userProfile.role === 'store_owner' || userProfile.role === 'super_admin') {
-                        setPermissions(null);
-                    }
-                    return;
-                }
-                if (attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, 1000));
-            } catch (err: any) {
-                if (attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, 1000));
-            }
+        if (profile && profile.id === userId) {
+            setIsLoading(false);
+            return;
         }
 
-        const userEmail = session?.user?.email || user?.email;
-        console.warn(`[AUTH] ⚠️ Profile missing for ${userEmail}. Initiating AUTO-HEALING...`);
-
-        const autoHealProfile: any = {
-            id: userId,
-            email: userEmail || `user_${userId.substr(0, 8)}@temp.livv`,
-            full_name: session?.user?.user_metadata?.full_name || 'Nuevo Usuario',
-            role: 'customer',
-            is_active: true,
-            store_id: session?.user?.user_metadata?.store_id || undefined,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        };
-
         try {
-            const { data: newProfile, error: createError } = await supabase
-                .from('profiles')
-                .upsert(autoHealProfile)
-                .select()
-                .single();
+            console.log('[AUTH] 🔍 fetchProfile called with userId:', userId);
 
-            if (createError) throw createError;
-            if (newProfile) {
-                console.log('[AUTH] ✅ Profile AUTO-HEALED successfully.');
-                setProfile(newProfile as UserProfile);
-                setPermissions(null);
-                return;
+            let attempts = 0;
+            const maxAttempts = 3;
+
+            while (attempts < maxAttempts) {
+                attempts++;
+                try {
+                    const timeoutPromise = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('Profile fetch timeout after 5s')), 5000)
+                    );
+
+                    const fetchPromise = supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('id', userId)
+                        .single();
+
+                    const result = await Promise.race([fetchPromise, timeoutPromise]) as any;
+                    const { data: existingProfile, error: profileError } = result;
+
+                    if (!profileError && existingProfile) {
+                        const userProfile = existingProfile as UserProfile;
+                        const impersonatedStoreId = localStorage.getItem('impersonated_store_id');
+                        if (impersonatedStoreId && (userProfile.role === 'super_admin' || userProfile.role === 'store_owner')) {
+                            userProfile.store_id = impersonatedStoreId;
+                        }
+
+                        setProfile(userProfile);
+
+                        if (userProfile.role_id) {
+                            const { data: permData } = await supabase
+                                .from('cafe_role_permissions')
+                                .select('section_slug, can_view, can_create, can_edit, can_delete')
+                                .eq('role_id', userProfile.role_id);
+
+                            if (permData) {
+                                const permMap: RolePermissions = {};
+                                permData.forEach((p: any) => {
+                                    permMap[p.section_slug] = {
+                                        view: p.can_view,
+                                        create: p.can_create,
+                                        edit: p.can_edit,
+                                        delete: p.can_delete
+                                    };
+                                });
+                                setPermissions(permMap);
+                            }
+                        } else if (userProfile.role === 'store_owner' || userProfile.role === 'super_admin') {
+                            setPermissions(null);
+                        }
+                        return;
+                    }
+                    if (attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, 1000));
+                } catch (err: any) {
+                    if (attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, 1000));
+                }
             }
-        } catch (healError) {
-            console.error('[AUTH] Critical Auto-Heal Error:', healError);
+
+            const userEmail = session?.user?.email || user?.email || emailArg;
+            console.warn(`[AUTH] ⚠️ Profile missing for ${userEmail}. Initiating AUTO-HEALING...`);
+
+            const autoHealProfile: any = {
+                id: userId,
+                email: userEmail || `user_${userId.substr(0, 8)}@temp.livv`,
+                full_name: session?.user?.user_metadata?.full_name || 'Nuevo Usuario',
+                role: 'customer',
+                is_active: true,
+                store_id: session?.user?.user_metadata?.store_id || undefined,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+
+            try {
+                const { data: newProfile, error: createError } = await supabase
+                    .from('profiles')
+                    .upsert(autoHealProfile)
+                    .select()
+                    .single();
+
+                if (createError) throw createError;
+                if (newProfile) {
+                    console.log('[AUTH] ✅ Profile AUTO-HEALED successfully.');
+                    setProfile(newProfile as UserProfile);
+                    setPermissions(null);
+                    return;
+                }
+            } catch (healError) {
+                console.error('[AUTH] Critical Auto-Heal Error:', healError);
+                const fallbackProfile: UserProfile = {
+                    id: userId,
+                    email: userEmail || `user_${userId.substr(0, 8)}@temp.livv`,
+                    full_name: user?.user_metadata?.full_name || userEmail?.split('@')[0] || 'Usuario',
+                    role: (user?.user_metadata?.role as UserRole) || 'customer',
+                    is_active: true,
+                    store_id: user?.user_metadata?.store_id
+                };
+                setProfile(fallbackProfile);
+                setPermissions(null);
+            }
+        } finally {
+            setIsLoading(false);
         }
     };
 

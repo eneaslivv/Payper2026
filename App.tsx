@@ -652,28 +652,41 @@ const MainRouter: React.FC = () => {
             <span className="material-symbols-outlined text-2xl text-neon">manage_accounts</span>
           </div>
         </div>
+
         <div>
           <h1 className="text-white text-lg font-black uppercase tracking-[0.2em] mb-2">Configurando Cuenta</h1>
           <p className="text-zinc-500 text-xs max-w-xs mx-auto leading-relaxed">
             Estamos preparando tu perfil de usuario. Esto solo tomará unos segundos...
           </p>
         </div>
-        <div className="flex gap-4 mt-4">
+
+        <div className="flex gap-3 mt-4">
           <button
             onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-white/5 hover:bg-white/10 text-white text-[10px] font-black uppercase tracking-widest rounded-full transition-all border border-white/5"
+            className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 border border-white/10"
           >
+            <span className="material-symbols-outlined text-sm">refresh</span>
             Recargar Página
           </button>
+
           <button
             onClick={() => {
-              localStorage.clear();
-              window.location.reload();
+              void signOut();
             }}
-            className="px-6 py-2 text-red-500/50 hover:text-red-500 text-[10px] font-black uppercase tracking-widest rounded transition-all"
+            className="px-6 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 border border-red-500/30"
           >
+            <span className="material-symbols-outlined text-sm">logout</span>
             Salir
           </button>
+        </div>
+
+        <div className="mt-8 space-y-2">
+          <p className="text-white/30 text-[10px] max-w-md animate-pulse">
+            Si esta pantalla no desaparece en 10 segundos, por favor recargá la página.
+          </p>
+          <p className="text-white/20 text-[9px] max-w-md">
+            Si el problema persiste, cerrá sesión e intentá de nuevo.
+          </p>
         </div>
       </div>
     );
