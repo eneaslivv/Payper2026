@@ -716,6 +716,17 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const confirmOrderDelivery = async (orderId: string, staffId: string) => {
     const order = orders.find(o => o.id === orderId);
+    const cleanupLocalOrder = async () => {
+      setOrders(prev => prev.filter(o => o.id !== orderId));
+      await dbOps.deleteOrder(orderId).catch(e => console.error('Failed to cleanup local order', e));
+
+      const queue = await dbOps.getSyncQueue();
+      const relatedEvents = queue.filter(event =>
+        event?.payload?.orderId === orderId
+      );
+      await Promise.all(relatedEvents.map(event => dbOps.removeSyncEvent(event.id)));
+      updatePendingCount();
+    };
     if (!order) {
       if (isOnline) {
         try {
@@ -731,10 +742,16 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
           if (result.success) {
             await syncOrder(orderId);
+          } else if (result.message?.toLowerCase().includes('pedido no encontrado')) {
+            await cleanupLocalOrder();
           }
 
           return result;
         } catch (err: any) {
+          if (err?.message?.toLowerCase().includes('pedido no encontrado')) {
+            await cleanupLocalOrder();
+            return { success: false, message: 'Pedido no encontrado. Limpiado localmente.' };
+          }
           console.error('[confirmOrderDelivery] RPC failed without local order:', err?.message || err);
           const event: SyncEvent = {
             id: `evt-del-${Date.now()}`,
@@ -793,11 +810,19 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         } else {
           // Revert if domain logic rejected it
           console.warn('[confirmOrderDelivery] Domain rejection:', result.message);
-          await dbOps.saveOrder(order);
-          setOrders(prev => prev.map(o => o.id === orderId ? order : o));
+          if (result.message?.toLowerCase().includes('pedido no encontrado')) {
+            await cleanupLocalOrder();
+          } else {
+            await dbOps.saveOrder(order);
+            setOrders(prev => prev.map(o => o.id === orderId ? order : o));
+          }
         }
         return result;
       } catch (err: any) {
+        if (err?.message?.toLowerCase().includes('pedido no encontrado')) {
+          await cleanupLocalOrder();
+          return { success: false, message: 'Pedido no encontrado. Limpiado localmente.' };
+        }
         console.error("[confirmOrderDelivery] CATCH ERROR:", err?.message || err, err?.code, err?.details);
         const event: SyncEvent = {
           id: `evt-del-${Date.now()}`,

@@ -12,7 +12,7 @@ const MenuPage: React.FC = () => {
     store, products, user, hasActiveOrder, setIsHubOpen, cart,
     getMenuRule, isOrderingAllowed, serviceMode, tableLabel,
     showSessionSelector, setShowSessionSelector, onSessionCreated,
-    disconnectTable
+    disconnectTable, addToCart, updateQuantity, removeFromCart
   } = useClient();
 
   const [selectedCategory, setSelectedCategory] = useState('Todos');
@@ -109,6 +109,38 @@ const MenuPage: React.FC = () => {
   if (!store) return null;
 
   const radiusClass = getRadiusClass();
+  const hasOptions = (item: MenuItem) => (item.variants?.length || 0) > 0 || (item.addons?.length || 0) > 0;
+  const getCartEntry = (item: MenuItem) => cart.find((c) => c.id === item.id && (!c.size || c.size === ''));
+  const getCartQuantity = (item: MenuItem) => {
+    if (hasOptions(item)) return 0;
+    return cart
+      .filter((c) => c.id === item.id && (!c.size || c.size === ''))
+      .reduce((sum, c) => sum + c.quantity, 0);
+  };
+  const handleQuickAdd = (item: MenuItem) => {
+    if (hasOptions(item)) {
+      navigate(`/m/${slug}/product/${item.id}`);
+      return;
+    }
+    const existing = getCartEntry(item);
+    if (existing) {
+      updateQuantity(item.id, 1, existing.size || '');
+    } else {
+      addToCart(item, 1, [], '', '');
+    }
+  };
+  const handleDecrement = (item: MenuItem) => {
+    const existing = getCartEntry(item);
+    if (!existing) return;
+    if (existing.quantity <= 1) {
+      removeFromCart(item.id, existing.size || '');
+      return;
+    }
+    updateQuantity(item.id, -1, existing.size || '');
+  };
+  const handleItemClick = (item: MenuItem) => {
+    navigate(`/m/${slug}/product/${item.id}`);
+  };
 
   return (
     <div className={`flex flex-col min-h-screen w-full overflow-x-hidden ${fontClass}`} style={{ backgroundColor, color: textColor }}>
@@ -141,8 +173,11 @@ const MenuPage: React.FC = () => {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         allowOrdering={allowOrdering}
-        onItemClick={(item) => navigate(`/m/${slug}/product/${item.id}`)}
-        onAddToCart={(item) => navigate(`/m/${slug}/product/${item.id}`)} // Or direct add if desired
+        onItemClick={handleItemClick}
+        onAddToCart={handleQuickAdd}
+        getQuantity={getCartQuantity}
+        onIncrement={handleQuickAdd}
+        onDecrement={handleDecrement}
         serviceMode={serviceMode}
         tableLabel={tableLabel}
         isGuest={!user}
@@ -209,13 +244,13 @@ const MenuPage: React.FC = () => {
         <div className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] left-0 right-0 z-50 px-6 max-w-md mx-auto animate-in slide-in-from-bottom-12 duration-700">
           <button
             onClick={() => navigate(`/m/${slug}/cart`)}
-            className={`w-full h-20 ${radiusClass} shadow-[0_30px_70px_rgba(0,0,0,0.8)] flex items-center justify-between pl-10 pr-4 transition-all active:scale-[0.97] group overflow-hidden border`}
-            style={{ backgroundColor: accentColor, borderColor: `${textColor}33` }}
+            className={`group relative w-full h-20 ${radiusClass} shadow-[0_30px_70px_rgba(0,0,0,0.8)] flex items-center justify-between pl-8 pr-5 transition-all active:scale-[0.97] overflow-hidden border border-white/20`}
+            style={{ backgroundColor: accentColor }}
           >
-            <div className="flex items-center gap-5 relative z-10 shrink-0">
+            <div className="flex items-center gap-4 relative z-10 shrink-0">
               <div
-                className={`w-12 h-12 ${radiusClass} flex items-center justify-center font-black text-xs shadow-2xl border`}
-                style={{ backgroundColor: backgroundColor, color: accentColor, borderColor: `${textColor}10` }}
+                className={`w-12 h-12 ${radiusClass} flex items-center justify-center font-black text-xs shadow-2xl bg-black`}
+                style={{ color: accentColor }}
               >
                 {cartCount}
               </div>
@@ -225,13 +260,12 @@ const MenuPage: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center gap-4 relative z-10">
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center shadow-xl group-hover:scale-105 transition-all"
-                style={{ backgroundColor: backgroundColor, color: accentColor }}
-              >
-                <span className="material-symbols-outlined font-black text-[24px]">arrow_forward</span>
+              <div className="h-10 w-px bg-black/10"></div>
+              <div className="w-14 h-14 rounded-full flex items-center justify-center bg-black transition-all group-hover:scale-105 shadow-xl" style={{ color: accentColor }}>
+                <span className="material-symbols-outlined font-black text-[26px]">arrow_forward</span>
               </div>
             </div>
+            <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </button>
         </div>
       )}

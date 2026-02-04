@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useLayoutEffect } from 'react';
 import { useClient } from '../../contexts/ClientContext'; // Import context
 
 const CartPage: React.FC = () => {
@@ -18,6 +19,16 @@ const CartPage: React.FC = () => {
   const discount = isRedeemingPoints ? 2.00 : 0;
   const total = Math.max(0, subtotal - discount);
   const pointsToEarn = isRedeemingPoints ? 0 : Math.floor(total * 10);
+
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+    const raf = window.requestAnimationFrame(() => window.scrollTo(0, 0));
+    const timeout = window.setTimeout(() => window.scrollTo(0, 0), 50);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(timeout);
+    };
+  }, []);
 
   return (
     <div
@@ -75,7 +86,16 @@ const CartPage: React.FC = () => {
                   }}
                 >
                   <div className="flex gap-5">
-                    <div className="bg-center bg-cover rounded-[1.5rem] size-[90px] shrink-0 border shadow-2xl" style={{ backgroundImage: `url(${item.image})`, borderColor: `${textColor}1A` }}></div>
+                    <div
+                      className="bg-no-repeat rounded-[1.5rem] size-[90px] shrink-0 border shadow-2xl"
+                      style={{
+                        backgroundImage: `url(${item.image})`,
+                        backgroundSize: 'contain',
+                        backgroundPosition: 'top center',
+                        backgroundColor,
+                        borderColor: `${textColor}1A`
+                      }}
+                    ></div>
                     <div className="flex-1 flex flex-col justify-center min-w-0">
                       <div className="flex justify-between items-start">
                         <p className="text-[17px] font-black uppercase italic truncate tracking-tight" style={{ color: textColor }}>{item.name}</p>

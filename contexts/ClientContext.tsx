@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useToast } from '../components/ToastSystem';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { CartItem, MenuItem, UserProfile, OrderStatus } from '../components/client/types';
@@ -88,11 +89,42 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Session System State
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [sessionValid, setSessionValid] = useState(false);
+    const { addToast } = useToast();
     const [showSessionSelector, setShowSessionSelector] = useState(false);
     const [tableLabel, setTableLabel] = useState<string | null>(null);
 
     // Dynamic Menu System State
     const [menuId, setMenuId] = useState<string | null>(null);
+
+    const getAvailableStock = (item: any) => {
+        if (item?.available_stock !== undefined && item?.available_stock !== null) {
+            return Number(item.available_stock);
+        }
+        if (item?.current_stock !== undefined && item?.current_stock !== null) {
+            return Number(item.current_stock);
+        }
+        return undefined;
+    };
+
+    const getMaxStock = (item: MenuItem) => {
+        if (item.availableStock === undefined || Number.isNaN(item.availableStock)) return undefined;
+        return Math.max(0, Math.floor(item.availableStock));
+    };
+
+    const enforceStockLimit = (item: MenuItem, desiredQty: number) => {
+        const maxStock = getMaxStock(item);
+        if (item.isOutOfStock || (maxStock !== undefined && maxStock <= 0)) {
+            addToast('SIN STOCK', 'error', 'Este producto está agotado.');
+            return { allowed: false, quantity: 0 };
+        }
+
+        if (maxStock !== undefined && desiredQty > maxStock) {
+            addToast('STOCK LIMITADO', 'info', `Solo quedan ${maxStock} unidades.`);
+            return { allowed: maxStock > 0, quantity: maxStock };
+        }
+
+        return { allowed: true, quantity: desiredQty };
+    };
 
     // Auth Listener & User Data Fetching
     useEffect(() => {
@@ -467,7 +499,8 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                             image: item.image_url || item.image || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
                             category: item.category || 'General',
                             isPopular: false,
-                            isOutOfStock: !item.is_available,
+                            isOutOfStock: !item.is_available || (item.current_stock !== undefined && item.current_stock <= 0),
+                            availableStock: getAvailableStock(item),
                             variants: [],
                             addons: [],
                             item_type: 'sellable' as const,
@@ -502,6 +535,15 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     }
 
                     if (productsData && productsData.length > 0) {
+                        const productIds = productsData.map((item: any) => item.id).filter(Boolean);
+                        const { data: imageRows } = await (supabase.from('products') as any)
+                            .select('id, image')
+                            .in('id', productIds);
+                        const productImageMap = new Map<string, string>();
+                        (imageRows || []).forEach((row: any) => {
+                            if (row?.id && row?.image) productImageMap.set(row.id, row.image);
+                        });
+
                         const mappedProducts: MenuItem[] = productsData.map((item: any) => {
                             const catName = item.category_id ? categoryMap[item.category_id] : 'General';
                             return {
@@ -509,10 +551,11 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                                 name: item.name,
                                 description: item.description || '',
                                 price: item.price || 0,
-                                image: item.image || item.image_url || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
+                                image: item.image_url || productImageMap.get(item.id) || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
                                 category: catName,
                                 isPopular: false,
                                 isOutOfStock: !item.is_available,  // ✅ Calculado en tiempo real por RPC
+                                availableStock: getAvailableStock(item),
                                 variants: [],
                                 addons: [],
                                 item_type: 'product' as const,
@@ -540,6 +583,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                                     category: catName,
                                     isPopular: item.is_popular || false,
                                     isOutOfStock: (item.current_stock !== undefined && item.current_stock <= 0),
+                                    availableStock: getAvailableStock(item),
                                     variants: item.variants || [],
                                     addons: item.addons || [],
                                     item_type: 'sellable' as const,
@@ -611,6 +655,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                             category: catName,
                             isPopular: item.is_popular || false,
                             isOutOfStock: !item.is_available,  // ✅ Ahora is_available viene calculado por trigger
+                            availableStock: getAvailableStock(item),
                             variants: mappedVariants,
                             addons: item.product_addons || [],
                             item_type: 'product' as const,
@@ -721,13 +766,18 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }, [store?.id, user?.id, activeOrderId]);
 
     const addToCart = (item: MenuItem, quantity: number, customs: string[], size: string, notes: string) => {
-        setCart(prev => [...prev, { ...item, quantity, customizations: customs, size, notes }]);
+        const result = enforceStockLimit(item, quantity);
+        if (!result.allowed) return;
+        setCart(prev => [...prev, { ...item, quantity: result.quantity, customizations: customs, size, notes }]);
     };
 
     const updateQuantity = (itemId: string, delta: number, size: string) => {
         setCart(prev => prev.map(item => {
             if (item.id === itemId && item.size === size) {
-                return { ...item, quantity: Math.max(1, item.quantity + delta) };
+                const nextQty = Math.max(1, item.quantity + delta);
+                const result = enforceStockLimit(item, nextQty);
+                if (!result.allowed) return item;
+                return { ...item, quantity: result.quantity };
             }
             return item;
         }));

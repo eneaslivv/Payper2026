@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useLayoutEffect } from 'react';
 import { useClient } from '../../contexts/ClientContext';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../components/ToastSystem';
@@ -37,7 +38,7 @@ const CheckoutPage: React.FC = () => {
 
   // Gestión de ubicación dinámica
   const [currentTable, setCurrentTable] = useState(initialTable);
-  const [currentBar, setCurrentBar] = useState('01');
+  const [currentBar, setCurrentBar] = useState('');
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [tempValue, setTempValue] = useState('');
 
@@ -45,6 +46,16 @@ const CheckoutPage: React.FC = () => {
   const [availableRewards, setAvailableRewards] = useState<Reward[]>([]);
   const [selectedRewardId, setSelectedRewardId] = useState<string | null>(null);
   const [rewardDiscount, setRewardDiscount] = useState(0);
+
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+    const raf = window.requestAnimationFrame(() => window.scrollTo(0, 0));
+    const timeout = window.setTimeout(() => window.scrollTo(0, 0), 50);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(timeout);
+    };
+  }, []);
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -331,6 +342,12 @@ const CheckoutPage: React.FC = () => {
     setIsEditingLocation(true);
   };
 
+  const locationLabel = qrTableLabel
+    ? qrTableLabel
+    : (deliveryMode === 'local'
+      ? (currentTable ? `MESA ${currentTable}` : 'QR LIBRE')
+      : (currentBar ? `BARRA ${currentBar}` : 'QR LIBRE'));
+
   return (
     <div
       className="relative flex min-h-screen w-full flex-col overflow-x-hidden pb-48 font-display transition-colors duration-500"
@@ -389,9 +406,7 @@ const CheckoutPage: React.FC = () => {
                 >
                   <span className="w-2 h-2 rounded-full animate-pulse shadow-lg" style={{ backgroundColor: accentColor, boxShadow: `0 0 8px ${accentColor}` }}></span>
                   <span className="text-[10px] font-black uppercase tracking-widest italic leading-none" style={{ color: accentColor }}>
-                    {deliveryMode === 'local'
-                      ? (currentTable ? `MESA ${currentTable}` : 'SIN MESA')
-                      : (currentBar ? `BARRA ${currentBar}` : 'SIN BARRA')}
+                    {locationLabel}
                   </span>
                   <span className="material-symbols-outlined text-[14px] opacity-30 group-hover/loc:opacity-100 transition-opacity" style={{ color: accentColor }}>edit</span>
                 </button>

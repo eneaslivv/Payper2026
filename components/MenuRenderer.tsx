@@ -25,6 +25,9 @@ interface MenuRendererProps {
     canProcessPayments?: boolean;
     onAddToCart?: (item: any) => void;
     onItemClick?: (item: any) => void; // Added for navigation
+    getQuantity?: (item: any) => number;
+    onIncrement?: (item: any) => void;
+    onDecrement?: (item: any) => void;
     layoutOverride?: 'grid' | 'list';
 
     // Interactivity Props
@@ -50,6 +53,9 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
     canProcessPayments = false,
     onAddToCart,
     onItemClick,
+    getQuantity,
+    onIncrement,
+    onDecrement,
     layoutOverride,
     activeCategory,
     onCategoryChange,
@@ -309,6 +315,8 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
                             const product = { ...productRaw, isOutOfStock };
                             const price = getPrice(product);
                             const imageUrl = getImage(product);
+                            const quantity = getQuantity ? getQuantity(product) : 0;
+                            const showStepper = showAdd && !product.isOutOfStock && quantity > 0 && onIncrement && onDecrement;
 
                             const cardStyles = {
                                 backgroundColor: theme.cardStyle === 'glass' ? `${theme.surfaceColor}80` :
@@ -386,15 +394,35 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
                                         <div className={`aspect-square bg-cover bg-center relative overflow-hidden ${product.isOutOfStock ? 'grayscale' : ''}`} style={{ backgroundImage: `url(${imageUrl})` }}>
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity" />
 
-                                            {showAdd && !product.isOutOfStock && (
-                                                <motion.button
-                                                    whileTap={{ scale: 0.9 }}
-                                                    onClick={(e) => { e.stopPropagation(); onAddToCart && onAddToCart(product); }}
-                                                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full shadow-2xl scale-0 group-hover:scale-100 transition-all duration-300 backdrop-blur-md"
-                                                    style={{ backgroundColor: `${theme.accentColor}`, color: '#000' }}
-                                                >
-                                                    <span className="material-symbols-outlined font-black text-2xl">add</span>
-                                                </motion.button>
+                                            {showStepper ? (
+                                                <div className="absolute bottom-3 right-3 flex items-center gap-2 rounded-full bg-black/60 border border-white/10 px-2 py-1 backdrop-blur-md">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); onDecrement && onDecrement(product); }}
+                                                        className="w-7 h-7 rounded-full flex items-center justify-center bg-white/5"
+                                                        style={{ color: theme.textColor }}
+                                                    >
+                                                        <span className="material-symbols-outlined text-sm">remove</span>
+                                                    </button>
+                                                    <span className="text-xs font-black tabular-nums" style={{ color: theme.textColor }}>{quantity}</span>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); onIncrement && onIncrement(product); }}
+                                                        className="w-7 h-7 rounded-full flex items-center justify-center"
+                                                        style={{ backgroundColor: theme.accentColor, color: '#000' }}
+                                                    >
+                                                        <span className="material-symbols-outlined text-sm">add</span>
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                showAdd && !product.isOutOfStock && (
+                                                    <motion.button
+                                                        whileTap={{ scale: 0.9 }}
+                                                        onClick={(e) => { e.stopPropagation(); onAddToCart && onAddToCart(product); }}
+                                                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full shadow-2xl scale-0 group-hover:scale-100 transition-all duration-300 backdrop-blur-md"
+                                                        style={{ backgroundColor: `${theme.accentColor}`, color: '#000' }}
+                                                    >
+                                                        <span className="material-symbols-outlined font-black text-2xl">add</span>
+                                                    </motion.button>
+                                                )
                                             )}
 
                                             {product.isOutOfStock && (

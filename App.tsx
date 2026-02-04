@@ -876,6 +876,10 @@ const MainRouter: React.FC = () => {
 const App: React.FC = () => {
   // PWA & Store Logic
   useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+
     // 0. SAFETY: Cleanup Legacy Cache (Fix Quota Exceeded)
     try {
       // Remove specific large caches that cause issues

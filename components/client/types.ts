@@ -10,6 +10,8 @@ export interface MenuItem {
   category: string;
   isPopular?: boolean;
   isOutOfStock?: boolean;
+  availableStock?: number;
+  item_type?: 'product' | 'sellable';
   variants?: {
     id: string;
     name: string;

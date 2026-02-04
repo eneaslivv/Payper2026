@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useLayoutEffect } from 'react';
 import { useClient } from '../../contexts/ClientContext';
 import { MenuItem } from '../../components/client/types';
 
@@ -34,6 +35,16 @@ const ProductPage: React.FC = () => {
 
   // Helper to convert hex to rgb for gradients if needed, or just use hex
   // specific logic for gradients: we'll use inline styles for gradients to support dynamic colors
+
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+    const raf = window.requestAnimationFrame(() => window.scrollTo(0, 0));
+    const timeout = window.setTimeout(() => window.scrollTo(0, 0), 50);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(timeout);
+    };
+  }, [id]);
 
   if (!item) return <div className="h-screen flex items-center justify-center" style={{ backgroundColor, color: textColor }}>Product not found</div>;
 
@@ -93,7 +104,15 @@ const ProductPage: React.FC = () => {
       </div>
 
       <div className="relative w-full h-[45vh] shrink-0">
-        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${item.image})` }}></div>
+        <div
+          className="absolute inset-0 bg-no-repeat"
+          style={{
+            backgroundImage: `url(${item.image})`,
+            backgroundSize: 'contain',
+            backgroundPosition: 'top center',
+            backgroundColor
+          }}
+        ></div>
         <div
           className="absolute inset-0"
           style={{ background: `linear-gradient(to top, ${backgroundColor} 10%, ${backgroundColor}1A 40%, transparent 100%)` }}
