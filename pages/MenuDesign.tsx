@@ -1307,7 +1307,9 @@ const MenuDesign: React.FC = () => {
             const filteredInventory = mappedInventory.filter(i => !productNames.has(i.name.trim().toLowerCase()));
 
             // Merge and Sort by Name
-            const combinedItems = [...filteredInventory, ...mappedProducts].sort((a, b) => a.name.localeCompare(b.name));
+            const combinedItems = [...filteredInventory, ...mappedProducts]
+                .filter(item => !item.name?.trim().toLowerCase().startsWith('[eliminado]'))
+                .sort((a, b) => a.name.localeCompare(b.name));
 
             setItems(combinedItems);
 

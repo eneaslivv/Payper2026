@@ -1174,12 +1174,12 @@ const CashAuditTable: React.FC<{ dateRange: { start: string | Date; end: string 
                 setDetailLoading(true);
                 setDetailSummary(null);
                 try {
-                  const { data, error } = await (supabase as any).rpc('get_session_cash_summary', {
-                    query_session_id: record.session_id
-                  });
-                  if (!error && data) {
-                    setDetailSummary(data);
-                  }
+                  const { data, error } = await (supabase as any)
+                    .from('cash_closures_detailed')
+                    .select('*')
+                    .eq('session_id', record.session_id)
+                    .maybeSingle();
+                  if (!error && data) setDetailSummary(data);
                 } catch (err) {
                   console.error('Error fetching closure detail:', err);
                 } finally {
@@ -1270,6 +1270,14 @@ const CashClosureDetailModal: React.FC<{
   const closerName = record.session?.closer?.full_name || 'Auto';
   const openedAt = record.session?.opened_at ? new Date(record.session.opened_at) : null;
   const closedAt = record.session?.closed_at ? new Date(record.session.closed_at) : null;
+  const paymentBreakdown = summary
+    ? [
+        { label: 'Efectivo', total: summary.total_cash_sales },
+        { label: 'Wallet', total: summary.total_wallet_sales },
+        { label: 'MercadoPago', total: summary.total_mp_sales },
+        { label: 'Tarjeta', total: summary.total_card_sales }
+      ].filter((entry) => Number(entry.total || 0) > 0)
+    : [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in transition-all">
@@ -1338,19 +1346,19 @@ const CashClosureDetailModal: React.FC<{
               <div className="space-y-2">
                 <div className="flex justify-between text-[10px] font-bold uppercase">
                   <span className="text-white/40">Pedidos</span>
-                  <span className="text-white">{summary?.order_count || 0}</span>
+                  <span className="text-white">{summary?.total_orders || 0}</span>
                 </div>
                 <div className="flex justify-between text-[10px] font-bold uppercase">
                   <span className="text-white/40">Facturacion</span>
-                  <span className="text-white">${(summary?.total_revenue || 0).toLocaleString('es-AR')}</span>
+                  <span className="text-white">${(summary?.total_sales || 0).toLocaleString('es-AR')}</span>
                 </div>
                 <div className="flex justify-between text-[10px] font-bold uppercase">
                   <span className="text-white/40">Ventas Efectivo</span>
-                  <span className="text-white">${(summary?.cash_sales || 0).toLocaleString('es-AR')}</span>
+                  <span className="text-white">${(summary?.total_cash_sales || 0).toLocaleString('es-AR')}</span>
                 </div>
                 <div className="flex justify-between text-[10px] font-bold uppercase">
                   <span className="text-white/40">Cargas Wallet</span>
-                  <span className="text-white">${(summary?.cash_topups || 0).toLocaleString('es-AR')}</span>
+                  <span className="text-white">${(summary?.total_topups || 0).toLocaleString('es-AR')}</span>
                 </div>
               </div>
             )}
@@ -1362,11 +1370,11 @@ const CashClosureDetailModal: React.FC<{
               <p className="text-xs text-white/30 uppercase tracking-widest animate-pulse">Cargando metodos...</p>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {summary?.payment_methods ? (
-                  Object.entries(summary.payment_methods).map(([method, total]: [string, any]) => (
-                    <div key={method} className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1.5 rounded-lg">
-                      <span className="text-[8px] font-black uppercase text-white/40">{method}</span>
-                      <span className="text-[9px] font-black text-neon">${Number(total || 0).toLocaleString('es-AR')}</span>
+                {paymentBreakdown.length > 0 ? (
+                  paymentBreakdown.map((entry) => (
+                    <div key={entry.label} className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1.5 rounded-lg">
+                      <span className="text-[8px] font-black uppercase text-white/40">{entry.label}</span>
+                      <span className="text-[9px] font-black text-neon">${Number(entry.total || 0).toLocaleString('es-AR')}</span>
                     </div>
                   ))
                 ) : (
