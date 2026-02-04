@@ -208,11 +208,13 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
             // 4.5 Check for Active OrderS (Plural)
             const activeOrdersFound = ordersData?.filter(o =>
-                o.status === 'received' ||
-                o.status === 'pending' ||
-                o.status === 'preparing' ||
-                o.status === 'ready' ||
-                o.status === 'paid'  // MP payments set status to 'paid'
+                !o.archived_at && (
+                    o.status === 'received' ||
+                    o.status === 'pending' ||
+                    o.status === 'preparing' ||
+                    o.status === 'ready' ||
+                    o.status === 'paid'  // MP payments set status to 'paid'
+                )
             ) || [];
 
             setActiveOrders(activeOrdersFound);
@@ -383,6 +385,30 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const fetchData = async () => {
             setLoadingProducts(true);
             try {
+                const dedupeMenuItems = (items: MenuItem[]) => {
+                    const map = new Map<string, MenuItem>();
+
+                    items.forEach((item) => {
+                        const nameKey = (item.name || '').trim().toLowerCase();
+                        const priceKey = Number(item.price || 0);
+                        const key = `${nameKey}|${priceKey}`;
+
+                        const existing = map.get(key);
+                        if (!existing) {
+                            map.set(key, item);
+                            return;
+                        }
+
+                        const existingPriority = existing.item_type === 'product' ? 1 : 0;
+                        const nextPriority = item.item_type === 'product' ? 1 : 0;
+                        if (nextPriority > existingPriority) {
+                            map.set(key, item);
+                        }
+                    });
+
+                    return Array.from(map.values());
+                };
+
                 // 1. Fetch Categories
                 const { data: catsData, error: catsError } = await (supabase
                     .from('categories' as any)
@@ -447,7 +473,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                             item_type: 'sellable' as const,
                         }));
 
-                        setProducts(mappedProducts);
+                        setProducts(dedupeMenuItems(mappedProducts));
                     } else {
                         // Fallback: menu exists but has no products
                         console.warn('[ClientContext] Menu has no products, loading all inventory');
@@ -520,7 +546,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                                 };
                             });
 
-                        setProducts([...mappedProducts, ...inventoryProducts]);
+                        setProducts(dedupeMenuItems([...mappedProducts, ...inventoryProducts]));
                         console.log('[ClientContext] Products loaded with availability:', mappedProducts.length, 'products,', inventoryProducts.length, 'inventory items');
                     } else {
                         console.warn('[ClientContext] No products found, falling back to loadAllProducts');
@@ -594,7 +620,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     // Combine: Products first (composed items), then inventory items
                     // Filter inventory to only show items with price > 0 (sellable)
                     const sellableInventory = inventoryProducts.filter(p => p.price > 0);
-                    setProducts([...recipeProducts, ...sellableInventory]);
+                    setProducts(dedupeMenuItems([...recipeProducts, ...sellableInventory]));
                 }
 
 

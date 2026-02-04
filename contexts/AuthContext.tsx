@@ -46,6 +46,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [isRecovery, setIsRecovery] = useState(false);
     const { addToast } = useToast();
 
+    const allowedRoles: UserRole[] = ['customer', 'store_owner', 'super_admin', 'staff'];
+
+    const getSafeRole = (metadataRole?: UserRole | string) => {
+        const roleCandidate = metadataRole as UserRole | undefined;
+        return allowedRoles.includes(roleCandidate || 'customer')
+            ? (roleCandidate as UserRole)
+            : 'customer';
+    };
+
+    const buildEmergencyProfile = (currentUser: User): UserProfile => ({
+        id: currentUser.id,
+        email: currentUser.email || `user_${currentUser.id.slice(0, 8)}@temp.livv`,
+        full_name: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Usuario',
+        role: getSafeRole(currentUser.user_metadata?.role as UserRole | undefined),
+        is_active: true,
+        store_id: currentUser.user_metadata?.store_id
+    });
+
+    const applyEmergencyProfile = async (currentUser: User) => {
+        const emergencyProfile = buildEmergencyProfile(currentUser);
+
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .upsert(emergencyProfile)
+                .select()
+                .single();
+
+            if (!error && data) {
+                setProfile(data as UserProfile);
+            } else {
+                setProfile(emergencyProfile);
+            }
+        } catch {
+            setProfile(emergencyProfile);
+        } finally {
+            setPermissions(null);
+        }
+    };
+
     // FAILSAFE ABSOLUTO: Si pasan 8 segundos y sigue cargando, forzamos el render.
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -63,41 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setIsLoading(false);
 
             if (currentUser && !currentProfile) {
-                const allowedRoles: UserRole[] = ['customer', 'store_owner', 'super_admin', 'staff'];
-                const metadataRole = currentUser.user_metadata?.role as UserRole | undefined;
-                const safeRole = allowedRoles.includes(metadataRole || 'customer')
-                    ? (metadataRole as UserRole)
-                    : 'customer';
-
-                const emergencyProfile: UserProfile = {
-                    id: currentUser.id,
-                    email: currentUser.email || `user_${currentUser.id.slice(0, 8)}@temp.livv`,
-                    full_name: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Usuario',
-                    role: safeRole,
-                    is_active: true,
-                    store_id: currentUser.user_metadata?.store_id
-                };
-
-                void (async () => {
-                    try {
-                        const { data, error } = await supabase
-                            .from('profiles')
-                            .upsert(emergencyProfile)
-                            .select()
-                            .single();
-
-                        if (!error && data) {
-                            setProfile(data as UserProfile);
-                            setPermissions(null);
-                        } else {
-                            setProfile(emergencyProfile);
-                            setPermissions(null);
-                        }
-                    } catch {
-                        setProfile(emergencyProfile);
-                        setPermissions(null);
-                    }
-                })();
+                void applyEmergencyProfile(currentUser);
             }
         }, 8000);
         return () => clearTimeout(timer);
@@ -106,14 +112,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const userIdRef = useRef<string | null>(null);
     const userRef = useRef<User | null>(null);
     const profileRef = useRef<UserProfile | null>(null);
+    const fallbackUserIdRef = useRef<string | null>(null);
 
     useEffect(() => {
         if (user?.id) userIdRef.current = user.id;
         else userIdRef.current = null;
 
+        if (!user?.id) fallbackUserIdRef.current = null;
+
         userRef.current = user;
         profileRef.current = profile;
     }, [user, profile]);
+
+    useEffect(() => {
+        if (isLoading) return;
+        if (!user || profile) return;
+        if (fallbackUserIdRef.current === user.id) return;
+
+        fallbackUserIdRef.current = user.id;
+        void applyEmergencyProfile(user);
+    }, [isLoading, user, profile]);
 
     useEffect(() => {
         if (!SENTRY_ENABLED) return;
@@ -319,16 +337,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
             } catch (healError) {
                 console.error('[AUTH] Critical Auto-Heal Error:', healError);
-                const allowedRoles: UserRole[] = ['customer', 'store_owner', 'super_admin', 'staff'];
-                const metadataRole = user?.user_metadata?.role as UserRole | undefined;
-                const safeRole = allowedRoles.includes(metadataRole || 'customer')
-                    ? (metadataRole as UserRole)
-                    : 'customer';
                 const fallbackProfile: UserProfile = {
                     id: userId,
                     email: userEmail || `user_${userId.substr(0, 8)}@temp.livv`,
                     full_name: user?.user_metadata?.full_name || userEmail?.split('@')[0] || 'Usuario',
-                    role: safeRole,
+                    role: getSafeRole(user?.user_metadata?.role as UserRole | undefined),
                     is_active: true,
                     store_id: user?.user_metadata?.store_id
                 };

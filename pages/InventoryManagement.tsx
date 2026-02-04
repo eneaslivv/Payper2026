@@ -939,7 +939,9 @@ const InventoryManagement: React.FC = () => {
           description: '', // Optional default
           price: newItemForm.price,
           base_price: newItemForm.price, // Ensure both price fields are set if schema varies
-          available: true, // Auto-active so it appears in Menu Design
+          is_available: true,
+          is_visible: true,
+          active: true,
           category_id: newItemForm.category_id || null,
           image_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=200' // Default placeholder
         }

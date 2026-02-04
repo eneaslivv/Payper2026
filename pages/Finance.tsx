@@ -1080,6 +1080,9 @@ const CashAuditTable: React.FC<{ dateRange: { start: string | Date; end: string 
   const [closures, setClosures] = useState<any[]>([]);
   const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [selectedClosure, setSelectedClosure] = useState<any | null>(null);
+  const [detailSummary, setDetailSummary] = useState<any | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   useEffect(() => {
     const fetchClosures = async () => {
@@ -1096,6 +1099,8 @@ const CashAuditTable: React.FC<{ dateRange: { start: string | Date; end: string 
             *,
             session:cash_sessions (
               opened_at,
+              closed_at,
+              start_amount,
               zone:venue_zones(name),
               opener:profiles!opened_by(full_name),
               closer:profiles!closed_by(full_name)
@@ -1164,8 +1169,30 @@ const CashAuditTable: React.FC<{ dateRange: { start: string | Date; end: string 
               const isPositive = diff >= 0;
               const isPerfect = diff === 0;
 
+              const handleOpenDetail = async () => {
+                setSelectedClosure(record);
+                setDetailLoading(true);
+                setDetailSummary(null);
+                try {
+                  const { data, error } = await (supabase as any).rpc('get_session_cash_summary', {
+                    query_session_id: record.session_id
+                  });
+                  if (!error && data) {
+                    setDetailSummary(data);
+                  }
+                } catch (err) {
+                  console.error('Error fetching closure detail:', err);
+                } finally {
+                  setDetailLoading(false);
+                }
+              };
+
               return (
-                <tr key={record.id} className="hover:bg-white/5 transition-colors group">
+                <tr
+                  key={record.id}
+                  className="hover:bg-white/5 transition-colors group cursor-pointer"
+                  onClick={handleOpenDetail}
+                >
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
                       <span className="text-white font-bold">
@@ -1213,6 +1240,147 @@ const CashAuditTable: React.FC<{ dateRange: { start: string | Date; end: string 
             })}
           </tbody>
         </table>
+      </div>
+
+      {selectedClosure && (
+        <CashClosureDetailModal
+          record={selectedClosure}
+          summary={detailSummary}
+          loading={detailLoading}
+          onClose={() => {
+            setSelectedClosure(null);
+            setDetailSummary(null);
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+const CashClosureDetailModal: React.FC<{
+  record: any;
+  summary: any | null;
+  loading: boolean;
+  onClose: () => void;
+}> = ({ record, summary, loading, onClose }) => {
+  const diff = record.difference ?? (record.real_cash - record.expected_cash);
+  const diffColor = diff === 0 ? 'text-white' : diff > 0 ? 'text-neon' : 'text-red-500';
+  const zoneName = record.session?.zone?.name || 'Zona Eliminada';
+  const openerName = record.session?.opener?.full_name || 'Staff';
+  const closerName = record.session?.closer?.full_name || 'Auto';
+  const openedAt = record.session?.opened_at ? new Date(record.session.opened_at) : null;
+  const closedAt = record.session?.closed_at ? new Date(record.session.closed_at) : null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in transition-all">
+      <div className="bg-[#141414] border border-white/10 p-8 rounded-3xl w-full max-w-3xl shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-40 h-40 bg-neon/10 blur-[90px] -mr-16 -mt-16 pointer-events-none" />
+
+        <button onClick={onClose} className="absolute top-4 right-4 text-white/20 hover:text-white transition-colors">
+          <span className="material-symbols-outlined">close</span>
+        </button>
+
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-xl font-black uppercase italic-black text-white tracking-tight">Detalle de Cierre</h3>
+            <p className="text-[10px] text-white/40 uppercase tracking-widest">{zoneName}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[9px] text-white/40 uppercase tracking-widest">Fecha</p>
+            <p className="text-sm font-black text-white">
+              {new Date(record.created_at).toLocaleDateString()} {new Date(record.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+            <p className="text-[9px] text-white/40 uppercase tracking-widest mb-1">Fondo Inicial</p>
+            <p className="text-2xl font-black text-white">${(record.session?.start_amount || 0).toLocaleString('es-AR')}</p>
+          </div>
+          <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+            <p className="text-[9px] text-white/40 uppercase tracking-widest mb-1">Sistema (Esperado)</p>
+            <p className="text-2xl font-black text-white">${(record.expected_cash || 0).toLocaleString('es-AR')}</p>
+          </div>
+          <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+            <p className="text-[9px] text-white/40 uppercase tracking-widest mb-1">Real (Fisico)</p>
+            <p className="text-2xl font-black text-white">${(record.real_cash || 0).toLocaleString('es-AR')}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+            <p className="text-[9px] text-white/40 uppercase tracking-widest mb-1">Diferencia</p>
+            <p className={`text-2xl font-black ${diffColor}`}>{diff > 0 ? '+' : ''}${diff.toLocaleString('es-AR')}</p>
+          </div>
+          <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+            <p className="text-[9px] text-white/40 uppercase tracking-widest mb-1">Apertura</p>
+            <p className="text-sm font-black text-white">
+              {openedAt ? openedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+            </p>
+            <p className="text-[9px] text-white/40">{openerName}</p>
+          </div>
+          <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+            <p className="text-[9px] text-white/40 uppercase tracking-widest mb-1">Cierre</p>
+            <p className="text-sm font-black text-white">
+              {closedAt ? closedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+            </p>
+            <p className="text-[9px] text-white/40">{closerName}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+            <p className="text-[9px] text-white/40 uppercase tracking-widest mb-2">Resumen del Turno</p>
+            {loading ? (
+              <p className="text-xs text-white/30 uppercase tracking-widest animate-pulse">Cargando resumen...</p>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex justify-between text-[10px] font-bold uppercase">
+                  <span className="text-white/40">Pedidos</span>
+                  <span className="text-white">{summary?.order_count || 0}</span>
+                </div>
+                <div className="flex justify-between text-[10px] font-bold uppercase">
+                  <span className="text-white/40">Facturacion</span>
+                  <span className="text-white">${(summary?.total_revenue || 0).toLocaleString('es-AR')}</span>
+                </div>
+                <div className="flex justify-between text-[10px] font-bold uppercase">
+                  <span className="text-white/40">Ventas Efectivo</span>
+                  <span className="text-white">${(summary?.cash_sales || 0).toLocaleString('es-AR')}</span>
+                </div>
+                <div className="flex justify-between text-[10px] font-bold uppercase">
+                  <span className="text-white/40">Cargas Wallet</span>
+                  <span className="text-white">${(summary?.cash_topups || 0).toLocaleString('es-AR')}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+            <p className="text-[9px] text-white/40 uppercase tracking-widest mb-2">Pagos por Metodo</p>
+            {loading ? (
+              <p className="text-xs text-white/30 uppercase tracking-widest animate-pulse">Cargando metodos...</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {summary?.payment_methods ? (
+                  Object.entries(summary.payment_methods).map(([method, total]: [string, any]) => (
+                    <div key={method} className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1.5 rounded-lg">
+                      <span className="text-[8px] font-black uppercase text-white/40">{method}</span>
+                      <span className="text-[9px] font-black text-neon">${Number(total || 0).toLocaleString('es-AR')}</span>
+                    </div>
+                  ))
+                ) : (
+                  <span className="text-[10px] text-white/30 uppercase tracking-widest">Sin datos</span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+          <p className="text-[9px] text-white/40 uppercase tracking-widest mb-2">Notas</p>
+          <p className="text-xs text-white/70">{record.notes || 'Sin observaciones.'}</p>
+        </div>
       </div>
     </div>
   );

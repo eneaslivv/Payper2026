@@ -276,13 +276,19 @@ export default function OrderStatusPage() {
         return [];
     };
 
+    const isArchived = Boolean(order.archived_at);
+    const baseDeliveryStatus = order.delivery_status === 'delivered'
+        ? 'delivered'
+        : mapToDeliveryStatus(order.status);
+    const deliveryStatus = isArchived && baseDeliveryStatus !== 'burned'
+        ? 'delivered'
+        : baseDeliveryStatus;
+
     const mappedOrder = {
         ...order,
         // ALWAYS map from status for intermediate states (received, preparing, ready)
-        // But if delivery_status is 'delivered', use that to show final state
-        delivery_status: order.delivery_status === 'delivered'
-            ? 'delivered'
-            : mapToDeliveryStatus(order.status),
+        // But if delivery_status is 'delivered' or archived, use that to show final state
+        delivery_status: deliveryStatus,
         order_items: normalizeItems()
     };
 

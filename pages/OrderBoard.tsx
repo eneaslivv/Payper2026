@@ -256,7 +256,6 @@ const OrderBoard: React.FC = () => {
       addToast("PEDIDO LISTO", 'success', "Notificando al cliente");
     } else if (order.status === 'ready') {
       handleStatusChange(id, 'served');
-      addToast("ENTREGADO", 'status', "Ciclo completado");
     }
     if (selectedOrder?.id === id) setSelectedOrder(null);
   };
@@ -828,24 +827,54 @@ const PaymentBadge: React.FC<{ order: Order }> = ({ order }) => {
   const provider = order.payment_provider || order.payment_method;
 
   // Determine badge type
-  let badge = { label: 'EFECTIVO', bg: 'bg-amber-500', border: 'border-amber-500/30', icon: '💵' };
+  let badge = {
+    label: 'EFECTIVO',
+    bg: 'bg-amber-500',
+    border: 'border-amber-500/30',
+    text: 'text-amber-200',
+    icon: '💵'
+  };
 
   if (!isPaid) {
     if (provider === 'mercadopago') {
-      badge = { label: 'PAGO PENDIENTE', bg: 'bg-red-500', border: 'border-red-500/30', icon: '⏳' };
+      badge = {
+        label: 'PAGO PENDIENTE',
+        bg: 'bg-red-500',
+        border: 'border-red-500/30',
+        text: 'text-red-200',
+        icon: '⏳'
+      };
     } else {
-      badge = { label: 'PENDIENTE', bg: 'bg-red-500', border: 'border-red-500/30', icon: '⏳' };
+      badge = {
+        label: 'PENDIENTE',
+        bg: 'bg-red-500',
+        border: 'border-red-500/30',
+        text: 'text-red-200',
+        icon: '⏳'
+      };
     }
   } else if (order.payment_method === 'wallet' || provider === 'wallet') {
-    badge = { label: 'SALDO', bg: 'bg-violet-500', border: 'border-violet-500/30', icon: '💜' };
+    badge = {
+      label: 'SALDO',
+      bg: 'bg-violet-500',
+      border: 'border-violet-500/30',
+      text: 'text-violet-200',
+      icon: '💜'
+    };
   } else if (provider === 'mercadopago' || order.payment_method === 'qr') {
-    badge = { label: 'MERCADO PAGO', bg: 'bg-[#009ee3]', border: 'border-[#009ee3]/30', icon: '💳' };
+    badge = {
+      label: 'MERCADO PAGO',
+      bg: 'bg-[#009ee3]',
+      border: 'border-[#009ee3]/30',
+      text: 'text-sky-200',
+      icon: '💳'
+    };
   }
 
   return (
     <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border ${badge.bg} ${badge.border} bg-opacity-10 backdrop-blur-md`}>
       <span className="text-[10px]">{badge.icon}</span>
-      <span className={`text-[9px] font-black uppercase tracking-wider ${badge.bg.replace('bg-', 'text-')}`}>
+      <span className={`text-[9px] font-black uppercase tracking-wider ${badge.text}`}>
         {badge.label}
       </span>
     </div>

@@ -716,7 +716,48 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const confirmOrderDelivery = async (orderId: string, staffId: string) => {
     const order = orders.find(o => o.id === orderId);
-    if (!order) return { success: false, message: 'Pedido no encontrado' };
+    if (!order) {
+      if (isOnline) {
+        try {
+          console.log('[confirmOrderDelivery] Order not in local cache, calling RPC directly:', { orderId, staffId });
+          // @ts-ignore
+          const { data, error } = await supabase.rpc('confirm_order_delivery', {
+            p_order_id: orderId,
+            p_staff_id: staffId
+          });
+
+          if (error) throw error;
+          const result = data as { success: boolean, message: string };
+
+          if (result.success) {
+            await syncOrder(orderId);
+          }
+
+          return result;
+        } catch (err: any) {
+          console.error('[confirmOrderDelivery] RPC failed without local order:', err?.message || err);
+          const event: SyncEvent = {
+            id: `evt-del-${Date.now()}`,
+            type: 'CONFIRM_DELIVERY',
+            payload: { orderId, staffId, storeId },
+            timestamp: Date.now()
+          };
+          await dbOps.addToSyncQueue(event);
+          updatePendingCount();
+          return { success: true, message: 'Guardado localmente (se sincronizará al volver online)' };
+        }
+      }
+
+      const event: SyncEvent = {
+        id: `evt-del-${Date.now()}`,
+        type: 'CONFIRM_DELIVERY',
+        payload: { orderId, staffId, storeId },
+        timestamp: Date.now()
+      };
+      await dbOps.addToSyncQueue(event);
+      updatePendingCount();
+      return { success: true, message: 'Guardado offline' };
+    }
 
     // Optimistic Update
     const updatedOrder: DBOrder = {
