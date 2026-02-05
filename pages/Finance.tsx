@@ -1270,6 +1270,7 @@ const CashClosureDetailModal: React.FC<{
   const closerName = record.session?.closer?.full_name || 'Auto';
   const openedAt = record.session?.opened_at ? new Date(record.session.opened_at) : null;
   const closedAt = record.session?.closed_at ? new Date(record.session.closed_at) : null;
+  const dispatchStation = summary?.default_dispatch_station || 'No asignada';
   const paymentBreakdown = summary
     ? [
         { label: 'Efectivo', total: summary.total_cash_sales },
@@ -1292,6 +1293,7 @@ const CashClosureDetailModal: React.FC<{
           <div>
             <h3 className="text-xl font-black uppercase italic-black text-white tracking-tight">Detalle de Cierre</h3>
             <p className="text-[10px] text-white/40 uppercase tracking-widest">{zoneName}</p>
+            <p className="text-[9px] text-white/30 uppercase tracking-[0.2em] mt-1">Estación: {dispatchStation}</p>
           </div>
           <div className="text-right">
             <p className="text-[9px] text-white/40 uppercase tracking-widest">Fecha</p>

@@ -317,6 +317,42 @@ const InventoryManagement: React.FC = () => {
     price: 0
   });
 
+  const generateCategorySlug = (categoryName: string): string => {
+    if (!categoryName) return '';
+
+    return categoryName
+      .toLowerCase()
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+  };
+
+  const getCategoryNameById = async (categoryId: string | null): Promise<string> => {
+    if (!categoryId) return '';
+
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('name')
+        .eq('id', categoryId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching category:', error);
+        return '';
+      }
+
+      return data?.name || '';
+    } catch (err) {
+      console.error('Exception fetching category:', err);
+      return '';
+    }
+  };
+
   // Category Creation State
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -906,6 +942,11 @@ const InventoryManagement: React.FC = () => {
       return;
     }
 
+    if (newItemForm.name.trim().length < 2) {
+      addToast('El nombre debe tener al menos 2 caracteres', 'error');
+      return;
+    }
+
     const storeId = profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
     localStorage.removeItem(`inventory_cache_v4_${storeId}`);
 
@@ -931,22 +972,30 @@ const InventoryManagement: React.FC = () => {
       const isSellable = newItemForm.price > 0;
       const endpoint = isSellable ? 'products' : 'inventory_items'; // Sellable = Product, Price=0 = Ingredient/Insumo
 
-      const payload = isSellable
-        ? {
-          // PRODUCT PAYLOAD
+      if (isSellable && (!newItemForm.price || newItemForm.price <= 0)) {
+        addToast('El precio debe ser mayor a 0 para productos vendibles', 'error');
+        return;
+      }
+
+      let payload: any;
+
+      if (isSellable) {
+        const categoryName = await getCategoryNameById(newItemForm.category_id || null);
+        payload = {
           name: newItemForm.name,
           store_id: storeId,
-          description: '', // Optional default
-          price: newItemForm.price,
-          base_price: newItemForm.price, // Ensure both price fields are set if schema varies
+          description: '',
+          base_price: newItemForm.price,
+          category: categoryName || null,
+          category_slug: categoryName ? generateCategorySlug(categoryName) : null,
+          image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=200',
+          active: true,
           is_available: true,
           is_visible: true,
-          active: true,
-          category_id: newItemForm.category_id || null,
-          image_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=200' // Default placeholder
-        }
-        : {
-          // INVENTORY ITEM PAYLOAD
+          tax_rate: 0
+        };
+      } else {
+        payload = {
           name: newItemForm.name,
           unit_type: newItemForm.unit_type,
           package_size: newItemForm.package_size || null,
@@ -957,8 +1006,12 @@ const InventoryManagement: React.FC = () => {
           min_stock_alert: newItemForm.min_stock,
           store_id: storeId,
           category_id: newItemForm.category_id || null,
-          is_menu_visible: false, // Ingredients usually hidden from menu
+          price: newItemForm.price || 0,
+          image_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=200',
+          is_menu_visible: false,
+          item_type: 'ingredient'
         };
+      }
 
       const response = await fetch(
         `https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/${endpoint}`,
@@ -1549,21 +1602,39 @@ const InventoryManagement: React.FC = () => {
       };
       const finalContentUnit = unitTypeToContentUnit[finalUnitType] || selectedItem.content_unit || 'un';
 
-      // Prepare payload - prioritize DB column names
-      const payload: any = {
-        name: selectedItem.name,
-        category_id: selectedItem.category_ids?.[0] || null,
-        cost: selectedItem.cost,
-        package_size: selectedItem.package_size || selectedItem.unit_size || 1,
-        content_unit: finalContentUnit, // Use synced value from unit_type
-        unit_type: finalUnitType,
-        [selectedItem.item_type === 'sellable' ? 'image' : 'image_url']: selectedItem.image_url || selectedItem.image
-      };
+      const isProduct = selectedItem.item_type === 'sellable';
+      let payload: any;
 
-      if (selectedItem.description) payload.description = selectedItem.description;
-      if (selectedItem.price !== undefined) payload.price = selectedItem.price;
+      if (isProduct) {
+        const categoryName = selectedItem.category_ids?.[0]
+          ? await getCategoryNameById(selectedItem.category_ids[0])
+          : (selectedItem as any).category;
 
-      const table = selectedItem.item_type === 'sellable' ? 'products' : 'inventory_items';
+        payload = {
+          name: selectedItem.name,
+          base_price: selectedItem.price,
+          category: categoryName || null,
+          category_slug: categoryName ? generateCategorySlug(categoryName) : null,
+          image: selectedItem.image_url || selectedItem.image
+        };
+
+        if (selectedItem.description) payload.description = selectedItem.description;
+      } else {
+        payload = {
+          name: selectedItem.name,
+          category_id: selectedItem.category_ids?.[0] || null,
+          cost: selectedItem.cost,
+          package_size: selectedItem.package_size || selectedItem.unit_size || 1,
+          content_unit: finalContentUnit,
+          unit_type: finalUnitType,
+          image_url: selectedItem.image_url || selectedItem.image
+        };
+
+        if (selectedItem.description) payload.description = selectedItem.description;
+        if (selectedItem.price !== undefined) payload.price = selectedItem.price;
+      }
+
+      const table = isProduct ? 'products' : 'inventory_items';
       const response = await fetch(`https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/${table}?id=eq.${selectedItem.id}`, {
         method: 'PATCH',
         headers,

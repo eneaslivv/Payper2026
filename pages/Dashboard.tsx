@@ -116,6 +116,81 @@ const Dashboard: React.FC = () => {
     end: new Date(new Date().setHours(23, 59, 59, 999)).toISOString()
   });
 
+  const [dispatchStations, setDispatchStations] = useState<{ id: string; name: string }[]>([]);
+  const [selectedStation, setSelectedStation] = useState<string>('');
+  const [stationStats, setStationStats] = useState<any>(null);
+  const [stationLoading, setStationLoading] = useState(false);
+
+  useEffect(() => {
+    if (!profile?.store_id) return;
+    (supabase as any)
+      .from('dispatch_stations')
+      .select('id, name, is_visible, sort_order')
+      .eq('store_id', profile.store_id)
+      .eq('is_visible', true)
+      .order('sort_order', { ascending: true })
+      .then(({ data }) => {
+        setDispatchStations((data || []).map((station: any) => ({ id: station.id, name: station.name })));
+      });
+  }, [profile?.store_id]);
+
+  useEffect(() => {
+    if (!profile?.store_id) return;
+
+    const fetchStationStats = async () => {
+      setStationLoading(true);
+      try {
+        let query = (supabase as any)
+          .from('sales_by_dispatch_station')
+          .select('dispatch_station, zone_name, total_orders, total_sales, cash_sales, card_sales, wallet_sales, mp_sales, sale_date, store_id')
+          .eq('store_id', profile.store_id);
+
+        if (selectedStation) {
+          query = query.eq('dispatch_station', selectedStation);
+        }
+
+        if (dateRange?.start) {
+          query = query.gte('sale_date', dateRange.start);
+        }
+
+        if (dateRange?.end) {
+          query = query.lte('sale_date', dateRange.end);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        const totals = (data || []).reduce((acc: any, row: any) => {
+          acc.total_orders += Number(row.total_orders || 0);
+          acc.total_sales += Number(row.total_sales || 0);
+          acc.cash_sales += Number(row.cash_sales || 0);
+          acc.card_sales += Number(row.card_sales || 0);
+          acc.wallet_sales += Number(row.wallet_sales || 0);
+          acc.mp_sales += Number(row.mp_sales || 0);
+          return acc;
+        }, { total_orders: 0, total_sales: 0, cash_sales: 0, card_sales: 0, wallet_sales: 0, mp_sales: 0 });
+
+        if ((data || []).length === 0) {
+          setStationStats(null);
+          return;
+        }
+
+        setStationStats({
+          dispatch_station: selectedStation || 'Todas',
+          zone_name: data?.[0]?.zone_name || 'Sin zona',
+          ...totals
+        });
+      } catch (err) {
+        console.warn('[Dashboard] Station stats fetch failed:', err);
+        setStationStats(null);
+      } finally {
+        setStationLoading(false);
+      }
+    };
+
+    fetchStationStats();
+  }, [profile?.store_id, selectedStation, dateRange]);
+
 
 
   // Fixed Expenses State
@@ -393,10 +468,53 @@ const Dashboard: React.FC = () => {
         <div className="lg:col-span-4 space-y-6">
           <SmartInsights storeId={profile?.store_id} />
 
-          <div className="bg-white dark:bg-[#141714] rounded-3xl border border-gray-200 dark:border-white/5 p-5 shadow-sm dark:shadow-soft flex flex-col h-[400px]">
-            <div className="flex items-center justify-between mb-6">
+          <div className="bg-white dark:bg-[#141714] rounded-3xl border border-gray-200 dark:border-white/5 p-5 shadow-sm dark:shadow-soft flex flex-col h-[440px]">
+            <div className="flex items-center justify-between mb-4">
               <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#37352F] dark:text-white italic">MONITOR DESPACHO</h3>
-              <span className="text-[8px] font-black text-emerald-600 dark:text-neon bg-emerald-50 dark:bg-neon/5 px-2 py-0.5 rounded border border-emerald-100 dark:border-neon/20 tracking-widest animate-pulse">LIVE</span>
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedStation}
+                  onChange={(e) => setSelectedStation(e.target.value)}
+                  className="text-[8px] font-black uppercase tracking-widest bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1 text-[#37352F] dark:text-white"
+                >
+                  <option value="">Todas</option>
+                  {dispatchStations.map((station) => (
+                    <option key={station.id} value={station.name}>{station.name}</option>
+                  ))}
+                </select>
+                <span className="text-[8px] font-black text-emerald-600 dark:text-neon bg-emerald-50 dark:bg-neon/5 px-2 py-0.5 rounded border border-emerald-100 dark:border-neon/20 tracking-widest animate-pulse">LIVE</span>
+              </div>
+            </div>
+
+            <div className="mb-4 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.02] p-4">
+              <div className="flex items-center justify-between text-[8px] font-black uppercase tracking-[0.2em] text-[#9B9A97] dark:text-[#71766F]">
+                <span>Estación</span>
+                <span className="text-[#37352F] dark:text-white">{selectedStation || 'Todas'}</span>
+              </div>
+              {stationLoading ? (
+                <p className="mt-3 text-[8px] font-black uppercase tracking-widest text-[#9B9A97] dark:text-[#71766F] animate-pulse">Cargando estadísticas...</p>
+              ) : stationStats ? (
+                <div className="mt-3 grid grid-cols-2 gap-3 text-[9px] font-black uppercase">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[#9B9A97] dark:text-[#71766F]">Pedidos</span>
+                    <span className="text-[#37352F] dark:text-white">{stationStats.total_orders}</span>
+                  </div>
+                  <div className="flex flex-col gap-1 text-right">
+                    <span className="text-[#9B9A97] dark:text-[#71766F]">Ventas</span>
+                    <span className="text-[#37352F] dark:text-white">${stationStats.total_sales.toLocaleString()}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[#9B9A97] dark:text-[#71766F]">Efectivo</span>
+                    <span className="text-emerald-600 dark:text-neon">${stationStats.cash_sales.toLocaleString()}</span>
+                  </div>
+                  <div className="flex flex-col gap-1 text-right">
+                    <span className="text-[#9B9A97] dark:text-[#71766F]">Wallet/MP</span>
+                    <span className="text-[#37352F] dark:text-white">${(stationStats.wallet_sales + stationStats.mp_sales).toLocaleString()}</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-3 text-[8px] font-black uppercase tracking-widest text-[#9B9A97] dark:text-[#71766F]">Sin datos</p>
+              )}
             </div>
             <div className="space-y-2.5 flex-1 overflow-y-auto custom-scrollbar">
               {recentOrders.length === 0 ? (
