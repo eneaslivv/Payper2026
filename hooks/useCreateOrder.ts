@@ -70,6 +70,7 @@ export function useCreateOrder(): UseCreateOrderReturn {
                 p_location_identifier: locationIdentifier || null,
                 p_delivery_mode: deliveryMode,
                 p_source_location_id: sourceLocationId || null,  // NEW
+                p_node_id: resolvedNodeId || null,
             });
 
             if (rpcError) throw rpcError;
@@ -81,17 +82,6 @@ export function useCreateOrder(): UseCreateOrderReturn {
             }
 
             const orderId = result.order_id;
-
-            if (resolvedNodeId) {
-                const { error: nodeError } = await supabase
-                    .from('orders')
-                    .update({ node_id: resolvedNodeId })
-                    .eq('id', orderId);
-
-                if (nodeError) {
-                    console.warn('[useCreateOrder] Failed to set node_id:', nodeError);
-                }
-            }
 
             // Fetch full order data
             const { data: orderData, error: fetchError } = await supabase

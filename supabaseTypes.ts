@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -14,6 +14,84 @@ export type Database = {
   }
   public: {
     Tables: {
+      _backup_duplicate_products_20260204: {
+        Row: {
+          active: boolean | null
+          base_price: number | null
+          category: string | null
+          category_slug: string | null
+          created_at: string | null
+          customs_options: Json | null
+          description: string | null
+          id: string | null
+          image: string | null
+          is_available: boolean | null
+          is_visible: boolean | null
+          name: string | null
+          sku: string | null
+          store_id: string | null
+          tax_rate: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          base_price?: number | null
+          category?: string | null
+          category_slug?: string | null
+          created_at?: string | null
+          customs_options?: Json | null
+          description?: string | null
+          id?: string | null
+          image?: string | null
+          is_available?: boolean | null
+          is_visible?: boolean | null
+          name?: string | null
+          sku?: string | null
+          store_id?: string | null
+          tax_rate?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          base_price?: number | null
+          category?: string | null
+          category_slug?: string | null
+          created_at?: string | null
+          customs_options?: Json | null
+          description?: string | null
+          id?: string | null
+          image?: string | null
+          is_available?: boolean | null
+          is_visible?: boolean | null
+          name?: string | null
+          sku?: string | null
+          store_id?: string | null
+          tax_rate?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      _migration_backup_2026_02_03: {
+        Row: {
+          backup_timestamp: string | null
+          status: string | null
+          table_name: string | null
+          total_rows: number | null
+        }
+        Insert: {
+          backup_timestamp?: string | null
+          status?: string | null
+          table_name?: string | null
+          total_rows?: number | null
+        }
+        Update: {
+          backup_timestamp?: string | null
+          status?: string | null
+          table_name?: string | null
+          total_rows?: number | null
+        }
+        Relationships: []
+      }
       cafe_role_permissions: {
         Row: {
           can_create: boolean | null
@@ -95,34 +173,70 @@ export type Database = {
       }
       cash_closures: {
         Row: {
+          closed_at: string | null
+          closed_by: string | null
           created_at: string | null
           difference: number | null
           expected_cash: number
           id: string
           notes: string | null
+          opened_at: string | null
           real_cash: number
           session_id: string
+          start_amount: number | null
           store_id: string
+          total_card_sales: number | null
+          total_cash_sales: number | null
+          total_mp_sales: number | null
+          total_orders: number | null
+          total_sales: number | null
+          total_topups: number | null
+          total_wallet_sales: number | null
+          zone_name: string | null
         }
         Insert: {
+          closed_at?: string | null
+          closed_by?: string | null
           created_at?: string | null
           difference?: number | null
           expected_cash?: number
           id?: string
           notes?: string | null
+          opened_at?: string | null
           real_cash?: number
           session_id: string
+          start_amount?: number | null
           store_id: string
+          total_card_sales?: number | null
+          total_cash_sales?: number | null
+          total_mp_sales?: number | null
+          total_orders?: number | null
+          total_sales?: number | null
+          total_topups?: number | null
+          total_wallet_sales?: number | null
+          zone_name?: string | null
         }
         Update: {
+          closed_at?: string | null
+          closed_by?: string | null
           created_at?: string | null
           difference?: number | null
           expected_cash?: number
           id?: string
           notes?: string | null
+          opened_at?: string | null
           real_cash?: number
           session_id?: string
+          start_amount?: number | null
           store_id?: string
+          total_card_sales?: number | null
+          total_cash_sales?: number | null
+          total_mp_sales?: number | null
+          total_orders?: number | null
+          total_sales?: number | null
+          total_topups?: number | null
+          total_wallet_sales?: number | null
+          zone_name?: string | null
         }
         Relationships: [
           {
@@ -130,6 +244,13 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_closures_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions_summary"
             referencedColumns: ["id"]
           },
           {
@@ -145,37 +266,67 @@ export type Database = {
         Row: {
           closed_at: string | null
           closed_by: string | null
+          closing_notes: string | null
           created_at: string | null
+          difference: number | null
+          expected_cash: number | null
           id: string
           opened_at: string | null
           opened_by: string
+          real_cash: number | null
           start_amount: number
           status: string
           store_id: string
+          total_card_sales: number | null
+          total_cash_sales: number | null
+          total_mp_sales: number | null
+          total_orders: number | null
+          total_topups: number | null
+          total_wallet_sales: number | null
           zone_id: string
         }
         Insert: {
           closed_at?: string | null
           closed_by?: string | null
+          closing_notes?: string | null
           created_at?: string | null
+          difference?: number | null
+          expected_cash?: number | null
           id?: string
           opened_at?: string | null
           opened_by: string
+          real_cash?: number | null
           start_amount?: number
           status?: string
           store_id: string
+          total_card_sales?: number | null
+          total_cash_sales?: number | null
+          total_mp_sales?: number | null
+          total_orders?: number | null
+          total_topups?: number | null
+          total_wallet_sales?: number | null
           zone_id: string
         }
         Update: {
           closed_at?: string | null
           closed_by?: string | null
+          closing_notes?: string | null
           created_at?: string | null
+          difference?: number | null
+          expected_cash?: number | null
           id?: string
           opened_at?: string | null
           opened_by?: string
+          real_cash?: number | null
           start_amount?: number
           status?: string
           store_id?: string
+          total_card_sales?: number | null
+          total_cash_sales?: number | null
+          total_mp_sales?: number | null
+          total_orders?: number | null
+          total_topups?: number | null
+          total_wallet_sales?: number | null
           zone_id?: string
         }
         Relationships: [
@@ -443,9 +594,9 @@ export type Database = {
           is_active: boolean | null
           loyalty_points: number
           name: string | null
+          nfc_uid: string | null
           phone: string | null
           store_id: string | null
-          tenant_id: string | null
           wallet_balance: number | null
         }
         Insert: {
@@ -458,9 +609,9 @@ export type Database = {
           is_active?: boolean | null
           loyalty_points?: number
           name?: string | null
+          nfc_uid?: string | null
           phone?: string | null
           store_id?: string | null
-          tenant_id?: string | null
           wallet_balance?: number | null
         }
         Update: {
@@ -473,9 +624,9 @@ export type Database = {
           is_active?: boolean | null
           loyalty_points?: number
           name?: string | null
+          nfc_uid?: string | null
           phone?: string | null
           store_id?: string | null
-          tenant_id?: string | null
           wallet_balance?: number | null
         }
         Relationships: [
@@ -484,13 +635,6 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "clients_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -666,6 +810,73 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "email_logs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_queue: {
+        Row: {
+          attempts: number | null
+          created_at: string | null
+          id: string
+          last_error: string | null
+          next_retry_at: string | null
+          order_id: string
+          payload: Json
+          recipient: string
+          status: string | null
+          store_id: string
+          subject: string
+          updated_at: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          created_at?: string | null
+          id?: string
+          last_error?: string | null
+          next_retry_at?: string | null
+          order_id: string
+          payload: Json
+          recipient: string
+          status?: string | null
+          store_id: string
+          subject: string
+          updated_at?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          created_at?: string | null
+          id?: string
+          last_error?: string | null
+          next_retry_at?: string | null
+          order_id?: string
+          payload?: Json
+          recipient?: string
+          status?: string | null
+          store_id?: string
+          subject?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_queue_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["active_order_id"]
+          },
+          {
+            foreignKeyName: "email_queue_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_queue_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
@@ -870,6 +1081,7 @@ export type Database = {
           last_supplier_id: string | null
           max_stock: number | null
           min_packages: number | null
+          min_quantity: number | null
           min_stock: number | null
           min_stock_alert: number
           name: string
@@ -877,9 +1089,11 @@ export type Database = {
           open_packages: Json | null
           package_size: number | null
           price: number | null
+          quantity: number | null
           reorder_point: number | null
           sku: string | null
           sort_order: number | null
+          stock_logic_version: string | null
           store_id: string
           unit_type: string
           updated_at: string | null
@@ -908,6 +1122,7 @@ export type Database = {
           last_supplier_id?: string | null
           max_stock?: number | null
           min_packages?: number | null
+          min_quantity?: number | null
           min_stock?: number | null
           min_stock_alert?: number
           name: string
@@ -915,9 +1130,11 @@ export type Database = {
           open_packages?: Json | null
           package_size?: number | null
           price?: number | null
+          quantity?: number | null
           reorder_point?: number | null
           sku?: string | null
           sort_order?: number | null
+          stock_logic_version?: string | null
           store_id: string
           unit_type: string
           updated_at?: string | null
@@ -946,6 +1163,7 @@ export type Database = {
           last_supplier_id?: string | null
           max_stock?: number | null
           min_packages?: number | null
+          min_quantity?: number | null
           min_stock?: number | null
           min_stock_alert?: number
           name?: string
@@ -953,9 +1171,11 @@ export type Database = {
           open_packages?: Json | null
           package_size?: number | null
           price?: number | null
+          quantity?: number | null
           reorder_point?: number | null
           sku?: string | null
           sort_order?: number | null
+          stock_logic_version?: string | null
           store_id?: string
           unit_type?: string
           updated_at?: string | null
@@ -1138,6 +1358,27 @@ export type Database = {
           },
         ]
       }
+      inventory_product_mapping: {
+        Row: {
+          action_taken: string | null
+          created_at: string | null
+          inventory_item_id: string
+          product_id: string
+        }
+        Insert: {
+          action_taken?: string | null
+          created_at?: string | null
+          inventory_item_id: string
+          product_id: string
+        }
+        Update: {
+          action_taken?: string | null
+          created_at?: string | null
+          inventory_item_id?: string
+          product_id?: string
+        }
+        Relationships: []
+      }
       inventory_suppliers: {
         Row: {
           active: boolean | null
@@ -1307,45 +1548,6 @@ export type Database = {
           },
         ]
       }
-      item_stock_levels_deprecated_v8: {
-        Row: {
-          id: string
-          inventory_item_id: string
-          location_id: string
-          quantity: number
-          updated_at: string | null
-        }
-        Insert: {
-          id?: string
-          inventory_item_id: string
-          location_id: string
-          quantity?: number
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          inventory_item_id?: string
-          location_id?: string
-          quantity?: number
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "item_stock_levels_inventory_item_id_fkey"
-            columns: ["inventory_item_id"]
-            isOneToOne: false
-            referencedRelation: "inventory_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "item_stock_levels_location_id_fkey"
-            columns: ["location_id"]
-            isOneToOne: false
-            referencedRelation: "storage_locations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       leads: {
         Row: {
           company: string | null
@@ -1445,6 +1647,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_product_rules_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_compat"
             referencedColumns: ["id"]
           },
           {
@@ -1568,6 +1777,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_rewards_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_compat"
             referencedColumns: ["id"]
           },
           {
@@ -1751,6 +1967,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_compat"
             referencedColumns: ["id"]
           },
         ]
@@ -1973,7 +2196,6 @@ export type Database = {
           quantity: number
           status: string | null
           store_id: string
-          tenant_id: string
           total_price: number
           unit_price: number
           variant_id: string | null
@@ -1987,7 +2209,6 @@ export type Database = {
           quantity: number
           status?: string | null
           store_id: string
-          tenant_id: string
           total_price: number
           unit_price: number
           variant_id?: string | null
@@ -2001,7 +2222,6 @@ export type Database = {
           quantity?: number
           status?: string | null
           store_id?: string
-          tenant_id?: string
           total_price?: number
           unit_price?: number
           variant_id?: string | null
@@ -2033,13 +2253,6 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_items_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
           {
@@ -2525,6 +2738,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "product_addons_map_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_compat"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "product_addons_map_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -2571,6 +2791,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_recipes_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_compat"
             referencedColumns: ["id"]
           },
         ]
@@ -2621,6 +2848,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_compat"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "product_variants_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -2639,6 +2873,7 @@ export type Database = {
           customs_options: Json | null
           description: string | null
           id: string
+          image: string | null
           is_available: boolean | null
           is_visible: boolean | null
           name: string
@@ -2656,6 +2891,7 @@ export type Database = {
           customs_options?: Json | null
           description?: string | null
           id?: string
+          image?: string | null
           is_available?: boolean | null
           is_visible?: boolean | null
           name: string
@@ -2673,6 +2909,7 @@ export type Database = {
           customs_options?: Json | null
           description?: string | null
           id?: string
+          image?: string | null
           is_available?: boolean | null
           is_visible?: boolean | null
           name?: string
@@ -3167,6 +3404,67 @@ export type Database = {
           },
         ]
       }
+      stock_deduction_errors: {
+        Row: {
+          attempted_qty: number | null
+          context: string | null
+          created_at: string | null
+          current_stock_before: number | null
+          error_detail: string | null
+          error_message: string | null
+          id: number
+          inventory_item_id: string | null
+          order_id: string | null
+          store_id: string | null
+        }
+        Insert: {
+          attempted_qty?: number | null
+          context?: string | null
+          created_at?: string | null
+          current_stock_before?: number | null
+          error_detail?: string | null
+          error_message?: string | null
+          id?: number
+          inventory_item_id?: string | null
+          order_id?: string | null
+          store_id?: string | null
+        }
+        Update: {
+          attempted_qty?: number | null
+          context?: string | null
+          created_at?: string | null
+          current_stock_before?: number | null
+          error_detail?: string | null
+          error_message?: string | null
+          id?: number
+          inventory_item_id?: string | null
+          order_id?: string | null
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_deduction_errors_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["active_order_id"]
+          },
+          {
+            foreignKeyName: "stock_deduction_errors_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_deduction_errors_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_movements: {
         Row: {
           created_at: string
@@ -3298,6 +3596,7 @@ export type Database = {
           is_consumable: boolean | null
           is_default: boolean | null
           is_deletable: boolean | null
+          is_point_of_sale: boolean | null
           location_type: string | null
           name: string
           store_id: string
@@ -3311,6 +3610,7 @@ export type Database = {
           is_consumable?: boolean | null
           is_default?: boolean | null
           is_deletable?: boolean | null
+          is_point_of_sale?: boolean | null
           location_type?: string | null
           name: string
           store_id: string
@@ -3324,6 +3624,7 @@ export type Database = {
           is_consumable?: boolean | null
           is_default?: boolean | null
           is_deletable?: boolean | null
+          is_point_of_sale?: boolean | null
           location_type?: string | null
           name?: string
           store_id?: string
@@ -3755,26 +4056,39 @@ export type Database = {
       venue_zones: {
         Row: {
           created_at: string
+          default_dispatch_station: string | null
           description: string | null
           id: string
           name: string
+          primary_location_id: string | null
           store_id: string
         }
         Insert: {
           created_at?: string
+          default_dispatch_station?: string | null
           description?: string | null
           id?: string
           name: string
+          primary_location_id?: string | null
           store_id: string
         }
         Update: {
           created_at?: string
+          default_dispatch_station?: string | null
           description?: string | null
           id?: string
           name?: string
+          primary_location_id?: string | null
           store_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "venue_zones_primary_location_id_fkey"
+            columns: ["primary_location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "venue_zones_store_id_fkey"
             columns: ["store_id"]
@@ -4003,6 +4317,212 @@ export type Database = {
         }
         Relationships: []
       }
+      cash_closures_detailed: {
+        Row: {
+          closed_at: string | null
+          closed_by: string | null
+          closed_by_name: string | null
+          created_at: string | null
+          default_dispatch_station: string | null
+          difference: number | null
+          duration_hours: number | null
+          expected_cash: number | null
+          id: string | null
+          notes: string | null
+          opened_at: string | null
+          opened_by: string | null
+          opened_by_name: string | null
+          real_cash: number | null
+          session_id: string | null
+          start_amount: number | null
+          store_id: string | null
+          total_card_sales: number | null
+          total_cash_sales: number | null
+          total_mp_sales: number | null
+          total_orders: number | null
+          total_sales: number | null
+          total_topups: number | null
+          total_wallet_sales: number | null
+          zone_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_closures_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_closures_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_closures_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_opened_by_fkey"
+            columns: ["opened_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_sessions_summary: {
+        Row: {
+          closed_at: string | null
+          closed_by: string | null
+          closed_by_name: string | null
+          closing_notes: string | null
+          created_at: string | null
+          difference: number | null
+          duration_hours: number | null
+          expected_cash: number | null
+          id: string | null
+          opened_at: string | null
+          opened_by: string | null
+          opened_by_name: string | null
+          real_cash: number | null
+          start_amount: number | null
+          status: string | null
+          store_id: string | null
+          total_card_sales: number | null
+          total_cash_sales: number | null
+          total_mp_sales: number | null
+          total_orders: number | null
+          total_sales: number | null
+          total_topups: number | null
+          total_wallet_sales: number | null
+          zone_id: string | null
+          zone_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_sessions_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_opened_by_fkey"
+            columns: ["opened_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "venue_zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products_compat: {
+        Row: {
+          available: boolean | null
+          category: string | null
+          category_id: string | null
+          category_slug: string | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          image_url: string | null
+          is_available: boolean | null
+          is_visible: boolean | null
+          name: string | null
+          price: number | null
+          sku: string | null
+          store_id: string | null
+          tax_rate: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          available?: boolean | null
+          category?: string | null
+          category_id?: never
+          category_slug?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          image_url?: string | null
+          is_available?: boolean | null
+          is_visible?: boolean | null
+          name?: string | null
+          price?: number | null
+          sku?: string | null
+          store_id?: string | null
+          tax_rate?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          available?: boolean | null
+          category?: string | null
+          category_id?: never
+          category_slug?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          image_url?: string | null
+          is_available?: boolean | null
+          is_visible?: boolean | null
+          name?: string | null
+          price?: number | null
+          sku?: string | null
+          store_id?: string | null
+          tax_rate?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_tenant_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_by_dispatch_station: {
+        Row: {
+          card_sales: number | null
+          cash_sales: number | null
+          dispatch_station: string | null
+          mp_sales: number | null
+          sale_date: string | null
+          store_id: string | null
+          total_orders: number | null
+          total_sales: number | null
+          wallet_sales: number | null
+          zone_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       admin_add_balance:
@@ -4074,15 +4594,33 @@ export type Database = {
             }
             Returns: string
           }
+      assign_nfc_to_client: {
+        Args: { p_client_id: string; p_nfc_uid: string; p_store_id: string }
+        Returns: Json
+      }
       calculate_item_totals: { Args: { p_item_id: string }; Returns: undefined }
       calculate_order_points: { Args: { p_order_id: string }; Returns: number }
+      calculate_total_stock: {
+        Args: { p_inventory_item_id: string }
+        Returns: number
+      }
       can_manage_store: { Args: { p_store_id: string }; Returns: boolean }
       check_product_stock_availability: {
         Args: { p_product_id: string }
         Returns: boolean
       }
+      check_rate_limit: { Args: { p_ip: string }; Returns: boolean }
       classify_and_validate_scan: {
         Args: { scanned_code: string }
+        Returns: Json
+      }
+      close_cash_session: {
+        Args: {
+          p_closed_by: string
+          p_notes?: string
+          p_real_cash: number
+          p_session_id: string
+        }
         Returns: Json
       }
       complete_wallet_payment: { Args: { p_order_id: string }; Returns: Json }
@@ -4090,32 +4628,39 @@ export type Database = {
         Args: { p_order_id: string; p_staff_id: string }
         Returns: Json
       }
-      consume_from_open_packages:
-        | {
-            Args: {
-              p_item_id: string
-              p_location_id?: string
-              p_order_id?: string
-              p_reason?: string
-              p_required_qty: number
-              p_store_id: string
-              p_unit?: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_item_id: string
-              p_location_id?: string
-              p_order_id?: string
-              p_reason?: string
-              p_required_qty: number
-              p_skip_logging?: boolean
-              p_store_id: string
-              p_unit?: string
-            }
-            Returns: Json
-          }
+      consume_from_open_packages: {
+        Args: {
+          p_item_id: string
+          p_location_id?: string
+          p_order_id?: string
+          p_reason?: string
+          p_required_qty: number
+          p_skip_logging?: boolean
+          p_store_id: string
+          p_unit?: string
+        }
+        Returns: Json
+      }
+      consume_from_smart_packages: {
+        Args: {
+          p_inventory_item_id: string
+          p_order_id?: string
+          p_reason?: string
+          p_required_qty: number
+          p_unit: string
+        }
+        Returns: Json
+      }
+      consume_from_smart_packages_safe: {
+        Args: {
+          p_inventory_item_id: string
+          p_order_id?: string
+          p_reason?: string
+          p_required_qty: number
+          p_unit: string
+        }
+        Returns: Json
+      }
       create_client_session: {
         Args: {
           p_bar_id?: string
@@ -4150,32 +4695,19 @@ export type Database = {
           log_id: string
         }[]
       }
-      create_order:
-        | {
-            Args: {
-              p_channel?: string
-              p_client_id?: string
-              p_delivery_mode?: string
-              p_items: Json
-              p_location_identifier?: string
-              p_store_id: string
-              p_table_number?: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_channel?: string
-              p_client_id?: string
-              p_delivery_mode?: string
-              p_items: Json
-              p_location_identifier?: string
-              p_source_location_id?: string
-              p_store_id: string
-              p_table_number?: string
-            }
-            Returns: Json
-          }
+      create_order: {
+        Args: {
+          p_channel?: string
+          p_client_id?: string
+          p_delivery_mode?: string
+          p_items: Json
+          p_location_identifier?: string
+          p_node_id?: string
+          p_store_id: string
+          p_table_number?: string
+        }
+        Returns: Json
+      }
       create_recipe_product: {
         Args: {
           p_base_price: number
@@ -4212,14 +4744,17 @@ export type Database = {
         }
         Returns: undefined
       }
-      deduct_order_stock: { Args: { p_order_id: string }; Returns: undefined }
-      deduct_order_stock_manual: {
-        Args: { p_order_id: string }
-        Returns: undefined
+      deduct_order_stock_unified: {
+        Args: { p_context?: string; p_order_id: string }
+        Returns: Json
       }
       end_session: {
         Args: { p_reason?: string; p_session_id: string }
         Returns: Json
+      }
+      enqueue_payment_email: {
+        Args: { p_order_id: string }
+        Returns: undefined
       }
       ensure_client_in_store: { Args: { p_store_id: string }; Returns: Json }
       evaluate_menu_rule: {
@@ -4234,6 +4769,14 @@ export type Database = {
         Returns: boolean
       }
       get_active_session: { Args: { p_session_id: string }; Returns: Json }
+      get_client_by_nfc: {
+        Args: { p_nfc_uid: string; p_store_id: string }
+        Returns: Json
+      }
+      get_default_node_for_store: {
+        Args: { p_store_id: string }
+        Returns: string
+      }
       get_effective_stock: {
         Args: { p_item_id: string }
         Returns: {
@@ -4248,6 +4791,7 @@ export type Database = {
         Args: { p_end_date: string; p_start_date: string; p_store_id: string }
         Returns: Json
       }
+      get_financial_metrics: { Args: { p_store_id: string }; Returns: Json }
       get_item_stock_by_locations: {
         Args: { p_item_id: string }
         Returns: {
@@ -4260,6 +4804,7 @@ export type Database = {
           open_remaining_sum: number
         }[]
       }
+      get_live_session_stats: { Args: { p_session_id: string }; Returns: Json }
       get_location_stock: {
         Args: { p_location_id: string }
         Returns: {
@@ -4312,9 +4857,31 @@ export type Database = {
         }[]
       }
       get_public_order_status: { Args: { p_order_id: string }; Returns: Json }
+      get_session_cash_summary: {
+        Args: { query_session_id: string }
+        Returns: Json
+      }
       get_session_expected_cash: {
         Args: { query_session_id: string }
         Returns: number
+      }
+      get_stats_by_dispatch_station: {
+        Args: {
+          p_date_from?: string
+          p_date_to?: string
+          p_dispatch_station: string
+          p_store_id: string
+        }
+        Returns: {
+          card_sales: number
+          cash_sales: number
+          dispatch_station: string
+          mp_sales: number
+          total_orders: number
+          total_sales: number
+          wallet_sales: number
+          zone_name: string
+        }[]
       }
       get_store_branding: { Args: { p_store_id: string }; Returns: Json }
       get_store_mp_status: {
@@ -4346,6 +4913,17 @@ export type Database = {
         Returns: Json
       }
       get_user_store_id: { Args: never; Returns: string }
+      insert_product_with_category_mapping: {
+        Args: {
+          p_category_id?: string
+          p_description?: string
+          p_image_url?: string
+          p_name: string
+          p_price?: number
+          p_store_id: string
+        }
+        Returns: string
+      }
       inspect_table_columns: {
         Args: { table_name: string }
         Returns: {
@@ -4426,6 +5004,10 @@ export type Database = {
         Returns: string
       }
       rollback_redemption: { Args: { p_order_id: string }; Returns: Json }
+      secure_log_qr_scan: {
+        Args: { p_client_ip: string; p_qr_hash: string; p_user_agent: string }
+        Returns: Json
+      }
       sync_bar_location: {
         Args: { p_bar_id: string; p_bar_name: string; p_store_id: string }
         Returns: string
@@ -4454,6 +5036,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      update_order_node: {
+        Args: { p_new_node_id: string; p_order_id: string }
+        Returns: Json
+      }
       user_tenant_id: { Args: never; Returns: string }
       validate_order_delivery: { Args: { qr_code: string }; Returns: Json }
       verify_loyalty_balance: { Args: { p_client_id: string }; Returns: Json }
@@ -4477,6 +5063,19 @@ export type Database = {
       global_role_enum: "super_admin" | "staff"
       inventory_movement_enum: "in" | "out" | "adjustment"
       order_channel_enum: "table" | "qr" | "takeaway" | "delivery"
+      order_status_clean:
+        | "draft"
+        | "pending"
+        | "paid"
+        | "preparing"
+        | "ready"
+        | "served"
+        | "cancelled"
+        | "refunded"
+        | "bill_requested"
+        | "completed"
+        | "delivered"
+        | "in_progress"
       order_status_enum:
         | "draft"
         | "pending"
@@ -4487,7 +5086,7 @@ export type Database = {
         | "cancelled"
         | "refunded"
         | "Pendiente"
-        | "En Preparaci├│n"
+        | "En Preparación"
         | "Listo"
         | "Entregado"
         | "Cancelado"
@@ -4639,6 +5238,20 @@ export const Constants = {
       global_role_enum: ["super_admin", "staff"],
       inventory_movement_enum: ["in", "out", "adjustment"],
       order_channel_enum: ["table", "qr", "takeaway", "delivery"],
+      order_status_clean: [
+        "draft",
+        "pending",
+        "paid",
+        "preparing",
+        "ready",
+        "served",
+        "cancelled",
+        "refunded",
+        "bill_requested",
+        "completed",
+        "delivered",
+        "in_progress",
+      ],
       order_status_enum: [
         "draft",
         "pending",
@@ -4649,7 +5262,7 @@ export const Constants = {
         "cancelled",
         "refunded",
         "Pendiente",
-        "En Preparaci├│n",
+        "En Preparación",
         "Listo",
         "Entregado",
         "Cancelado",
