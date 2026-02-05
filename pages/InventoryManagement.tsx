@@ -1533,13 +1533,13 @@ const InventoryManagement: React.FC = () => {
       const filePath = `${storeId}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('products')
+        .from('product-images')
         .upload(filePath, file, { cacheControl: '3600', upsert: true });
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('products')
+        .from('product-images')
         .getPublicUrl(filePath);
 
       // Update selectedItem state to show in UI immediately
