@@ -88,7 +88,7 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
     const activeLayout = layoutOverride || theme.layoutMode;
 
     const getPrice = (item: DisplayItem) => item.base_price || item.price || 0;
-    const getImage = (item: DisplayItem) => item.image || item.image_url || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200';
+  const getImage = (item: DisplayItem) => item.image_url || item.image || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200';
 
     const showAdd = theme.showAddButton && allowOrdering;
 

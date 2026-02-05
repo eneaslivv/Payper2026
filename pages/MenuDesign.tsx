@@ -1757,7 +1757,7 @@ const MenuDesign: React.FC = () => {
         // Ensure we have a path prefix, fallback to 'temp' if store_id not loaded
         const storePrefix = profile?.store_id || 'temp';
         addToast('Subiendo imagen...', 'info');
-        console.log('[ImageUpload] Starting upload (Direct Fetch Mode) for item:', selectedItem.id);
+        console.log('[ImageUpload] Starting upload for item:', selectedItem.id);
 
         try {
             const fileExt = file.name.split('.').pop();
@@ -1765,42 +1765,17 @@ const MenuDesign: React.FC = () => {
             const filePath = `${storePrefix}/${fileName}`;
             console.log('[ImageUpload] Path:', filePath);
 
-            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-            const token = localStorage.getItem('access_token');
-            const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+            const { error: uploadError } = await supabase.storage
+                .from('product-images' as any)
+                .upload(filePath, file, { cacheControl: '3600', upsert: true });
 
-            // Construct Upload URL
-            // Using /storage/v1/object/{bucket}/{filename}
-            const uploadUrl = `${supabaseUrl}/storage/v1/object/products/${filePath}`;
+            if (uploadError) throw uploadError;
 
-            // Prepare Headers
-            const headers: HeadersInit = {
-                'x-upsert': 'true',
-            };
+            const { data: { publicUrl } } = supabase.storage
+                .from('product-images' as any)
+                .getPublicUrl(filePath);
 
-            // Prefer Auth token, fallback to Anon Key if policy allows
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            } else if (apiKey) {
-                headers['Authorization'] = `Bearer ${apiKey}`;
-            }
-
-            // Direct Fetch Upload
-            const response = await fetch(uploadUrl, {
-                method: 'POST',
-                headers: headers,
-                body: file
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Upload failed (${response.status}): ${errorText}`);
-            }
-
-            // Construct Public URL Manually
-            const publicUrl = `${supabaseUrl}/storage/v1/object/public/products/${filePath}`;
             const finalUrl = `${publicUrl}?t=${Date.now()}`;
-
             console.log('[ImageUpload] Success. URL:', finalUrl);
 
             await updateItemImmediate(selectedItem.id, { image_url: finalUrl });
