@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { getQRContext } from '../lib/qrContext';
 import type { Order, OrderChannel } from '../types/payment';
 
 interface CartItem {
@@ -18,6 +19,7 @@ interface CreateOrderOptions {
     locationIdentifier?: string;
     deliveryMode?: 'local' | 'delivery' | 'takeaway';
     sourceLocationId?: string;  // NEW: Inventory storage location (for bar-specific stock)
+    nodeId?: string | null;
 }
 
 interface UseCreateOrderReturn {
@@ -38,6 +40,7 @@ export function useCreateOrder(): UseCreateOrderReturn {
         locationIdentifier,
         deliveryMode = 'local',
         sourceLocationId,  // NEW
+        nodeId,
     }: CreateOrderOptions): Promise<Order | null> => {
         if (!storeId || items.length === 0) {
             setError('Datos insuficientes para crear la orden');
@@ -48,6 +51,10 @@ export function useCreateOrder(): UseCreateOrderReturn {
         setError(null);
 
         try {
+            const qrContext = getQRContext();
+            const resolvedNodeId = nodeId
+                ?? (qrContext?.store_id === storeId ? qrContext?.node_id : null);
+
             // USAR RPC para validar precios desde DB (no confiar en frontend)
             const rpcItems = items.map(item => ({
                 product_id: item.productId,
@@ -73,11 +80,24 @@ export function useCreateOrder(): UseCreateOrderReturn {
                 throw new Error(result?.error || 'Error al crear orden');
             }
 
+            const orderId = result.order_id;
+
+            if (resolvedNodeId) {
+                const { error: nodeError } = await supabase
+                    .from('orders')
+                    .update({ node_id: resolvedNodeId })
+                    .eq('id', orderId);
+
+                if (nodeError) {
+                    console.warn('[useCreateOrder] Failed to set node_id:', nodeError);
+                }
+            }
+
             // Fetch full order data
             const { data: orderData, error: fetchError } = await supabase
                 .from('orders')
                 .select('*')
-                .eq('id', result.order_id)
+                .eq('id', orderId)
                 .single();
 
             if (fetchError) throw fetchError;
