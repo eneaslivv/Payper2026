@@ -529,6 +529,13 @@ export type Database = {
             foreignKeyName: "client_sessions_bar_id_fkey"
             columns: ["bar_id"]
             isOneToOne: false
+            referencedRelation: "available_nodes_for_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_sessions_bar_id_fkey"
+            columns: ["bar_id"]
+            isOneToOne: false
             referencedRelation: "venue_nodes"
             referencedColumns: ["id"]
           },
@@ -573,6 +580,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "active_venue_states"
             referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "client_sessions_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "available_nodes_for_orders"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "client_sessions_table_id_fkey"
@@ -2392,6 +2406,13 @@ export type Database = {
             foreignKeyName: "orders_node_id_fkey"
             columns: ["node_id"]
             isOneToOne: false
+            referencedRelation: "available_nodes_for_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
             referencedRelation: "venue_nodes"
             referencedColumns: ["id"]
           },
@@ -3052,6 +3073,13 @@ export type Database = {
             foreignKeyName: "qr_codes_bar_id_fkey"
             columns: ["bar_id"]
             isOneToOne: false
+            referencedRelation: "available_nodes_for_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_codes_bar_id_fkey"
+            columns: ["bar_id"]
+            isOneToOne: false
             referencedRelation: "venue_nodes"
             referencedColumns: ["id"]
           },
@@ -3082,6 +3110,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "active_venue_states"
             referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "qr_codes_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "available_nodes_for_orders"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "qr_codes_table_id_fkey"
@@ -3144,6 +3179,13 @@ export type Database = {
             foreignKeyName: "qr_links_node_id_fkey"
             columns: ["node_id"]
             isOneToOne: false
+            referencedRelation: "available_nodes_for_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_links_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
             referencedRelation: "venue_nodes"
             referencedColumns: ["id"]
           },
@@ -3160,6 +3202,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "active_venue_states"
             referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "qr_links_target_node_id_fkey"
+            columns: ["target_node_id"]
+            isOneToOne: false
+            referencedRelation: "available_nodes_for_orders"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "qr_links_target_node_id_fkey"
@@ -4027,6 +4076,13 @@ export type Database = {
             foreignKeyName: "venue_notifications_node_id_fkey"
             columns: ["node_id"]
             isOneToOne: false
+            referencedRelation: "available_nodes_for_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_notifications_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
             referencedRelation: "venue_nodes"
             referencedColumns: ["id"]
           },
@@ -4316,6 +4372,36 @@ export type Database = {
           user_role: string | null
         }
         Relationships: []
+      }
+      available_nodes_for_orders: {
+        Row: {
+          default_dispatch_station: string | null
+          dispatch_station: string | null
+          effective_dispatch_station: string | null
+          id: string | null
+          label: string | null
+          sort_priority: number | null
+          store_id: string | null
+          type: Database["public"]["Enums"]["venue_node_type"] | null
+          zone_id: string | null
+          zone_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_nodes_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_nodes_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "venue_zones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cash_closures_detailed: {
         Row: {
@@ -4775,6 +4861,10 @@ export type Database = {
       }
       get_default_node_for_store: {
         Args: { p_store_id: string }
+        Returns: string
+      }
+      get_default_node_for_zone: {
+        Args: { p_zone_id: string }
         Returns: string
       }
       get_effective_stock: {

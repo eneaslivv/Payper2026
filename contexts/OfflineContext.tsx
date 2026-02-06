@@ -38,6 +38,25 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Get store_id from profile
   const storeId = profile?.store_id;
 
+  const resolveDefaultNodeId = async (currentNodeId: string | null, storeIdValue?: string | null) => {
+    if (currentNodeId || !storeIdValue) return currentNodeId;
+
+    try {
+      const { data, error } = await supabase
+        .rpc('get_default_node_for_store' as any, { p_store_id: storeIdValue });
+
+      if (error) {
+        console.warn('[OfflineContext] Failed to resolve default node:', error);
+        return currentNodeId;
+      }
+
+      return (data as string) || currentNodeId;
+    } catch (err) {
+      console.warn('[OfflineContext] Failed to resolve default node:', err);
+      return currentNodeId;
+    }
+  };
+
   // Load initial data
   useEffect(() => {
     const loadData = async () => {
@@ -598,6 +617,11 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
       try {
         // Prepare order data for Supabase
         const orderData = mapOrderToSupabase(newOrder, storeId || '');
+        const resolvedNodeId = await resolveDefaultNodeId(orderData.node_id || null, storeId || orderData.store_id || null);
+
+        if (resolvedNodeId) {
+          orderData.node_id = resolvedNodeId;
+        }
 
         // If order has node_id, fetch dispatch_station AND location_id from venue_nodes
         if (orderData.node_id) {
@@ -876,8 +900,16 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
       try {
         if (event.type === 'CREATE_ORDER') {
           const order = event.payload as DBOrder;
+          const storeIdForOrder = storeId || order.store_id || '';
+          const orderData = mapOrderToSupabase(order, storeIdForOrder);
+          const resolvedNodeId = await resolveDefaultNodeId(orderData.node_id || null, storeIdForOrder || null);
+
+          if (resolvedNodeId) {
+            orderData.node_id = resolvedNodeId;
+          }
+
           // Optimistically assume success if it's a duplicate key error (already synced)
-          const { error } = await supabase.from('orders').insert(mapOrderToSupabase(order, storeId || ''));
+          const { error } = await supabase.from('orders').insert(orderData);
           if (error && error.code !== '23505') throw error;
 
 

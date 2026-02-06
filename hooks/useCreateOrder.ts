@@ -52,8 +52,19 @@ export function useCreateOrder(): UseCreateOrderReturn {
 
         try {
             const qrContext = getQRContext();
-            const resolvedNodeId = nodeId
+            let resolvedNodeId = nodeId
                 ?? (qrContext?.store_id === storeId ? qrContext?.node_id : null);
+
+            if (!resolvedNodeId && storeId) {
+                const { data: defaultNodeId, error: defaultNodeError } = await supabase
+                    .rpc('get_default_node_for_store' as any, { p_store_id: storeId });
+
+                if (!defaultNodeError && defaultNodeId) {
+                    resolvedNodeId = defaultNodeId as string;
+                } else if (defaultNodeError) {
+                    console.warn('[useCreateOrder] Failed to resolve default node:', defaultNodeError);
+                }
+            }
 
             // USAR RPC para validar precios desde DB (no confiar en frontend)
             const rpcItems = items.map(item => ({
