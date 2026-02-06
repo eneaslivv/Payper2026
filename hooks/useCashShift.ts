@@ -17,8 +17,19 @@ export interface CashSession {
     status: 'open' | 'closed';
     start_amount: number;
     zone?: Zone;
+    zone_name?: string;
     opener?: { full_name: string };
-    pending_orders_count?: number;
+    dispatch_station_id?: string | null;
+    dispatch_station_name?: string | null;
+    live_order_count?: number;
+    events_summary?: {
+        total_sales?: number;
+        total_cancellations?: number;
+        total_withdrawals?: number;
+        total_adjustments?: number;
+        event_count?: number;
+    };
+    duration_hours?: number;
 }
 
 export const useCashShift = () => {
@@ -49,50 +60,31 @@ export const useCashShift = () => {
 
             setZones(mappedZones);
 
-            // Fetch Active Sessions
-            const { data: sessionsData } = await supabase
-                .from('cash_sessions')
-                .select(`
-          *,
-          zone:venue_zones(name),
-          opener:profiles!opened_by(full_name)
-        `)
-                .eq('store_id', profile.store_id)
-                .eq('status', 'open');
+            // Fetch Active Sessions (RPC)
+            const { data: sessionsData, error: sessionsError } = await supabase
+                .rpc('get_active_cash_sessions' as any, { p_store_id: profile.store_id });
 
-            // Fetch Pending Orders Counts per Active Zone
-            // Orders don't have zone_id directly - they have node_id.
-            // We need to fetch orders with their node's zone_id
-            if (sessionsData && sessionsData.length > 0) {
-                const zoneIds = sessionsData.map(s => s.zone_id).filter(Boolean);
-
-                // Fetch active orders with node info to get zone_id
-                const { data: activeOrders, error: ordersError } = await supabase
-                    .from('orders')
-                    .select('id, node_id, node:venue_nodes(zone_id)')
-                    .in('status', ['pending', 'preparing', 'ready', 'Pendiente', 'En Preparación', 'Listo'])
-                    .eq('store_id', profile.store_id);
-
-                if (ordersError) {
-                    console.warn('Error fetching orders for pending count:', ordersError);
-                }
-
-                // Count orders by zone_id (extracted from the node relationship)
-                const counts: Record<string, number> = {};
-                activeOrders?.forEach((o: any) => {
-                    const nodeZoneId = o.node?.zone_id;
-                    if (nodeZoneId && zoneIds.includes(nodeZoneId)) {
-                        counts[nodeZoneId] = (counts[nodeZoneId] || 0) + 1;
-                    }
-                });
-
-                const sessionsWithCounts = sessionsData.map(s => ({
-                    ...s,
-                    pending_orders_count: counts[s.zone_id] || 0
-                }));
-                setActiveSessions(sessionsWithCounts);
+            if (sessionsError) {
+                console.warn('Error fetching active cash sessions:', sessionsError);
+                setActiveSessions([]);
             } else {
-                setActiveSessions(sessionsData || []);
+                const mappedSessions: CashSession[] = (sessionsData || []).map((s: any) => ({
+                    id: s.id,
+                    zone_id: s.zone_id,
+                    opened_by: s.opened_by,
+                    opened_at: s.opened_at,
+                    status: 'open',
+                    start_amount: Number(s.start_amount || 0),
+                    zone_name: s.zone_name || undefined,
+                    opener: { full_name: s.opened_by || 'Staff' },
+                    dispatch_station_id: s.dispatch_station_id || null,
+                    dispatch_station_name: s.dispatch_station_name || null,
+                    live_order_count: s.live_order_count || 0,
+                    events_summary: s.events_summary || {},
+                    duration_hours: s.duration_hours || 0
+                }));
+
+                setActiveSessions(mappedSessions);
             }
 
         } catch (error) {
@@ -107,18 +99,18 @@ export const useCashShift = () => {
     }, [profile?.store_id]);
 
     // 2. Open Session
-    const openSession = async (zoneId: string, startAmount: number) => {
+    const openSession = async (zoneId: string, startAmount: number, dispatchStationId?: string | null) => {
         if (!profile?.store_id || !profile?.id) throw new Error('No user context');
 
-        const { error } = await supabase.from('cash_sessions').insert({
-            store_id: profile.store_id,
-            zone_id: zoneId,
-            opened_by: profile.id,
-            start_amount: startAmount,
-            status: 'open'
+        const { data, error } = await supabase.rpc('open_cash_session' as any, {
+            p_store_id: profile.store_id,
+            p_zone_id: zoneId,
+            p_opened_by: profile.id,
+            p_start_amount: startAmount,
+            p_dispatch_station_id: dispatchStationId || null
         });
 
-        if (error) throw error;
+        if (error || !data?.success) throw error || new Error('No se pudo abrir la caja');
         await refreshData();
     };
 
@@ -129,41 +121,22 @@ export const useCashShift = () => {
 
         // Force numeric types
         const safeReal = Number(realCash) || 0;
-        const safeExpected = Number(expectedCash) || 0;
+        void expectedCash;
 
-        // Transact: Update Session -> Create Closure
-        const { error: sessionError } = await supabase
-            .from('cash_sessions')
-            .update({
-                status: 'closed',
-                closed_at: new Date().toISOString(),
-                closed_by: profile.id
-            })
-            .eq('id', sessionId);
+        const { data, error } = await supabase.rpc('close_cash_session' as any, {
+            p_session_id: sessionId,
+            p_real_cash: safeReal,
+            p_closed_by: profile.id,
+            p_notes: notes || null
+        });
 
-        if (sessionError) {
-            console.error('Error cerrando sesión:', sessionError);
-            throw sessionError;
-        }
-
-        const { error: closureError } = await supabase
-            .from('cash_closures')
-            .insert({
-                store_id: profile.store_id,
-                session_id: sessionId,
-                expected_cash: safeExpected,
-                real_cash: safeReal,
-                notes: notes || ''
-            });
-
-        if (closureError) {
-            console.error('Error creando registro de cierre:', closureError);
-            // Note: Session is already closed, so this is a partial failure state.
-            // Ideally we should rollback or alert admin, but for now we throw to alert UI.
-            throw closureError;
+        if (error || !data?.success) {
+            console.error('Error cerrando sesión:', error || data);
+            throw error || new Error('No se pudo cerrar la caja');
         }
 
         await refreshData();
+        return data;
     };
 
     return {
