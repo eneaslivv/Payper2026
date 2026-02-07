@@ -845,24 +845,38 @@ const FinanceCashManager: React.FC<{
                             <span className="text-white/40">Pedidos Activos</span>
                             <span className="text-white">{liveOrderCount}</span>
                           </div>
-                          <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider pt-2 border-t border-white/5">
-                            <span className="text-white/40">Ventas Totales</span>
-                            <span className="text-white">${totalSales.toLocaleString('es-AR')}</span>
-                          </div>
-                          {(totalWithdrawals !== 0 || totalAdjustments !== 0) && (
-                            <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[9px] font-bold uppercase tracking-wider">
-                              <div className="flex items-center gap-3">
-                                {totalWithdrawals !== 0 && (
-                                  <span className="text-red-500">Retiros: ${Math.abs(totalWithdrawals).toLocaleString('es-AR')}</span>
-                                )}
-                                {totalAdjustments !== 0 && (
-                                  <span className={totalAdjustments >= 0 ? 'text-neon' : 'text-red-500'}>
-                                    Ajustes: {totalAdjustments >= 0 ? '+' : '-'}${Math.abs(totalAdjustments).toLocaleString('es-AR')}
-                                  </span>
-                                )}
-                              </div>
+
+                          <div className="pt-2 border-t border-white/5 space-y-2">
+                            <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider">
+                              <span className="text-white/40">Fondo Inicial</span>
+                              <span className="text-white">${Number(session.start_amount || 0).toLocaleString('es-AR')}</span>
                             </div>
-                          )}
+                            <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider">
+                              <span className="text-white/40">Ventas Totales</span>
+                              <span className="text-white">${totalSales.toLocaleString('es-AR')}</span>
+                            </div>
+                            {session?.events_summary?.total_cancellations ? (
+                              <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider">
+                                <span className="text-white/40">Anulaciones</span>
+                                <span className="text-red-500">-${Math.abs(session.events_summary.total_cancellations).toLocaleString('es-AR')}</span>
+                              </div>
+                            ) : null}
+                            <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider">
+                              <span className="text-white/40">Retiros</span>
+                              <span className="text-red-500">-${Math.abs(totalWithdrawals).toLocaleString('es-AR')}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider">
+                              <span className="text-white/40">Ajustes</span>
+                              <span className={totalAdjustments >= 0 ? 'text-neon' : 'text-red-500'}>
+                                {totalAdjustments >= 0 ? '+' : '-'}${Math.abs(totalAdjustments).toLocaleString('es-AR')}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="pt-2 border-t border-white/5 flex justify-between items-center text-[9px] font-black uppercase tracking-wider">
+                            <span className="text-white/40">Esperado en Caja</span>
+                            <span className="text-neon">${expectedTotal.toLocaleString('es-AR')}</span>
+                          </div>
                         </div>
 
                         <div className="flex justify-between items-center pb-4 border-b border-white/5 px-1">
