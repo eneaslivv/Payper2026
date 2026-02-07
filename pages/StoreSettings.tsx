@@ -158,8 +158,8 @@ const StoreSettings: React.FC = () => {
         if (!profile?.store_id) return;
         try {
             const { data: rolesData, error: rolesError } = await supabase
-                .from('cafe_roles')
-                .select('*, cafe_role_permissions(*)')
+                .from('store_roles')
+                .select('*, store_role_permissions(*)')
                 .eq('store_id', profile.store_id);
 
             if (rolesError) throw rolesError;
@@ -169,7 +169,7 @@ const StoreSettings: React.FC = () => {
                 name: r.name,
                 description: r.description,
                 is_system: r.is_system,
-                permissions: r.cafe_role_permissions.reduce((acc: any, p: any) => ({
+                permissions: r.store_role_permissions.reduce((acc: any, p: any) => ({
                     ...acc,
                     [p.section_slug]: {
                         view: p.can_view,
@@ -272,7 +272,7 @@ const StoreSettings: React.FC = () => {
 
             if (!roleId) {
                 const { data, error } = await supabase
-                    .from('cafe_roles')
+                    .from('store_roles')
                     .insert({
                         store_id: profile.store_id,
                         name: roleForm.name,
@@ -286,7 +286,7 @@ const StoreSettings: React.FC = () => {
                 roleId = data.id;
             } else {
                 const { error } = await supabase
-                    .from('cafe_roles')
+                    .from('store_roles')
                     .update({
                         name: roleForm.name,
                         description: roleForm.description
@@ -307,7 +307,7 @@ const StoreSettings: React.FC = () => {
             }));
 
             const { error: permError } = await supabase
-                .from('cafe_role_permissions')
+                .from('store_role_permissions')
                 .upsert(permissionEntries, { onConflict: 'role_id,section_slug' });
 
             if (permError) throw permError;
@@ -413,7 +413,7 @@ const StoreSettings: React.FC = () => {
 
             // 3. Create Default Admin Role
             const { data: newRole, error: roleError } = await supabase
-                .from('cafe_roles')
+                .from('store_roles')
                 .insert({
                     store_id: newStore.id,
                     name: 'Administrador Senior',
@@ -436,7 +436,7 @@ const StoreSettings: React.FC = () => {
             }));
 
             const { error: permsError } = await supabase
-                .from('cafe_role_permissions')
+                .from('store_role_permissions')
                 .insert(permissionEntries);
 
             if (permsError) throw permsError;

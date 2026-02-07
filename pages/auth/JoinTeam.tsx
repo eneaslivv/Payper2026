@@ -61,9 +61,9 @@ const JoinTeam = () => {
 
             setStoreName(storeData?.name || 'la tienda');
 
-            // Fetch role name from cafe_roles
+            // Fetch role name from store_roles
             const { data: roleData } = await supabase
-                .from('cafe_roles')
+                .from('store_roles')
                 .select('name')
                 .eq('id', (data as any).role)
                 .single();

@@ -14,63 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      _backup_duplicate_products_20260204: {
-        Row: {
-          active: boolean | null
-          base_price: number | null
-          category: string | null
-          category_slug: string | null
-          created_at: string | null
-          customs_options: Json | null
-          description: string | null
-          id: string | null
-          image: string | null
-          is_available: boolean | null
-          is_visible: boolean | null
-          name: string | null
-          sku: string | null
-          store_id: string | null
-          tax_rate: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          active?: boolean | null
-          base_price?: number | null
-          category?: string | null
-          category_slug?: string | null
-          created_at?: string | null
-          customs_options?: Json | null
-          description?: string | null
-          id?: string | null
-          image?: string | null
-          is_available?: boolean | null
-          is_visible?: boolean | null
-          name?: string | null
-          sku?: string | null
-          store_id?: string | null
-          tax_rate?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          active?: boolean | null
-          base_price?: number | null
-          category?: string | null
-          category_slug?: string | null
-          created_at?: string | null
-          customs_options?: Json | null
-          description?: string | null
-          id?: string | null
-          image?: string | null
-          is_available?: boolean | null
-          is_visible?: boolean | null
-          name?: string | null
-          sku?: string | null
-          store_id?: string | null
-          tax_rate?: number | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       _migration_backup_2026_02_03: {
         Row: {
           backup_timestamp: string | null
@@ -91,85 +34,6 @@ export type Database = {
           total_rows?: number | null
         }
         Relationships: []
-      }
-      cafe_role_permissions: {
-        Row: {
-          can_create: boolean | null
-          can_delete: boolean | null
-          can_edit: boolean | null
-          can_view: boolean | null
-          created_at: string | null
-          id: string
-          role_id: string
-          section_slug: string
-        }
-        Insert: {
-          can_create?: boolean | null
-          can_delete?: boolean | null
-          can_edit?: boolean | null
-          can_view?: boolean | null
-          created_at?: string | null
-          id?: string
-          role_id: string
-          section_slug: string
-        }
-        Update: {
-          can_create?: boolean | null
-          can_delete?: boolean | null
-          can_edit?: boolean | null
-          can_view?: boolean | null
-          created_at?: string | null
-          id?: string
-          role_id?: string
-          section_slug?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cafe_role_permissions_role_id_fkey"
-            columns: ["role_id"]
-            isOneToOne: false
-            referencedRelation: "cafe_roles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      cafe_roles: {
-        Row: {
-          created_at: string | null
-          description: string | null
-          id: string
-          is_system: boolean | null
-          name: string
-          store_id: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          is_system?: boolean | null
-          name: string
-          store_id: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          is_system?: boolean | null
-          name?: string
-          store_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cafe_roles_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       cash_closures: {
         Row: {
@@ -262,6 +126,77 @@ export type Database = {
           },
         ]
       }
+      cash_events: {
+        Row: {
+          amount: number
+          cash_session_id: string
+          created_at: string
+          description: string | null
+          event_type: string
+          id: string
+          payment_method: string | null
+          performed_by: string | null
+          reference_id: string | null
+          reference_type: string | null
+          store_id: string
+        }
+        Insert: {
+          amount: number
+          cash_session_id: string
+          created_at?: string
+          description?: string | null
+          event_type: string
+          id?: string
+          payment_method?: string | null
+          performed_by?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          store_id: string
+        }
+        Update: {
+          amount?: number
+          cash_session_id?: string
+          created_at?: string
+          description?: string | null
+          event_type?: string
+          id?: string
+          payment_method?: string | null
+          performed_by?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_events_cash_session_id_fkey"
+            columns: ["cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_events_cash_session_id_fkey"
+            columns: ["cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_events_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_events_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cash_sessions: {
         Row: {
           closed_at: string | null
@@ -269,6 +204,7 @@ export type Database = {
           closing_notes: string | null
           created_at: string | null
           difference: number | null
+          dispatch_station_id: string | null
           expected_cash: number | null
           id: string
           opened_at: string | null
@@ -291,6 +227,7 @@ export type Database = {
           closing_notes?: string | null
           created_at?: string | null
           difference?: number | null
+          dispatch_station_id?: string | null
           expected_cash?: number | null
           id?: string
           opened_at?: string | null
@@ -313,6 +250,7 @@ export type Database = {
           closing_notes?: string | null
           created_at?: string | null
           difference?: number | null
+          dispatch_station_id?: string | null
           expected_cash?: number | null
           id?: string
           opened_at?: string | null
@@ -335,6 +273,13 @@ export type Database = {
             columns: ["closed_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_dispatch_station_id_fkey"
+            columns: ["dispatch_station_id"]
+            isOneToOne: false
+            referencedRelation: "dispatch_stations"
             referencedColumns: ["id"]
           },
           {
@@ -698,6 +643,7 @@ export type Database = {
           sort_order: number | null
           store_id: string
           updated_at: string | null
+          zone_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -707,6 +653,7 @@ export type Database = {
           sort_order?: number | null
           store_id: string
           updated_at?: string | null
+          zone_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -716,6 +663,7 @@ export type Database = {
           sort_order?: number | null
           store_id?: string
           updated_at?: string | null
+          zone_id?: string | null
         }
         Relationships: [
           {
@@ -723,6 +671,13 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_stations_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "venue_zones"
             referencedColumns: ["id"]
           },
         ]
@@ -2281,6 +2236,7 @@ export type Database = {
       orders: {
         Row: {
           archived_at: string | null
+          cash_session_id: string | null
           channel: Database["public"]["Enums"]["order_channel_enum"]
           client_id: string | null
           created_at: string
@@ -2308,6 +2264,7 @@ export type Database = {
           source_location_id: string | null
           status: Database["public"]["Enums"]["order_status_enum"]
           stock_deducted: boolean
+          stock_reversed: boolean | null
           store_id: string
           subtotal: number
           table_number: string | null
@@ -2317,6 +2274,7 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
+          cash_session_id?: string | null
           channel?: Database["public"]["Enums"]["order_channel_enum"]
           client_id?: string | null
           created_at?: string
@@ -2344,6 +2302,7 @@ export type Database = {
           source_location_id?: string | null
           status?: Database["public"]["Enums"]["order_status_enum"]
           stock_deducted?: boolean
+          stock_reversed?: boolean | null
           store_id: string
           subtotal?: number
           table_number?: string | null
@@ -2353,6 +2312,7 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
+          cash_session_id?: string | null
           channel?: Database["public"]["Enums"]["order_channel_enum"]
           client_id?: string | null
           created_at?: string
@@ -2380,6 +2340,7 @@ export type Database = {
           source_location_id?: string | null
           status?: Database["public"]["Enums"]["order_status_enum"]
           stock_deducted?: boolean
+          stock_reversed?: boolean | null
           store_id?: string
           subtotal?: number
           table_number?: string | null
@@ -2388,6 +2349,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_cash_session_id_fkey"
+            columns: ["cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_cash_session_id_fkey"
+            columns: ["cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions_summary"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_client_id_fkey"
             columns: ["client_id"]
@@ -2997,17 +2972,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "profiles_role_id_fkey"
-            columns: ["role_id"]
-            isOneToOne: false
-            referencedRelation: "cafe_roles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "profiles_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_store_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "store_roles"
             referencedColumns: ["id"]
           },
         ]
@@ -3718,6 +3693,85 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "store_create_requests_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_role_permissions: {
+        Row: {
+          can_create: boolean | null
+          can_delete: boolean | null
+          can_edit: boolean | null
+          can_view: boolean | null
+          created_at: string | null
+          id: string
+          role_id: string
+          section_slug: string
+        }
+        Insert: {
+          can_create?: boolean | null
+          can_delete?: boolean | null
+          can_edit?: boolean | null
+          can_view?: boolean | null
+          created_at?: string | null
+          id?: string
+          role_id: string
+          section_slug: string
+        }
+        Update: {
+          can_create?: boolean | null
+          can_delete?: boolean | null
+          can_edit?: boolean | null
+          can_view?: boolean | null
+          created_at?: string | null
+          id?: string
+          role_id?: string
+          section_slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_role_permissions_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "store_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_roles: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_system: boolean | null
+          name: string
+          store_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean | null
+          name: string
+          store_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean | null
+          name?: string
+          store_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_roles_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
@@ -4470,9 +4524,12 @@ export type Database = {
           closing_notes: string | null
           created_at: string | null
           difference: number | null
+          dispatch_station_id: string | null
+          dispatch_station_name: string | null
           duration_hours: number | null
           expected_cash: number | null
           id: string | null
+          live_order_count: number | null
           opened_at: string | null
           opened_by: string | null
           opened_by_name: string | null
@@ -4496,6 +4553,13 @@ export type Database = {
             columns: ["closed_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_dispatch_station_id_fkey"
+            columns: ["dispatch_station_id"]
+            isOneToOne: false
+            referencedRelation: "dispatch_stations"
             referencedColumns: ["id"]
           },
           {
@@ -4714,30 +4778,7 @@ export type Database = {
         Args: { p_order_id: string; p_staff_id: string }
         Returns: Json
       }
-      consume_from_open_packages: {
-        Args: {
-          p_item_id: string
-          p_location_id?: string
-          p_order_id?: string
-          p_reason?: string
-          p_required_qty: number
-          p_skip_logging?: boolean
-          p_store_id: string
-          p_unit?: string
-        }
-        Returns: Json
-      }
       consume_from_smart_packages: {
-        Args: {
-          p_inventory_item_id: string
-          p_order_id?: string
-          p_reason?: string
-          p_required_qty: number
-          p_unit: string
-        }
-        Returns: Json
-      }
-      consume_from_smart_packages_safe: {
         Args: {
           p_inventory_item_id: string
           p_order_id?: string
@@ -4783,7 +4824,7 @@ export type Database = {
       }
       create_order: {
         Args: {
-          p_channel?: string
+          p_channel: string
           p_client_id?: string
           p_delivery_mode?: string
           p_items: Json
@@ -4854,7 +4895,9 @@ export type Database = {
         }
         Returns: boolean
       }
+      get_active_cash_sessions: { Args: { p_store_id: string }; Returns: Json }
       get_active_session: { Args: { p_session_id: string }; Returns: Json }
+      get_cash_session_events: { Args: { p_session_id: string }; Returns: Json }
       get_client_by_nfc: {
         Args: { p_nfc_uid: string; p_store_id: string }
         Returns: Json
@@ -5051,6 +5094,16 @@ export type Database = {
         Returns: Json
       }
       normalize_location_name: { Args: { p_name: string }; Returns: string }
+      open_cash_session: {
+        Args: {
+          p_dispatch_station_id?: string
+          p_opened_by: string
+          p_start_amount?: number
+          p_store_id: string
+          p_zone_id: string
+        }
+        Returns: Json
+      }
       open_package: {
         Args: { p_item_id: string; p_location_id: string }
         Returns: Json
@@ -5069,6 +5122,24 @@ export type Database = {
       }
       redeem_reward: {
         Args: { p_client_id: string; p_order_id: string; p_reward_id: string }
+        Returns: Json
+      }
+      register_cash_adjustment: {
+        Args: {
+          p_amount: number
+          p_cash_session_id: string
+          p_description: string
+          p_performed_by: string
+        }
+        Returns: Json
+      }
+      register_cash_withdrawal: {
+        Args: {
+          p_amount: number
+          p_cash_session_id: string
+          p_description: string
+          p_performed_by: string
+        }
         Returns: Json
       }
       register_fixed_expense: {
@@ -5146,6 +5217,26 @@ export type Database = {
           p_status_detail: string
         }
         Returns: Json
+      }
+      verify_stock_integrity: {
+        Args: { p_store_id: string }
+        Returns: {
+          calculated_stock: number
+          current_stock_field: number
+          difference: number
+          item_id: string
+          item_name: string
+        }[]
+      }
+      verify_wallet_integrity: {
+        Args: { p_store_id: string }
+        Returns: {
+          client_id: string
+          client_name: string
+          difference: number
+          txn_sum: number
+          wallet_field: number
+        }[]
       }
     }
     Enums: {

@@ -43,7 +43,7 @@ serve(async (req) => {
         if (roleId) {
             // Fetch the custom role name
             const { data: roleData, error: roleError } = await supabaseAdmin
-                .from('cafe_roles')
+                .from('store_roles')
                 .select('name')
                 .eq('id', roleId)
                 .single();

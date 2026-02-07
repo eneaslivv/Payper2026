@@ -280,7 +280,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                         if (userProfile.role_id) {
                             const { data: permData } = await supabase
-                                .from('cafe_role_permissions')
+                                .from('store_role_permissions')
                                 .select('section_slug, can_view, can_create, can_edit, can_delete')
                                 .eq('role_id', userProfile.role_id);
 

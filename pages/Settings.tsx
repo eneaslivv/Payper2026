@@ -407,7 +407,7 @@ const Settings: React.FC = () => {
   const fetchRoles = async () => {
     if (!profile?.store_id) return;
     const { data: rolesData, error } = await supabase
-      .from('cafe_roles' as any)
+      .from('store_roles' as any)
       .select('*')
       .eq('store_id', profile.store_id)
       .order('is_system', { ascending: false });
@@ -421,7 +421,7 @@ const Settings: React.FC = () => {
       // Fetch permissions for each role
       const rolesWithPerms = await Promise.all(rolesData.map(async (role: any) => {
         const { data: perms } = await supabase
-          .from('cafe_role_permissions' as any)
+          .from('store_role_permissions' as any)
           .select('*')
           .eq('role_id', role.id);
 
@@ -464,13 +464,13 @@ const Settings: React.FC = () => {
       // 1. Create or Update Role
       if (roleId) {
         const { error } = await supabase
-          .from('cafe_roles' as any)
+          .from('store_roles' as any)
           .update({ name: roleForm.name, description: roleForm.description })
           .eq('id', roleId);
         if (error) throw error;
       } else {
         const { data, error } = await supabase
-          .from('cafe_roles' as any)
+          .from('store_roles' as any)
           .insert({
             store_id: profile.store_id,
             name: roleForm.name,
@@ -486,7 +486,7 @@ const Settings: React.FC = () => {
 
       // 2. Update Permissions (Delete all and re-insert is easiest strategy for full matrix)
       // First, delete existing
-      await supabase.from('cafe_role_permissions' as any).delete().eq('role_id', roleId);
+      await supabase.from('store_role_permissions' as any).delete().eq('role_id', roleId);
 
       // Prepare inserts
       const permsToInsert = Object.entries(roleForm.permissions || {}).map(([slug, p]: [string, any]) => ({
@@ -499,7 +499,7 @@ const Settings: React.FC = () => {
       }));
 
       if (permsToInsert.length > 0) {
-        const { error: permError } = await supabase.from('cafe_role_permissions' as any).insert(permsToInsert);
+        const { error: permError } = await supabase.from('store_role_permissions' as any).insert(permsToInsert);
         if (permError) throw permError;
       }
 
@@ -523,7 +523,7 @@ const Settings: React.FC = () => {
     if (!confirm('¿Estás seguro de eliminar este rol? Esta acción no se puede deshacer.')) return;
 
     try {
-      const { error } = await supabase.from('cafe_roles' as any).delete().eq('id', roleId);
+      const { error } = await supabase.from('store_roles' as any).delete().eq('id', roleId);
       if (error) throw error;
       addToast('Rol eliminado', 'success');
       fetchRoles();
