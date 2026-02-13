@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MenuTheme } from '../types';
 import { supabase } from '../lib/supabase';
+import { retryRpc } from '../src/lib/retryRpc';
 
 interface WalletTransferModalProps {
     isOpen: boolean;
@@ -50,10 +51,12 @@ export const WalletTransferModal: React.FC<WalletTransferModalProps> = ({
         setStatus('loading');
 
         try {
-            const { error } = await supabase.rpc('p2p_wallet_transfer', {
-                p_recipient_email: email,
-                p_amount: amountNum
-            });
+            const { error } = await retryRpc(() =>
+                supabase.rpc('p2p_wallet_transfer', {
+                    p_recipient_email: email,
+                    p_amount: amountNum
+                })
+            );
 
             if (error) throw error;
 

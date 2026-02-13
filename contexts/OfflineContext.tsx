@@ -928,25 +928,28 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
             price_unit: item.price_unit
           }));
 
-          // Call new sync_offline_order RPC
-          const { data: syncResult, error: rpcError } = await supabase.rpc('sync_offline_order', {
-            p_order_data: {
-              id: order.id,
-              store_id: storeIdForOrder,
-              client_id: orderData.client_id,
-              status: orderData.status,
-              channel: orderData.channel,
-              total_amount: orderData.total_amount,
-              subtotal: orderData.subtotal,
-              items: itemsForSync,
-              payment_method: orderData.payment_method,
-              is_paid: orderData.is_paid,
-              created_at: orderData.created_at,
-              node_id: orderData.node_id,
-              table_number: orderData.table_number
-            },
-            p_allow_negative_stock: false
-          }) as { data: any, error: any };
+          // Call new sync_offline_order RPC with retry logic
+          const { retryOfflineSync } = await import('../src/lib/retryRpc');
+          const { data: syncResult, error: rpcError } = await retryOfflineSync(() =>
+            supabase.rpc('sync_offline_order', {
+              p_order_data: {
+                id: order.id,
+                store_id: storeIdForOrder,
+                client_id: orderData.client_id,
+                status: orderData.status,
+                channel: orderData.channel,
+                total_amount: orderData.total_amount,
+                subtotal: orderData.subtotal,
+                items: itemsForSync,
+                payment_method: orderData.payment_method,
+                is_paid: orderData.is_paid,
+                created_at: orderData.created_at,
+                node_id: orderData.node_id,
+                table_number: orderData.table_number
+              },
+              p_allow_negative_stock: false
+            })
+          ) as { data: any, error: any };
 
           if (rpcError) throw rpcError;
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useToast } from './ToastSystem';
+import { retryStockRpc } from '../src/lib/retryRpc';
 import type { InventoryItem, StorageLocation } from '../types';
 
 interface StockTransferModalProps {
@@ -99,16 +100,20 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
         if (!isValidTransfer) return;
         setLoading(true);
         try {
-            const { data, error } = await supabase.rpc('transfer_stock', {
-                p_item_id: localItem!.id,
-                p_from_location_id: fromLocation,
-                p_to_location_id: toLocation,
-                p_quantity: parsedQuantity,
-                p_user_id: (await supabase.auth.getUser()).data.user?.id || null,
-                p_notes: notes || '',
-                p_movement_type: 'transfer',
-                p_reason: 'Transferencia entre ubicaciones'
-            });
+            const userId = (await supabase.auth.getUser()).data.user?.id || null;
+            const { data, error } = await retryStockRpc(
+                () => supabase.rpc('transfer_stock', {
+                    p_item_id: localItem!.id,
+                    p_from_location_id: fromLocation,
+                    p_to_location_id: toLocation,
+                    p_quantity: parsedQuantity,
+                    p_user_id: userId,
+                    p_notes: notes || '',
+                    p_movement_type: 'transfer',
+                    p_reason: 'Transferencia entre ubicaciones'
+                }),
+                addToast
+            );
 
             if (error) throw error;
             const res = data as any;

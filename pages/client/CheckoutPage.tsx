@@ -165,11 +165,15 @@ const CheckoutPage: React.FC = () => {
           }
         }
 
-        // 2.4 Process wallet payment
-        const { data: walletResult, error: walletError } = await (supabase.rpc as any)('pay_with_wallet', {
-          p_client_id: user?.id,
-          p_amount: total
-        });
+        // 2.4 Process wallet payment with retry logic
+        const { retryRpc } = await import('../../src/lib/retryRpc');
+        const { data: walletResult, error: walletError } = await retryRpc(() =>
+          (supabase.rpc as any)('pay_with_wallet', {
+            p_client_id: user?.id,
+            p_amount: total
+          }),
+          { rpcName: 'pay_with_wallet', maxRetries: 3 }
+        );
 
         if (walletError || !walletResult?.success) {
           // Payment failed - rollback redemption if any
@@ -182,11 +186,14 @@ const CheckoutPage: React.FC = () => {
           return;
         }
 
-        // 2.5 Update order to APPROVED using RPC (bypasses RLS)
+        // 2.5 Update order to APPROVED using RPC (bypasses RLS) with retry
         console.log('[CheckoutPage] Completing wallet payment for order:', orderId);
-        const { data: completeResult, error: completeError } = await (supabase.rpc as any)('complete_wallet_payment', {
-          p_order_id: orderId
-        });
+        const { data: completeResult, error: completeError } = await retryRpc(() =>
+          (supabase.rpc as any)('complete_wallet_payment', {
+            p_order_id: orderId
+          }),
+          { rpcName: 'complete_wallet_payment', maxRetries: 3 }
+        );
 
         if (completeError) {
           console.error('[CheckoutPage] complete_wallet_payment RPC error:', completeError);

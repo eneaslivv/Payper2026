@@ -295,16 +295,22 @@ const InvoiceProcessor: React.FC<InvoiceProcessorProps> = ({ isOpen = true, onCl
                         const targetLoc = defaultLoc?.id;
 
                         if (targetLoc) {
-                            await supabase.rpc('transfer_stock', {
-                                p_item_id: finalInventoryId,
-                                p_from_location_id: null,
-                                p_to_location_id: targetLoc,
-                                p_quantity: item.quantity,
-                                p_user_id: profile?.id || '',
-                                p_notes: `Compra de ${selectedInvoice.proveedor} (Factura ${selectedInvoice.nro_factura})`,
-                                p_movement_type: 'PURCHASE',
-                                p_reason: 'Reposición de Stock'
-                            });
+                            const { retryStockRpc } = await import('../src/lib/retryRpc');
+                            const { error } = await retryStockRpc(() =>
+                                supabase.rpc('transfer_stock', {
+                                    p_item_id: finalInventoryId,
+                                    p_from_location_id: null,
+                                    p_to_location_id: targetLoc,
+                                    p_quantity: item.quantity,
+                                    p_user_id: profile?.id || '',
+                                    p_notes: `Compra de ${selectedInvoice.proveedor} (Factura ${selectedInvoice.nro_factura})`,
+                                    p_movement_type: 'PURCHASE',
+                                    p_reason: 'Reposición de Stock'
+                                }),
+                                undefined,
+                                'transfer_stock'
+                            );
+                            if (error) throw error;
                         } else {
                             // Fallback (solo si no hay ubicaciones, aunque el Trigger sync_inventory_item_total_stock requiere item_stock_levels)
                             console.warn('No se encontró ubicación predeterminada para la compra');
@@ -343,16 +349,22 @@ const InvoiceProcessor: React.FC<InvoiceProcessorProps> = ({ isOpen = true, onCl
                             .single();
 
                         if (defaultLoc?.id) {
-                            await supabase.rpc('transfer_stock', {
-                                p_item_id: finalInventoryId,
-                                p_from_location_id: null,
-                                p_to_location_id: defaultLoc.id,
-                                p_quantity: item.quantity,
-                                p_user_id: profile?.id || '',
-                                p_notes: `Carga inicial por compra: ${selectedInvoice.proveedor}`,
-                                p_movement_type: 'PURCHASE',
-                                p_reason: 'Carga inicial'
-                            });
+                            const { retryStockRpc } = await import('../src/lib/retryRpc');
+                            const { error } = await retryStockRpc(() =>
+                                supabase.rpc('transfer_stock', {
+                                    p_item_id: finalInventoryId,
+                                    p_from_location_id: null,
+                                    p_to_location_id: defaultLoc.id,
+                                    p_quantity: item.quantity,
+                                    p_user_id: profile?.id || '',
+                                    p_notes: `Carga inicial por compra: ${selectedInvoice.proveedor}`,
+                                    p_movement_type: 'PURCHASE',
+                                    p_reason: 'Carga inicial'
+                                }),
+                                undefined,
+                                'transfer_stock'
+                            );
+                            if (error) throw error;
                         }
                     }
                 }

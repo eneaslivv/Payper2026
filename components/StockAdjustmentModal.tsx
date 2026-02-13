@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useToast } from './ToastSystem';
 import { SupplierSelect } from './SupplierSelect';
+import { retryStockRpc } from '../src/lib/retryRpc';
 import type { InventoryItem, StorageLocation } from '../types';
 
 interface StockAdjustmentModalProps {
@@ -132,13 +133,16 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
 
             if (shouldConsume) {
                 const reasonKey = type === 'WASTE' ? 'loss' : 'adjustment';
-                const { data, error } = await (supabase.rpc as any)('consume_from_smart_packages', {
-                    p_inventory_item_id: item.id,
-                    p_required_qty: absoluteQty,
-                    p_unit: item.unit_type,
-                    p_order_id: null,
-                    p_reason: reasonKey
-                });
+                const { data, error } = await retryStockRpc(
+                    () => (supabase.rpc as any)('consume_from_smart_packages', {
+                        p_inventory_item_id: item.id,
+                        p_required_qty: absoluteQty,
+                        p_unit: item.unit_type,
+                        p_order_id: null,
+                        p_reason: reasonKey
+                    }),
+                    addToast
+                );
 
                 if (error) throw error;
                 const result = data as any;
@@ -147,16 +151,19 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                 // Use transfer_stock RPC with unified signature
                 // Map RESTOCK to PURCHASE for RPC (both add stock, PURCHASE is already in all constraints)
                 const rpcMovementType = type === 'RESTOCK' ? 'PURCHASE' : type;
-                const { data, error } = await supabase.rpc('transfer_stock', {
-                    p_item_id: item.id,
-                    p_from_location_id: fromLocation,
-                    p_to_location_id: toLocation,
-                    p_quantity: parsedQty,
-                    p_user_id: user?.id || null,
-                    p_notes: `[${type}] ${notes}`.trim(), // Include original type in notes for tracking
-                    p_movement_type: rpcMovementType,
-                    p_reason: reason
-                });
+                const { data, error } = await retryStockRpc(
+                    () => supabase.rpc('transfer_stock', {
+                        p_item_id: item.id,
+                        p_from_location_id: fromLocation,
+                        p_to_location_id: toLocation,
+                        p_quantity: parsedQty,
+                        p_user_id: user?.id || null,
+                        p_notes: `[${type}] ${notes}`.trim(), // Include original type in notes for tracking
+                        p_movement_type: rpcMovementType,
+                        p_reason: reason
+                    }),
+                    addToast
+                );
 
                 if (error) throw error;
                 const result = data as any;
