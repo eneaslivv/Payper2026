@@ -94,10 +94,15 @@ const StoreSettings: React.FC = () => {
 
         fetchAuditLogs();
 
-        // Realtime subscription
+        // Realtime subscription with store_id filter for multi-tenant security
         const channel = supabase
             .channel('audit_realtime')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'audit_logs' }, (payload) => {
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'audit_logs',
+                filter: `store_id=eq.${profile.store_id}`
+            }, (payload) => {
                 // We need to fetch the joining data (profile name), so we just refetch
                 fetchAuditLogs();
             })
