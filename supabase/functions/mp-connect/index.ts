@@ -63,11 +63,13 @@ serve(async (req) => {
         }
 
         // Store tokens encrypted
-        await storeMPTokens(supabase, store_id, {
-            accessToken: mpData.access_token,
-            refreshToken: mpData.refresh_token,
-            expiresAt: new Date(Date.now() + (mpData.expires_in * 1000))
-        });
+        await storeMPTokens(
+            supabase,
+            store_id,
+            mpData.access_token,
+            mpData.refresh_token,
+            mpData.expires_in
+        );
 
         // Update Store metadata (non-sensitive data)
         const { error: updateError } = await supabase
