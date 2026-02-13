@@ -82,17 +82,18 @@ const ProfilePage: React.FC = () => {
 
     setIsProcessing(true);
     try {
-      const { data, error } = await (supabase.rpc as any)('admin_add_balance', {
+      const { data, error } = await (supabase.rpc as any)('admin_add_balance_v2', {
         p_user_id: user.id,
         p_amount: amount,
-        p_description: 'Recarga de Saldo (Cliente)',
-        p_source: 'digital',
-        p_payment_method: 'card' // placeholder for future real payment integration
+        p_payment_method: 'card', // placeholder for future real payment integration
+        p_description: 'Recarga de Saldo (Cliente)'
       });
 
       if (error) throw error;
 
-      setUser({ ...user, balance: user.balance + amount });
+      // Use the new_balance returned by the RPC instead of calculating manually
+      const newBalance = data?.new_balance ?? (user.balance + amount);
+      setUser({ ...user, balance: newBalance });
       setIsProcessing(false);
       setShowTopUp(false);
       setSelectedAmount(20);
