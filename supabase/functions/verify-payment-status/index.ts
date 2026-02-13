@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { initMonitoring, captureException } from "../_shared/monitoring.ts";
+import { getMPAccessToken } from "../_shared/encrypted-secrets.ts";
 
 const FUNCTION_NAME = 'verify-payment-status';
 initMonitoring(FUNCTION_NAME);
@@ -53,14 +54,10 @@ serve(async (req) => {
             });
         }
 
-        // 2. Get Store MP Token
-        const { data: store, error: storeError } = await supabase
-            .from('stores')
-            .select('mp_access_token')
-            .eq('id', order.store_id)
-            .single();
+        // 2. Get Store MP Token (encrypted)
+        const accessToken = await getMPAccessToken(supabase, order.store_id);
 
-        if (storeError || !store?.mp_access_token) {
+        if (!accessToken) {
             throw new Error('Store MP Token not found');
         }
 
@@ -74,7 +71,7 @@ serve(async (req) => {
 
         const mpRes = await fetch(searchUrl.toString(), {
             headers: {
-                'Authorization': `Bearer ${store.mp_access_token}`
+                'Authorization': `Bearer ${accessToken}`
             }
         });
 

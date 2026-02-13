@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { initMonitoring, captureException } from "../_shared/monitoring.ts";
+import { storeMPTokens } from "../_shared/encrypted-secrets.ts";
 
 const FUNCTION_NAME = 'mp-connect';
 initMonitoring(FUNCTION_NAME);
@@ -61,18 +62,22 @@ serve(async (req) => {
             throw new Error(`Mercado Pago Error: ${mpData.message || mpData.error}`);
         }
 
-        // Update Store in Database
+        // Store tokens encrypted
+        await storeMPTokens(supabase, store_id, {
+            accessToken: mpData.access_token,
+            refreshToken: mpData.refresh_token,
+            expiresAt: new Date(Date.now() + (mpData.expires_in * 1000))
+        });
+
+        // Update Store metadata (non-sensitive data)
         const { error: updateError } = await supabase
             .from('stores')
             .update({
-                mp_access_token: mpData.access_token,
-                mp_refresh_token: mpData.refresh_token,
                 mp_public_key: mpData.public_key,
                 mp_user_id: mpData.user_id.toString(),
-                mp_nickname: "Mercado Pago User", // MP API v2 doesn't always return nickname directly here, usually fetched separately or is implicit
-                mp_email: "noreply@payper.io", // Placeholder for MP Connect flow
-                mp_connected_at: new Date().toISOString(),
-                mp_expires_at: new Date(Date.now() + (mpData.expires_in * 1000)).toISOString()
+                mp_nickname: "Mercado Pago User",
+                mp_email: "noreply@payper.io",
+                mp_connected_at: new Date().toISOString()
             })
             .eq('id', store_id);
 

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { initMonitoring, captureException } from "../_shared/monitoring.ts";
+import { getMPAccessToken } from "../_shared/encrypted-secrets.ts";
 
 const FUNCTION_NAME = 'create-mp-preference';
 initMonitoring(FUNCTION_NAME);
@@ -30,16 +31,26 @@ serve(async (req) => {
             );
         }
 
-        // Get store's MP access token
+        // Get store metadata
         const { data: store, error: storeError } = await supabase
             .from('stores')
-            .select('mp_access_token, name, slug')
+            .select('name, slug')
             .eq('id', store_id)
             .single();
 
-        if (storeError || !store?.mp_access_token) {
+        if (storeError) {
             return new Response(
-                JSON.stringify({ error: 'Store not found or MercadoPago not connected' }),
+                JSON.stringify({ error: 'Store not found' }),
+                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+
+        // Get encrypted MP access token
+        const accessToken = await getMPAccessToken(supabase, store_id);
+
+        if (!accessToken) {
+            return new Response(
+                JSON.stringify({ error: 'MercadoPago not connected' }),
                 { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
         }
@@ -99,7 +110,7 @@ serve(async (req) => {
         const mpResponse = await fetch('https://api.mercadopago.com/checkout/preferences', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${store.mp_access_token}`,
+                'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(preferenceData)

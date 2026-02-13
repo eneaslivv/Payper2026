@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { initMonitoring, captureException } from "../_shared/monitoring.ts";
+import { getMPAccessToken } from "../_shared/encrypted-secrets.ts";
 
 const FUNCTION_NAME = 'mp-webhook';
 initMonitoring(FUNCTION_NAME);
@@ -296,17 +297,13 @@ serve(async (req) => {
 
     // 2. Procesar solo eventos de pago
     if (topic === 'payment' || action === 'payment.created' || action === 'payment.updated') {
-      // Obtener token del store
-      const { data: store } = await supabase
-        .from('stores')
-        .select('mp_access_token')
-        .eq('id', store_id)
-        .single();
+      // Get encrypted MP access token
+      const accessToken = await getMPAccessToken(supabase, store_id);
 
-      if (store?.mp_access_token) {
+      if (accessToken) {
         // Fetch payment details from MP
         const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${id}`, {
-          headers: { 'Authorization': `Bearer ${store.mp_access_token}` }
+          headers: { 'Authorization': `Bearer ${accessToken}` }
         });
 
         if (mpRes.ok) {

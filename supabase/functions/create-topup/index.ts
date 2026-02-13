@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { initMonitoring, captureException } from "../_shared/monitoring.ts";
+import { refreshMPAccessToken } from "../_shared/encrypted-secrets.ts";
 
 const FUNCTION_NAME = 'create-topup';
 initMonitoring(FUNCTION_NAME);
@@ -27,52 +28,22 @@ serve(async (req) => {
             throw new Error("Parámetros inválidos: store_id, user_id y amount requeridos");
         }
 
-        // 2. Get Store MP Token (with potential refresh logic)
+        // 2. Get Store metadata
         const { data: store, error: storeError } = await supabase
             .from('stores')
-            .select('mp_access_token, mp_refresh_token, mp_expires_at, name')
+            .select('name')
             .eq('id', store_id)
             .single();
 
-        if (storeError || !store?.mp_access_token) {
-            throw new Error("Store not connected to Mercado Pago");
+        if (storeError) {
+            throw new Error("Store not found");
         }
 
-        // 2.1 Check token expiration and refresh if needed
-        let accessToken = store.mp_access_token;
+        // 2.1 Get MP access token with automatic refresh
+        const accessToken = await refreshMPAccessToken(supabase, store_id);
 
-        if (store.mp_expires_at && new Date(store.mp_expires_at) < new Date()) {
-            if (!store.mp_refresh_token) {
-                throw new Error("MP token expired. Store needs to reconnect.");
-            }
-
-            const mpClientId = Deno.env.get('MP_CLIENT_ID');
-            const mpClientSecret = Deno.env.get('MP_CLIENT_SECRET');
-
-            if (mpClientId && mpClientSecret) {
-                const refreshRes = await fetch("https://api.mercadopago.com/oauth/token", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: new URLSearchParams({
-                        grant_type: "refresh_token",
-                        client_id: mpClientId,
-                        client_secret: mpClientSecret,
-                        refresh_token: store.mp_refresh_token
-                    })
-                });
-
-                if (refreshRes.ok) {
-                    const refreshData = await refreshRes.json();
-                    accessToken = refreshData.access_token;
-
-                    // Update tokens in DB
-                    await supabase.from('stores').update({
-                        mp_access_token: refreshData.access_token,
-                        mp_refresh_token: refreshData.refresh_token,
-                        mp_expires_at: new Date(Date.now() + refreshData.expires_in * 1000).toISOString()
-                    }).eq('id', store_id);
-                }
-            }
+        if (!accessToken) {
+            throw new Error("Store not connected to Mercado Pago");
         }
 
         // 3. Create pending transaction for tracking
