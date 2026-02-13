@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ToastSystem';
 import { Client, LoyaltyTransaction } from '../types';
+import { safeQuery } from '../src/lib/pagination';
 
 interface TimelineEvent {
   type: 'order' | 'wallet' | 'loyalty' | 'note' | 'login';
@@ -75,25 +76,29 @@ const Clients: React.FC = () => {
       const { data: { session } } = await supabase.auth.getSession();
       console.log('[Clients] Current session user:', session?.user?.email);
 
-      // 1. Fetch all clients for this store
-      const { data: clientsData, error: clientsError } = await (supabase as any)
-        .from('clients')
-        .select('*')
-        .eq('store_id', profile?.store_id as string)
-        .order('created_at', { ascending: false });
+      // 1. Fetch all clients for this store (with pagination limit)
+      const { data: clientsData, error: clientsError } = await safeQuery(
+        (supabase as any)
+          .from('clients')
+          .select('*')
+          .eq('store_id', profile?.store_id as string)
+          .order('created_at', { ascending: false })
+      );
 
       console.log('[Clients] Raw query result:', { count: clientsData?.length, error: clientsError });
 
       if (clientsError) throw clientsError;
 
-      // 2. Fetch all orders for this store to aggregate metrics
+      // 2. Fetch all orders for this store to aggregate metrics (with pagination limit)
       // Use client_id to match orders to clients
       let ordersData: any[] = [];
       try {
-        const { data, error: ordersError } = await supabase
-          .from('orders')
-          .select('client_id, total_amount, created_at')
-          .eq('store_id', profile?.store_id as string);
+        const { data, error: ordersError } = await safeQuery(
+          supabase
+            .from('orders')
+            .select('client_id, total_amount, created_at')
+            .eq('store_id', profile?.store_id as string)
+        );
 
         if (!ordersError && data) {
           ordersData = data;

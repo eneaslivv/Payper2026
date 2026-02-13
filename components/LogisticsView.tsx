@@ -107,15 +107,37 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
             console.error(error);
             addToast('Error al cargar ubicaciones', 'error');
         } else {
-            // Fetch metrics for each location
-            const locationsWithMetrics: LocationWithMetrics[] = [];
-            for (const loc of data || []) {
-                const { data: metrics } = await (supabase.rpc as any)('get_location_stock', { p_location_id: loc.id });
-                locationsWithMetrics.push({
-                    ...(loc as any),
-                    metrics: metrics?.[0] || { total_items: 0, total_closed_units: 0, total_open_packages: 0, total_effective_stock: 0, estimated_value: 0 }
-                });
-            }
+            // 🔧 FIX N+1: Batch fetch metrics for all locations at once
+            const locationIds = (data || []).map(loc => loc.id);
+
+            // Fetch stock data in batch using .in()
+            const { data: stockData } = await supabase
+                .from('inventory_location_stock')
+                .select('location_id, inventory_item_id, quantity')
+                .in('location_id', locationIds);
+
+            // Group metrics by location_id
+            const metricsByLocation: Record<string, { total_items: number; total_effective_stock: number }> = {};
+            (stockData || []).forEach((stock: any) => {
+                if (!metricsByLocation[stock.location_id]) {
+                    metricsByLocation[stock.location_id] = { total_items: 0, total_effective_stock: 0 };
+                }
+                metricsByLocation[stock.location_id].total_items += 1;
+                metricsByLocation[stock.location_id].total_effective_stock += stock.quantity || 0;
+            });
+
+            // Map locations with their metrics
+            const locationsWithMetrics: LocationWithMetrics[] = (data || []).map(loc => ({
+                ...(loc as any),
+                metrics: metricsByLocation[loc.id] || {
+                    total_items: 0,
+                    total_closed_units: 0,
+                    total_open_packages: 0,
+                    total_effective_stock: 0,
+                    estimated_value: 0
+                }
+            }));
+
             setLocations(locationsWithMetrics);
         }
         setLoading(false);

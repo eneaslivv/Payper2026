@@ -5,6 +5,7 @@ import DateRangeSelector from '../components/DateRangeSelector';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useCashShift, Zone } from '../hooks/useCashShift';
+import { safeQuery } from '../src/lib/pagination';
 
 const AreaChart = React.lazy(() => import('recharts').then((mod) => ({ default: mod.AreaChart })));
 const Area = React.lazy(() => import('recharts').then((mod) => ({ default: mod.Area })));
@@ -113,32 +114,38 @@ const Finance: React.FC = () => {
         const startOfDay = new Date(today.setHours(0, 0, 0, 0)).toISOString();
         const endOfDay = new Date(today.setHours(23, 59, 59, 999)).toISOString();
 
-        // 1. Fetch orders for the store
-        const { data: orders, error } = await supabase
-          .from('orders')
-          .select('total_amount, created_at, status')
-          .eq('store_id', profile.store_id)
-          .gte('created_at', startOfDay)
-          .lte('created_at', endOfDay);
+        // 1. Fetch orders for the store (with pagination limit)
+        const { data: orders, error } = await safeQuery(
+          supabase
+            .from('orders')
+            .select('total_amount, created_at, status')
+            .eq('store_id', profile.store_id)
+            .gte('created_at', startOfDay)
+            .lte('created_at', endOfDay)
+        );
 
         if (error) throw error;
 
-        // 2. Fetch Wallet Top-ups for today
-        const { data: topups, error: topupError } = await (supabase as any)
-          .from('wallet_ledger')
-          .select('amount')
-          .eq('store_id', profile.store_id)
-          .gte('created_at', startOfDay)
-          .lte('created_at', endOfDay)
-          .eq('entry_type', 'topup');
+        // 2. Fetch Wallet Top-ups for today (with pagination limit)
+        const { data: topups, error: topupError } = await safeQuery(
+          (supabase as any)
+            .from('wallet_ledger')
+            .select('amount')
+            .eq('store_id', profile.store_id)
+            .gte('created_at', startOfDay)
+            .lte('created_at', endOfDay)
+            .eq('entry_type', 'topup')
+        );
 
         if (topupError) console.error('Error fetching topups', topupError);
 
-        // 3. Fetch Total Wallet Liability (All clients balance)
-        const { data: clientsData, error: clientError } = await supabase
-          .from('clients')
-          .select('wallet_balance')
-          .eq('store_id', profile.store_id);
+        // 3. Fetch Total Wallet Liability (All clients balance - with pagination limit)
+        const { data: clientsData, error: clientError } = await safeQuery(
+          supabase
+            .from('clients')
+            .select('wallet_balance')
+            .eq('store_id', profile.store_id)
+        );
 
         if (clientError) console.error('Error fetching clients liability', clientError);
 
@@ -216,26 +223,30 @@ const Finance: React.FC = () => {
         if (topError) console.error('Error top products:', topError);
         setTopProducts(topData || []);
 
-        // 2. Fetch Fixed Expenses
-        const { data: expensesList } = await (supabase as any)
-          .from('fixed_expenses')
-          .select('*')
-          .eq('store_id', profile.store_id)
-          .gte('expense_date', dateRange.start.toISOString())
-          .lte('expense_date', dateRange.end.toISOString())
-          .order('expense_date', { ascending: false });
+        // 2. Fetch Fixed Expenses (with pagination limit)
+        const { data: expensesList } = await safeQuery(
+          (supabase as any)
+            .from('fixed_expenses')
+            .select('*')
+            .eq('store_id', profile.store_id)
+            .gte('expense_date', dateRange.start.toISOString())
+            .lte('expense_date', dateRange.end.toISOString())
+            .order('expense_date', { ascending: false })
+        );
 
         setFixedExpensesList(expensesList || []);
 
-        // 3. Fetch Loyalty Redemption Cost (COGS of redeemed rewards)
-        const { data: loyaltyData } = await (supabase as any)
-          .from('loyalty_transactions')
-          .select('monetary_cost')
-          .eq('store_id', profile.store_id)
-          .eq('type', 'burn')
-          .eq('is_rolled_back', false)
-          .gte('created_at', dateRange.start.toISOString())
-          .lte('created_at', dateRange.end.toISOString());
+        // 3. Fetch Loyalty Redemption Cost (COGS of redeemed rewards - with pagination limit)
+        const { data: loyaltyData } = await safeQuery(
+          (supabase as any)
+            .from('loyalty_transactions')
+            .select('monetary_cost')
+            .eq('store_id', profile.store_id)
+            .eq('type', 'burn')
+            .eq('is_rolled_back', false)
+            .gte('created_at', dateRange.start.toISOString())
+            .lte('created_at', dateRange.end.toISOString())
+        );
 
         const totalLoyaltyCost = (loyaltyData || []).reduce((sum: number, tx: any) => sum + (Number(tx.monetary_cost) || 0), 0);
         setMetrics(prev => ({ ...prev, loyaltyCost: totalLoyaltyCost }));
