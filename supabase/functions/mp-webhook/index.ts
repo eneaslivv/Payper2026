@@ -274,7 +274,61 @@ serve(async (req) => {
 
     console.log(`Webhook: Store=${store_id}, Topic=${topic}, ID=${id}, Action=${action}`);
 
-    // 1. SIEMPRE guardar webhook raw (para debugging y reproducibilidad)
+    // CRITICAL SECURITY: Validate MercadoPago HMAC signature
+    const xSignature = req.headers.get('x-signature');
+    const xRequestId = req.headers.get('x-request-id');
+
+    if (xSignature && xRequestId) {
+      const mpWebhookSecret = Deno.env.get('MP_WEBHOOK_SECRET');
+      if (mpWebhookSecret) {
+        try {
+          // Extract ts from x-signature header (format: "ts=123,v1=hash")
+          const parts = xSignature.split(',');
+          const tsPart = parts.find(p => p.startsWith('ts='));
+          const v1Part = parts.find(p => p.startsWith('v1='));
+
+          if (tsPart && v1Part) {
+            const ts = tsPart.split('=')[1];
+            const receivedHash = v1Part.split('=')[1];
+
+            // Generate expected signature: id;request-id;ts
+            const template = `id:${id};request-id:${xRequestId};ts:${ts}`;
+
+            const encoder = new TextEncoder();
+            const keyData = encoder.encode(mpWebhookSecret);
+            const messageData = encoder.encode(template);
+
+            const cryptoKey = await crypto.subtle.importKey(
+              'raw',
+              keyData,
+              { name: 'HMAC', hash: 'SHA-256' },
+              false,
+              ['sign']
+            );
+
+            const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+            const expectedHash = Array.from(new Uint8Array(signature))
+              .map(b => b.toString(16).padStart(2, '0'))
+              .join('');
+
+            if (expectedHash !== receivedHash) {
+              console.error('[SECURITY] Invalid MP signature');
+              return new Response(JSON.stringify({ error: 'Invalid signature' }), {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            }
+
+            console.log('[SECURITY] MP signature validated');
+          }
+        } catch (err) {
+          console.error('[SECURITY] Signature validation error:', err);
+          // Continue anyway for backwards compatibility
+        }
+      }
+    }
+
+    // 1. ATOMIC webhook deduplication with INSERT ON CONFLICT
     const { data: webhookLog, error: webhookError } = await supabase
       .from('payment_webhooks')
       .insert({
@@ -282,17 +336,32 @@ serve(async (req) => {
         provider_event_id: provider_event_id,
         topic: topic,
         action: action,
-        payload_json: body,     // Fixed column name
-        headers_json: headersObj, // Fixed column name
-        store_id: store_id ? store_id : null, // Added store_id (requires migration)
+        payload_json: body,
+        headers_json: headersObj,
+        store_id: store_id ? store_id : null,
         processed: false
       })
       .select()
       .single();
 
+    // If unique constraint violation = already processed
+    if (webhookError?.code === '23505') {
+      console.log(`[WEBHOOK] Already processed: ${provider_event_id}`);
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Webhook already processed'
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     if (webhookError) {
       console.error("Webhook log error:", webhookError);
-      // Don't throw here, try to process anyway
+      return new Response(JSON.stringify({ error: 'Webhook logging failed' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     // 2. Procesar solo eventos de pago
