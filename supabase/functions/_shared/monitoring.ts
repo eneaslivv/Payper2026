@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as Sentry from "https://deno.land/x/sentry@7.94.0/mod.ts";
+import * as Sentry from "https://deno.land/x/sentry@8.33.1/index.mjs";
 
 const SENTRY_DSN = Deno.env.get("SENTRY_DSN") || '';
 const SENTRY_ENVIRONMENT = Deno.env.get("SENTRY_ENV") || Deno.env.get("ENVIRONMENT") || 'unknown';
