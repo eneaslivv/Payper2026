@@ -79,7 +79,7 @@ export interface Table {
   shape: 'circle' | 'square';
   totalAmount: number;
   orders: OrderItem[]; // Items of the active order
-  activeOrderId?: string; // DB ID of the active order
+  activeOrderIds?: string[]; // Array of active order IDs (multi-order support)
   openedAt?: Date; // When the current session started
   reservedAt?: Date; // RESERVATION: when
   reservedFor?: string; // RESERVATION: who

@@ -141,7 +141,7 @@ const App: React.FC = () => {
             shape,
             totalAmount: node.current_total || 0,
             orders: [], // Will be populated by fetchActiveOrders
-            activeOrderId: node.active_order_id,
+            activeOrderIds: node.active_order_ids || [],
             openedAt: node.order_start_time ? new Date(node.order_start_time) : undefined,
             lastUpdate: new Date(node.updated_at || new Date())
           });

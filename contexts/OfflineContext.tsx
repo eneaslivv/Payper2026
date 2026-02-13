@@ -90,7 +90,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // Then, if online, fetch ACTIVE orders from server (Optimized)
       if (navigator.onLine && storeId) {
         try {
-          const { data: remoteOrders, error } = await supabase
+            const { data: remoteOrders, error } = await supabase
             .from('orders')
             .select(`
               id, 
@@ -106,6 +106,8 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
               table_number,
               archived_at,
               dispatch_station,
+              node_id,
+              node:venue_nodes(dispatch_station),
               client:clients(name, email), 
               items, 
               order_items(
@@ -160,7 +162,8 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
               order_number: ro.order_number,
               table_number: ro.table_number || undefined,
               archived_at: ro.archived_at || undefined,
-              dispatch_station: ro.dispatch_station || undefined,
+              node_id: (ro as any).node_id || undefined,
+              dispatch_station: ro.dispatch_station || (ro as any).node?.dispatch_station || undefined,
               created_at: ro.created_at,
               syncStatus: 'synced',
               lastModified: new Date(ro.created_at).getTime()
@@ -263,35 +266,36 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
               const newOrder = payload.new as any as SupabaseOrder;
 
               // Create immediate partial order to show right away
-              const immediateOrder: DBOrder = {
-                id: newOrder.id,
-                store_id: newOrder.store_id,
-                customer: (newOrder as any).customer_name || 'Nuevo Pedido...',
-                table: newOrder.table_number || undefined,
-                status: newOrder.status ? mapStatusFromSupabase(newOrder.status as any) : 'pending',
-                type: (newOrder.table_number || newOrder.node_id) ? 'dine-in' : 'takeaway',
-                paid: newOrder.is_paid || (newOrder as any).payment_status === 'approved' || (newOrder as any).payment_status === 'paid',
-                items: Array.isArray(newOrder.items) ? (newOrder.items as any[]).map((i) => ({
-                  id: i.id || i.product_id || 'unknown',
-                  name: i.name || 'Ítem',
-                  quantity: i.quantity || 1,
-                  price_unit: i.price_unit || i.price || 0,
-                  productId: i.id || i.product_id,
-                  inventory_items_to_deduct: []
-                })) : [],
-                amount: newOrder.total_amount || 0,
-                time: new Date(newOrder.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                paymentMethod: (newOrder as any).payment_method || undefined,
-                payment_provider: newOrder.payment_provider || undefined,
-                payment_status: newOrder.payment_status || undefined,
-                is_paid: newOrder.is_paid,
-                order_number: newOrder.order_number,
-                table_number: newOrder.table_number || undefined,
-                dispatch_station: newOrder.dispatch_station || undefined,
-                created_at: newOrder.created_at,
-                syncStatus: 'synced',
-                lastModified: new Date(newOrder.created_at).getTime()
-              };
+                const immediateOrder: DBOrder = {
+                  id: newOrder.id,
+                  store_id: newOrder.store_id,
+                  customer: (newOrder as any).customer_name || 'Nuevo Pedido...',
+                  table: newOrder.table_number || undefined,
+                  status: newOrder.status ? mapStatusFromSupabase(newOrder.status as any) : 'pending',
+                  type: (newOrder.table_number || newOrder.node_id) ? 'dine-in' : 'takeaway',
+                  paid: newOrder.is_paid || (newOrder as any).payment_status === 'approved' || (newOrder as any).payment_status === 'paid',
+                  items: Array.isArray(newOrder.items) ? (newOrder.items as any[]).map((i) => ({
+                    id: i.id || i.product_id || 'unknown',
+                    name: i.name || 'Ítem',
+                    quantity: i.quantity || 1,
+                    price_unit: i.price_unit || i.price || 0,
+                    productId: i.id || i.product_id,
+                    inventory_items_to_deduct: []
+                  })) : [],
+                  amount: newOrder.total_amount || 0,
+                  time: new Date(newOrder.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  paymentMethod: (newOrder as any).payment_method || undefined,
+                  payment_provider: newOrder.payment_provider || undefined,
+                  payment_status: newOrder.payment_status || undefined,
+                  is_paid: newOrder.is_paid,
+                  order_number: newOrder.order_number,
+                  table_number: newOrder.table_number || undefined,
+                  node_id: newOrder.node_id || undefined,
+                  dispatch_station: newOrder.dispatch_station || undefined,
+                  created_at: newOrder.created_at,
+                  syncStatus: 'synced',
+                  lastModified: new Date(newOrder.created_at).getTime()
+                };
 
               // Add immediately for instant visibility
               setOrders(prev => {
@@ -316,6 +320,8 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                   payment_provider,
                   is_paid,
                   dispatch_station,
+                  node_id,
+                  node:venue_nodes(dispatch_station),
                   client:clients(name, email),
                   items,
                   order_items(
@@ -365,7 +371,8 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                   is_paid: orderData.is_paid,
                   order_number: orderData.order_number,
                   table_number: orderData.table_number,
-                  dispatch_station: orderData.dispatch_station,
+                  node_id: orderData.node_id,
+                  dispatch_station: orderData.dispatch_station || orderData.node?.dispatch_station,
                   created_at: orderData.created_at,
                   syncStatus: 'synced',
                   lastModified: new Date(orderData.created_at).getTime()
@@ -403,6 +410,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                   .select(`
                     id, store_id, status, total_amount, created_at, order_number, table_number,
                     payment_status, payment_method, payment_provider, is_paid, dispatch_station,
+                    node_id, node:venue_nodes(dispatch_station),
                     client:clients(name, email), items,
                     order_items(id, quantity, unit_price, product_id, product:inventory_items(name))
                   `)
@@ -445,7 +453,8 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                     is_paid: orderData.is_paid,
                     order_number: orderData.order_number,
                     table_number: orderData.table_number,
-                    dispatch_station: orderData.dispatch_station,
+                    node_id: orderData.node_id,
+                    dispatch_station: orderData.dispatch_station || orderData.node?.dispatch_station,
                     created_at: orderData.created_at,
                     syncStatus: 'synced',
                     lastModified: Date.now()
@@ -536,9 +545,9 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!isOnline) return;
 
     try {
-      const { data: remoteOrder, error } = await supabase
+        const { data: remoteOrder, error } = await supabase
         .from('orders')
-        .select('*, client:clients(name, email), items, order_items(id, quantity, unit_price, product_id, product:inventory_items(name))')
+        .select('*, node:venue_nodes(dispatch_station), client:clients(name, email), items, order_items(id, quantity, unit_price, product_id, product:inventory_items(name))')
         .eq('id', orderId)
         .single();
 
@@ -577,7 +586,8 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         syncStatus: 'synced',
         lastModified: new Date(remoteOrder.created_at).getTime(),
         store_id: remoteOrder.store_id,
-        node_id: remoteOrder.node_id
+        node_id: remoteOrder.node_id,
+        dispatch_station: remoteOrder.dispatch_station || (remoteOrder as any).node?.dispatch_station
       };
 
       await dbOps.saveOrder(mappedOrder);
@@ -901,6 +911,8 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (event.type === 'CREATE_ORDER') {
           const order = event.payload as DBOrder;
           const storeIdForOrder = storeId || order.store_id || '';
+
+          // Use new RPC for offline sync with stock conflict detection
           const orderData = mapOrderToSupabase(order, storeIdForOrder);
           const resolvedNodeId = await resolveDefaultNodeId(orderData.node_id || null, storeIdForOrder || null);
 
@@ -908,26 +920,64 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
             orderData.node_id = resolvedNodeId;
           }
 
-          // Optimistically assume success if it's a duplicate key error (already synced)
-          const { error } = await supabase.from('orders').insert(orderData);
-          if (error && error.code !== '23505') throw error;
+          // Prepare items for sync
+          const itemsForSync = order.items.map(item => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            name: item.name,
+            price_unit: item.price_unit
+          }));
 
+          // Call new sync_offline_order RPC
+          const { data: syncResult, error: rpcError } = await supabase.rpc('sync_offline_order', {
+            p_order_data: {
+              id: order.id,
+              store_id: storeIdForOrder,
+              client_id: orderData.client_id,
+              status: orderData.status,
+              channel: orderData.channel,
+              total_amount: orderData.total_amount,
+              subtotal: orderData.subtotal,
+              items: itemsForSync,
+              payment_method: orderData.payment_method,
+              is_paid: orderData.is_paid,
+              created_at: orderData.created_at,
+              node_id: orderData.node_id,
+              table_number: orderData.table_number
+            },
+            p_allow_negative_stock: false
+          }) as { data: any, error: any };
 
-          // Items
-          if (order.items.length > 0) {
-            const itemsPayload = order.items.map(item => mapOrderItemToSupabase(item, order.id, storeId || ''));
-            const validItems = itemsPayload.filter(i => i.product_id);
-            if (validItems.length > 0) {
-              // Ignore duplicates just in case
-              const { error: itemsErr } = await supabase.from('order_items').upsert(validItems, { onConflict: 'id' });
-              // Note: we don't have IDs for items? mapOrderItemToSupabase removed ID.
-              // upsert without ID? default insert.
-              // Use insert.
-              const { error: itemsErr2 } = await supabase.from('order_items').insert(validItems);
-              if (itemsErr2) console.warn("Items sync warning", itemsErr2);
-            }
+          if (rpcError) throw rpcError;
+
+          const result = syncResult as { success: boolean, error?: string, conflicts?: any[], message?: string };
+
+          if (!result.success && result.error === 'INSUFFICIENT_STOCK') {
+            // Stock conflict detected - notify user and pause sync for this order
+            console.warn(`[Sync] Stock conflict for order ${order.id}:`, result.conflicts);
+
+            addToast(
+              'Conflicto de Stock Detectado',
+              'error',
+              `Orden ${order.order_number || order.id.slice(0, 8)} tiene stock insuficiente. Revisar manualmente.`
+            );
+
+            // Mark event as needing manual intervention
+            await dbOps.updateSyncEvent({
+              ...event,
+              retryCount: MAX_RETRIES, // Will be purged on next sync
+              lastError: `STOCK_CONFLICT: ${JSON.stringify(result.conflicts)}`
+            });
+
+            failedCount++;
+            continue;
           }
 
+          if (!result.success) {
+            throw new Error(result.message || 'Sync failed');
+          }
+
+          // Success
           await dbOps.saveOrder({ ...order, syncStatus: 'synced' });
 
         } else if (event.type === 'UPDATE_STATUS') {
