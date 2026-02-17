@@ -525,8 +525,8 @@ const BarDetail: React.FC<BarDetailProps> = ({
                 ) : (
                   <div className="space-y-3">
                     {/* Mock active orders - in production, fetch from DB */}
-                    {[1, 2, 3].slice(0, bar.metrics.activeOrders).map((_, i) => (
-                      <div key={i} className="bg-[#080808] border border-zinc-900 p-4 rounded-2xl flex items-center justify-between group hover:border-[#36e27b]/20 transition-all">
+                    {[1, 2, 3].slice(0, bar.metrics.activeOrders).map((orderNum, i) => (
+                      <div key={`mock-order-${bar.id}-${orderNum}-${i}`} className="bg-[#080808] border border-zinc-900 p-4 rounded-2xl flex items-center justify-between group hover:border-[#36e27b]/20 transition-all">
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
                             <Package size={16} />

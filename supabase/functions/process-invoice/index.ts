@@ -3,7 +3,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@0.21.0'
+import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@0.24.1'
 import { initMonitoring, captureException } from '../_shared/monitoring.ts'
 
 const FUNCTION_NAME = 'process-invoice'
@@ -94,7 +94,7 @@ serve(async (req) => {
         }
 
         const genAI = new GoogleGenerativeAI(geminiApiKey)
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' })
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro-latest' })
 
         // System prompt for Argentine invoice extraction (Spanish is required for the model context)
         const systemPrompt = `Eres un experto contable argentino especializado en OCR de facturas. 

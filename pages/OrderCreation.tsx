@@ -6,6 +6,7 @@ import { Product, OrderItem, Client, Table, Order } from '../types';
 import { useToast } from '../components/ToastSystem';
 import { useOffline } from '../contexts/OfflineContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useCashShift } from '../hooks/useCashShift';
 import { supabase } from '../lib/supabase';
 import PaymentQRModal from '../components/PaymentQRModal';
 
@@ -17,6 +18,7 @@ const OrderCreation: React.FC = () => {
   const { createOrder, isOnline } = useOffline();
   const [menuProducts, setMenuProducts] = useState<any[]>([]); // Real menu items from inventory
   const { profile } = useAuth();
+  const { hasOpenSession, getSessionForNode, activeSessions } = useCashShift();
   const [activeCategory, setActiveCategory] = useState('Todos');
   const [search, setSearch] = useState('');
   const [cart, setCart] = useState<OrderItem[]>([]);
@@ -360,7 +362,19 @@ const OrderCreation: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      // 0. QR Interception
+      // 0a. CASH SESSION VALIDATION - Require open caja
+      let resolvedSessionId: string | null = null;
+      if (isOnline) {
+        const session = await getSessionForNode(selectedTable?.id);
+        if (!session) {
+          addToast('CAJA CERRADA', 'error', 'No hay caja abierta. Abre una caja en Finanzas antes de vender.');
+          setIsSubmitting(false);
+          return;
+        }
+        resolvedSessionId = session.id;
+      }
+
+      // 0b. QR Interception
       if (paymentMethod === 'qr' && !force && !showQRModal) {
         setShowQRModal(true);
         setIsSubmitting(false); // Cancel submit lock until confirmed
@@ -413,6 +427,7 @@ const OrderCreation: React.FC = () => {
         client_email: selectedClient?.email, // Add if available
         table: tableNum,
         node_id: selectedTable?.id,
+        cash_session_id: resolvedSessionId, // FIX: Link order to active cash session
         status: isPaidOnCreation ? 'preparing' : 'pending', // Auto-advance if paid
         type: selectedTable ? 'dine-in' : 'takeaway',
         paid: isPaidOnCreation,
@@ -436,20 +451,38 @@ const OrderCreation: React.FC = () => {
       await createOrder(newOrder);
 
       // 3. Post-Creation Actions (Wallet Deduction)
-      // Note: If offline, this step might fail or need queueing. For now, we assume online for Wallet.
       if (paymentMethod === 'wallet' && selectedClient?.id) {
-        // Wait a brief moment for trigger propagation if needed, but RPC is direct
-        const { data: walletResult, error: walletError } = await supabase.rpc('pay_with_wallet' as any, {
-          p_client_id: selectedClient.id,
-          p_amount: total,
-          p_order_id: orderId
-        });
+        if (isOnline) {
+          const { data: walletResult, error: walletError } = await supabase.rpc('pay_with_wallet' as any, {
+            p_client_id: selectedClient.id,
+            p_amount: total,
+            p_order_id: orderId
+          });
 
-        if (walletError || !(walletResult as any)?.success) {
-          console.error('Wallet deduction error:', walletError);
-          addToast('AVISO', 'info', 'Pedido guardado, pero falló descuento de saldo');
+          if (walletError || !(walletResult as any)?.success) {
+            console.error('Wallet deduction error:', walletError);
+            addToast('AVISO', 'error', 'Pedido guardado, pero falló descuento de saldo. Se reintentará al sincronizar.');
+            // FIX 4: Queue wallet payment for offline retry
+            const walletEvent: import('../lib/db').SyncEvent = {
+              id: `evt-wallet-${Date.now()}-${Math.random()}`,
+              type: 'WALLET_PAYMENT',
+              payload: { clientId: selectedClient.id, amount: total, orderId },
+              timestamp: Date.now()
+            };
+            await import('../lib/db').then(m => m.dbOps.addToSyncQueue(walletEvent));
+          } else {
+            addToast('SALDO DESCONTADO', 'success', `Nuevo saldo: $${(walletResult as any)?.new_balance?.toFixed(2)}`);
+          }
         } else {
-          addToast('SALDO DESCONTADO', 'success', `Nuevo saldo: $${(walletResult as any)?.new_balance?.toFixed(2)}`);
+          // FIX 4: Offline - Queue wallet payment for sync
+          addToast('PAGO WALLET ENCOLADO', 'info', 'El saldo se descontará al volver online.');
+          const walletEvent: import('../lib/db').SyncEvent = {
+            id: `evt-wallet-${Date.now()}-${Math.random()}`,
+            type: 'WALLET_PAYMENT',
+            payload: { clientId: selectedClient.id, amount: total, orderId },
+            timestamp: Date.now()
+          };
+          await import('../lib/db').then(m => m.dbOps.addToSyncQueue(walletEvent));
         }
       }
 
@@ -726,7 +759,13 @@ const OrderCreation: React.FC = () => {
           </button>
           <div className="flex flex-col">
             <h2 className="text-base font-black italic uppercase text-white leading-none tracking-tighter">Despacho <span className="text-neon">Consola</span></h2>
-            <p className="text-[8px] font-bold text-white/30 uppercase tracking-widest mt-1">Terminal {selectedTable ? selectedTable.name : 'Alpha'} • ESC: Cancelar</p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-[8px] font-bold text-white/30 uppercase tracking-widest">Terminal {selectedTable ? selectedTable.name : 'Alpha'} • ESC: Cancelar</p>
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${hasOpenSession ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
+                <span className={`size-1.5 rounded-full ${hasOpenSession ? 'bg-green-400' : 'bg-red-400'}`}></span>
+                {hasOpenSession ? `Caja Abierta (${activeSessions.length})` : 'Sin Caja'}
+              </span>
+            </div>
           </div>
         </div>
         <button

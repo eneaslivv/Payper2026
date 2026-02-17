@@ -6,6 +6,8 @@ import { useAIContext } from '../hooks/useAIContext';
 interface Message {
   role: 'user' | 'model';
   text: string;
+  id?: string;
+  timestamp?: number;
 }
 
 const SHORTCUTS = [
@@ -28,7 +30,7 @@ REGLAS:
 const AIChat: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'model', text: 'SQUADAI COGNITIVE SYSTEM ONLINE. Esperando órdenes tácticas.' }
+    { role: 'model', text: 'SQUADAI COGNITIVE SYSTEM ONLINE. Esperando órdenes tácticas.', id: 'initial', timestamp: Date.now() }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -47,7 +49,12 @@ const AIChat: React.FC = () => {
     const textToSend = textOverride || input;
     if (!textToSend.trim() || isLoading) return;
 
-    const userMsg: Message = { role: 'user', text: textToSend };
+    const userMsg: Message = { 
+      role: 'user', 
+      text: textToSend, 
+      id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: Date.now()
+    };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsLoading(true);
@@ -74,10 +81,20 @@ const AIChat: React.FC = () => {
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
-      setMessages(prev => [...prev, { role: 'model', text: response.text() || 'Sin respuesta táctica.' }]);
+      setMessages(prev => [...prev, { 
+        role: 'model', 
+        text: response.text() || 'Sin respuesta táctica.',
+        id: `model-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        timestamp: Date.now()
+      }]);
     } catch (e: any) {
       console.error(e);
-      setMessages(prev => [...prev, { role: 'model', text: '⚠️ ERROR DE ENLACE: Verifique conexión y API Key.' }]);
+      setMessages(prev => [...prev, { 
+        role: 'model', 
+        text: '⚠️ ERROR DE ENLACE: Verifique conexión y API Key.',
+        id: `error-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        timestamp: Date.now()
+      }]);
     } finally {
       setIsLoading(false);
     }
@@ -147,8 +164,8 @@ const AIChat: React.FC = () => {
                 </div>
               </div>
 
-              {messages.map((m, i) => (
-                <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2 fade-in duration-300`}>
+              {messages.map((m) => (
+                <div key={m.id || `${m.role}-${m.timestamp || Date.now()}`} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2 fade-in duration-300`}>
                   <div className={`max-w-[85%] p-4 rounded-2xl text-[13px] md:text-sm font-medium leading-relaxed shadow-lg ${m.role === 'user'
                       ? 'bg-neon text-black rounded-tr-sm font-bold'
                       : 'bg-zinc-900 border border-white/10 text-zinc-300 rounded-tl-sm'
@@ -175,9 +192,9 @@ const AIChat: React.FC = () => {
               <div className="px-5 pb-2">
                 <p className="text-[9px] font-black text-zinc-600 uppercase tracking-[0.2em] mb-2 pl-1">Protocolos Rápidos</p>
                 <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-                  {SHORTCUTS.map((sc, i) => (
+                  {SHORTCUTS.map((sc) => (
                     <button
-                      key={i}
+                      key={`shortcut-${sc.label.replace(/\s+/g, '-').toLowerCase()}`}
                       onClick={() => handleSend(sc.prompt)}
                       className="whitespace-nowrap px-4 py-2 bg-white/5 border border-white/5 rounded-xl hover:bg-neon/10 hover:border-neon/30 hover:text-white text-[10px] font-black text-zinc-400 uppercase tracking-wider transition-all"
                     >

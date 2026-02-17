@@ -139,12 +139,41 @@ export const useCashShift = () => {
         return data;
     };
 
+    // 4. Get active session for a node (resolves zone automatically)
+    const getSessionForNode = async (nodeId?: string | null): Promise<CashSession | null> => {
+        if (!profile?.store_id) return null;
+
+        // If we have a node, try to find its zone and match to an open session
+        if (nodeId) {
+            try {
+                const { data: nodeData } = await supabase
+                    .from('venue_nodes')
+                    .select('zone_id')
+                    .eq('id', nodeId)
+                    .single();
+
+                if (nodeData?.zone_id) {
+                    const match = activeSessions.find(s => s.zone_id === nodeData.zone_id);
+                    if (match) return match;
+                }
+            } catch { /* fallthrough */ }
+        }
+
+        // Fallback: return any open session for this store
+        return activeSessions.length > 0 ? activeSessions[0] : null;
+    };
+
+    // 5. Check if ANY session is open for this store
+    const hasOpenSession = activeSessions.length > 0;
+
     return {
         zones,
         activeSessions,
         loading,
+        hasOpenSession,
         refreshData,
         openSession,
-        closeSession
+        closeSession,
+        getSessionForNode
     };
 };

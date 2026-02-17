@@ -341,7 +341,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                                 className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-white uppercase tracking-widest outline-none focus:border-neon transition-all"
                             >
                                 <option value="" disabled>Motivo...</option>
-                                {reasons[type].map(r => <option key={r} value={r}>{r}</option>)}
+                                {reasons[type].map((r, idx) => <option key={`reason-${type}-${idx}-${r}`} value={r}>{r}</option>)}
                             </select>
                         </div>
                     </div>

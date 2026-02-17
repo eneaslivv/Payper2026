@@ -60,7 +60,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete }) => 
       {/* Dynamic Progress Bar */}
       <div className="w-full px-12 pt-16 flex gap-3 z-50">
         {steps.map((s, i) => (
-          <div key={i} className="flex-1 h-[2px] rounded-full bg-white/5 relative overflow-hidden">
+          <div key={`onboarding-step-${s.id || s.title || i}`} className="flex-1 h-[2px] rounded-full bg-white/5 relative overflow-hidden">
             <div
               className={`absolute inset-0 transition-all duration-1000 cubic-bezier(0.4, 0, 0.2, 1)`}
               style={{
@@ -98,7 +98,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete }) => 
               <div className="relative w-64 h-64 flex items-center justify-center">
                 {[...Array(8)].map((_, i) => (
                   <div
-                    key={i}
+                    key={`float-particle-${i}`}
                     className="absolute w-2 h-3 rounded-full animate-kinetic-float"
                     style={{
                       backgroundColor: current.color,
@@ -125,7 +125,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({ onComplete }) => 
                     <div className="w-1/2 h-1 bg-white/10 rounded-full"></div>
                     <div className="grid grid-cols-4 gap-2">
                       {[...Array(12)].map((_, i) => (
-                        <div key={i} className={`aspect-square rounded-sm ${Math.random() > 0.6 ? 'bg-white/10' : 'bg-transparent border border-white/5'}`}></div>
+                        <div key={`grid-item-${i}`} className={`aspect-square rounded-sm ${i % 3 === 0 || i % 7 === 0 ? 'bg-white/10' : 'bg-transparent border border-white/5'}`}></div>
                       ))}
                     </div>
                     <div className="space-y-2">

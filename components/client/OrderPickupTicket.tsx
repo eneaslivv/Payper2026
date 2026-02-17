@@ -368,7 +368,7 @@ export const OrderPickupTicket = ({ order, storeSlug, theme, allowDisconnect, ta
                     <div className="mt-6 pt-6 w-full" style={{ borderTop: `1px solid ${textColor}1A` }}>
                         <div className="flex flex-col gap-3">
                             {order.order_items?.map((item, idx) => (
-                                <div key={idx} className="flex justify-between items-center text-sm">
+                                <div key={`ticket-item-${item.name || item.product?.name || idx}`} className="flex justify-between items-center text-sm">
                                     <span className="font-bold" style={{ color: `${textColor}99` }}>
                                         {item.quantity}x{' '}
                                         <span style={{

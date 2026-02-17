@@ -116,7 +116,7 @@ const SmartInsights: React.FC<SmartInsightsProps> = ({ storeId }) => {
                     <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
                         <h4 className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-4">Productos Estrella</h4>
                         {analysis.starProducts.slice(0, 5).map((prod, idx) => (
-                            <div key={idx} className="group/prod">
+                            <div key={`star-product-${prod.name || idx}`} className="group/prod">
                                 <div className="flex justify-between items-end mb-1">
                                     <span className="text-[10px] font-bold text-white uppercase tracking-tight truncate max-w-[180px]">{prod.name}</span>
                                     <span className="text-[9px] font-bold text-accent">{prod.quantity} u.</span>
@@ -142,7 +142,7 @@ const SmartInsights: React.FC<SmartInsightsProps> = ({ storeId }) => {
                             </div>
                         ) : (
                             analysis.tablePerformance.slice(0, 4).map((table, idx) => (
-                                <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/5">
+                                <div key={`table-performance-${table.tableName || idx}`} className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/5">
                                     <div className="flex items-center gap-3">
                                         <div className="size-8 rounded bg-white/5 flex items-center justify-center text-[10px] font-black text-white">
                                             {table.tableName.substring(0, 2).toUpperCase()}
@@ -172,7 +172,7 @@ const SmartInsights: React.FC<SmartInsightsProps> = ({ storeId }) => {
                             </div>
                         ) : (
                             analysis.stockPredictions.slice(0, 4).map((pred, idx) => (
-                                <div key={idx} className="p-3 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-all group/pred relative overflow-hidden">
+                                <div key={`stock-prediction-${pred.productName || idx}`} className="p-3 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-all group/pred relative overflow-hidden">
                                     <div className={`absolute left-0 top-0 bottom-0 w-0.5 ${pred.riskLevel === 'HIGH' ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' :
                                         pred.riskLevel === 'MEDIUM' ? 'bg-amber-500' : 'bg-emerald-500'
                                         }`}></div>

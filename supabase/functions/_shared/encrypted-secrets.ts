@@ -49,7 +49,10 @@ export async function getMPAccessToken(
     }
 
     // Fallback to plaintext (during migration)
-    console.warn('[getMPAccessToken] Using plaintext token (not encrypted yet)');
+    const isDev = Deno.env.get('ENVIRONMENT') === 'development' || Deno.env.get('SUPABASE_DB_URL')?.includes('localhost');
+    if (isDev) {
+      console.warn('[getMPAccessToken] Using plaintext token (migration mode)');
+    }
     return store.mp_access_token || null;
 
   } catch (error) {
@@ -92,7 +95,10 @@ export async function getMPRefreshToken(
       return decrypted as string;
     }
 
-    console.warn('[getMPRefreshToken] Using plaintext token (not encrypted yet)');
+    const isDev = Deno.env.get('ENVIRONMENT') === 'development' || Deno.env.get('SUPABASE_DB_URL')?.includes('localhost');
+    if (isDev) {
+      console.warn('[getMPRefreshToken] Using plaintext token (migration mode)');
+    }
     return store.mp_refresh_token || null;
 
   } catch (error) {
@@ -173,7 +179,10 @@ export async function storeMPTokens(
       .update({ mp_tokens_encrypted: true })
       .eq('id', storeId);
 
-    console.log('[storeMPTokens] Successfully stored encrypted tokens for store:', storeId);
+    const isDev = Deno.env.get('ENVIRONMENT') === 'development' || Deno.env.get('SUPABASE_DB_URL')?.includes('localhost');
+    if (isDev) {
+      console.log('[storeMPTokens] Successfully stored encrypted tokens for store:', storeId);
+    }
     return true;
 
   } catch (error) {

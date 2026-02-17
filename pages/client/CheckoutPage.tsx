@@ -102,12 +102,18 @@ const CheckoutPage: React.FC = () => {
       // Include session_id for full session tracking
       const sessionId = localStorage.getItem('client_session_id') || null;
 
+      // Security: Only use QR node_id if context belongs to THIS store
+      const safeQrContext = qrContext?.store_id === store.id ? qrContext : null;
+      if (qrContext && !safeQrContext) {
+        console.warn('[Checkout Security] QR context store mismatch, ignoring node_id');
+      }
+
       const orderPayload: any = {
         store_id: store.id,
         client_id: user?.id || null,
         table_number: deliveryMode === 'local' ? currentTable : currentBar,
         delivery_mode: deliveryMode,
-        channel: orderChannel || 'qr', // Use channel from QR context
+        channel: orderChannel || 'qr',
         payment_method: paymentMethod,
         payment_provider: paymentMethod === 'mercadopago' ? 'mercadopago' : 'wallet',
         items: cart.map(item => ({
@@ -120,10 +126,8 @@ const CheckoutPage: React.FC = () => {
         delivery_status: 'pending',
         payment_status: 'pending',
         is_paid: false,
-        // Link to venue node if QR was scanned (mesa, barra, zona)
-        node_id: qrContext?.node_id || null,
-        location_identifier: qrTableLabel || null,
-        // Session tracking (NEW)
+        node_id: safeQrContext?.node_id || null,
+        location_identifier: safeQrContext ? qrTableLabel : null,
         session_id: sessionId
       };
 

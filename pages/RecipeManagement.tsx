@@ -62,7 +62,7 @@ const RecipeManagement: React.FC = () => {
                     const ing = MOCK_INVENTORY.find(i => i.id === item.ingredient_id);
                     const hasStock = ing && ing.current_stock >= item.quantity_required;
                     return (
-                      <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-background-light dark:bg-white/5 border border-transparent">
+                      <div key={`recipe-item-${item.ingredient_id || idx}`} className="flex items-center justify-between p-3 rounded-xl bg-background-light dark:bg-white/5 border border-transparent">
                         <div className="flex items-center gap-3">
                           <div className={`size-2 rounded-full ${hasStock ? 'bg-green-500' : 'bg-primary'}`}></div>
                           <span className="text-sm font-bold">{ing?.name}</span>

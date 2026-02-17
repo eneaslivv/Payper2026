@@ -62,6 +62,7 @@ export const mapOrderToSupabase = (order: Order, storeId: string): SupabaseOrder
         status: mapStatusToSupabase(order.status),
         node_id: nodeId,
         session_id: sessionId,
+        cash_session_id: (order as any).cash_session_id || null, // FIX: Link to cash session
         payment_status: order.payment_status || 'pending',
         payment_method: order.paymentMethod || null,
         payment_provider: order.payment_provider || null,

@@ -1,5 +1,7 @@
 
 import { createClient } from '@supabase/supabase-js';
+import { rateLimit, RATE_LIMITS } from '../lib/rateLimit.js';
+import { validateMPWebhook } from '../lib/mercadoPagoSecurity.js';
 
 export default async function handler(req, res) {
     // CORS Configuration
@@ -16,10 +18,40 @@ export default async function handler(req, res) {
         return;
     }
 
+    // Rate limiting - critical payment endpoint
+    const clientIP = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.connection.remoteAddress || 'unknown';
+    const rateLimitResult = await rateLimit(
+        clientIP, 
+        RATE_LIMITS.PAYMENT_VERIFICATION.limit, 
+        RATE_LIMITS.PAYMENT_VERIFICATION.window, 
+        'payment_verify'
+    );
+
+    res.set({
+        'X-RateLimit-Limit': RATE_LIMITS.PAYMENT_VERIFICATION.limit,
+        'X-RateLimit-Remaining': rateLimitResult.remaining,
+        'X-RateLimit-Reset': new Date(rateLimitResult.resetTime).toISOString()
+    });
+
+    if (!rateLimitResult.success) {
+        console.warn(`[verify-payment] Rate limit exceeded for IP: ${clientIP}`);
+        return res.status(429).json({
+            error: 'Too Many Requests',
+            message: `Rate limit exceeded. Try again in ${Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)} seconds`,
+            retryAfter: Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)
+        });
+    }
+
     console.log('[verify-payment] ===== START =====');
     console.log('[verify-payment] Method:', req.method);
     console.log('[verify-payment] Body:', JSON.stringify(req.body));
     console.log('[verify-payment] Query:', JSON.stringify(req.query));
+    console.log('[verify-payment] Headers:', JSON.stringify({
+        'x-signature': req.headers['x-signature'],
+        'x-signature-v1': req.headers['x-signature-v1'],
+        'user-agent': req.headers['user-agent'],
+        'x-forwarded-for': req.headers['x-forwarded-for']
+    }));
 
     try {
         // Accept order_id from body OR external_reference from query (MP redirect)
@@ -102,6 +134,32 @@ export default async function handler(req, res) {
         }
 
         console.log('[verify-payment] MP Token found (length:', store.mp_access_token.length, ')');
+
+        // 3.5. Webhook Signature Validation (if this request came from MP)
+        const hasSignature = req.headers['x-signature'] || req.headers['x-signature-v1'];
+        if (hasSignature) {
+            console.log('[verify-payment] Webhook signature detected - validating...');
+            
+            // Use MP access token as webhook secret (MP default behavior)
+            const webhookValidation = validateMPWebhook(req, store.mp_access_token);
+            
+            if (!webhookValidation.isValid) {
+                console.error('[verify-payment] Webhook validation failed:', webhookValidation.errors);
+                throw new Error('Invalid webhook signature: ' + webhookValidation.errors.join(', '));
+            }
+
+            if (webhookValidation.warnings.length > 0) {
+                console.warn('[verify-payment] Webhook warnings:', webhookValidation.warnings);
+            }
+
+            console.log('[verify-payment] Webhook signature validated successfully');
+            
+            // Use validated payment ID from webhook
+            if (webhookValidation.paymentId && !payment_id) {
+                payment_id = webhookValidation.paymentId;
+                console.log('[verify-payment] Using payment_id from validated webhook:', payment_id);
+            }
+        }
 
         // 4. Verify with Mercado Pago
         // Option A: If we have payment_id, fetch that specific payment

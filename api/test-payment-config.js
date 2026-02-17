@@ -1,9 +1,33 @@
 
 import { createClient } from '@supabase/supabase-js';
+import { rateLimit, RATE_LIMITS } from '../lib/rateLimit.js';
 
 export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/json');
+
+    // Rate limiting for config endpoint
+    const clientIP = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.connection.remoteAddress || 'unknown';
+    const rateLimitResult = await rateLimit(
+        clientIP, 
+        RATE_LIMITS.PAYMENT_CONFIG.limit, 
+        RATE_LIMITS.PAYMENT_CONFIG.window, 
+        'payment_config'
+    );
+
+    res.set({
+        'X-RateLimit-Limit': RATE_LIMITS.PAYMENT_CONFIG.limit,
+        'X-RateLimit-Remaining': rateLimitResult.remaining,
+        'X-RateLimit-Reset': new Date(rateLimitResult.resetTime).toISOString()
+    });
+
+    if (!rateLimitResult.success) {
+        return res.status(429).json({
+            error: 'Too Many Requests',
+            message: 'Rate limit exceeded for config endpoint',
+            retryAfter: Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)
+        });
+    }
 
     const results = {
         timestamp: new Date().toISOString(),

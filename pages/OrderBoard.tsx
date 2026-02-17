@@ -633,7 +633,7 @@ const OrderBoard: React.FC = () => {
                     <p className="text-white/40 text-[10px] italic">No hay productos registrados en esta orden.</p>
                   ) : (
                     selectedOrder.items.map((item, idx) => (
-                      <div key={idx} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex justify-between items-start">
+                      <div key={`order-item-${item.product_id || item.name || idx}`} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex justify-between items-start">
                         <div className="flex gap-3">
                           <span className="size-6 rounded bg-neon/10 text-neon flex items-center justify-center font-black text-[10px] shrink-0">{item.quantity}x</span>
                           <div className="flex flex-col">
@@ -974,7 +974,7 @@ const Column: React.FC<{
                 {order.items && order.items.length > 0 ? (
                   <>
                     {order.items.slice(0, 3).map((item, idx) => (
-                      <div key={idx} className="flex justify-between items-center p-1.5 rounded bg-white/[0.03] border border-white/5">
+                      <div key={`preview-item-${order.id}-${item.product_id || item.name || idx}`} className="flex justify-between items-center p-1.5 rounded bg-white/[0.03] border border-white/5">
                         <span className="text-[9px] font-bold text-white uppercase tracking-tight truncate max-w-[150px]">{item.name}</span>
                         <span className="text-xs font-black text-neon leading-none">x{item.quantity}</span>
                       </div>

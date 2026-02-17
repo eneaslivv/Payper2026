@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { dbOps, DBOrder, SyncEvent } from '../lib/db';
+import { dbOps, DBOrder, SyncEvent, FailedSyncEvent } from '../lib/db';
 import { Order, OrderStatus, Product, SupabaseOrder, SupabaseProduct } from '../types';
 import { useToast } from '../components/ToastSystem';
 import { MOCK_ORDERS, MOCK_PRODUCTS } from '../constants';
@@ -195,8 +195,11 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       }
 
-      // 2. Load Products
+      // 2. Load Products (filtered by store_id to prevent cross-store leaks)
       let localProducts = await dbOps.getAllProducts();
+      if (storeId) {
+        localProducts = localProducts.filter((p: any) => !p.store_id || p.store_id === storeId);
+      }
 
       // If online and have store_id, Try to fetch latest products from Supabase
       if (navigator.onLine && storeId) {
@@ -553,6 +556,12 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (error || !remoteOrder) throw error;
 
+      // Security: Verify order belongs to current store
+      if (storeId && remoteOrder.store_id !== storeId) {
+        console.warn('[syncOrder] Store mismatch - ignoring order', orderId);
+        return;
+      }
+
       const mappedOrder: DBOrder = {
         id: remoteOrder.id,
         customer: (remoteOrder as any).client?.name || 'Cliente',
@@ -899,13 +908,43 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     for (const event of queue) {
       const retryCount = event.retryCount || 0;
 
-      // START FIX: Auto-purge events that are truly stuck to stop the annoying warning
+      // FIX 5: Move stuck events to failed_sync_events instead of purging
       if (retryCount >= MAX_RETRIES) {
-        console.warn(`[Sync] PURGING stuck event ${event.id} - exceeded max retries (${MAX_RETRIES})`);
-        await dbOps.removeSyncEvent(event.id); // DELETE IT
+        console.warn(`[Sync] Moving stuck event ${event.id} to failed_sync_events (max retries: ${MAX_RETRIES})`);
+        const failedEvent: FailedSyncEvent = {
+          id: event.id,
+          event_type: event.type,
+          payload: event.payload,
+          error_message: event.lastError || 'Max retries exceeded',
+          retry_count: retryCount,
+          created_at: event.timestamp,
+          store_id: storeId || undefined
+        };
+        await dbOps.addFailedSyncEvent(failedEvent);
+        await dbOps.removeSyncEvent(event.id);
+
+        // Also persist to Supabase if online
+        if (navigator.onLine && storeId) {
+          try {
+            await supabase.from('failed_sync_events').insert({
+              store_id: storeId,
+              event_type: event.type,
+              payload: event.payload,
+              error_message: event.lastError || 'Max retries exceeded',
+              retry_count: retryCount
+            });
+          } catch (e) {
+            console.error('[Sync] Failed to persist failed event to Supabase:', e);
+          }
+        }
+
+        addToast(
+          'Evento movido a Fallidos',
+          'error',
+          `Revisa "Eventos Fallidos" en Finanzas para resolver manualmente.`
+        );
         continue;
       }
-      // END FIX
 
       try {
         if (event.type === 'CREATE_ORDER') {
@@ -985,9 +1024,12 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         } else if (event.type === 'UPDATE_STATUS') {
           const { orderId, status } = event.payload;
-          const { error } = await supabase.from('orders')
+          // Security: scope update to current store
+          let query = supabase.from('orders')
             .update({ status: mapStatusToSupabase(status) as any })
             .eq('id', orderId);
+          if (storeId) query = query.eq('store_id', storeId);
+          const { error } = await query;
           if (error) throw error;
 
           const currentOrders = await dbOps.getAllOrders();
@@ -995,6 +1037,12 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
           if (order) await dbOps.saveOrder({ ...order, syncStatus: 'synced' });
         } else if (event.type === 'CONFIRM_DELIVERY') {
           const { orderId, staffId, storeId: eventStoreId } = event.payload;
+          // Security: Skip if event belongs to a different store
+          if (eventStoreId && storeId && eventStoreId !== storeId) {
+            console.warn('[Sync] Store mismatch in CONFIRM_DELIVERY, skipping', { eventStoreId, storeId });
+            await dbOps.removeSyncEvent(event.id!);
+            return;
+          }
           // @ts-ignore
           const { data, error } = await supabase.rpc('confirm_order_delivery', {
             p_order_id: orderId,
@@ -1007,6 +1055,20 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
             const order = currentOrders.find(o => o.id === orderId);
             if (order) await dbOps.saveOrder({ ...order, syncStatus: 'synced' });
           }
+        } else if (event.type === 'WALLET_PAYMENT') {
+          // FIX 4: Process queued wallet payment
+          const { clientId, amount, orderId } = event.payload;
+          const { data: walletResult, error: walletError } = await supabase.rpc('pay_with_wallet' as any, {
+            p_client_id: clientId,
+            p_amount: amount,
+            p_order_id: orderId
+          });
+          if (walletError) throw walletError;
+          const result = walletResult as any;
+          if (!result?.success) {
+            throw new Error(result?.error || 'Wallet payment failed');
+          }
+          addToast('SALDO DESCONTADO (sync)', 'success', `Pago de $${amount} procesado`);
         }
 
         // Remove from queue on success

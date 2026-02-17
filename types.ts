@@ -359,6 +359,7 @@ export interface Order {
   activity?: OrderActivity[];
   table?: string;
   node_id?: string;
+  cash_session_id?: string | null; // FIX: Link order to active cash session
   paymentMethod?: string;
   order_number?: number;
   table_number?: string; // Consistency with DBOrder

@@ -375,8 +375,8 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const loadContext = async () => {
             const ctx = getQRContext();
 
-            if (ctx && ctx.store_slug === slug) {
-                // Context matches this store - use it
+            if (ctx && ctx.store_slug === slug && (!store?.id || ctx.store_id === store.id)) {
+                // Context matches this store (slug + store_id) - use it
                 setQRContextState(ctx);
                 setOrderChannel(ctx.channel);
                 setTableLabel(ctx.node_label);

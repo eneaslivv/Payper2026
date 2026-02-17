@@ -166,7 +166,7 @@ const ProductPage: React.FC = () => {
                   {v.recipe_overrides && v.recipe_overrides.length > 0 && (
                     <div className="mt-2 space-y-0.5">
                       {v.recipe_overrides.map((ov, i) => (
-                        <div key={i} className="text-[7px] font-bold uppercase tracking-tighter" style={{ color: `${textColor}33` }}>
+                        <div key={`recipe-override-${ov.ingredient_id || i}`} className="text-[7px] font-bold uppercase tracking-tighter" style={{ color: `${textColor}33` }}>
                           {ov.quantity_delta > 0 ? '+' : ''}{ov.quantity_delta} impacto stock
                         </div>
                       ))}

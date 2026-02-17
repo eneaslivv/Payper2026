@@ -533,7 +533,7 @@ const Finance: React.FC = () => {
             <div className="space-y-3">
               {topProducts.length > 0 ? (
                 topProducts.map((prod, idx) => (
-                  <div key={idx} className="flex justify-between items-center p-3 rounded-xl bg-white/5 border border-white/5">
+                  <div key={`top-product-${prod.name}-${idx}`} className="flex justify-between items-center p-3 rounded-xl bg-white/5 border border-white/5">
                     <div className="flex items-center gap-3">
                       <span className={`text-lg font-black ${idx === 0 ? 'text-neon' : 'text-white/40'}`}>#{idx + 1}</span>
                       <div>

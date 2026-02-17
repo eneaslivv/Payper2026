@@ -128,6 +128,20 @@ export function isContextForStore(slug: string): boolean {
 }
 
 /**
+ * Get QR context only if it belongs to the given store (by UUID)
+ * Returns null if context is for a different store - prevents cross-store attacks
+ */
+export function getQRContextForStore(storeId: string): QRContext | null {
+    const ctx = getQRContext();
+    if (!ctx) return null;
+    if (ctx.store_id !== storeId) {
+        console.warn('[QR Security] Context store_id mismatch:', ctx.store_id, '!==', storeId);
+        return null;
+    }
+    return ctx;
+}
+
+/**
  * Get remaining time in context (for display)
  */
 export function getRemainingTime(ctx: QRContext): { minutes: number; seconds: number } {

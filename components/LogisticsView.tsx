@@ -411,7 +411,7 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
                                                     const textColor = percentage > 50 ? 'text-green-500' : percentage > 20 ? 'text-amber-500' : 'text-red-500';
 
                                                     return (
-                                                        <div key={idx} className="flex flex-col items-end gap-0.5 mt-1 text-right">
+                                                        <div key={`pkg-${stock.item_id}-${idx}-${pkg.id || pkg.remaining}`} className="flex flex-col items-end gap-0.5 mt-1 text-right">
                                                             <div className="flex items-center gap-1.5 whitespace-nowrap">
                                                                 <span className="text-[10px] font-bold text-white uppercase tracking-tight">
                                                                     #{idx + 1}

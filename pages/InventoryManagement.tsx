@@ -1924,10 +1924,10 @@ const InventoryManagement: React.FC = () => {
 
                     {/* Ingredients */}
                     <div className="p-4 space-y-2">
-                      {recipeItems.map((r, idx) => {
+                      {recipeItems.map((r) => {
                         const ingredient = items.find(i => i.id === r.inventory_item_id);
                         return (
-                          <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-white/[0.02]">
+                          <div key={`recipe-${r.inventory_item_id}-${r.quantity_required}`} className="flex items-center justify-between p-2 rounded-lg bg-white/[0.02]">
                             <span className="text-[10px] font-bold text-white/70">{ingredient?.name || 'Insumo'}</span>
                             <span className="text-[10px] font-black text-neon">{r.quantity_required} {ingredient?.unit_type}</span>
                           </div>
@@ -2148,7 +2148,7 @@ const InventoryManagement: React.FC = () => {
                                     {/* Visual helper dots */}
                                     <div className="flex gap-0.5 pl-6">
                                       {Array.from({ length: Math.min(totalOpen, 5) }).map((_, i) => (
-                                        <div key={i} className="size-1.5 rounded-full bg-orange-500/50"></div>
+                                        <div key={`dot-${item.id}-${i}`} className="size-1.5 rounded-full bg-orange-500/50"></div>
                                       ))}
                                       {totalOpen > 5 && <span className="text-[6px] text-white/30">+</span>}
                                     </div>
@@ -2780,15 +2780,15 @@ const InventoryManagement: React.FC = () => {
                           <div className="flex-1 h-px bg-white/10"></div>
                         </div>
                         <div className="space-y-2">
-                          {availability.variantsStatus.map((variant, idx) => (
-                            <div key={idx} className="p-3 rounded-xl bg-white/5 border border-white/10">
+                          {availability.variantsStatus.map((variant) => (
+                            <div key={`variant-${variant.name}-${variant.ingredients.length}`} className="p-3 rounded-xl bg-white/5 border border-white/10">
                               <div className="flex items-start gap-2 mb-2">
                                 <span className="text-base">{variant.isResolvable ? '✔' : '✖'}</span>
                                 <div className="flex-1">
                                   <p className="text-[10px] font-black text-white uppercase">{variant.name}</p>
                                   <div className="mt-2 space-y-1">
-                                    {variant.ingredients.map((ing, ingIdx) => (
-                                      <div key={ingIdx} className="text-[8px] font-medium text-white/60 flex items-center gap-1.5">
+                                    {variant.ingredients.map((ing) => (
+                                      <div key={`ingredient-${variant.name}-${ing.name}-${ing.required}`} className="text-[8px] font-medium text-white/60 flex items-center gap-1.5">
                                         <span>{ing.hasStock ? (ing.isCritical ? '⚠️' : '✓') : '❌'}</span>
                                         <span>{ing.name}</span>
                                         {ing.isCritical && ing.hasStock && (
@@ -2927,12 +2927,12 @@ const InventoryManagement: React.FC = () => {
                       );
                     })()}
 
-                    {selectedItem.recipe?.map((comp, idx) => {
+                    {selectedItem.recipe?.map((comp) => {
                       const insumo = items.find(i => i.id === comp.ingredientId);
                       if (!insumo) return null;
                       const stockStatus = insumo.current_stock > comp.quantity * 10 ? 'ok' : insumo.current_stock > comp.quantity * 3 ? 'warning' : 'critical';
                       return (
-                        <div key={idx} className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex justify-between items-center group hover:bg-white/[0.04] transition-all">
+                        <div key={`recipe-detail-${comp.ingredientId}-${comp.quantity}`} className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex justify-between items-center group hover:bg-white/[0.04] transition-all">
                           <div className="flex items-center gap-4">
                             <img src={insumo.image_url} className="size-10 rounded-xl object-cover grayscale group-hover:grayscale-0 transition-all" />
                             <div>

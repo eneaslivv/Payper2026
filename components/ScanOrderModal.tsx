@@ -602,7 +602,7 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
                                 <div className="bg-black/20 rounded-xl p-3 max-h-[150px] overflow-y-auto custom-scrollbar space-y-2">
                                     {scannedOrder.order_items && scannedOrder.order_items.length > 0 ? (
                                         scannedOrder.order_items.map((item: any, idx: number) => (
-                                            <div key={idx} className="flex justify-between text-sm py-1 border-b border-white/5 last:border-0 items-center">
+                                            <div key={`order-item-${item.id || item.product_id || `${item.name}-${idx}`}`} className="flex justify-between text-sm py-1 border-b border-white/5 last:border-0 items-center">
                                                 <div className="flex items-center gap-2 flex-1">
                                                     <span className="size-5 rounded bg-white/10 flex items-center justify-center text-[10px] font-black text-white">{item.quantity}</span>
                                                     <span className="text-white/80 font-medium text-xs truncate max-w-[180px]">
@@ -680,7 +680,7 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
                             <div className="bg-black/20 rounded-xl p-3 max-h-[150px] overflow-y-auto custom-scrollbar space-y-2 mb-2">
                                 {scannedOrder.order_items && scannedOrder.order_items.length > 0 ? (
                                     scannedOrder.order_items.map((item: any, idx: number) => (
-                                        <div key={idx} className="flex justify-between text-sm py-1 border-b border-white/5 last:border-0 items-center">
+                                        <div key={`scan-item-${item.id || item.product_id || `${item.name}-${idx}`}`} className="flex justify-between text-sm py-1 border-b border-white/5 last:border-0 items-center">
                                             <div className="flex items-center gap-2 flex-1">
                                                 <span className="size-5 rounded bg-white/10 flex items-center justify-center text-[10px] font-black text-white">{item.quantity}</span>
                                                 <span className="text-white/80 font-medium text-xs truncate max-w-[180px]">

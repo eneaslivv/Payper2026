@@ -2,7 +2,7 @@
 import { Order } from '../types';
 
 const DB_NAME = 'CoffeeSquadDB';
-const DB_VERSION = 3; // Incremented to add new stores
+const DB_VERSION = 4; // v4: Added failed_sync_events store
 
 export interface DBOrder extends Order {
   syncStatus: 'synced' | 'pending';
@@ -15,11 +15,21 @@ export interface DBOrder extends Order {
 
 export interface SyncEvent {
   id: string;
-  type: 'CREATE_ORDER' | 'UPDATE_STATUS' | 'CANCEL_ORDER' | 'CONFIRM_DELIVERY' | 'UPDATE_VENUE_NODE';
+  type: 'CREATE_ORDER' | 'UPDATE_STATUS' | 'CANCEL_ORDER' | 'CONFIRM_DELIVERY' | 'UPDATE_VENUE_NODE' | 'WALLET_PAYMENT';
   payload: any;
   timestamp: number;
   retryCount?: number;
   lastError?: string;
+}
+
+export interface FailedSyncEvent {
+  id: string;
+  event_type: string;
+  payload: any;
+  error_message: string;
+  retry_count: number;
+  created_at: number;
+  store_id?: string;
 }
 
 export interface CachedVenueNode {
@@ -92,6 +102,12 @@ export const initDB = (): Promise<IDBDatabase> => {
       if (!db.objectStoreNames.contains('inventory_items')) {
         const invStore = db.createObjectStore('inventory_items', { keyPath: 'id' });
         invStore.createIndex('store_id', 'store_id', { unique: false });
+      }
+
+      // v4: Store for Failed Sync Events (persistent, not purged)
+      if (!db.objectStoreNames.contains('failed_sync_events')) {
+        const failedStore = db.createObjectStore('failed_sync_events', { keyPath: 'id' });
+        failedStore.createIndex('store_id', 'store_id', { unique: false });
       }
     };
   });
@@ -333,6 +349,47 @@ export const dbOps = {
       const transaction = db.transaction('sync_queue', 'readwrite');
       const store = transaction.objectStore('sync_queue');
       const request = store.put(event);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  },
+
+  // --- FAILED SYNC EVENTS (persistent, not purged) ---
+  async addFailedSyncEvent(event: FailedSyncEvent): Promise<void> {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('failed_sync_events', 'readwrite');
+      const store = transaction.objectStore('failed_sync_events');
+      const request = store.put(event);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  },
+
+  async getFailedSyncEvents(storeId?: string): Promise<FailedSyncEvent[]> {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('failed_sync_events', 'readonly');
+      const store = transaction.objectStore('failed_sync_events');
+      if (storeId) {
+        const index = store.index('store_id');
+        const request = index.getAll(storeId);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      } else {
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      }
+    });
+  },
+
+  async removeFailedSyncEvent(id: string): Promise<void> {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('failed_sync_events', 'readwrite');
+      const store = transaction.objectStore('failed_sync_events');
+      const request = store.delete(id);
       request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
     });
