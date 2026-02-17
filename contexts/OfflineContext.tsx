@@ -661,19 +661,51 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
           }
         }
 
-        const { error } = await supabase.from('orders').insert(orderData);
-        if (error) throw error;
+        // P0 FIX: Use atomic RPC instead of separate INSERT + wallet calls
+        const itemsPayload = newOrder.items
+          .filter((item: any) => item.productId)
+          .map((item: any) => ({
+            product_id: item.productId,
+            variant_id: item.variant_id || null,
+            quantity: item.quantity,
+            unit_price: item.price_unit || item.price || 0,
+            notes: item.notes || item.note || null,
+            addon_ids: item.addon_ids || [],
+            addon_prices: item.addons?.map((a: any) => ({ id: a.id, price: a.price })) || []
+          }));
 
-        // Sync Items
-        if (newOrder.items.length > 0) {
-          const itemsPayload = newOrder.items.map(item => mapOrderItemToSupabase(item, newOrder.id, storeId || ''));
-          // Filter out items without productId if necessary, or let it fail
-          const validItems = itemsPayload.filter(i => i.product_id);
-          if (validItems.length > 0) {
-            const { error: itemsErr } = await supabase.from('order_items').insert(validItems);
-            if (itemsErr) throw itemsErr;
-          }
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('create_order_atomic' as any, {
+          p_order: {
+            id: newOrder.id,
+            store_id: storeId || orderData.store_id,
+            client_id: orderData.client_id || null,
+            total_amount: orderData.total_amount,
+            subtotal: orderData.subtotal || orderData.total_amount,
+            status: orderData.status,
+            payment_method: orderData.payment_method,
+            payment_provider: orderData.payment_provider,
+            payment_status: orderData.payment_status,
+            is_paid: orderData.is_paid,
+            table_number: orderData.table_number,
+            node_id: orderData.node_id,
+            cash_session_id: orderData.cash_session_id || null,
+            channel: (orderData as any).channel || 'pos',
+            delivery_mode: (orderData as any).delivery_mode || null,
+            delivery_status: (orderData as any).delivery_status || 'pending',
+            session_id: (orderData as any).session_id || null,
+            created_at: orderData.created_at || new Date().toISOString()
+          },
+          p_items: itemsPayload
+        });
+
+        if (rpcError) throw rpcError;
+
+        const result = rpcResult as any;
+        if (!result?.success) {
+          throw new Error(result?.message || result?.error || 'create_order_atomic failed');
         }
+
+        console.log(`[createOrder] Atomic RPC success for order ${newOrder.id}`, result);
 
         // Update local to synced
         const syncedOrder: DBOrder = { ...newOrder, syncStatus: 'synced' };

@@ -271,9 +271,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                     if (!profileError && existingProfile) {
                         const userProfile = existingProfile as UserProfile;
+                        // P0 FIX: Restrict impersonation to super_admin only + validate UUID format
                         const impersonatedStoreId = localStorage.getItem('impersonated_store_id');
-                        if (impersonatedStoreId && (userProfile.role === 'super_admin' || userProfile.role === 'store_owner')) {
-                            userProfile.store_id = impersonatedStoreId;
+                        if (impersonatedStoreId && userProfile.role === 'super_admin') {
+                            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                            if (uuidRegex.test(impersonatedStoreId)) {
+                                userProfile.store_id = impersonatedStoreId;
+                            } else {
+                                console.warn('[AUTH] Invalid impersonated_store_id format, ignoring');
+                                localStorage.removeItem('impersonated_store_id');
+                            }
+                        } else if (impersonatedStoreId && userProfile.role !== 'super_admin') {
+                            // Non-super_admin should never have this key
+                            localStorage.removeItem('impersonated_store_id');
                         }
 
                         setProfile(userProfile);

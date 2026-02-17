@@ -450,39 +450,14 @@ const OrderCreation: React.FC = () => {
       // 2. Delegate to OfflineContext (Handles Local Save + Sync + order_items)
       await createOrder(newOrder);
 
-      // 3. Post-Creation Actions (Wallet Deduction)
+      // 3. Post-Creation: Wallet deduction is now handled atomically by create_order_atomic RPC
+      // When online, the RPC deducts wallet inside the same transaction as order creation.
+      // When offline, the sync engine will call the RPC which handles wallet atomically.
       if (paymentMethod === 'wallet' && selectedClient?.id) {
         if (isOnline) {
-          const { data: walletResult, error: walletError } = await supabase.rpc('pay_with_wallet' as any, {
-            p_client_id: selectedClient.id,
-            p_amount: total,
-            p_order_id: orderId
-          });
-
-          if (walletError || !(walletResult as any)?.success) {
-            console.error('Wallet deduction error:', walletError);
-            addToast('AVISO', 'error', 'Pedido guardado, pero falló descuento de saldo. Se reintentará al sincronizar.');
-            // FIX 4: Queue wallet payment for offline retry
-            const walletEvent: import('../lib/db').SyncEvent = {
-              id: `evt-wallet-${Date.now()}-${Math.random()}`,
-              type: 'WALLET_PAYMENT',
-              payload: { clientId: selectedClient.id, amount: total, orderId },
-              timestamp: Date.now()
-            };
-            await import('../lib/db').then(m => m.dbOps.addToSyncQueue(walletEvent));
-          } else {
-            addToast('SALDO DESCONTADO', 'success', `Nuevo saldo: $${(walletResult as any)?.new_balance?.toFixed(2)}`);
-          }
+          addToast('SALDO DESCONTADO', 'success', 'Pago procesado atómicamente con el pedido.');
         } else {
-          // FIX 4: Offline - Queue wallet payment for sync
           addToast('PAGO WALLET ENCOLADO', 'info', 'El saldo se descontará al volver online.');
-          const walletEvent: import('../lib/db').SyncEvent = {
-            id: `evt-wallet-${Date.now()}-${Math.random()}`,
-            type: 'WALLET_PAYMENT',
-            payload: { clientId: selectedClient.id, amount: total, orderId },
-            timestamp: Date.now()
-          };
-          await import('../lib/db').then(m => m.dbOps.addToSyncQueue(walletEvent));
         }
       }
 

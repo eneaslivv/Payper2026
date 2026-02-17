@@ -131,7 +131,7 @@ const CheckoutPage: React.FC = () => {
         session_id: sessionId
       };
 
-      // 2. WALLET FLOW — SAFE: Order first, Redeem, then Pay
+      // 2. WALLET FLOW — P0 FIX: Atomic order + wallet deduction in one transaction
       if (paymentMethod === 'wallet') {
         if (!hasEnoughBalance) {
           addToast('Saldo insuficiente en tu wallet', 'error');
@@ -139,20 +139,9 @@ const CheckoutPage: React.FC = () => {
           return;
         }
 
-        // 2.1 Create order in PENDING state first
-        const { data: pendingOrder, error: orderError } = await supabase
-          .from('orders' as any)
-          .insert(orderPayload)
-          .select()
-          .single();
+        const orderId = crypto.randomUUID();
 
-        if (orderError) throw orderError;
-        const orderId = (pendingOrder as any).id;
-
-        // 2.2 Insert order items
-        await insertOrderItems(orderId);
-
-        // 2.3 Process reward redemption if selected (BEFORE payment)
+        // 2.1 Process reward redemption BEFORE atomic order (needs separate tx for rollback)
         if (selectedRewardId) {
           const { data: redeemResult, error: redeemError } = await (supabase.rpc as any)('redeem_reward', {
             p_client_id: user?.id,
@@ -161,91 +150,129 @@ const CheckoutPage: React.FC = () => {
           });
 
           if (redeemError || !redeemResult?.success) {
-            // Redemption failed - mark order as cancelled and abort
-            await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
             addToast(redeemResult?.error || 'Error al canjear recompensa', 'error');
             setIsProcessingPayment(false);
             return;
           }
         }
 
-        // 2.4 Process wallet payment with retry logic
-        const { retryRpc } = await import('../../src/lib/retryRpc');
-        const { data: walletResult, error: walletError } = await retryRpc(() =>
-          (supabase.rpc as any)('pay_with_wallet', {
-            p_client_id: user?.id,
-            p_amount: total
-          }),
-          { rpcName: 'pay_with_wallet', maxRetries: 3 }
-        );
+        // 2.2 Atomic order creation + wallet deduction via RPC
+        const itemsPayload = cart.map(item => ({
+          product_id: item.id,
+          variant_id: item.variant_id || null,
+          quantity: item.quantity,
+          unit_price: item.price,
+          notes: (item as any).notes || null,
+          addon_ids: item.addon_ids || [],
+          addon_prices: item.addons?.map((a: any) => ({ id: a.id, price: a.price })) || []
+        }));
 
-        if (walletError || !walletResult?.success) {
-          // Payment failed - rollback redemption if any
+        const { data: rpcResult, error: rpcError } = await (supabase.rpc as any)('create_order_atomic', {
+          p_order: {
+            id: orderId,
+            store_id: store.id,
+            client_id: user?.id || null,
+            total_amount: total,
+            status: 'pending',
+            payment_method: 'wallet',
+            payment_provider: 'wallet',
+            payment_status: 'pending',
+            is_paid: true,
+            table_number: deliveryMode === 'local' ? currentTable : currentBar,
+            node_id: safeQrContext?.node_id || null,
+            channel: orderChannel || 'qr',
+            delivery_mode: deliveryMode,
+            delivery_status: 'pending',
+            session_id: sessionId
+          },
+          p_items: itemsPayload
+        });
+
+        if (rpcError) {
+          console.error('[CheckoutPage] create_order_atomic error:', rpcError);
+          // Rollback redemption if any
           if (selectedRewardId) {
             await (supabase.rpc as any)('rollback_redemption', { p_order_id: orderId });
           }
-          await supabase.from('orders' as any).update({ status: 'cancelled' }).eq('id', orderId);
-          addToast(walletResult?.error || 'Error al procesar pago con wallet', 'error');
+          addToast('Error al procesar pago con wallet', 'error');
           setIsProcessingPayment(false);
           return;
         }
 
-        // 2.5 Update order to APPROVED using RPC (bypasses RLS) with retry
-        console.log('[CheckoutPage] Completing wallet payment for order:', orderId);
-        const { data: completeResult, error: completeError } = await retryRpc(() =>
-          (supabase.rpc as any)('complete_wallet_payment', {
-            p_order_id: orderId
-          }),
-          { rpcName: 'complete_wallet_payment', maxRetries: 3 }
-        );
-
-        if (completeError) {
-          console.error('[CheckoutPage] complete_wallet_payment RPC error:', completeError);
-          throw completeError;
+        const result = rpcResult as any;
+        if (!result?.success) {
+          console.error('[CheckoutPage] Atomic order failed:', result);
+          if (selectedRewardId) {
+            await (supabase.rpc as any)('rollback_redemption', { p_order_id: orderId });
+          }
+          addToast(result?.message || result?.error || 'Error al procesar pago', 'error');
+          setIsProcessingPayment(false);
+          return;
         }
 
-        if (!completeResult?.success) {
-          console.error('[CheckoutPage] Wallet completion failed:', completeResult);
-          throw new Error(completeResult?.message || 'Failed to complete wallet payment');
-        }
-
-        console.log('[CheckoutPage] Wallet payment completed successfully');
+        console.log('[CheckoutPage] Atomic wallet payment completed successfully', result);
         setHasActiveOrder(true);
         clearCart();
         navigate(`/m/${slug}/order/${orderId}`, { replace: true });
         return;
       }
 
-      // 3. MERCADO PAGO FLOW (⭐ NEW)
+      // 3. MERCADO PAGO FLOW — P0 FIX: Use atomic RPC for order creation
       if (paymentMethod === 'mercadopago') {
-        // 3.1 Create order in pending state
-        const { data: order, error: orderError } = await supabase
-          .from('orders' as any)
-          .insert(orderPayload)
-          .select()
-          .single();
+        const mpOrderId = crypto.randomUUID();
 
-        if (orderError) throw orderError;
+        // 3.1 Create order atomically via RPC (pending state, no wallet)
+        const mpItemsPayload = cart.map(item => ({
+          product_id: item.id,
+          variant_id: item.variant_id || null,
+          quantity: item.quantity,
+          unit_price: item.price,
+          notes: (item as any).notes || null,
+          addon_ids: item.addon_ids || [],
+          addon_prices: item.addons?.map((a: any) => ({ id: a.id, price: a.price })) || []
+        }));
 
-        // 3.2 Insert order items
-        await insertOrderItems((order as any).id);
+        const { data: mpRpcResult, error: mpRpcError } = await (supabase.rpc as any)('create_order_atomic', {
+          p_order: {
+            id: mpOrderId,
+            store_id: store.id,
+            client_id: user?.id || null,
+            total_amount: total,
+            status: 'pending',
+            payment_method: 'mercadopago',
+            payment_provider: 'mercadopago',
+            payment_status: 'pending',
+            is_paid: false,
+            table_number: deliveryMode === 'local' ? currentTable : currentBar,
+            node_id: safeQrContext?.node_id || null,
+            channel: orderChannel || 'qr',
+            delivery_mode: deliveryMode,
+            delivery_status: 'pending',
+            session_id: sessionId
+          },
+          p_items: mpItemsPayload
+        });
 
-        // 3.3 Invoke create-checkout Edge Function
+        if (mpRpcError) throw mpRpcError;
+        const mpResult = mpRpcResult as any;
+        if (!mpResult?.success) throw new Error(mpResult?.message || 'Failed to create order');
+
+        // 3.2 Invoke create-checkout Edge Function
         const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout', {
           body: {
             store_id: store.id,
-            order_id: (order as any).id,
+            order_id: mpOrderId,
             items: cart.map(item => ({
               title: item.name,
               unit_price: item.price,
               quantity: item.quantity
             })),
             back_urls: {
-              success: `${window.location.origin}/#/m/${slug}/order/${(order as any).id}`,
+              success: `${window.location.origin}/#/m/${slug}/order/${mpOrderId}`,
               failure: `${window.location.origin}/#/m/${slug}/checkout`,
-              pending: `${window.location.origin}/#/m/${slug}/order/${(order as any).id}`
+              pending: `${window.location.origin}/#/m/${slug}/order/${mpOrderId}`
             },
-            external_reference: (order as any).id
+            external_reference: mpOrderId
           }
         });
 
