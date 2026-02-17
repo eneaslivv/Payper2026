@@ -149,8 +149,9 @@ const Finance: React.FC = () => {
 
         if (clientError) console.error('Error fetching clients liability', clientError);
 
-        // Calculate metrics
-        const completedOrders = orders?.filter(o => o.status !== 'cancelled') || [];
+        // Calculate metrics - use canonical revenue filter (matches is_revenue_order() in DB)
+        const NON_REVENUE_STATUSES = ['draft', 'pending', 'cancelled', 'refunded', 'rejected'];
+        const completedOrders = orders?.filter(o => !NON_REVENUE_STATUSES.includes(o.status)) || [];
         const totalSales = completedOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
         const totalTopups = (topups || []).reduce((sum: number, t: any) => sum + (Number(t.amount) || 0), 0);
         const totalLiability = (clientsData || []).reduce((sum, c) => sum + (c.wallet_balance || 0), 0);

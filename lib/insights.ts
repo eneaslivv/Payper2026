@@ -23,6 +23,8 @@ export async function generateInsights(store_id: string): Promise<OrderAnalysis>
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     // 1. Fetch Orders with Items for the last 30 days
+    // Use canonical revenue filter (matches is_revenue_order() in DB)
+    const NON_REVENUE_STATUSES = ['draft', 'pending', 'cancelled', 'refunded', 'rejected'];
     const { data: orders, error } = await supabase
         .from('orders')
         .select(`
@@ -30,7 +32,9 @@ export async function generateInsights(store_id: string): Promise<OrderAnalysis>
     items: order_items(*)
         `)
         .eq('store_id', store_id)
-        .gte('created_at', thirtyDaysAgo.toISOString());
+        .gte('created_at', thirtyDaysAgo.toISOString())
+        .not('status', 'in', `(${NON_REVENUE_STATUSES.join(',')})`)
+        .limit(2000);
 
     if (error) {
         console.error('Error fetching insights data:', error);
