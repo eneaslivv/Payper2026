@@ -466,7 +466,7 @@ const OperativeLayout: React.FC<{ children: React.ReactNode, activeNode: CafeNod
 };
 
 const MainRouter: React.FC = () => {
-  const { user, profile, isLoading, signOut, isAdmin, isRecovery } = useAuth();
+  const { user, profile, isLoading, signOut, isAdmin, isRecovery, refreshProfile } = useAuth();
   const [activeNode] = useState(MOCK_NODES[0]);
   const [activeTenant] = useState(MOCK_TENANTS[0]);
 
@@ -478,6 +478,16 @@ const MainRouter: React.FC = () => {
       console.log("Profile Role:", profile?.role);
     }
   }, [isLoading, user, profile, isAdmin]);
+
+  // AUTO-RECOVERY: If stuck with user but no profile for 3 seconds, force a refresh
+  useEffect(() => {
+    if (isLoading || !user || profile) return;
+    const recovery = setTimeout(() => {
+      console.warn('[ROUTING] Auto-recovery: profile still null after 3s, forcing refreshProfile');
+      void refreshProfile();
+    }, 3000);
+    return () => clearTimeout(recovery);
+  }, [isLoading, user, profile, refreshProfile]);
 
   // GLOBAL LOADING BARRIER
   // Minimalist loader

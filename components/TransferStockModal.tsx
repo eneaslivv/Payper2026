@@ -39,8 +39,9 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
     useEffect(() => {
         if (isOpen) {
             fetchLocations();
-            fetchItems();
-            if (preselectedItemId) setSelectedItem(preselectedItemId);
+            fetchItems().then(() => {
+                if (preselectedItemId) setSelectedItem(preselectedItemId);
+            });
             if (preselectedFromLocation) setFromLocation(preselectedFromLocation);
             if (isBulk && preselectedItemIds) {
                 const initialQuantities: Record<string, number> = {};

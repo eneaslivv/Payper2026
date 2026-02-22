@@ -1,6 +1,7319 @@
-[
-  {
-    "type": "text",
-    "text": "{\"types\":\"export type Json =\\n  | string\\n  | number\\n  | boolean\\n  | null\\n  | { [key: string]: Json | undefined }\\n  | Json[]\\n\\nexport type Database = {\\n  // Allows to automatically instantiate createClient with right options\\n  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)\\n  __InternalSupabase: {\\n    PostgrestVersion: \\\"14.1\\\"\\n  }\\n  public: {\\n    Tables: {\\n      abandoned_order_alerts: {\\n        Row: {\\n          acknowledged: boolean | null\\n          acknowledged_at: string | null\\n          acknowledged_by: string | null\\n          alert_time: string | null\\n          auto_cancelled: boolean | null\\n          hours_pending: number | null\\n          id: string\\n          order_id: string\\n          payment_provider: string | null\\n          store_id: string\\n          total_amount: number | null\\n        }\\n        Insert: {\\n          acknowledged?: boolean | null\\n          acknowledged_at?: string | null\\n          acknowledged_by?: string | null\\n          alert_time?: string | null\\n          auto_cancelled?: boolean | null\\n          hours_pending?: number | null\\n          id?: string\\n          order_id: string\\n          payment_provider?: string | null\\n          store_id: string\\n          total_amount?: number | null\\n        }\\n        Update: {\\n          acknowledged?: boolean | null\\n          acknowledged_at?: string | null\\n          acknowledged_by?: string | null\\n          alert_time?: string | null\\n          auto_cancelled?: boolean | null\\n          hours_pending?: number | null\\n          id?: string\\n          order_id?: string\\n          payment_provider?: string | null\\n          store_id?: string\\n          total_amount?: number | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"abandoned_order_alerts_acknowledged_by_fkey\\\"\\n            columns: [\\\"acknowledged_by\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"profiles\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"abandoned_order_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"abandonable_orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"abandoned_order_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"active_venue_states\\\"\\n            referencedColumns: [\\\"active_order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"abandoned_order_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"abandoned_order_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"abandoned_order_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_price_tampering_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"abandoned_order_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_stock_rollback_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"abandoned_order_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"order_edit_stock_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"abandoned_order_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"abandoned_order_alerts_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      cash_closures: {\\n        Row: {\\n          closed_at: string | null\\n          closed_by: string | null\\n          created_at: string | null\\n          difference: number | null\\n          expected_cash: number\\n          id: string\\n          notes: string | null\\n          opened_at: string | null\\n          real_cash: number\\n          session_id: string\\n          start_amount: number | null\\n          store_id: string\\n          total_card_sales: number | null\\n          total_cash_sales: number | null\\n          total_mp_sales: number | null\\n          total_orders: number | null\\n          total_sales: number | null\\n          total_topups: number | null\\n          total_wallet_sales: number | null\\n          zone_name: string | null\\n        }\\n        Insert: {\\n          closed_at?: string | null\\n          closed_by?: string | null\\n          created_at?: string | null\\n          difference?: number | null\\n          expected_cash?: number\\n          id?: string\\n          notes?: string | null\\n          opened_at?: string | null\\n          real_cash?: number\\n          session_id: string\\n          start_amount?: number | null\\n          store_id: string\\n          total_card_sales?: number | null\\n          total_cash_sales?: number | null\\n          total_mp_sales?: number | null\\n          total_orders?: number | null\\n          total_sales?: number | null\\n          total_topups?: number | null\\n          total_wallet_sales?: number | null\\n          zone_name?: string | null\\n        }\\n        Update: {\\n          closed_at?: string | null\\n          closed_by?: string | null\\n          created_at?: string | null\\n          difference?: number | null\\n          expected_cash?: number\\n          id?: string\\n          notes?: string | null\\n          opened_at?: string | null\\n          real_cash?: number\\n          session_id?: string\\n          start_amount?: number | null\\n          store_id?: string\\n          total_card_sales?: number | null\\n          total_cash_sales?: number | null\\n          total_mp_sales?: number | null\\n          total_orders?: number | null\\n          total_sales?: number | null\\n          total_topups?: number | null\\n          total_wallet_sales?: number | null\\n          zone_name?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"cash_closures_session_id_fkey\\\"\\n            columns: [\\\"session_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cash_session_reconciliation\\\"\\n            referencedColumns: [\\\"session_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_closures_session_id_fkey\\\"\\n            columns: [\\\"session_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cash_sessions\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_closures_session_id_fkey\\\"\\n            columns: [\\\"session_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cash_sessions_summary\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_closures_session_id_fkey\\\"\\n            columns: [\\\"session_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_cash_session_reconciliation\\\"\\n            referencedColumns: [\\\"session_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_closures_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      cash_events: {\\n        Row: {\\n          amount: number\\n          cash_session_id: string\\n          created_at: string\\n          description: string | null\\n          event_type: string\\n          id: string\\n          payment_method: string | null\\n          performed_by: string | null\\n          reference_id: string | null\\n          reference_type: string | null\\n          store_id: string\\n        }\\n        Insert: {\\n          amount: number\\n          cash_session_id: string\\n          created_at?: string\\n          description?: string | null\\n          event_type: string\\n          id?: string\\n          payment_method?: string | null\\n          performed_by?: string | null\\n          reference_id?: string | null\\n          reference_type?: string | null\\n          store_id: string\\n        }\\n        Update: {\\n          amount?: number\\n          cash_session_id?: string\\n          created_at?: string\\n          description?: string | null\\n          event_type?: string\\n          id?: string\\n          payment_method?: string | null\\n          performed_by?: string | null\\n          reference_id?: string | null\\n          reference_type?: string | null\\n          store_id?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"cash_events_cash_session_id_fkey\\\"\\n            columns: [\\\"cash_session_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cash_session_reconciliation\\\"\\n            referencedColumns: [\\\"session_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_events_cash_session_id_fkey\\\"\\n            columns: [\\\"cash_session_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cash_sessions\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_events_cash_session_id_fkey\\\"\\n            columns: [\\\"cash_session_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cash_sessions_summary\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_events_cash_session_id_fkey\\\"\\n            columns: [\\\"cash_session_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_cash_session_reconciliation\\\"\\n            referencedColumns: [\\\"session_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_events_performed_by_fkey\\\"\\n            columns: [\\\"performed_by\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"profiles\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_events_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      cash_movements: {\\n        Row: {\\n          amount: number\\n          created_at: string | null\\n          created_by: string | null\\n          id: string\\n          order_id: string | null\\n          reason: string | null\\n          session_id: string\\n          store_id: string\\n          type: string\\n          updated_at: string\\n        }\\n        Insert: {\\n          amount: number\\n          created_at?: string | null\\n          created_by?: string | null\\n          id?: string\\n          order_id?: string | null\\n          reason?: string | null\\n          session_id: string\\n          store_id: string\\n          type: string\\n          updated_at?: string\\n        }\\n        Update: {\\n          amount?: number\\n          created_at?: string | null\\n          created_by?: string | null\\n          id?: string\\n          order_id?: string | null\\n          reason?: string | null\\n          session_id?: string\\n          store_id?: string\\n          type?: string\\n          updated_at?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"cash_movements_created_by_fkey\\\"\\n            columns: [\\\"created_by\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"profiles\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_movements_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"abandonable_orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_movements_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"active_venue_states\\\"\\n            referencedColumns: [\\\"active_order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_movements_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_movements_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_movements_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_price_tampering_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_movements_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_stock_rollback_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_movements_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"order_edit_stock_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_movements_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_movements_session_id_fkey\\\"\\n            columns: [\\\"session_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cash_session_reconciliation\\\"\\n            referencedColumns: [\\\"session_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_movements_session_id_fkey\\\"\\n            columns: [\\\"session_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cash_sessions\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_movements_session_id_fkey\\\"\\n            columns: [\\\"session_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cash_sessions_summary\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_movements_session_id_fkey\\\"\\n            columns: [\\\"session_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_cash_session_reconciliation\\\"\\n            referencedColumns: [\\\"session_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"fk_cash_movements_store\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      cash_sessions: {\\n        Row: {\\n          closed_at: string | null\\n          closed_by: string | null\\n          closing_notes: string | null\\n          created_at: string | null\\n          difference: number | null\\n          dispatch_station_id: string | null\\n          expected_cash: number | null\\n          id: string\\n          opened_at: string | null\\n          opened_by: string\\n          real_cash: number | null\\n          start_amount: number\\n          status: string\\n          store_id: string\\n          total_card_sales: number | null\\n          total_cash_sales: number | null\\n          total_mp_sales: number | null\\n          total_orders: number | null\\n          total_topups: number | null\\n          total_wallet_sales: number | null\\n          zone_id: string\\n        }\\n        Insert: {\\n          closed_at?: string | null\\n          closed_by?: string | null\\n          closing_notes?: string | null\\n          created_at?: string | null\\n          difference?: number | null\\n          dispatch_station_id?: string | null\\n          expected_cash?: number | null\\n          id?: string\\n          opened_at?: string | null\\n          opened_by: string\\n          real_cash?: number | null\\n          start_amount?: number\\n          status?: string\\n          store_id: string\\n          total_card_sales?: number | null\\n          total_cash_sales?: number | null\\n          total_mp_sales?: number | null\\n          total_orders?: number | null\\n          total_topups?: number | null\\n          total_wallet_sales?: number | null\\n          zone_id: string\\n        }\\n        Update: {\\n          closed_at?: string | null\\n          closed_by?: string | null\\n          closing_notes?: string | null\\n          created_at?: string | null\\n          difference?: number | null\\n          dispatch_station_id?: string | null\\n          expected_cash?: number | null\\n          id?: string\\n          opened_at?: string | null\\n          opened_by?: string\\n          real_cash?: number | null\\n          start_amount?: number\\n          status?: string\\n          store_id?: string\\n          total_card_sales?: number | null\\n          total_cash_sales?: number | null\\n          total_mp_sales?: number | null\\n          total_orders?: number | null\\n          total_topups?: number | null\\n          total_wallet_sales?: number | null\\n          zone_id?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"cash_sessions_closed_by_fkey\\\"\\n            columns: [\\\"closed_by\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"profiles\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_sessions_dispatch_station_id_fkey\\\"\\n            columns: [\\\"dispatch_station_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"dispatch_stations\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_sessions_opened_by_fkey\\\"\\n            columns: [\\\"opened_by\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"profiles\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_sessions_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_sessions_zone_id_fkey\\\"\\n            columns: [\\\"zone_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_zones\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      categories: {\\n        Row: {\\n          color: string | null\\n          created_at: string | null\\n          icon: string | null\\n          id: string\\n          is_active: boolean | null\\n          name: string\\n          position: number | null\\n          store_id: string | null\\n          type: string | null\\n        }\\n        Insert: {\\n          color?: string | null\\n          created_at?: string | null\\n          icon?: string | null\\n          id?: string\\n          is_active?: boolean | null\\n          name: string\\n          position?: number | null\\n          store_id?: string | null\\n          type?: string | null\\n        }\\n        Update: {\\n          color?: string | null\\n          created_at?: string | null\\n          icon?: string | null\\n          id?: string\\n          is_active?: boolean | null\\n          name?: string\\n          position?: number | null\\n          store_id?: string | null\\n          type?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"categories_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      client_activity_log: {\\n        Row: {\\n          action_type: string\\n          amount: number | null\\n          client_id: string\\n          created_at: string | null\\n          description: string | null\\n          id: string\\n          metadata: Json | null\\n          performed_by: string | null\\n          store_id: string\\n        }\\n        Insert: {\\n          action_type: string\\n          amount?: number | null\\n          client_id: string\\n          created_at?: string | null\\n          description?: string | null\\n          id?: string\\n          metadata?: Json | null\\n          performed_by?: string | null\\n          store_id: string\\n        }\\n        Update: {\\n          action_type?: string\\n          amount?: number | null\\n          client_id?: string\\n          created_at?: string | null\\n          description?: string | null\\n          id?: string\\n          metadata?: Json | null\\n          performed_by?: string | null\\n          store_id?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"client_activity_log_client_id_fkey\\\"\\n            columns: [\\\"client_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"clients\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"client_activity_log_client_id_fkey\\\"\\n            columns: [\\\"client_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"loyalty_balance_audit\\\"\\n            referencedColumns: [\\\"client_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"client_activity_log_client_id_fkey\\\"\\n            columns: [\\\"client_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_wallet_integrity\\\"\\n            referencedColumns: [\\\"client_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"client_activity_log_performed_by_fkey\\\"\\n            columns: [\\\"performed_by\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"profiles\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"client_activity_log_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      client_sessions: {\\n        Row: {\\n          bar_id: string | null\\n          client_id: string | null\\n          created_at: string | null\\n          end_reason: string | null\\n          ended_at: string | null\\n          expires_at: string\\n          id: string\\n          is_active: boolean | null\\n          last_activity_at: string | null\\n          location_id: string | null\\n          menu_id: string | null\\n          qr_id: string | null\\n          session_type: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"session_type\\\"]\\n          started_at: string | null\\n          store_id: string\\n          table_id: string | null\\n        }\\n        Insert: {\\n          bar_id?: string | null\\n          client_id?: string | null\\n          created_at?: string | null\\n          end_reason?: string | null\\n          ended_at?: string | null\\n          expires_at: string\\n          id?: string\\n          is_active?: boolean | null\\n          last_activity_at?: string | null\\n          location_id?: string | null\\n          menu_id?: string | null\\n          qr_id?: string | null\\n          session_type: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"session_type\\\"]\\n          started_at?: string | null\\n          store_id: string\\n          table_id?: string | null\\n        }\\n        Update: {\\n          bar_id?: string | null\\n          client_id?: string | null\\n          created_at?: string | null\\n          end_reason?: string | null\\n          ended_at?: string | null\\n          expires_at?: string\\n          id?: string\\n          is_active?: boolean | null\\n          last_activity_at?: string | null\\n          location_id?: string | null\\n          menu_id?: string | null\\n          qr_id?: string | null\\n          session_type?: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"session_type\\\"]\\n          started_at?: string | null\\n          store_id?: string\\n          table_id?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"client_sessions_bar_id_fkey\\\"\\n            columns: [\\\"bar_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"active_venue_states\\\"\\n            referencedColumns: [\\\"node_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"client_sessions_bar_id_fkey\\\"\\n            columns: [\\\"bar_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"available_nodes_for_orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"client_sessions_bar_id_fkey\\\"\\n            columns: [\\\"bar_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_nodes\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"client_sessions_bar_id_fkey\\\"\\n            columns: [\\\"bar_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_nodes_with_orders\\\"\\n            referencedColumns: [\\\"node_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"client_sessions_client_id_fkey\\\"\\n            columns: [\\\"client_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"clients\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"client_sessions_client_id_fkey\\\"\\n            columns: [\\\"client_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"loyalty_balance_audit\\\"\\n            referencedColumns: [\\\"client_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"client_sessions_client_id_fkey\\\"\\n            columns: [\\\"client_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_wallet_integrity\\\"\\n            referencedColumns: [\\\"client_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"client_sessions_location_id_fkey\\\"\\n            columns: [\\\"location_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"storage_locations\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"client_sessions_menu_id_fkey\\\"\\n            columns: [\\\"menu_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"menus\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"client_sessions_qr_id_fkey\\\"\\n            columns: [\\\"qr_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"qr_codes\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"client_sessions_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"client_sessions_table_id_fkey\\\"\\n            columns: [\\\"table_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"active_venue_states\\\"\\n            referencedColumns: [\\\"node_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"client_sessions_table_id_fkey\\\"\\n            columns: [\\\"table_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"available_nodes_for_orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"client_sessions_table_id_fkey\\\"\\n            columns: [\\\"table_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_nodes\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"client_sessions_table_id_fkey\\\"\\n            columns: [\\\"table_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_nodes_with_orders\\\"\\n            referencedColumns: [\\\"node_id\\\"]\\n          },\\n        ]\\n      }\\n      clients: {\\n        Row: {\\n          auth_user_id: string | null\\n          created_at: string\\n          customer_code: string | null\\n          email: string | null\\n          full_name: string | null\\n          id: string\\n          is_active: boolean | null\\n          loyalty_points: number\\n          name: string | null\\n          nfc_uid: string | null\\n          phone: string | null\\n          store_id: string | null\\n          wallet_balance: number | null\\n        }\\n        Insert: {\\n          auth_user_id?: string | null\\n          created_at?: string\\n          customer_code?: string | null\\n          email?: string | null\\n          full_name?: string | null\\n          id?: string\\n          is_active?: boolean | null\\n          loyalty_points?: number\\n          name?: string | null\\n          nfc_uid?: string | null\\n          phone?: string | null\\n          store_id?: string | null\\n          wallet_balance?: number | null\\n        }\\n        Update: {\\n          auth_user_id?: string | null\\n          created_at?: string\\n          customer_code?: string | null\\n          email?: string | null\\n          full_name?: string | null\\n          id?: string\\n          is_active?: boolean | null\\n          loyalty_points?: number\\n          name?: string | null\\n          nfc_uid?: string | null\\n          phone?: string | null\\n          store_id?: string | null\\n          wallet_balance?: number | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"clients_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      dispatch_stations: {\\n        Row: {\\n          created_at: string | null\\n          id: string\\n          is_visible: boolean | null\\n          name: string\\n          sort_order: number | null\\n          store_id: string\\n          updated_at: string | null\\n          zone_id: string | null\\n        }\\n        Insert: {\\n          created_at?: string | null\\n          id?: string\\n          is_visible?: boolean | null\\n          name: string\\n          sort_order?: number | null\\n          store_id: string\\n          updated_at?: string | null\\n          zone_id?: string | null\\n        }\\n        Update: {\\n          created_at?: string | null\\n          id?: string\\n          is_visible?: boolean | null\\n          name?: string\\n          sort_order?: number | null\\n          store_id?: string\\n          updated_at?: string | null\\n          zone_id?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"dispatch_stations_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"dispatch_stations_zone_id_fkey\\\"\\n            columns: [\\\"zone_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_zones\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      email_logs: {\\n        Row: {\\n          attempts: number | null\\n          clicked_at: string | null\\n          correlation_id: string | null\\n          created_at: string | null\\n          error_code: string | null\\n          error_message: string | null\\n          event_entity: string | null\\n          event_id: string | null\\n          event_type: string\\n          id: string\\n          idempotency_key: string\\n          max_attempts: number | null\\n          next_retry_at: string | null\\n          opened_at: string | null\\n          payload_core: Json\\n          queued_at: string | null\\n          recipient_email: string\\n          recipient_name: string | null\\n          recipient_type: string | null\\n          resend_id: string | null\\n          resend_response: Json | null\\n          sent_at: string | null\\n          status: string | null\\n          store_id: string\\n          template_key: string\\n          template_provider_id: string | null\\n          template_version: number | null\\n          trigger_source: string | null\\n          triggered_by: string | null\\n        }\\n        Insert: {\\n          attempts?: number | null\\n          clicked_at?: string | null\\n          correlation_id?: string | null\\n          created_at?: string | null\\n          error_code?: string | null\\n          error_message?: string | null\\n          event_entity?: string | null\\n          event_id?: string | null\\n          event_type: string\\n          id?: string\\n          idempotency_key: string\\n          max_attempts?: number | null\\n          next_retry_at?: string | null\\n          opened_at?: string | null\\n          payload_core: Json\\n          queued_at?: string | null\\n          recipient_email: string\\n          recipient_name?: string | null\\n          recipient_type?: string | null\\n          resend_id?: string | null\\n          resend_response?: Json | null\\n          sent_at?: string | null\\n          status?: string | null\\n          store_id: string\\n          template_key: string\\n          template_provider_id?: string | null\\n          template_version?: number | null\\n          trigger_source?: string | null\\n          triggered_by?: string | null\\n        }\\n        Update: {\\n          attempts?: number | null\\n          clicked_at?: string | null\\n          correlation_id?: string | null\\n          created_at?: string | null\\n          error_code?: string | null\\n          error_message?: string | null\\n          event_entity?: string | null\\n          event_id?: string | null\\n          event_type?: string\\n          id?: string\\n          idempotency_key?: string\\n          max_attempts?: number | null\\n          next_retry_at?: string | null\\n          opened_at?: string | null\\n          payload_core?: Json\\n          queued_at?: string | null\\n          recipient_email?: string\\n          recipient_name?: string | null\\n          recipient_type?: string | null\\n          resend_id?: string | null\\n          resend_response?: Json | null\\n          sent_at?: string | null\\n          status?: string | null\\n          store_id?: string\\n          template_key?: string\\n          template_provider_id?: string | null\\n          template_version?: number | null\\n          trigger_source?: string | null\\n          triggered_by?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"email_logs_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      email_queue: {\\n        Row: {\\n          attempts: number | null\\n          created_at: string | null\\n          id: string\\n          last_error: string | null\\n          next_retry_at: string | null\\n          order_id: string\\n          payload: Json\\n          recipient: string\\n          status: string | null\\n          store_id: string\\n          subject: string\\n          updated_at: string | null\\n        }\\n        Insert: {\\n          attempts?: number | null\\n          created_at?: string | null\\n          id?: string\\n          last_error?: string | null\\n          next_retry_at?: string | null\\n          order_id: string\\n          payload: Json\\n          recipient: string\\n          status?: string | null\\n          store_id: string\\n          subject: string\\n          updated_at?: string | null\\n        }\\n        Update: {\\n          attempts?: number | null\\n          created_at?: string | null\\n          id?: string\\n          last_error?: string | null\\n          next_retry_at?: string | null\\n          order_id?: string\\n          payload?: Json\\n          recipient?: string\\n          status?: string | null\\n          store_id?: string\\n          subject?: string\\n          updated_at?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"email_queue_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"abandonable_orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"email_queue_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"active_venue_states\\\"\\n            referencedColumns: [\\\"active_order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"email_queue_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"email_queue_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"email_queue_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_price_tampering_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"email_queue_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_stock_rollback_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"email_queue_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"order_edit_stock_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"email_queue_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"email_queue_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      fixed_expenses: {\\n        Row: {\\n          amount: number\\n          category: string\\n          created_at: string | null\\n          created_by: string | null\\n          description: string | null\\n          expense_date: string\\n          id: string\\n          is_recurring: boolean | null\\n          name: string\\n          recurrence_frequency: string | null\\n          store_id: string\\n        }\\n        Insert: {\\n          amount: number\\n          category: string\\n          created_at?: string | null\\n          created_by?: string | null\\n          description?: string | null\\n          expense_date?: string\\n          id?: string\\n          is_recurring?: boolean | null\\n          name: string\\n          recurrence_frequency?: string | null\\n          store_id: string\\n        }\\n        Update: {\\n          amount?: number\\n          category?: string\\n          created_at?: string | null\\n          created_by?: string | null\\n          description?: string | null\\n          expense_date?: string\\n          id?: string\\n          is_recurring?: boolean | null\\n          name?: string\\n          recurrence_frequency?: string | null\\n          store_id?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"fixed_expenses_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      inventory_audit_logs: {\\n        Row: {\\n          action_type: string\\n          created_at: string | null\\n          id: string\\n          invoice_ref: string | null\\n          item_id: string\\n          location_from: string | null\\n          location_to: string | null\\n          new_value: Json | null\\n          old_value: Json | null\\n          order_id: string | null\\n          package_delta: number | null\\n          quantity_delta: number | null\\n          reason: string\\n          source_ui: string | null\\n          store_id: string\\n          supplier_id: string | null\\n          unit: string | null\\n          unit_cost: number | null\\n          user_id: string | null\\n        }\\n        Insert: {\\n          action_type: string\\n          created_at?: string | null\\n          id?: string\\n          invoice_ref?: string | null\\n          item_id: string\\n          location_from?: string | null\\n          location_to?: string | null\\n          new_value?: Json | null\\n          old_value?: Json | null\\n          order_id?: string | null\\n          package_delta?: number | null\\n          quantity_delta?: number | null\\n          reason: string\\n          source_ui?: string | null\\n          store_id: string\\n          supplier_id?: string | null\\n          unit?: string | null\\n          unit_cost?: number | null\\n          user_id?: string | null\\n        }\\n        Update: {\\n          action_type?: string\\n          created_at?: string | null\\n          id?: string\\n          invoice_ref?: string | null\\n          item_id?: string\\n          location_from?: string | null\\n          location_to?: string | null\\n          new_value?: Json | null\\n          old_value?: Json | null\\n          order_id?: string | null\\n          package_delta?: number | null\\n          quantity_delta?: number | null\\n          reason?: string\\n          source_ui?: string | null\\n          store_id?: string\\n          supplier_id?: string | null\\n          unit?: string | null\\n          unit_cost?: number | null\\n          user_id?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"inventory_audit_logs_item_id_fkey\\\"\\n            columns: [\\\"item_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"inventory_items\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_audit_logs_location_from_fkey\\\"\\n            columns: [\\\"location_from\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"storage_locations\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_audit_logs_location_to_fkey\\\"\\n            columns: [\\\"location_to\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"storage_locations\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_audit_logs_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"abandonable_orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_audit_logs_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"active_venue_states\\\"\\n            referencedColumns: [\\\"active_order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_audit_logs_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_audit_logs_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_audit_logs_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_price_tampering_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_audit_logs_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_stock_rollback_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_audit_logs_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"order_edit_stock_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_audit_logs_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_audit_logs_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_audit_logs_supplier_id_fkey\\\"\\n            columns: [\\\"supplier_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"inventory_suppliers\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_audit_logs_user_id_profiles_fkey\\\"\\n            columns: [\\\"user_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"profiles\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      inventory_items: {\\n        Row: {\\n          addons: Json | null\\n          category_id: string | null\\n          closed_stock: number | null\\n          combo_items: Json | null\\n          content_unit: string | null\\n          cost: number\\n          created_at: string | null\\n          current_stock: number\\n          description: string | null\\n          id: string\\n          ideal_stock: number | null\\n          image_url: string | null\\n          is_active: boolean | null\\n          is_menu_visible: boolean | null\\n          is_new: boolean | null\\n          is_promo: boolean | null\\n          is_recommended: boolean | null\\n          item_type: string | null\\n          last_purchase_price: number | null\\n          last_supplier_id: string | null\\n          max_stock: number | null\\n          min_packages: number | null\\n          min_quantity: number | null\\n          min_stock_alert: number\\n          name: string\\n          open_count: number | null\\n          open_packages: Json | null\\n          package_size: number | null\\n          price: number | null\\n          reorder_point: number | null\\n          sku: string | null\\n          sort_order: number | null\\n          stock_logic_version: string | null\\n          store_id: string\\n          unit_type: string\\n          updated_at: string | null\\n          variants: Json | null\\n        }\\n        Insert: {\\n          addons?: Json | null\\n          category_id?: string | null\\n          closed_stock?: number | null\\n          combo_items?: Json | null\\n          content_unit?: string | null\\n          cost?: number\\n          created_at?: string | null\\n          current_stock?: number\\n          description?: string | null\\n          id?: string\\n          ideal_stock?: number | null\\n          image_url?: string | null\\n          is_active?: boolean | null\\n          is_menu_visible?: boolean | null\\n          is_new?: boolean | null\\n          is_promo?: boolean | null\\n          is_recommended?: boolean | null\\n          item_type?: string | null\\n          last_purchase_price?: number | null\\n          last_supplier_id?: string | null\\n          max_stock?: number | null\\n          min_packages?: number | null\\n          min_quantity?: number | null\\n          min_stock_alert?: number\\n          name: string\\n          open_count?: number | null\\n          open_packages?: Json | null\\n          package_size?: number | null\\n          price?: number | null\\n          reorder_point?: number | null\\n          sku?: string | null\\n          sort_order?: number | null\\n          stock_logic_version?: string | null\\n          store_id: string\\n          unit_type: string\\n          updated_at?: string | null\\n          variants?: Json | null\\n        }\\n        Update: {\\n          addons?: Json | null\\n          category_id?: string | null\\n          closed_stock?: number | null\\n          combo_items?: Json | null\\n          content_unit?: string | null\\n          cost?: number\\n          created_at?: string | null\\n          current_stock?: number\\n          description?: string | null\\n          id?: string\\n          ideal_stock?: number | null\\n          image_url?: string | null\\n          is_active?: boolean | null\\n          is_menu_visible?: boolean | null\\n          is_new?: boolean | null\\n          is_promo?: boolean | null\\n          is_recommended?: boolean | null\\n          item_type?: string | null\\n          last_purchase_price?: number | null\\n          last_supplier_id?: string | null\\n          max_stock?: number | null\\n          min_packages?: number | null\\n          min_quantity?: number | null\\n          min_stock_alert?: number\\n          name?: string\\n          open_count?: number | null\\n          open_packages?: Json | null\\n          package_size?: number | null\\n          price?: number | null\\n          reorder_point?: number | null\\n          sku?: string | null\\n          sort_order?: number | null\\n          stock_logic_version?: string | null\\n          store_id?: string\\n          unit_type?: string\\n          updated_at?: string | null\\n          variants?: Json | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"inventory_items_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      inventory_location_stock: {\\n        Row: {\\n          closed_units: number | null\\n          id: string\\n          item_id: string\\n          location_id: string\\n          open_packages: Json | null\\n          store_id: string\\n          updated_at: string | null\\n        }\\n        Insert: {\\n          closed_units?: number | null\\n          id?: string\\n          item_id: string\\n          location_id: string\\n          open_packages?: Json | null\\n          store_id: string\\n          updated_at?: string | null\\n        }\\n        Update: {\\n          closed_units?: number | null\\n          id?: string\\n          item_id?: string\\n          location_id?: string\\n          open_packages?: Json | null\\n          store_id?: string\\n          updated_at?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"inventory_location_stock_item_id_fkey\\\"\\n            columns: [\\\"item_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"inventory_items\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_location_stock_location_id_fkey\\\"\\n            columns: [\\\"location_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"storage_locations\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_location_stock_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      inventory_lots: {\\n        Row: {\\n          cost_per_base_unit: number\\n          created_at: string\\n          expires_at: string | null\\n          id: string\\n          inventory_item_id: string\\n          lot_code: string | null\\n          qty_base_units: number\\n          qty_base_units_remaining: number\\n          received_at: string\\n          supplier: string | null\\n          tenant_id: string\\n        }\\n        Insert: {\\n          cost_per_base_unit: number\\n          created_at?: string\\n          expires_at?: string | null\\n          id?: string\\n          inventory_item_id: string\\n          lot_code?: string | null\\n          qty_base_units: number\\n          qty_base_units_remaining: number\\n          received_at: string\\n          supplier?: string | null\\n          tenant_id: string\\n        }\\n        Update: {\\n          cost_per_base_unit?: number\\n          created_at?: string\\n          expires_at?: string | null\\n          id?: string\\n          inventory_item_id?: string\\n          lot_code?: string | null\\n          qty_base_units?: number\\n          qty_base_units_remaining?: number\\n          received_at?: string\\n          supplier?: string | null\\n          tenant_id?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"inventory_lots_tenant_id_fkey\\\"\\n            columns: [\\\"tenant_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"tenants\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      inventory_movements: {\\n        Row: {\\n          created_at: string\\n          id: string\\n          inventory_item_id: string\\n          lot_id: string | null\\n          qty_base_units: number\\n          reason: string | null\\n          ref_order_id: string | null\\n          tenant_id: string\\n          type: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"inventory_movement_enum\\\"]\\n        }\\n        Insert: {\\n          created_at?: string\\n          id?: string\\n          inventory_item_id: string\\n          lot_id?: string | null\\n          qty_base_units: number\\n          reason?: string | null\\n          ref_order_id?: string | null\\n          tenant_id: string\\n          type: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"inventory_movement_enum\\\"]\\n        }\\n        Update: {\\n          created_at?: string\\n          id?: string\\n          inventory_item_id?: string\\n          lot_id?: string | null\\n          qty_base_units?: number\\n          reason?: string | null\\n          ref_order_id?: string | null\\n          tenant_id?: string\\n          type?: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"inventory_movement_enum\\\"]\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"inventory_movements_lot_id_fkey\\\"\\n            columns: [\\\"lot_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"inventory_lots\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_movements_ref_order_id_fkey\\\"\\n            columns: [\\\"ref_order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"abandonable_orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_movements_ref_order_id_fkey\\\"\\n            columns: [\\\"ref_order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"active_venue_states\\\"\\n            referencedColumns: [\\\"active_order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_movements_ref_order_id_fkey\\\"\\n            columns: [\\\"ref_order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_movements_ref_order_id_fkey\\\"\\n            columns: [\\\"ref_order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_movements_ref_order_id_fkey\\\"\\n            columns: [\\\"ref_order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_price_tampering_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_movements_ref_order_id_fkey\\\"\\n            columns: [\\\"ref_order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_stock_rollback_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_movements_ref_order_id_fkey\\\"\\n            columns: [\\\"ref_order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"order_edit_stock_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_movements_ref_order_id_fkey\\\"\\n            columns: [\\\"ref_order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"inventory_movements_tenant_id_fkey\\\"\\n            columns: [\\\"tenant_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"tenants\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      inventory_suppliers: {\\n        Row: {\\n          active: boolean | null\\n          address: string | null\\n          contact_info: string | null\\n          created_at: string | null\\n          email: string | null\\n          id: string\\n          name: string\\n          notes: string | null\\n          phone: string | null\\n          store_id: string\\n          updated_at: string | null\\n        }\\n        Insert: {\\n          active?: boolean | null\\n          address?: string | null\\n          contact_info?: string | null\\n          created_at?: string | null\\n          email?: string | null\\n          id?: string\\n          name: string\\n          notes?: string | null\\n          phone?: string | null\\n          store_id: string\\n          updated_at?: string | null\\n        }\\n        Update: {\\n          active?: boolean | null\\n          address?: string | null\\n          contact_info?: string | null\\n          created_at?: string | null\\n          email?: string | null\\n          id?: string\\n          name?: string\\n          notes?: string | null\\n          phone?: string | null\\n          store_id?: string\\n          updated_at?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"inventory_suppliers_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      invoice_items: {\\n        Row: {\\n          bonification: number | null\\n          id: string\\n          invoice_id: string | null\\n          is_new_item: boolean | null\\n          matched_inventory_id: string | null\\n          name: string | null\\n          quantity: number | null\\n          tax_amount: number | null\\n          total_line: number | null\\n          unit: string | null\\n          unit_price: number | null\\n        }\\n        Insert: {\\n          bonification?: number | null\\n          id?: string\\n          invoice_id?: string | null\\n          is_new_item?: boolean | null\\n          matched_inventory_id?: string | null\\n          name?: string | null\\n          quantity?: number | null\\n          tax_amount?: number | null\\n          total_line?: number | null\\n          unit?: string | null\\n          unit_price?: number | null\\n        }\\n        Update: {\\n          bonification?: number | null\\n          id?: string\\n          invoice_id?: string | null\\n          is_new_item?: boolean | null\\n          matched_inventory_id?: string | null\\n          name?: string | null\\n          quantity?: number | null\\n          tax_amount?: number | null\\n          total_line?: number | null\\n          unit?: string | null\\n          unit_price?: number | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"invoice_items_invoice_id_fkey\\\"\\n            columns: [\\\"invoice_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"invoices\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"invoice_items_matched_inventory_id_fkey\\\"\\n            columns: [\\\"matched_inventory_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"inventory_items\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      invoices: {\\n        Row: {\\n          ai_analysis: Json | null\\n          confirmed_at: string | null\\n          created_at: string | null\\n          fecha_factura: string | null\\n          id: string\\n          image_url: string | null\\n          iva_total: number | null\\n          nro_factura: string | null\\n          proveedor: string | null\\n          raw_extraction: Json | null\\n          status: string | null\\n          store_id: string | null\\n          subtotal: number | null\\n          total: number | null\\n          uploaded_by: string | null\\n        }\\n        Insert: {\\n          ai_analysis?: Json | null\\n          confirmed_at?: string | null\\n          created_at?: string | null\\n          fecha_factura?: string | null\\n          id?: string\\n          image_url?: string | null\\n          iva_total?: number | null\\n          nro_factura?: string | null\\n          proveedor?: string | null\\n          raw_extraction?: Json | null\\n          status?: string | null\\n          store_id?: string | null\\n          subtotal?: number | null\\n          total?: number | null\\n          uploaded_by?: string | null\\n        }\\n        Update: {\\n          ai_analysis?: Json | null\\n          confirmed_at?: string | null\\n          created_at?: string | null\\n          fecha_factura?: string | null\\n          id?: string\\n          image_url?: string | null\\n          iva_total?: number | null\\n          nro_factura?: string | null\\n          proveedor?: string | null\\n          raw_extraction?: Json | null\\n          status?: string | null\\n          store_id?: string | null\\n          subtotal?: number | null\\n          total?: number | null\\n          uploaded_by?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"invoices_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      leads: {\\n        Row: {\\n          company: string | null\\n          created_at: string | null\\n          email: string\\n          id: string\\n          message: string | null\\n          name: string\\n          phone: string | null\\n          source: string | null\\n          status: string | null\\n          updated_at: string | null\\n        }\\n        Insert: {\\n          company?: string | null\\n          created_at?: string | null\\n          email: string\\n          id?: string\\n          message?: string | null\\n          name: string\\n          phone?: string | null\\n          source?: string | null\\n          status?: string | null\\n          updated_at?: string | null\\n        }\\n        Update: {\\n          company?: string | null\\n          created_at?: string | null\\n          email?: string\\n          id?: string\\n          message?: string | null\\n          name?: string\\n          phone?: string | null\\n          source?: string | null\\n          status?: string | null\\n          updated_at?: string | null\\n        }\\n        Relationships: []\\n      }\\n      loyalty_configs: {\\n        Row: {\\n          config: Json\\n          created_at: string | null\\n          id: string\\n          store_id: string\\n          updated_at: string | null\\n        }\\n        Insert: {\\n          config?: Json\\n          created_at?: string | null\\n          id?: string\\n          store_id: string\\n          updated_at?: string | null\\n        }\\n        Update: {\\n          config?: Json\\n          created_at?: string | null\\n          id?: string\\n          store_id?: string\\n          updated_at?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"loyalty_configs_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: true\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      loyalty_product_rules: {\\n        Row: {\\n          created_at: string | null\\n          id: string\\n          multiplier: number\\n          product_id: string\\n          store_id: string\\n        }\\n        Insert: {\\n          created_at?: string | null\\n          id?: string\\n          multiplier?: number\\n          product_id: string\\n          store_id: string\\n        }\\n        Update: {\\n          created_at?: string | null\\n          id?: string\\n          multiplier?: number\\n          product_id?: string\\n          store_id?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"loyalty_product_rules_product_id_fkey\\\"\\n            columns: [\\\"product_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"products\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_product_rules_product_id_fkey\\\"\\n            columns: [\\\"product_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"products_compat\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_product_rules_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      loyalty_redemptions: {\\n        Row: {\\n          cost_points: number\\n          cost_value: number | null\\n          created_at: string | null\\n          id: string\\n          is_rolled_back: boolean | null\\n          order_id: string | null\\n          product_id: string | null\\n          retail_value: number | null\\n          reward_id: string | null\\n          transaction_id: string\\n        }\\n        Insert: {\\n          cost_points: number\\n          cost_value?: number | null\\n          created_at?: string | null\\n          id?: string\\n          is_rolled_back?: boolean | null\\n          order_id?: string | null\\n          product_id?: string | null\\n          retail_value?: number | null\\n          reward_id?: string | null\\n          transaction_id: string\\n        }\\n        Update: {\\n          cost_points?: number\\n          cost_value?: number | null\\n          created_at?: string | null\\n          id?: string\\n          is_rolled_back?: boolean | null\\n          order_id?: string | null\\n          product_id?: string | null\\n          retail_value?: number | null\\n          reward_id?: string | null\\n          transaction_id?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"loyalty_redemptions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"abandonable_orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_redemptions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"active_venue_states\\\"\\n            referencedColumns: [\\\"active_order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_redemptions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_redemptions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_redemptions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_price_tampering_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_redemptions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_stock_rollback_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_redemptions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"order_edit_stock_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_redemptions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_redemptions_product_id_fkey\\\"\\n            columns: [\\\"product_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"inventory_items\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_redemptions_reward_id_fkey\\\"\\n            columns: [\\\"reward_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"loyalty_rewards\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_redemptions_transaction_id_fkey\\\"\\n            columns: [\\\"transaction_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"loyalty_transactions\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      loyalty_rewards: {\\n        Row: {\\n          created_at: string | null\\n          id: string\\n          image_url: string | null\\n          is_active: boolean\\n          name: string\\n          points: number\\n          product_id: string | null\\n          store_id: string\\n        }\\n        Insert: {\\n          created_at?: string | null\\n          id?: string\\n          image_url?: string | null\\n          is_active?: boolean\\n          name: string\\n          points?: number\\n          product_id?: string | null\\n          store_id: string\\n        }\\n        Update: {\\n          created_at?: string | null\\n          id?: string\\n          image_url?: string | null\\n          is_active?: boolean\\n          name?: string\\n          points?: number\\n          product_id?: string | null\\n          store_id?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"loyalty_rewards_product_id_fkey\\\"\\n            columns: [\\\"product_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"products\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_rewards_product_id_fkey\\\"\\n            columns: [\\\"product_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"products_compat\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_rewards_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      loyalty_transactions: {\\n        Row: {\\n          client_id: string\\n          created_at: string | null\\n          description: string | null\\n          id: string\\n          is_rolled_back: boolean | null\\n          metadata: Json | null\\n          monetary_cost: number | null\\n          monetary_value: number | null\\n          order_id: string | null\\n          points: number\\n          staff_id: string | null\\n          store_id: string\\n          type: string\\n        }\\n        Insert: {\\n          client_id: string\\n          created_at?: string | null\\n          description?: string | null\\n          id?: string\\n          is_rolled_back?: boolean | null\\n          metadata?: Json | null\\n          monetary_cost?: number | null\\n          monetary_value?: number | null\\n          order_id?: string | null\\n          points: number\\n          staff_id?: string | null\\n          store_id: string\\n          type: string\\n        }\\n        Update: {\\n          client_id?: string\\n          created_at?: string | null\\n          description?: string | null\\n          id?: string\\n          is_rolled_back?: boolean | null\\n          metadata?: Json | null\\n          monetary_cost?: number | null\\n          monetary_value?: number | null\\n          order_id?: string | null\\n          points?: number\\n          staff_id?: string | null\\n          store_id?: string\\n          type?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"fk_loyalty_transactions_store\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_transactions_client_id_fkey\\\"\\n            columns: [\\\"client_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"clients\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_transactions_client_id_fkey\\\"\\n            columns: [\\\"client_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"loyalty_balance_audit\\\"\\n            referencedColumns: [\\\"client_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_transactions_client_id_fkey\\\"\\n            columns: [\\\"client_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_wallet_integrity\\\"\\n            referencedColumns: [\\\"client_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_transactions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"abandonable_orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_transactions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"active_venue_states\\\"\\n            referencedColumns: [\\\"active_order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_transactions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_transactions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_transactions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_price_tampering_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_transactions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_stock_rollback_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_transactions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"order_edit_stock_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_transactions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_transactions_staff_id_fkey\\\"\\n            columns: [\\\"staff_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"profiles\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"loyalty_transactions_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      menu_products: {\\n        Row: {\\n          created_at: string | null\\n          id: string\\n          is_visible: boolean | null\\n          menu_id: string\\n          price_override: number | null\\n          product_id: string\\n          sort_order: number | null\\n        }\\n        Insert: {\\n          created_at?: string | null\\n          id?: string\\n          is_visible?: boolean | null\\n          menu_id: string\\n          price_override?: number | null\\n          product_id: string\\n          sort_order?: number | null\\n        }\\n        Update: {\\n          created_at?: string | null\\n          id?: string\\n          is_visible?: boolean | null\\n          menu_id?: string\\n          price_override?: number | null\\n          product_id?: string\\n          sort_order?: number | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"menu_products_menu_id_fkey\\\"\\n            columns: [\\\"menu_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"menus\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"menu_products_product_id_fkey\\\"\\n            columns: [\\\"product_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"products\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"menu_products_product_id_fkey\\\"\\n            columns: [\\\"product_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"products_compat\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      menu_rules: {\\n        Row: {\\n          created_at: string | null\\n          id: string\\n          is_active: boolean | null\\n          menu_id: string\\n          rule_config: Json\\n          rule_type: string\\n        }\\n        Insert: {\\n          created_at?: string | null\\n          id?: string\\n          is_active?: boolean | null\\n          menu_id: string\\n          rule_config?: Json\\n          rule_type: string\\n        }\\n        Update: {\\n          created_at?: string | null\\n          id?: string\\n          is_active?: boolean | null\\n          menu_id?: string\\n          rule_config?: Json\\n          rule_type?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"menu_rules_menu_id_fkey\\\"\\n            columns: [\\\"menu_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"menus\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      menus: {\\n        Row: {\\n          created_at: string | null\\n          description: string | null\\n          id: string\\n          is_active: boolean | null\\n          is_fallback: boolean | null\\n          name: string\\n          priority: number | null\\n          store_id: string\\n          updated_at: string | null\\n        }\\n        Insert: {\\n          created_at?: string | null\\n          description?: string | null\\n          id?: string\\n          is_active?: boolean | null\\n          is_fallback?: boolean | null\\n          name: string\\n          priority?: number | null\\n          store_id: string\\n          updated_at?: string | null\\n        }\\n        Update: {\\n          created_at?: string | null\\n          description?: string | null\\n          id?: string\\n          is_active?: boolean | null\\n          is_fallback?: boolean | null\\n          name?: string\\n          priority?: number | null\\n          store_id?: string\\n          updated_at?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"menus_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      open_packages: {\\n        Row: {\\n          closed_at: string | null\\n          created_at: string\\n          id: string\\n          inventory_item_id: string\\n          is_active: boolean | null\\n          location_id: string | null\\n          notes: string | null\\n          opened_at: string\\n          opened_by: string | null\\n          package_capacity: number\\n          remaining: number\\n          store_id: string\\n          unit: string\\n          updated_at: string\\n        }\\n        Insert: {\\n          closed_at?: string | null\\n          created_at?: string\\n          id?: string\\n          inventory_item_id: string\\n          is_active?: boolean | null\\n          location_id?: string | null\\n          notes?: string | null\\n          opened_at?: string\\n          opened_by?: string | null\\n          package_capacity: number\\n          remaining: number\\n          store_id: string\\n          unit?: string\\n          updated_at?: string\\n        }\\n        Update: {\\n          closed_at?: string | null\\n          created_at?: string\\n          id?: string\\n          inventory_item_id?: string\\n          is_active?: boolean | null\\n          location_id?: string | null\\n          notes?: string | null\\n          opened_at?: string\\n          opened_by?: string | null\\n          package_capacity?: number\\n          remaining?: number\\n          store_id?: string\\n          unit?: string\\n          updated_at?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"fk_open_packages_store\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"open_packages_inventory_item_id_fkey\\\"\\n            columns: [\\\"inventory_item_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"inventory_items\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"open_packages_location_id_fkey\\\"\\n            columns: [\\\"location_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"storage_locations\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"open_packages_opened_by_fkey\\\"\\n            columns: [\\\"opened_by\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"profiles\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"open_packages_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      order_item_addons: {\\n        Row: {\\n          addon_id: string\\n          created_at: string\\n          id: string\\n          order_item_id: string\\n          price: number\\n          tenant_id: string\\n        }\\n        Insert: {\\n          addon_id: string\\n          created_at?: string\\n          id?: string\\n          order_item_id: string\\n          price: number\\n          tenant_id: string\\n        }\\n        Update: {\\n          addon_id?: string\\n          created_at?: string\\n          id?: string\\n          order_item_id?: string\\n          price?: number\\n          tenant_id?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"order_item_addons_addon_id_fkey\\\"\\n            columns: [\\\"addon_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"product_addons\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"order_item_addons_order_item_id_fkey\\\"\\n            columns: [\\\"order_item_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"order_items\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"order_item_addons_tenant_id_fkey\\\"\\n            columns: [\\\"tenant_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"tenants\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      order_items: {\\n        Row: {\\n          created_at: string\\n          id: string\\n          notes: string | null\\n          order_id: string\\n          product_id: string\\n          quantity: number\\n          status: string | null\\n          store_id: string\\n          tenant_id: string | null\\n          total_price: number\\n          unit_price: number\\n          variant_id: string | null\\n        }\\n        Insert: {\\n          created_at?: string\\n          id?: string\\n          notes?: string | null\\n          order_id: string\\n          product_id: string\\n          quantity: number\\n          status?: string | null\\n          store_id: string\\n          tenant_id?: string | null\\n          total_price: number\\n          unit_price: number\\n          variant_id?: string | null\\n        }\\n        Update: {\\n          created_at?: string\\n          id?: string\\n          notes?: string | null\\n          order_id?: string\\n          product_id?: string\\n          quantity?: number\\n          status?: string | null\\n          store_id?: string\\n          tenant_id?: string | null\\n          total_price?: number\\n          unit_price?: number\\n          variant_id?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"order_items_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"abandonable_orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"order_items_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"active_venue_states\\\"\\n            referencedColumns: [\\\"active_order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"order_items_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"order_items_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"order_items_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_price_tampering_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"order_items_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_stock_rollback_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"order_items_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"order_edit_stock_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"order_items_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"order_items_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"order_items_variant_id_fkey\\\"\\n            columns: [\\\"variant_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"product_variants\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      orders: {\\n        Row: {\\n          archived_at: string | null\\n          cash_session_id: string | null\\n          channel: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"order_channel_enum\\\"]\\n          client_id: string | null\\n          created_at: string\\n          created_by_user_id: string | null\\n          delivered_at: string | null\\n          delivered_by: string | null\\n          delivery_mode: string | null\\n          delivery_status: string | null\\n          discount_amount: number\\n          dispatch_station: string | null\\n          id: string\\n          is_paid: boolean | null\\n          items: Json | null\\n          location_identifier: string | null\\n          node_id: string | null\\n          order_number: number\\n          paid_at: string | null\\n          payment_id: string | null\\n          payment_method: string | null\\n          payment_provider: string | null\\n          payment_status: string\\n          pickup_code: string | null\\n          placed_at: string\\n          session_id: string | null\\n          source_location_id: string | null\\n          status: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"order_status_enum\\\"]\\n          stock_deducted: boolean\\n          stock_reversed: boolean | null\\n          store_id: string\\n          subtotal: number\\n          table_number: string | null\\n          tax_amount: number\\n          total_amount: number\\n          updated_at: string\\n        }\\n        Insert: {\\n          archived_at?: string | null\\n          cash_session_id?: string | null\\n          channel?: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"order_channel_enum\\\"]\\n          client_id?: string | null\\n          created_at?: string\\n          created_by_user_id?: string | null\\n          delivered_at?: string | null\\n          delivered_by?: string | null\\n          delivery_mode?: string | null\\n          delivery_status?: string | null\\n          discount_amount?: number\\n          dispatch_station?: string | null\\n          id?: string\\n          is_paid?: boolean | null\\n          items?: Json | null\\n          location_identifier?: string | null\\n          node_id?: string | null\\n          order_number: number\\n          paid_at?: string | null\\n          payment_id?: string | null\\n          payment_method?: string | null\\n          payment_provider?: string | null\\n          payment_status?: string\\n          pickup_code?: string | null\\n          placed_at?: string\\n          session_id?: string | null\\n          source_location_id?: string | null\\n          status?: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"order_status_enum\\\"]\\n          stock_deducted?: boolean\\n          stock_reversed?: boolean | null\\n          store_id: string\\n          subtotal?: number\\n          table_number?: string | null\\n          tax_amount?: number\\n          total_amount?: number\\n          updated_at?: string\\n        }\\n        Update: {\\n          archived_at?: string | null\\n          cash_session_id?: string | null\\n          channel?: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"order_channel_enum\\\"]\\n          client_id?: string | null\\n          created_at?: string\\n          created_by_user_id?: string | null\\n          delivered_at?: string | null\\n          delivered_by?: string | null\\n          delivery_mode?: string | null\\n          delivery_status?: string | null\\n          discount_amount?: number\\n          dispatch_station?: string | null\\n          id?: string\\n          is_paid?: boolean | null\\n          items?: Json | null\\n          location_identifier?: string | null\\n          node_id?: string | null\\n          order_number?: number\\n          paid_at?: string | null\\n          payment_id?: string | null\\n          payment_method?: string | null\\n          payment_provider?: string | null\\n          payment_status?: string\\n          pickup_code?: string | null\\n          placed_at?: string\\n          session_id?: string | null\\n          source_location_id?: string | null\\n          status?: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"order_status_enum\\\"]\\n          stock_deducted?: boolean\\n          stock_reversed?: boolean | null\\n          store_id?: string\\n          subtotal?: number\\n          table_number?: string | null\\n          tax_amount?: number\\n          total_amount?: number\\n          updated_at?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"orders_cash_session_id_fkey\\\"\\n            columns: [\\\"cash_session_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cash_session_reconciliation\\\"\\n            referencedColumns: [\\\"session_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"orders_cash_session_id_fkey\\\"\\n            columns: [\\\"cash_session_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cash_sessions\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"orders_cash_session_id_fkey\\\"\\n            columns: [\\\"cash_session_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cash_sessions_summary\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"orders_cash_session_id_fkey\\\"\\n            columns: [\\\"cash_session_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_cash_session_reconciliation\\\"\\n            referencedColumns: [\\\"session_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"orders_client_id_fkey\\\"\\n            columns: [\\\"client_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"clients\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"orders_client_id_fkey\\\"\\n            columns: [\\\"client_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"loyalty_balance_audit\\\"\\n            referencedColumns: [\\\"client_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"orders_client_id_fkey\\\"\\n            columns: [\\\"client_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_wallet_integrity\\\"\\n            referencedColumns: [\\\"client_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"orders_node_id_fkey\\\"\\n            columns: [\\\"node_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"active_venue_states\\\"\\n            referencedColumns: [\\\"node_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"orders_node_id_fkey\\\"\\n            columns: [\\\"node_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"available_nodes_for_orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"orders_node_id_fkey\\\"\\n            columns: [\\\"node_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_nodes\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"orders_node_id_fkey\\\"\\n            columns: [\\\"node_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_nodes_with_orders\\\"\\n            referencedColumns: [\\\"node_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"orders_session_id_fkey\\\"\\n            columns: [\\\"session_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"client_sessions\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"orders_source_location_id_fkey\\\"\\n            columns: [\\\"source_location_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"storage_locations\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"orders_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      payment_intents: {\\n        Row: {\\n          amount: number\\n          created_at: string\\n          currency: string\\n          expires_at: string | null\\n          external_reference: string\\n          id: string\\n          init_point: string | null\\n          metadata: Json | null\\n          mp_preference_id: string | null\\n          order_id: string\\n          status: string\\n          store_id: string\\n          updated_at: string\\n        }\\n        Insert: {\\n          amount: number\\n          created_at?: string\\n          currency?: string\\n          expires_at?: string | null\\n          external_reference: string\\n          id?: string\\n          init_point?: string | null\\n          metadata?: Json | null\\n          mp_preference_id?: string | null\\n          order_id: string\\n          status?: string\\n          store_id: string\\n          updated_at?: string\\n        }\\n        Update: {\\n          amount?: number\\n          created_at?: string\\n          currency?: string\\n          expires_at?: string | null\\n          external_reference?: string\\n          id?: string\\n          init_point?: string | null\\n          metadata?: Json | null\\n          mp_preference_id?: string | null\\n          order_id?: string\\n          status?: string\\n          store_id?: string\\n          updated_at?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"payment_intents_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"abandonable_orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"payment_intents_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"active_venue_states\\\"\\n            referencedColumns: [\\\"active_order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"payment_intents_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"payment_intents_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"payment_intents_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_price_tampering_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"payment_intents_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_stock_rollback_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"payment_intents_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"order_edit_stock_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"payment_intents_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"payment_intents_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      payment_transactions: {\\n        Row: {\\n          amount: number\\n          currency: string\\n          date_approved: string | null\\n          date_created: string | null\\n          id: string\\n          metadata: Json | null\\n          mp_payment_id: string\\n          order_id: string\\n          payer_email: string | null\\n          payer_id: string | null\\n          payment_intent_id: string | null\\n          payment_method: string | null\\n          payment_type: string | null\\n          status: string\\n          status_detail: string | null\\n          store_id: string\\n          verified_at: string | null\\n        }\\n        Insert: {\\n          amount: number\\n          currency?: string\\n          date_approved?: string | null\\n          date_created?: string | null\\n          id?: string\\n          metadata?: Json | null\\n          mp_payment_id: string\\n          order_id: string\\n          payer_email?: string | null\\n          payer_id?: string | null\\n          payment_intent_id?: string | null\\n          payment_method?: string | null\\n          payment_type?: string | null\\n          status: string\\n          status_detail?: string | null\\n          store_id: string\\n          verified_at?: string | null\\n        }\\n        Update: {\\n          amount?: number\\n          currency?: string\\n          date_approved?: string | null\\n          date_created?: string | null\\n          id?: string\\n          metadata?: Json | null\\n          mp_payment_id?: string\\n          order_id?: string\\n          payer_email?: string | null\\n          payer_id?: string | null\\n          payment_intent_id?: string | null\\n          payment_method?: string | null\\n          payment_type?: string | null\\n          status?: string\\n          status_detail?: string | null\\n          store_id?: string\\n          verified_at?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"payment_transactions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"abandonable_orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"payment_transactions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"active_venue_states\\\"\\n            referencedColumns: [\\\"active_order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"payment_transactions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"payment_transactions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"payment_transactions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_price_tampering_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"payment_transactions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_stock_rollback_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"payment_transactions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"order_edit_stock_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"payment_transactions_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"payment_transactions_payment_intent_id_fkey\\\"\\n            columns: [\\\"payment_intent_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"payment_intents\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"payment_transactions_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      payment_webhooks: {\\n        Row: {\\n          action: string | null\\n          created_at: string\\n          error_message: string | null\\n          headers_json: Json | null\\n          id: string\\n          mp_webhook_id: string | null\\n          payload_json: Json\\n          processed: boolean | null\\n          processed_at: string | null\\n          processing_result: string | null\\n          provider: string\\n          provider_event_id: string | null\\n          received_at: string\\n          signature_valid: boolean | null\\n          store_id: string | null\\n          topic: string\\n        }\\n        Insert: {\\n          action?: string | null\\n          created_at?: string\\n          error_message?: string | null\\n          headers_json?: Json | null\\n          id?: string\\n          mp_webhook_id?: string | null\\n          payload_json: Json\\n          processed?: boolean | null\\n          processed_at?: string | null\\n          processing_result?: string | null\\n          provider?: string\\n          provider_event_id?: string | null\\n          received_at?: string\\n          signature_valid?: boolean | null\\n          store_id?: string | null\\n          topic: string\\n        }\\n        Update: {\\n          action?: string | null\\n          created_at?: string\\n          error_message?: string | null\\n          headers_json?: Json | null\\n          id?: string\\n          mp_webhook_id?: string | null\\n          payload_json?: Json\\n          processed?: boolean | null\\n          processed_at?: string | null\\n          processing_result?: string | null\\n          provider?: string\\n          provider_event_id?: string | null\\n          received_at?: string\\n          signature_valid?: boolean | null\\n          store_id?: string | null\\n          topic?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"payment_webhooks_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      product_addons: {\\n        Row: {\\n          active: boolean\\n          created_at: string\\n          id: string\\n          inventory_item_id: string | null\\n          name: string\\n          price: number\\n          product_id: string | null\\n          quantity_consumed: number | null\\n          sku: string | null\\n          tenant_id: string\\n        }\\n        Insert: {\\n          active?: boolean\\n          created_at?: string\\n          id?: string\\n          inventory_item_id?: string | null\\n          name: string\\n          price?: number\\n          product_id?: string | null\\n          quantity_consumed?: number | null\\n          sku?: string | null\\n          tenant_id: string\\n        }\\n        Update: {\\n          active?: boolean\\n          created_at?: string\\n          id?: string\\n          inventory_item_id?: string | null\\n          name?: string\\n          price?: number\\n          product_id?: string | null\\n          quantity_consumed?: number | null\\n          sku?: string | null\\n          tenant_id?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"product_addons_inventory_item_id_fkey\\\"\\n            columns: [\\\"inventory_item_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"inventory_items\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"product_addons_product_id_fkey\\\"\\n            columns: [\\\"product_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"inventory_items\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"product_addons_tenant_id_fkey\\\"\\n            columns: [\\\"tenant_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"tenants\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      product_addons_map: {\\n        Row: {\\n          addon_id: string\\n          id: string\\n          product_id: string\\n          tenant_id: string\\n        }\\n        Insert: {\\n          addon_id: string\\n          id?: string\\n          product_id: string\\n          tenant_id: string\\n        }\\n        Update: {\\n          addon_id?: string\\n          id?: string\\n          product_id?: string\\n          tenant_id?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"product_addons_map_addon_id_fkey\\\"\\n            columns: [\\\"addon_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"product_addons\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"product_addons_map_product_id_fkey\\\"\\n            columns: [\\\"product_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"products\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"product_addons_map_product_id_fkey\\\"\\n            columns: [\\\"product_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"products_compat\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"product_addons_map_tenant_id_fkey\\\"\\n            columns: [\\\"tenant_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"tenants\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      product_recipes: {\\n        Row: {\\n          created_at: string | null\\n          id: string\\n          inventory_item_id: string\\n          product_id: string\\n          quantity_required: number\\n          updated_at: string | null\\n        }\\n        Insert: {\\n          created_at?: string | null\\n          id?: string\\n          inventory_item_id: string\\n          product_id: string\\n          quantity_required?: number\\n          updated_at?: string | null\\n        }\\n        Update: {\\n          created_at?: string | null\\n          id?: string\\n          inventory_item_id?: string\\n          product_id?: string\\n          quantity_required?: number\\n          updated_at?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"product_recipes_inventory_item_id_fkey\\\"\\n            columns: [\\\"inventory_item_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"inventory_items\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"product_recipes_product_id_fkey\\\"\\n            columns: [\\\"product_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"products\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"product_recipes_product_id_fkey\\\"\\n            columns: [\\\"product_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"products_compat\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      product_variants: {\\n        Row: {\\n          active: boolean\\n          created_at: string\\n          id: string\\n          name: string\\n          price_delta: number\\n          product_id: string\\n          recipe_multiplier: number | null\\n          recipe_overrides: Json | null\\n          sku: string | null\\n          tenant_id: string\\n        }\\n        Insert: {\\n          active?: boolean\\n          created_at?: string\\n          id?: string\\n          name: string\\n          price_delta?: number\\n          product_id: string\\n          recipe_multiplier?: number | null\\n          recipe_overrides?: Json | null\\n          sku?: string | null\\n          tenant_id: string\\n        }\\n        Update: {\\n          active?: boolean\\n          created_at?: string\\n          id?: string\\n          name?: string\\n          price_delta?: number\\n          product_id?: string\\n          recipe_multiplier?: number | null\\n          recipe_overrides?: Json | null\\n          sku?: string | null\\n          tenant_id?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"product_variants_product_id_fkey\\\"\\n            columns: [\\\"product_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"products\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"product_variants_product_id_fkey\\\"\\n            columns: [\\\"product_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"products_compat\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"product_variants_tenant_id_fkey\\\"\\n            columns: [\\\"tenant_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"tenants\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      products: {\\n        Row: {\\n          active: boolean\\n          base_price: number\\n          category: string | null\\n          category_slug: string | null\\n          created_at: string\\n          customs_options: Json | null\\n          description: string | null\\n          id: string\\n          image: string | null\\n          is_available: boolean | null\\n          is_visible: boolean | null\\n          name: string\\n          sku: string | null\\n          store_id: string\\n          tax_rate: number\\n          updated_at: string\\n        }\\n        Insert: {\\n          active?: boolean\\n          base_price?: number\\n          category?: string | null\\n          category_slug?: string | null\\n          created_at?: string\\n          customs_options?: Json | null\\n          description?: string | null\\n          id?: string\\n          image?: string | null\\n          is_available?: boolean | null\\n          is_visible?: boolean | null\\n          name: string\\n          sku?: string | null\\n          store_id: string\\n          tax_rate?: number\\n          updated_at?: string\\n        }\\n        Update: {\\n          active?: boolean\\n          base_price?: number\\n          category?: string | null\\n          category_slug?: string | null\\n          created_at?: string\\n          customs_options?: Json | null\\n          description?: string | null\\n          id?: string\\n          image?: string | null\\n          is_available?: boolean | null\\n          is_visible?: boolean | null\\n          name?: string\\n          sku?: string | null\\n          store_id?: string\\n          tax_rate?: number\\n          updated_at?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"products_tenant_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"tenants\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      profiles: {\\n        Row: {\\n          avatar_url: string | null\\n          created_at: string | null\\n          email: string | null\\n          full_name: string | null\\n          id: string\\n          is_active: boolean | null\\n          points_balance: number | null\\n          role: string | null\\n          role_id: string | null\\n          store_id: string | null\\n          updated_at: string | null\\n          username: string | null\\n          website: string | null\\n        }\\n        Insert: {\\n          avatar_url?: string | null\\n          created_at?: string | null\\n          email?: string | null\\n          full_name?: string | null\\n          id: string\\n          is_active?: boolean | null\\n          points_balance?: number | null\\n          role?: string | null\\n          role_id?: string | null\\n          store_id?: string | null\\n          updated_at?: string | null\\n          username?: string | null\\n          website?: string | null\\n        }\\n        Update: {\\n          avatar_url?: string | null\\n          created_at?: string | null\\n          email?: string | null\\n          full_name?: string | null\\n          id?: string\\n          is_active?: boolean | null\\n          points_balance?: number | null\\n          role?: string | null\\n          role_id?: string | null\\n          store_id?: string | null\\n          updated_at?: string | null\\n          username?: string | null\\n          website?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"profiles_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"profiles_store_role_id_fkey\\\"\\n            columns: [\\\"role_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"store_roles\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      qr_codes: {\\n        Row: {\\n          bar_id: string | null\\n          code_hash: string\\n          created_at: string | null\\n          id: string\\n          is_active: boolean | null\\n          label: string\\n          last_scanned_at: string | null\\n          location_id: string | null\\n          qr_type: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"qr_type\\\"]\\n          regenerated_from: string | null\\n          scan_count: number | null\\n          store_id: string\\n          table_id: string | null\\n          updated_at: string | null\\n        }\\n        Insert: {\\n          bar_id?: string | null\\n          code_hash: string\\n          created_at?: string | null\\n          id?: string\\n          is_active?: boolean | null\\n          label: string\\n          last_scanned_at?: string | null\\n          location_id?: string | null\\n          qr_type: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"qr_type\\\"]\\n          regenerated_from?: string | null\\n          scan_count?: number | null\\n          store_id: string\\n          table_id?: string | null\\n          updated_at?: string | null\\n        }\\n        Update: {\\n          bar_id?: string | null\\n          code_hash?: string\\n          created_at?: string | null\\n          id?: string\\n          is_active?: boolean | null\\n          label?: string\\n          last_scanned_at?: string | null\\n          location_id?: string | null\\n          qr_type?: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"qr_type\\\"]\\n          regenerated_from?: string | null\\n          scan_count?: number | null\\n          store_id?: string\\n          table_id?: string | null\\n          updated_at?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"qr_codes_bar_id_fkey\\\"\\n            columns: [\\\"bar_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"active_venue_states\\\"\\n            referencedColumns: [\\\"node_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"qr_codes_bar_id_fkey\\\"\\n            columns: [\\\"bar_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"available_nodes_for_orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"qr_codes_bar_id_fkey\\\"\\n            columns: [\\\"bar_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_nodes\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"qr_codes_bar_id_fkey\\\"\\n            columns: [\\\"bar_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_nodes_with_orders\\\"\\n            referencedColumns: [\\\"node_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"qr_codes_location_id_fkey\\\"\\n            columns: [\\\"location_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"storage_locations\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"qr_codes_regenerated_from_fkey\\\"\\n            columns: [\\\"regenerated_from\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"qr_codes\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"qr_codes_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"qr_codes_table_id_fkey\\\"\\n            columns: [\\\"table_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"active_venue_states\\\"\\n            referencedColumns: [\\\"node_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"qr_codes_table_id_fkey\\\"\\n            columns: [\\\"table_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"available_nodes_for_orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"qr_codes_table_id_fkey\\\"\\n            columns: [\\\"table_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_nodes\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"qr_codes_table_id_fkey\\\"\\n            columns: [\\\"table_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_nodes_with_orders\\\"\\n            referencedColumns: [\\\"node_id\\\"]\\n          },\\n        ]\\n      }\\n      qr_links: {\\n        Row: {\\n          code_hash: string\\n          created_at: string | null\\n          hash: string | null\\n          id: string\\n          is_active: boolean | null\\n          node_id: string | null\\n          store_id: string\\n          target_node_id: string | null\\n          target_type: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"qr_target_type\\\"]\\n          target_zone_name: string | null\\n          type: string | null\\n        }\\n        Insert: {\\n          code_hash: string\\n          created_at?: string | null\\n          hash?: string | null\\n          id?: string\\n          is_active?: boolean | null\\n          node_id?: string | null\\n          store_id: string\\n          target_node_id?: string | null\\n          target_type: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"qr_target_type\\\"]\\n          target_zone_name?: string | null\\n          type?: string | null\\n        }\\n        Update: {\\n          code_hash?: string\\n          created_at?: string | null\\n          hash?: string | null\\n          id?: string\\n          is_active?: boolean | null\\n          node_id?: string | null\\n          store_id?: string\\n          target_node_id?: string | null\\n          target_type?: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"qr_target_type\\\"]\\n          target_zone_name?: string | null\\n          type?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"qr_links_node_id_fkey\\\"\\n            columns: [\\\"node_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"active_venue_states\\\"\\n            referencedColumns: [\\\"node_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"qr_links_node_id_fkey\\\"\\n            columns: [\\\"node_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"available_nodes_for_orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"qr_links_node_id_fkey\\\"\\n            columns: [\\\"node_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_nodes\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"qr_links_node_id_fkey\\\"\\n            columns: [\\\"node_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_nodes_with_orders\\\"\\n            referencedColumns: [\\\"node_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"qr_links_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"qr_links_target_node_id_fkey\\\"\\n            columns: [\\\"target_node_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"active_venue_states\\\"\\n            referencedColumns: [\\\"node_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"qr_links_target_node_id_fkey\\\"\\n            columns: [\\\"target_node_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"available_nodes_for_orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"qr_links_target_node_id_fkey\\\"\\n            columns: [\\\"target_node_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_nodes\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"qr_links_target_node_id_fkey\\\"\\n            columns: [\\\"target_node_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_nodes_with_orders\\\"\\n            referencedColumns: [\\\"node_id\\\"]\\n          },\\n        ]\\n      }\\n      qr_scan_logs: {\\n        Row: {\\n          client_ip: unknown\\n          created_at: string | null\\n          id: string\\n          qr_id: string\\n          resolved_context: Json\\n          scanned_at: string | null\\n          session_id: string | null\\n          source: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"scan_source\\\"] | null\\n          store_id: string\\n          user_agent: string | null\\n        }\\n        Insert: {\\n          client_ip?: unknown\\n          created_at?: string | null\\n          id?: string\\n          qr_id: string\\n          resolved_context?: Json\\n          scanned_at?: string | null\\n          session_id?: string | null\\n          source?: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"scan_source\\\"] | null\\n          store_id: string\\n          user_agent?: string | null\\n        }\\n        Update: {\\n          client_ip?: unknown\\n          created_at?: string | null\\n          id?: string\\n          qr_id?: string\\n          resolved_context?: Json\\n          scanned_at?: string | null\\n          session_id?: string | null\\n          source?: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"scan_source\\\"] | null\\n          store_id?: string\\n          user_agent?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"fk_scan_session\\\"\\n            columns: [\\\"session_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"client_sessions\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"qr_scan_logs_qr_id_fkey\\\"\\n            columns: [\\\"qr_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"qr_codes\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"qr_scan_logs_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      retry_metrics: {\\n        Row: {\\n          attempts: number\\n          client_info: Json | null\\n          created_at: string\\n          duration_ms: number\\n          error_code: string | null\\n          final_status: string\\n          id: string\\n          rpc_name: string\\n          store_id: string | null\\n          user_id: string | null\\n        }\\n        Insert: {\\n          attempts: number\\n          client_info?: Json | null\\n          created_at?: string\\n          duration_ms: number\\n          error_code?: string | null\\n          final_status: string\\n          id?: string\\n          rpc_name: string\\n          store_id?: string | null\\n          user_id?: string | null\\n        }\\n        Update: {\\n          attempts?: number\\n          client_info?: Json | null\\n          created_at?: string\\n          duration_ms?: number\\n          error_code?: string | null\\n          final_status?: string\\n          id?: string\\n          rpc_name?: string\\n          store_id?: string | null\\n          user_id?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"retry_metrics_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"retry_metrics_user_id_fkey\\\"\\n            columns: [\\\"user_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"profiles\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      roles: {\\n        Row: {\\n          created_at: string | null\\n          description: string | null\\n          hierarchy_level: number | null\\n          id: string\\n          name: string\\n          permissions: Json | null\\n          store_id: string\\n          updated_at: string | null\\n        }\\n        Insert: {\\n          created_at?: string | null\\n          description?: string | null\\n          hierarchy_level?: number | null\\n          id?: string\\n          name: string\\n          permissions?: Json | null\\n          store_id: string\\n          updated_at?: string | null\\n        }\\n        Update: {\\n          created_at?: string | null\\n          description?: string | null\\n          hierarchy_level?: number | null\\n          id?: string\\n          name?: string\\n          permissions?: Json | null\\n          store_id?: string\\n          updated_at?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"roles_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      saas_audit_logs: {\\n        Row: {\\n          action: string\\n          actor_role: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"global_role_enum\\\"] | null\\n          actor_user_id: string | null\\n          created_at: string\\n          entity_id: string | null\\n          entity_table: string | null\\n          id: number\\n          metadata: Json\\n          tenant_id: string | null\\n        }\\n        Insert: {\\n          action: string\\n          actor_role?: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"global_role_enum\\\"] | null\\n          actor_user_id?: string | null\\n          created_at?: string\\n          entity_id?: string | null\\n          entity_table?: string | null\\n          id?: number\\n          metadata?: Json\\n          tenant_id?: string | null\\n        }\\n        Update: {\\n          action?: string\\n          actor_role?: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"global_role_enum\\\"] | null\\n          actor_user_id?: string | null\\n          created_at?: string\\n          entity_id?: string | null\\n          entity_table?: string | null\\n          id?: number\\n          metadata?: Json\\n          tenant_id?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"saas_audit_logs_tenant_id_fkey\\\"\\n            columns: [\\\"tenant_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"tenants\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      saas_feature_flags: {\\n        Row: {\\n          created_at: string\\n          enabled: boolean\\n          feature_key: string\\n          id: string\\n          tenant_id: string\\n        }\\n        Insert: {\\n          created_at?: string\\n          enabled?: boolean\\n          feature_key: string\\n          id?: string\\n          tenant_id: string\\n        }\\n        Update: {\\n          created_at?: string\\n          enabled?: boolean\\n          feature_key?: string\\n          id?: string\\n          tenant_id?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"saas_feature_flags_tenant_id_fkey\\\"\\n            columns: [\\\"tenant_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"tenants\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      saas_plans: {\\n        Row: {\\n          created_at: string\\n          features: Json\\n          id: string\\n          monthly_price: number\\n          name: string\\n          updated_at: string\\n        }\\n        Insert: {\\n          created_at?: string\\n          features?: Json\\n          id?: string\\n          monthly_price?: number\\n          name: string\\n          updated_at?: string\\n        }\\n        Update: {\\n          created_at?: string\\n          features?: Json\\n          id?: string\\n          monthly_price?: number\\n          name?: string\\n          updated_at?: string\\n        }\\n        Relationships: []\\n      }\\n      staff_members: {\\n        Row: {\\n          id: string\\n          role: string | null\\n          store_id: string\\n          user_id: string\\n        }\\n        Insert: {\\n          id?: string\\n          role?: string | null\\n          store_id: string\\n          user_id: string\\n        }\\n        Update: {\\n          id?: string\\n          role?: string | null\\n          store_id?: string\\n          user_id?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"staff_members_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      stock_alerts: {\\n        Row: {\\n          acknowledged: boolean | null\\n          acknowledged_at: string | null\\n          acknowledged_by: string | null\\n          alert_type: string\\n          created_at: string | null\\n          expected_stock: number | null\\n          id: string\\n          inventory_item_id: string\\n          message: string | null\\n          order_id: string | null\\n          stock_level: number\\n          store_id: string\\n        }\\n        Insert: {\\n          acknowledged?: boolean | null\\n          acknowledged_at?: string | null\\n          acknowledged_by?: string | null\\n          alert_type: string\\n          created_at?: string | null\\n          expected_stock?: number | null\\n          id?: string\\n          inventory_item_id: string\\n          message?: string | null\\n          order_id?: string | null\\n          stock_level: number\\n          store_id: string\\n        }\\n        Update: {\\n          acknowledged?: boolean | null\\n          acknowledged_at?: string | null\\n          acknowledged_by?: string | null\\n          alert_type?: string\\n          created_at?: string | null\\n          expected_stock?: number | null\\n          id?: string\\n          inventory_item_id?: string\\n          message?: string | null\\n          order_id?: string | null\\n          stock_level?: number\\n          store_id?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"stock_alerts_acknowledged_by_fkey\\\"\\n            columns: [\\\"acknowledged_by\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"profiles\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_alerts_inventory_item_id_fkey\\\"\\n            columns: [\\\"inventory_item_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"inventory_items\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"abandonable_orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"active_venue_states\\\"\\n            referencedColumns: [\\\"active_order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_price_tampering_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_stock_rollback_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"order_edit_stock_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_alerts_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      stock_deduction_errors: {\\n        Row: {\\n          attempted_qty: number | null\\n          context: string | null\\n          created_at: string | null\\n          current_stock_before: number | null\\n          error_detail: string | null\\n          error_message: string | null\\n          id: number\\n          inventory_item_id: string | null\\n          order_id: string | null\\n          store_id: string | null\\n        }\\n        Insert: {\\n          attempted_qty?: number | null\\n          context?: string | null\\n          created_at?: string | null\\n          current_stock_before?: number | null\\n          error_detail?: string | null\\n          error_message?: string | null\\n          id?: number\\n          inventory_item_id?: string | null\\n          order_id?: string | null\\n          store_id?: string | null\\n        }\\n        Update: {\\n          attempted_qty?: number | null\\n          context?: string | null\\n          created_at?: string | null\\n          current_stock_before?: number | null\\n          error_detail?: string | null\\n          error_message?: string | null\\n          id?: number\\n          inventory_item_id?: string | null\\n          order_id?: string | null\\n          store_id?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"stock_deduction_errors_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"abandonable_orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_deduction_errors_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"active_venue_states\\\"\\n            referencedColumns: [\\\"active_order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_deduction_errors_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_deduction_errors_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_deduction_errors_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_price_tampering_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_deduction_errors_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_stock_rollback_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_deduction_errors_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"order_edit_stock_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_deduction_errors_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_deduction_errors_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      stock_movements: {\\n        Row: {\\n          created_at: string\\n          created_by: string | null\\n          id: number\\n          idempotency_key: string\\n          inventory_item_id: string\\n          location_id: string | null\\n          order_id: string | null\\n          qty_delta: number\\n          reason: string\\n          store_id: string\\n          unit_type: string\\n          updated_at: string\\n        }\\n        Insert: {\\n          created_at?: string\\n          created_by?: string | null\\n          id?: number\\n          idempotency_key: string\\n          inventory_item_id: string\\n          location_id?: string | null\\n          order_id?: string | null\\n          qty_delta: number\\n          reason: string\\n          store_id: string\\n          unit_type: string\\n          updated_at?: string\\n        }\\n        Update: {\\n          created_at?: string\\n          created_by?: string | null\\n          id?: number\\n          idempotency_key?: string\\n          inventory_item_id?: string\\n          location_id?: string | null\\n          order_id?: string | null\\n          qty_delta?: number\\n          reason?: string\\n          store_id?: string\\n          unit_type?: string\\n          updated_at?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"fk_stock_movements_store\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_movements_location_id_fkey\\\"\\n            columns: [\\\"location_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"storage_locations\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      stock_transfers: {\\n        Row: {\\n          batch_id: string | null\\n          created_at: string | null\\n          from_location_id: string | null\\n          id: string\\n          inventory_item_id: string\\n          invoice_ref: string | null\\n          movement_type: string | null\\n          notes: string | null\\n          quantity: number\\n          reason: string | null\\n          supplier_id: string | null\\n          to_location_id: string | null\\n          unit_cost: number | null\\n          user_id: string | null\\n        }\\n        Insert: {\\n          batch_id?: string | null\\n          created_at?: string | null\\n          from_location_id?: string | null\\n          id?: string\\n          inventory_item_id: string\\n          invoice_ref?: string | null\\n          movement_type?: string | null\\n          notes?: string | null\\n          quantity: number\\n          reason?: string | null\\n          supplier_id?: string | null\\n          to_location_id?: string | null\\n          unit_cost?: number | null\\n          user_id?: string | null\\n        }\\n        Update: {\\n          batch_id?: string | null\\n          created_at?: string | null\\n          from_location_id?: string | null\\n          id?: string\\n          inventory_item_id?: string\\n          invoice_ref?: string | null\\n          movement_type?: string | null\\n          notes?: string | null\\n          quantity?: number\\n          reason?: string | null\\n          supplier_id?: string | null\\n          to_location_id?: string | null\\n          unit_cost?: number | null\\n          user_id?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"stock_transfers_from_location_id_fkey\\\"\\n            columns: [\\\"from_location_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"storage_locations\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_transfers_inventory_item_id_fkey\\\"\\n            columns: [\\\"inventory_item_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"inventory_items\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_transfers_to_location_id_fkey\\\"\\n            columns: [\\\"to_location_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"storage_locations\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      storage_locations: {\\n        Row: {\\n          bar_id: string | null\\n          created_at: string | null\\n          id: string\\n          is_consumable: boolean | null\\n          is_default: boolean | null\\n          is_deletable: boolean | null\\n          is_point_of_sale: boolean | null\\n          location_type: string | null\\n          name: string\\n          store_id: string\\n          type: string\\n          updated_at: string | null\\n        }\\n        Insert: {\\n          bar_id?: string | null\\n          created_at?: string | null\\n          id?: string\\n          is_consumable?: boolean | null\\n          is_default?: boolean | null\\n          is_deletable?: boolean | null\\n          is_point_of_sale?: boolean | null\\n          location_type?: string | null\\n          name: string\\n          store_id: string\\n          type: string\\n          updated_at?: string | null\\n        }\\n        Update: {\\n          bar_id?: string | null\\n          created_at?: string | null\\n          id?: string\\n          is_consumable?: boolean | null\\n          is_default?: boolean | null\\n          is_deletable?: boolean | null\\n          is_point_of_sale?: boolean | null\\n          location_type?: string | null\\n          name?: string\\n          store_id?: string\\n          type?: string\\n          updated_at?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"storage_locations_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      store_create_requests: {\\n        Row: {\\n          created_at: string | null\\n          id: string\\n          idempotency_key: string\\n          owner_email: string\\n          slug: string\\n          store_id: string | null\\n        }\\n        Insert: {\\n          created_at?: string | null\\n          id?: string\\n          idempotency_key: string\\n          owner_email: string\\n          slug: string\\n          store_id?: string | null\\n        }\\n        Update: {\\n          created_at?: string | null\\n          id?: string\\n          idempotency_key?: string\\n          owner_email?: string\\n          slug?: string\\n          store_id?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"store_create_requests_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      store_role_permissions: {\\n        Row: {\\n          can_create: boolean | null\\n          can_delete: boolean | null\\n          can_edit: boolean | null\\n          can_view: boolean | null\\n          created_at: string | null\\n          id: string\\n          role_id: string\\n          section_slug: string\\n        }\\n        Insert: {\\n          can_create?: boolean | null\\n          can_delete?: boolean | null\\n          can_edit?: boolean | null\\n          can_view?: boolean | null\\n          created_at?: string | null\\n          id?: string\\n          role_id: string\\n          section_slug: string\\n        }\\n        Update: {\\n          can_create?: boolean | null\\n          can_delete?: boolean | null\\n          can_edit?: boolean | null\\n          can_view?: boolean | null\\n          created_at?: string | null\\n          id?: string\\n          role_id?: string\\n          section_slug?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"store_role_permissions_role_id_fkey\\\"\\n            columns: [\\\"role_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"store_roles\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      store_roles: {\\n        Row: {\\n          created_at: string | null\\n          description: string | null\\n          id: string\\n          is_system: boolean | null\\n          name: string\\n          store_id: string\\n          updated_at: string | null\\n        }\\n        Insert: {\\n          created_at?: string | null\\n          description?: string | null\\n          id?: string\\n          is_system?: boolean | null\\n          name: string\\n          store_id: string\\n          updated_at?: string | null\\n        }\\n        Update: {\\n          created_at?: string | null\\n          description?: string | null\\n          id?: string\\n          is_system?: boolean | null\\n          name?: string\\n          store_id?: string\\n          updated_at?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"store_roles_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      stores: {\\n        Row: {\\n          address: string | null\\n          business_hours: Json | null\\n          cover_url: string | null\\n          created_at: string | null\\n          id: string\\n          is_active: boolean | null\\n          logo_url: string | null\\n          menu_logic: Json | null\\n          menu_theme: Json | null\\n          mp_access_token: string | null\\n          mp_connected_at: string | null\\n          mp_email: string | null\\n          mp_expires_at: string | null\\n          mp_first_name: string | null\\n          mp_last_name: string | null\\n          mp_nickname: string | null\\n          mp_public_key: string | null\\n          mp_refresh_token: string | null\\n          mp_user_id: string | null\\n          name: string\\n          onboarding_status: string | null\\n          owner_email: string | null\\n          plan: string | null\\n          service_mode: string | null\\n          slug: string\\n          tax_info: string | null\\n          updated_at: string | null\\n        }\\n        Insert: {\\n          address?: string | null\\n          business_hours?: Json | null\\n          cover_url?: string | null\\n          created_at?: string | null\\n          id?: string\\n          is_active?: boolean | null\\n          logo_url?: string | null\\n          menu_logic?: Json | null\\n          menu_theme?: Json | null\\n          mp_access_token?: string | null\\n          mp_connected_at?: string | null\\n          mp_email?: string | null\\n          mp_expires_at?: string | null\\n          mp_first_name?: string | null\\n          mp_last_name?: string | null\\n          mp_nickname?: string | null\\n          mp_public_key?: string | null\\n          mp_refresh_token?: string | null\\n          mp_user_id?: string | null\\n          name: string\\n          onboarding_status?: string | null\\n          owner_email?: string | null\\n          plan?: string | null\\n          service_mode?: string | null\\n          slug: string\\n          tax_info?: string | null\\n          updated_at?: string | null\\n        }\\n        Update: {\\n          address?: string | null\\n          business_hours?: Json | null\\n          cover_url?: string | null\\n          created_at?: string | null\\n          id?: string\\n          is_active?: boolean | null\\n          logo_url?: string | null\\n          menu_logic?: Json | null\\n          menu_theme?: Json | null\\n          mp_access_token?: string | null\\n          mp_connected_at?: string | null\\n          mp_email?: string | null\\n          mp_expires_at?: string | null\\n          mp_first_name?: string | null\\n          mp_last_name?: string | null\\n          mp_nickname?: string | null\\n          mp_public_key?: string | null\\n          mp_refresh_token?: string | null\\n          mp_user_id?: string | null\\n          name?: string\\n          onboarding_status?: string | null\\n          owner_email?: string | null\\n          plan?: string | null\\n          service_mode?: string | null\\n          slug?: string\\n          tax_info?: string | null\\n          updated_at?: string | null\\n        }\\n        Relationships: []\\n      }\\n      team_invitations: {\\n        Row: {\\n          created_at: string | null\\n          email: string\\n          id: string\\n          role: string\\n          status: string | null\\n          store_id: string | null\\n          token: string | null\\n          updated_at: string | null\\n        }\\n        Insert: {\\n          created_at?: string | null\\n          email: string\\n          id?: string\\n          role: string\\n          status?: string | null\\n          store_id?: string | null\\n          token?: string | null\\n          updated_at?: string | null\\n        }\\n        Update: {\\n          created_at?: string | null\\n          email?: string\\n          id?: string\\n          role?: string\\n          status?: string | null\\n          store_id?: string | null\\n          token?: string | null\\n          updated_at?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"team_invitations_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      tenants: {\\n        Row: {\\n          config: Json\\n          created_at: string\\n          id: string\\n          is_active: boolean\\n          name: string\\n          plan_id: string | null\\n          updated_at: string\\n        }\\n        Insert: {\\n          config?: Json\\n          created_at?: string\\n          id?: string\\n          is_active?: boolean\\n          name: string\\n          plan_id?: string | null\\n          updated_at?: string\\n        }\\n        Update: {\\n          config?: Json\\n          created_at?: string\\n          id?: string\\n          is_active?: boolean\\n          name?: string\\n          plan_id?: string | null\\n          updated_at?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"tenants_plan_id_fkey\\\"\\n            columns: [\\\"plan_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"saas_plans\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      venue_nodes: {\\n        Row: {\\n          active_badges: Json | null\\n          active_order_ids: string[] | null\\n          created_at: string | null\\n          current_order_count: number | null\\n          dispatch_station: string | null\\n          height: number | null\\n          id: string\\n          label: string\\n          location_id: string | null\\n          metadata: Json | null\\n          position_x: number | null\\n          position_y: number | null\\n          rotation: number | null\\n          shape: string | null\\n          status: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"venue_node_status\\\"] | null\\n          store_id: string\\n          type: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"venue_node_type\\\"] | null\\n          updated_at: string | null\\n          width: number | null\\n          zone_id: string | null\\n        }\\n        Insert: {\\n          active_badges?: Json | null\\n          active_order_ids?: string[] | null\\n          created_at?: string | null\\n          current_order_count?: number | null\\n          dispatch_station?: string | null\\n          height?: number | null\\n          id?: string\\n          label: string\\n          location_id?: string | null\\n          metadata?: Json | null\\n          position_x?: number | null\\n          position_y?: number | null\\n          rotation?: number | null\\n          shape?: string | null\\n          status?: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"venue_node_status\\\"] | null\\n          store_id: string\\n          type?: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"venue_node_type\\\"] | null\\n          updated_at?: string | null\\n          width?: number | null\\n          zone_id?: string | null\\n        }\\n        Update: {\\n          active_badges?: Json | null\\n          active_order_ids?: string[] | null\\n          created_at?: string | null\\n          current_order_count?: number | null\\n          dispatch_station?: string | null\\n          height?: number | null\\n          id?: string\\n          label?: string\\n          location_id?: string | null\\n          metadata?: Json | null\\n          position_x?: number | null\\n          position_y?: number | null\\n          rotation?: number | null\\n          shape?: string | null\\n          status?: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"venue_node_status\\\"] | null\\n          store_id?: string\\n          type?: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"venue_node_type\\\"] | null\\n          updated_at?: string | null\\n          width?: number | null\\n          zone_id?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"venue_nodes_location_id_fkey\\\"\\n            columns: [\\\"location_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"storage_locations\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"venue_nodes_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"venue_nodes_zone_id_fkey\\\"\\n            columns: [\\\"zone_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_zones\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      venue_notifications: {\\n        Row: {\\n          attended_at: string | null\\n          attended_by: string | null\\n          created_at: string | null\\n          id: string\\n          is_read: boolean | null\\n          message: string | null\\n          node_id: string | null\\n          order_id: string | null\\n          store_id: string\\n          type: string\\n        }\\n        Insert: {\\n          attended_at?: string | null\\n          attended_by?: string | null\\n          created_at?: string | null\\n          id?: string\\n          is_read?: boolean | null\\n          message?: string | null\\n          node_id?: string | null\\n          order_id?: string | null\\n          store_id: string\\n          type: string\\n        }\\n        Update: {\\n          attended_at?: string | null\\n          attended_by?: string | null\\n          created_at?: string | null\\n          id?: string\\n          is_read?: boolean | null\\n          message?: string | null\\n          node_id?: string | null\\n          order_id?: string | null\\n          store_id?: string\\n          type?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"venue_notifications_attended_by_fkey\\\"\\n            columns: [\\\"attended_by\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"profiles\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"venue_notifications_node_id_fkey\\\"\\n            columns: [\\\"node_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"active_venue_states\\\"\\n            referencedColumns: [\\\"node_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"venue_notifications_node_id_fkey\\\"\\n            columns: [\\\"node_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"available_nodes_for_orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"venue_notifications_node_id_fkey\\\"\\n            columns: [\\\"node_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_nodes\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"venue_notifications_node_id_fkey\\\"\\n            columns: [\\\"node_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_nodes_with_orders\\\"\\n            referencedColumns: [\\\"node_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"venue_notifications_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"abandonable_orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"venue_notifications_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"active_venue_states\\\"\\n            referencedColumns: [\\\"active_order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"venue_notifications_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"venue_notifications_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"venue_notifications_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_price_tampering_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"venue_notifications_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_stock_rollback_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"venue_notifications_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"order_edit_stock_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"venue_notifications_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"venue_notifications_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      venue_zones: {\\n        Row: {\\n          created_at: string\\n          default_dispatch_station: string | null\\n          description: string | null\\n          id: string\\n          name: string\\n          primary_location_id: string | null\\n          store_id: string\\n        }\\n        Insert: {\\n          created_at?: string\\n          default_dispatch_station?: string | null\\n          description?: string | null\\n          id?: string\\n          name: string\\n          primary_location_id?: string | null\\n          store_id: string\\n        }\\n        Update: {\\n          created_at?: string\\n          default_dispatch_station?: string | null\\n          description?: string | null\\n          id?: string\\n          name?: string\\n          primary_location_id?: string | null\\n          store_id?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"venue_zones_primary_location_id_fkey\\\"\\n            columns: [\\\"primary_location_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"storage_locations\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"venue_zones_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      wallet_ledger: {\\n        Row: {\\n          amount: number\\n          balance_after: number\\n          created_at: string\\n          currency: string\\n          description: string | null\\n          entry_type: string\\n          id: string\\n          idempotency_key: string | null\\n          payment_method: string | null\\n          performed_by: string | null\\n          reference_id: string | null\\n          reference_type: string | null\\n          source: string | null\\n          store_id: string\\n          wallet_id: string\\n        }\\n        Insert: {\\n          amount: number\\n          balance_after: number\\n          created_at?: string\\n          currency?: string\\n          description?: string | null\\n          entry_type: string\\n          id?: string\\n          idempotency_key?: string | null\\n          payment_method?: string | null\\n          performed_by?: string | null\\n          reference_id?: string | null\\n          reference_type?: string | null\\n          source?: string | null\\n          store_id: string\\n          wallet_id: string\\n        }\\n        Update: {\\n          amount?: number\\n          balance_after?: number\\n          created_at?: string\\n          currency?: string\\n          description?: string | null\\n          entry_type?: string\\n          id?: string\\n          idempotency_key?: string | null\\n          payment_method?: string | null\\n          performed_by?: string | null\\n          reference_id?: string | null\\n          reference_type?: string | null\\n          source?: string | null\\n          store_id?: string\\n          wallet_id?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"wallet_ledger_performed_by_fkey\\\"\\n            columns: [\\\"performed_by\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"profiles\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"wallet_ledger_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      wallet_transactions: {\\n        Row: {\\n          amount: number\\n          client_id: string | null\\n          created_at: string | null\\n          description: string | null\\n          id: string\\n          mp_payment_id: string | null\\n          payment_method: string | null\\n          processed_at: string | null\\n          staff_id: string | null\\n          status: string | null\\n          store_id: string | null\\n          type: string\\n          user_id: string | null\\n          wallet_id: string | null\\n        }\\n        Insert: {\\n          amount: number\\n          client_id?: string | null\\n          created_at?: string | null\\n          description?: string | null\\n          id?: string\\n          mp_payment_id?: string | null\\n          payment_method?: string | null\\n          processed_at?: string | null\\n          staff_id?: string | null\\n          status?: string | null\\n          store_id?: string | null\\n          type: string\\n          user_id?: string | null\\n          wallet_id?: string | null\\n        }\\n        Update: {\\n          amount?: number\\n          client_id?: string | null\\n          created_at?: string | null\\n          description?: string | null\\n          id?: string\\n          mp_payment_id?: string | null\\n          payment_method?: string | null\\n          processed_at?: string | null\\n          staff_id?: string | null\\n          status?: string | null\\n          store_id?: string | null\\n          type?: string\\n          user_id?: string | null\\n          wallet_id?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"wallet_transactions_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"wallet_transactions_wallet_id_fkey\\\"\\n            columns: [\\\"wallet_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"wallets\\\"\\n            referencedColumns: [\\\"user_id\\\"]\\n          },\\n        ]\\n      }\\n      wallets: {\\n        Row: {\\n          balance: number | null\\n          currency: string | null\\n          id: string | null\\n          last_updated: string | null\\n          store_id: string | null\\n          user_id: string\\n        }\\n        Insert: {\\n          balance?: number | null\\n          currency?: string | null\\n          id?: string | null\\n          last_updated?: string | null\\n          store_id?: string | null\\n          user_id: string\\n        }\\n        Update: {\\n          balance?: number | null\\n          currency?: string | null\\n          id?: string | null\\n          last_updated?: string | null\\n          store_id?: string | null\\n          user_id?: string\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"wallets_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n    }\\n    Views: {\\n      abandonable_orders: {\\n        Row: {\\n          abandonment_status: string | null\\n          created_at: string | null\\n          id: string | null\\n          minutes_pending: number | null\\n          order_number: number | null\\n          payment_method: string | null\\n          payment_provider: string | null\\n          status: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"order_status_enum\\\"] | null\\n          store_id: string | null\\n          store_name: string | null\\n          total_amount: number | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"orders_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      active_venue_states: {\\n        Row: {\\n          active_order_id: string | null\\n          current_total: number | null\\n          derived_status: string | null\\n          label: string | null\\n          node_id: string | null\\n          order_start_time: string | null\\n          order_status: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"order_status_enum\\\"] | null\\n          position_x: number | null\\n          position_y: number | null\\n          store_id: string | null\\n          type: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"venue_node_type\\\"] | null\\n          zone_id: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"venue_nodes_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"venue_nodes_zone_id_fkey\\\"\\n            columns: [\\\"zone_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_zones\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      analytics_retry_by_rpc: {\\n        Row: {\\n          avg_attempts: number | null\\n          avg_duration_ms: number | null\\n          max_attempts: number | null\\n          rpc_name: string | null\\n          success_rate: number | null\\n          successful: number | null\\n          total_calls: number | null\\n        }\\n        Relationships: []\\n      }\\n      analytics_retry_errors: {\\n        Row: {\\n          affected_rpcs: string[] | null\\n          avg_attempts_before_fail: number | null\\n          error_code: string | null\\n          first_seen: string | null\\n          last_seen: string | null\\n          occurrence_count: number | null\\n        }\\n        Relationships: []\\n      }\\n      analytics_retry_success_rate_daily: {\\n        Row: {\\n          avg_attempts: number | null\\n          avg_duration_ms: number | null\\n          date: string | null\\n          failed: number | null\\n          store_id: string | null\\n          store_name: string | null\\n          success_rate: number | null\\n          successful: number | null\\n          total_retries: number | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"retry_metrics_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      audit_logs: {\\n        Row: {\\n          created_at: string | null\\n          id: string | null\\n          new_data: Json | null\\n          old_data: Json | null\\n          operation: string | null\\n          store_id: string | null\\n          table_name: string | null\\n          user_id: string | null\\n          user_name: string | null\\n          user_role: string | null\\n        }\\n        Relationships: []\\n      }\\n      available_nodes_for_orders: {\\n        Row: {\\n          default_dispatch_station: string | null\\n          dispatch_station: string | null\\n          effective_dispatch_station: string | null\\n          id: string | null\\n          label: string | null\\n          sort_priority: number | null\\n          store_id: string | null\\n          type: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"venue_node_type\\\"] | null\\n          zone_id: string | null\\n          zone_name: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"venue_nodes_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"venue_nodes_zone_id_fkey\\\"\\n            columns: [\\\"zone_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_zones\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      cancelled_orders_audit: {\\n        Row: {\\n          created_at: string | null\\n          is_paid: boolean | null\\n          order_id: string | null\\n          order_number: number | null\\n          payment_method: string | null\\n          restock_movements: number | null\\n          stock_deducted: boolean | null\\n          store_id: string | null\\n          store_name: string | null\\n          total_amount: number | null\\n          updated_at: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"orders_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      cash_closures_detailed: {\\n        Row: {\\n          closed_at: string | null\\n          closed_by: string | null\\n          closed_by_name: string | null\\n          created_at: string | null\\n          default_dispatch_station: string | null\\n          difference: number | null\\n          duration_hours: number | null\\n          expected_cash: number | null\\n          id: string | null\\n          notes: string | null\\n          opened_at: string | null\\n          opened_by: string | null\\n          opened_by_name: string | null\\n          real_cash: number | null\\n          session_id: string | null\\n          start_amount: number | null\\n          store_id: string | null\\n          total_card_sales: number | null\\n          total_cash_sales: number | null\\n          total_mp_sales: number | null\\n          total_orders: number | null\\n          total_sales: number | null\\n          total_topups: number | null\\n          total_wallet_sales: number | null\\n          zone_name: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"cash_closures_session_id_fkey\\\"\\n            columns: [\\\"session_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cash_session_reconciliation\\\"\\n            referencedColumns: [\\\"session_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_closures_session_id_fkey\\\"\\n            columns: [\\\"session_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cash_sessions\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_closures_session_id_fkey\\\"\\n            columns: [\\\"session_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cash_sessions_summary\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_closures_session_id_fkey\\\"\\n            columns: [\\\"session_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_cash_session_reconciliation\\\"\\n            referencedColumns: [\\\"session_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_closures_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_sessions_opened_by_fkey\\\"\\n            columns: [\\\"opened_by\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"profiles\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      cash_session_reconciliation: {\\n        Row: {\\n          actual_cash_sales: number | null\\n          closed_at: string | null\\n          closed_by: string | null\\n          closed_by_name: string | null\\n          difference: number | null\\n          expected_cash: number | null\\n          manual_movements: number | null\\n          opened_at: string | null\\n          opened_by: string | null\\n          opened_by_name: string | null\\n          real_cash: number | null\\n          session_id: string | null\\n          start_amount: number | null\\n          status: string | null\\n          store_id: string | null\\n          total_adjustments: number | null\\n          zone_id: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"cash_sessions_closed_by_fkey\\\"\\n            columns: [\\\"closed_by\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"profiles\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_sessions_opened_by_fkey\\\"\\n            columns: [\\\"opened_by\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"profiles\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_sessions_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_sessions_zone_id_fkey\\\"\\n            columns: [\\\"zone_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_zones\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      cash_sessions_summary: {\\n        Row: {\\n          closed_at: string | null\\n          closed_by: string | null\\n          closed_by_name: string | null\\n          closing_notes: string | null\\n          created_at: string | null\\n          difference: number | null\\n          dispatch_station_id: string | null\\n          dispatch_station_name: string | null\\n          duration_hours: number | null\\n          expected_cash: number | null\\n          id: string | null\\n          live_order_count: number | null\\n          opened_at: string | null\\n          opened_by: string | null\\n          opened_by_name: string | null\\n          real_cash: number | null\\n          start_amount: number | null\\n          status: string | null\\n          store_id: string | null\\n          total_card_sales: number | null\\n          total_cash_sales: number | null\\n          total_mp_sales: number | null\\n          total_orders: number | null\\n          total_sales: number | null\\n          total_topups: number | null\\n          total_wallet_sales: number | null\\n          zone_id: string | null\\n          zone_name: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"cash_sessions_closed_by_fkey\\\"\\n            columns: [\\\"closed_by\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"profiles\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_sessions_dispatch_station_id_fkey\\\"\\n            columns: [\\\"dispatch_station_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"dispatch_stations\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_sessions_opened_by_fkey\\\"\\n            columns: [\\\"opened_by\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"profiles\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_sessions_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"cash_sessions_zone_id_fkey\\\"\\n            columns: [\\\"zone_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"venue_zones\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      loyalty_balance_audit: {\\n        Row: {\\n          balance_difference: number | null\\n          calculated_balance: number | null\\n          client_email: string | null\\n          client_id: string | null\\n          client_name: string | null\\n          current_balance: number | null\\n        }\\n        Relationships: []\\n      }\\n      monitoring_active_orders_integrity: {\\n        Row: {\\n          description: string | null\\n          issue_type: string | null\\n          label: string | null\\n          node_id: string | null\\n          order_ref: string | null\\n        }\\n        Relationships: []\\n      }\\n      monitoring_cancelled_orders_audit: {\\n        Row: {\\n          audit_status: string | null\\n          created_at: string | null\\n          is_paid: boolean | null\\n          order_id: string | null\\n          order_number: number | null\\n          payment_method: string | null\\n          rollback_movements_count: number | null\\n          status: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"order_status_enum\\\"] | null\\n          stock_deducted: boolean | null\\n          store_id: string | null\\n          store_name: string | null\\n          total_amount: number | null\\n          updated_at: string | null\\n          wallet_refund_count: number | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"orders_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      monitoring_cash_session_reconciliation: {\\n        Row: {\\n          audit_status: string | null\\n          calculated_diff: number | null\\n          closed_at: string | null\\n          difference: number | null\\n          expected_cash: number | null\\n          formula_error: number | null\\n          opened_at: string | null\\n          real_cash: number | null\\n          session_id: string | null\\n          staff_name: string | null\\n          start_amount: number | null\\n          status: string | null\\n          store_name: string | null\\n        }\\n        Relationships: []\\n      }\\n      monitoring_functions_without_checks: {\\n        Row: {\\n          audit_status: string | null\\n          function_name: unknown\\n          has_permission_check: boolean | null\\n          has_store_id_ref: boolean | null\\n          is_security_definer: boolean | null\\n        }\\n        Relationships: []\\n      }\\n      monitoring_idempotency_violations: {\\n        Row: {\\n          duplicate_count: number | null\\n          first_created: string | null\\n          idempotency_key: string | null\\n          last_created: string | null\\n          record_ids: number[] | null\\n          table_name: string | null\\n        }\\n        Relationships: []\\n      }\\n      monitoring_price_tampering_audit: {\\n        Row: {\\n          audit_status: string | null\\n          calculated_subtotal: number | null\\n          channel: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"order_channel_enum\\\"] | null\\n          client_id: string | null\\n          created_at: string | null\\n          order_id: string | null\\n          order_number: number | null\\n          order_subtotal: number | null\\n          order_total: number | null\\n          price_drift: number | null\\n          store_id: string | null\\n          store_name: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"orders_client_id_fkey\\\"\\n            columns: [\\\"client_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"clients\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"orders_client_id_fkey\\\"\\n            columns: [\\\"client_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"loyalty_balance_audit\\\"\\n            referencedColumns: [\\\"client_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"orders_client_id_fkey\\\"\\n            columns: [\\\"client_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_wallet_integrity\\\"\\n            referencedColumns: [\\\"client_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"orders_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      monitoring_stock_alerts_pending: {\\n        Row: {\\n          alert_type: string | null\\n          created_at: string | null\\n          expected_stock: number | null\\n          hours_pending: number | null\\n          id: string | null\\n          inventory_item_id: string | null\\n          item_name: string | null\\n          message: string | null\\n          order_id: string | null\\n          order_number: number | null\\n          sku: string | null\\n          stock_level: number | null\\n          store_id: string | null\\n          store_name: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"stock_alerts_inventory_item_id_fkey\\\"\\n            columns: [\\\"inventory_item_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"inventory_items\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"abandonable_orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"active_venue_states\\\"\\n            referencedColumns: [\\\"active_order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_cancelled_orders_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_price_tampering_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"monitoring_stock_rollback_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"order_edit_stock_audit\\\"\\n            referencedColumns: [\\\"order_id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_alerts_order_id_fkey\\\"\\n            columns: [\\\"order_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"orders\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n          {\\n            foreignKeyName: \\\"stock_alerts_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      monitoring_stock_rollback_audit: {\\n        Row: {\\n          audit_status: string | null\\n          net_delta: number | null\\n          order_id: string | null\\n          order_number: number | null\\n          status: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"order_status_enum\\\"] | null\\n          stock_deducted: boolean | null\\n          store_name: string | null\\n          updated_at: string | null\\n        }\\n        Relationships: []\\n      }\\n      monitoring_tables_without_rls: {\\n        Row: {\\n          action_required: string | null\\n          policy_count: number | null\\n          rls_enabled: boolean | null\\n          table_name: unknown\\n        }\\n        Relationships: []\\n      }\\n      monitoring_wallet_integrity: {\\n        Row: {\\n          cached_balance: number | null\\n          client_id: string | null\\n          discrepancy: number | null\\n          email: string | null\\n          ledger_sum: number | null\\n          store_id: string | null\\n          store_name: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"clients_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      order_edit_stock_audit: {\\n        Row: {\\n          compensation_movements: number | null\\n          created_at: string | null\\n          order_id: string | null\\n          order_number: number | null\\n          status: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"order_status_enum\\\"] | null\\n          store_id: string | null\\n          store_name: string | null\\n          total_amount: number | null\\n          total_compensation_delta: number | null\\n          updated_at: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"orders_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      products_compat: {\\n        Row: {\\n          available: boolean | null\\n          category: string | null\\n          category_id: string | null\\n          category_slug: string | null\\n          created_at: string | null\\n          description: string | null\\n          id: string | null\\n          image_url: string | null\\n          is_available: boolean | null\\n          is_visible: boolean | null\\n          name: string | null\\n          price: number | null\\n          sku: string | null\\n          store_id: string | null\\n          tax_rate: number | null\\n          updated_at: string | null\\n        }\\n        Insert: {\\n          available?: boolean | null\\n          category?: string | null\\n          category_id?: never\\n          category_slug?: string | null\\n          created_at?: string | null\\n          description?: string | null\\n          id?: string | null\\n          image_url?: string | null\\n          is_available?: boolean | null\\n          is_visible?: boolean | null\\n          name?: string | null\\n          price?: number | null\\n          sku?: string | null\\n          store_id?: string | null\\n          tax_rate?: number | null\\n          updated_at?: string | null\\n        }\\n        Update: {\\n          available?: boolean | null\\n          category?: string | null\\n          category_id?: never\\n          category_slug?: string | null\\n          created_at?: string | null\\n          description?: string | null\\n          id?: string | null\\n          image_url?: string | null\\n          is_available?: boolean | null\\n          is_visible?: boolean | null\\n          name?: string | null\\n          price?: number | null\\n          sku?: string | null\\n          store_id?: string | null\\n          tax_rate?: number | null\\n          updated_at?: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"products_tenant_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"tenants\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      rls_policies_audit: {\\n        Row: {\\n          cmd: string | null\\n          permissive: string | null\\n          policyname: unknown\\n          qual: string | null\\n          roles: unknown[] | null\\n          schemaname: unknown\\n          tablename: unknown\\n          validates_store_id: boolean | null\\n          with_check: string | null\\n        }\\n        Relationships: []\\n      }\\n      sales_by_dispatch_station: {\\n        Row: {\\n          card_sales: number | null\\n          cash_sales: number | null\\n          dispatch_station: string | null\\n          mp_sales: number | null\\n          sale_date: string | null\\n          store_id: string | null\\n          total_orders: number | null\\n          total_sales: number | null\\n          wallet_sales: number | null\\n          zone_name: string | null\\n        }\\n        Relationships: [\\n          {\\n            foreignKeyName: \\\"orders_store_id_fkey\\\"\\n            columns: [\\\"store_id\\\"]\\n            isOneToOne: false\\n            referencedRelation: \\\"stores\\\"\\n            referencedColumns: [\\\"id\\\"]\\n          },\\n        ]\\n      }\\n      security_definer_functions_audit: {\\n        Row: {\\n          function_definition: string | null\\n          function_name: unknown\\n          has_permission_check: boolean | null\\n          schema_name: unknown\\n          validates_auth_uid: boolean | null\\n          validates_store_id: boolean | null\\n        }\\n        Relationships: []\\n      }\\n      storage_usage_by_store: {\\n        Row: {\\n          bucket_id: string | null\\n          file_count: number | null\\n          store_id: string | null\\n          store_name: string | null\\n          total_bytes: number | null\\n          total_mb: number | null\\n        }\\n        Relationships: []\\n      }\\n      tables_without_store_id_audit: {\\n        Row: {\\n          rls_enabled: boolean | null\\n          table_name: unknown\\n          table_type: string | null\\n        }\\n        Relationships: []\\n      }\\n      venue_nodes_with_orders: {\\n        Row: {\\n          active_order_count: number | null\\n          active_order_ids: string[] | null\\n          active_orders_details: Json | null\\n          label: string | null\\n          node_id: string | null\\n          status: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"venue_node_status\\\"] | null\\n          total_pending_amount: number | null\\n          type: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"venue_node_type\\\"] | null\\n        }\\n        Insert: {\\n          active_order_count?: never\\n          active_order_ids?: string[] | null\\n          active_orders_details?: never\\n          label?: string | null\\n          node_id?: string | null\\n          status?: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"venue_node_status\\\"] | null\\n          total_pending_amount?: never\\n          type?: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"venue_node_type\\\"] | null\\n        }\\n        Update: {\\n          active_order_count?: never\\n          active_order_ids?: string[] | null\\n          active_orders_details?: never\\n          label?: string | null\\n          node_id?: string | null\\n          status?: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"venue_node_status\\\"] | null\\n          total_pending_amount?: never\\n          type?: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"venue_node_type\\\"] | null\\n        }\\n        Relationships: []\\n      }\\n    }\\n    Functions: {\\n      adjust_inventory: {\\n        Args: {\\n          p_inventory_item_id: string\\n          p_location_id: string\\n          p_new_stock: number\\n          p_notes?: string\\n          p_reason?: string\\n        }\\n        Returns: Json\\n      }\\n      admin_add_client_balance: {\\n        Args: {\\n          amount: number\\n          description?: string\\n          staff_id?: string\\n          target_client_id: string\\n        }\\n        Returns: number\\n      }\\n      admin_add_points: {\\n        Args: {\\n          description?: string\\n          points_amount: number\\n          staff_id?: string\\n          target_client_id: string\\n        }\\n        Returns: number\\n      }\\n      admin_grant_gift: {\\n        Args: {\\n          gift_description?: string\\n          gift_name: string\\n          monetary_cost?: number\\n          monetary_value?: number\\n          product_id?: string\\n          staff_id?: string\\n          target_client_id: string\\n        }\\n        Returns: Json\\n      }\\n      alert_pending_abandonment: { Args: never; Returns: undefined }\\n      assign_nfc_to_client: {\\n        Args: { p_client_id: string; p_nfc_uid: string; p_store_id: string }\\n        Returns: Json\\n      }\\n      calculate_item_totals: { Args: { p_item_id: string }; Returns: undefined }\\n      calculate_order_points: { Args: { p_order_id: string }; Returns: number }\\n      calculate_total_stock: {\\n        Args: { p_inventory_item_id: string }\\n        Returns: number\\n      }\\n      can_manage_store: { Args: { p_store_id: string }; Returns: boolean }\\n      check_product_stock_availability: {\\n        Args: { p_product_id: string }\\n        Returns: boolean\\n      }\\n      check_rate_limit: { Args: { p_ip: string }; Returns: boolean }\\n      classify_and_validate_scan: {\\n        Args: { scanned_code: string }\\n        Returns: Json\\n      }\\n      cleanup_abandoned_orders: {\\n        Args: { p_timeout_hours?: number }\\n        Returns: Json\\n      }\\n      cleanup_old_retry_metrics: {\\n        Args: { p_retention_days?: number }\\n        Returns: Json\\n      }\\n      close_cash_session: {\\n        Args: { p_notes?: string; p_real_cash: number; p_session_id: string }\\n        Returns: Json\\n      }\\n      complete_wallet_payment: { Args: { p_order_id: string }; Returns: Json }\\n      confirm_order_delivery: {\\n        Args: { p_order_id: string; p_staff_id: string }\\n        Returns: Json\\n      }\\n      consume_from_smart_packages: {\\n        Args: {\\n          p_inventory_item_id: string\\n          p_order_id?: string\\n          p_reason?: string\\n          p_required_qty: number\\n          p_unit: string\\n        }\\n        Returns: Json\\n      }\\n      create_client_session: {\\n        Args: {\\n          p_bar_id?: string\\n          p_client_id?: string\\n          p_location_id?: string\\n          p_qr_id?: string\\n          p_session_type?: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"session_type\\\"]\\n          p_store_id: string\\n          p_table_id?: string\\n          p_ttl_minutes?: number\\n        }\\n        Returns: Json\\n      }\\n      create_default_location: { Args: { p_store_id: string }; Returns: string }\\n      create_email_log: {\\n        Args: {\\n          p_event_entity: string\\n          p_event_id: string\\n          p_event_type: string\\n          p_idempotency_key: string\\n          p_payload_core: Json\\n          p_recipient_email: string\\n          p_recipient_name: string\\n          p_recipient_type: string\\n          p_store_id: string\\n          p_template_key: string\\n          p_trigger_source?: string\\n          p_triggered_by?: string\\n        }\\n        Returns: {\\n          already_exists: boolean\\n          log_id: string\\n        }[]\\n      }\\n      create_order: {\\n        Args: {\\n          p_channel: string\\n          p_client_id?: string\\n          p_delivery_mode?: string\\n          p_items: Json\\n          p_location_identifier?: string\\n          p_node_id?: string\\n          p_store_id: string\\n          p_table_number?: string\\n        }\\n        Returns: Json\\n      }\\n      create_order_secure: {\\n        Args: {\\n          p_channel?: string\\n          p_client_id: string\\n          p_customer_email?: string\\n          p_customer_name?: string\\n          p_node_id?: string\\n          p_order_items?: Json\\n          p_payment_method?: string\\n          p_store_id: string\\n          p_table_number?: string\\n        }\\n        Returns: Json\\n      }\\n      create_recipe_product: {\\n        Args: {\\n          p_base_price: number\\n          p_name: string\\n          p_sku: string\\n          p_store_id: string\\n        }\\n        Returns: Json\\n      }\\n      create_store_safe: {\\n        Args: {\\n          p_idempotency_key: string\\n          p_name: string\\n          p_owner_email: string\\n          p_slug: string\\n        }\\n        Returns: string\\n      }\\n      credit_wallet: {\\n        Args: { p_client_id?: string; p_transaction_id: string }\\n        Returns: Json\\n      }\\n      deduct_order_stock_unified: {\\n        Args: { p_context?: string; p_order_id: string }\\n        Returns: Json\\n      }\\n      end_session: {\\n        Args: { p_reason?: string; p_session_id: string }\\n        Returns: Json\\n      }\\n      enqueue_payment_email: {\\n        Args: { p_order_id: string }\\n        Returns: undefined\\n      }\\n      ensure_client_in_store: { Args: { p_store_id: string }; Returns: Json }\\n      evaluate_menu_rule: {\\n        Args: {\\n          p_bar_id: string\\n          p_current_time: string\\n          p_rule: Database[\\\"public\\\"][\\\"Tables\\\"][\\\"menu_rules\\\"][\\\"Row\\\"]\\n          p_session_type: string\\n          p_table_id: string\\n          p_weekday: number\\n        }\\n        Returns: boolean\\n      }\\n      get_active_cash_sessions: { Args: { p_store_id: string }; Returns: Json }\\n      get_active_session: { Args: { p_session_id: string }; Returns: Json }\\n      get_cash_session_breakdown: {\\n        Args: { p_session_id: string }\\n        Returns: Json\\n      }\\n      get_cash_session_events: { Args: { p_session_id: string }; Returns: Json }\\n      get_client_by_nfc: {\\n        Args: { p_nfc_uid: string; p_store_id: string }\\n        Returns: Json\\n      }\\n      get_default_node_for_store: {\\n        Args: { p_store_id: string }\\n        Returns: string\\n      }\\n      get_default_node_for_zone: {\\n        Args: { p_zone_id: string }\\n        Returns: string\\n      }\\n      get_effective_stock: {\\n        Args: { p_item_id: string }\\n        Returns: {\\n          closed_packages: number\\n          effective_stock: number\\n          open_packages_count: number\\n          open_packages_percentage: number\\n          unit: string\\n        }[]\\n      }\\n      get_financial_chart_data: {\\n        Args: { p_end_date: string; p_start_date: string; p_store_id: string }\\n        Returns: Json\\n      }\\n      get_financial_metrics: { Args: { p_store_id: string }; Returns: Json }\\n      get_item_stock_by_locations: {\\n        Args: { p_item_id: string }\\n        Returns: {\\n          closed_units: number\\n          effective_stock: number\\n          location_id: string\\n          location_name: string\\n          location_type: string\\n          open_packages_count: number\\n          open_remaining_sum: number\\n        }[]\\n      }\\n      get_live_session_stats: { Args: { p_session_id: string }; Returns: Json }\\n      get_location_stock: {\\n        Args: { p_location_id: string }\\n        Returns: {\\n          estimated_value: number\\n          total_closed_units: number\\n          total_effective_stock: number\\n          total_items: number\\n          total_open_packages: number\\n        }[]\\n      }\\n      get_location_stock_details: {\\n        Args: { p_location_id: string }\\n        Returns: {\\n          closed_units: number\\n          item_cost: number\\n          item_image_url: string\\n          item_name: string\\n          item_package_size: number\\n          item_unit_type: string\\n          open_packages: Json\\n          res_id: string\\n          res_item_id: string\\n        }[]\\n      }\\n      get_menu_products: {\\n        Args: { p_menu_id: string }\\n        Returns: {\\n          base_price: number\\n          category: string\\n          description: string\\n          effective_price: number\\n          image_url: string\\n          is_available: boolean\\n          name: string\\n          position: number\\n          product_id: string\\n        }[]\\n      }\\n      get_products_with_availability: {\\n        Args: { p_store_id: string }\\n        Returns: {\\n          category: string\\n          category_slug: string\\n          description: string\\n          id: string\\n          image_url: string\\n          is_available: boolean\\n          is_visible: boolean\\n          name: string\\n          price: number\\n        }[]\\n      }\\n      get_public_order_status: { Args: { p_order_id: string }; Returns: Json }\\n      get_session_cash_summary: {\\n        Args: { query_session_id: string }\\n        Returns: Json\\n      }\\n      get_session_expected_cash: {\\n        Args: { query_session_id: string }\\n        Returns: number\\n      }\\n      get_stats_by_dispatch_station: {\\n        Args: {\\n          p_date_from?: string\\n          p_date_to?: string\\n          p_dispatch_station: string\\n          p_store_id: string\\n        }\\n        Returns: {\\n          card_sales: number\\n          cash_sales: number\\n          dispatch_station: string\\n          mp_sales: number\\n          total_orders: number\\n          total_sales: number\\n          wallet_sales: number\\n          zone_name: string\\n        }[]\\n      }\\n      get_store_branding: { Args: { p_store_id: string }; Returns: Json }\\n      get_store_mp_status: {\\n        Args: { p_store_id: string }\\n        Returns: {\\n          connected_at: string\\n          is_connected: boolean\\n          mp_email: string\\n          mp_first_name: string\\n          mp_last_name: string\\n          mp_nickname: string\\n          mp_user_id: string\\n        }[]\\n      }\\n      get_store_stock: {\\n        Args: { p_store_id: string }\\n        Returns: {\\n          closed_units: number\\n          id: string\\n          item_id: string\\n          location_id: string\\n          open_packages: Json\\n          store_id: string\\n          updated_at: string\\n        }[]\\n      }\\n      get_table_active_orders: {\\n        Args: { p_node_id: string }\\n        Returns: {\\n          created_at: string\\n          is_paid: boolean\\n          order_id: string\\n          order_number: string\\n          payment_method: string\\n          status: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"order_status_enum\\\"]\\n          total_amount: number\\n        }[]\\n      }\\n      get_top_products: {\\n        Args: { p_end_date: string; p_start_date: string; p_store_id: string }\\n        Returns: Json\\n      }\\n      get_user_store_id: { Args: never; Returns: string }\\n      insert_product_with_category_mapping: {\\n        Args: {\\n          p_category_id?: string\\n          p_description?: string\\n          p_image_url?: string\\n          p_name: string\\n          p_price?: number\\n          p_store_id: string\\n        }\\n        Returns: string\\n      }\\n      inspect_table_columns: {\\n        Args: { table_name: string }\\n        Returns: {\\n          column_name: string\\n          data_type: string\\n        }[]\\n      }\\n      is_super_admin: { Args: never; Returns: boolean }\\n      log_inventory_action: {\\n        Args: {\\n          p_action_type: string\\n          p_invoice_ref?: string\\n          p_item_id: string\\n          p_location_from?: string\\n          p_location_to?: string\\n          p_order_id?: string\\n          p_package_delta?: number\\n          p_quantity_delta?: number\\n          p_reason?: string\\n          p_source_ui?: string\\n          p_supplier_id?: string\\n          p_unit_cost?: number\\n        }\\n        Returns: string\\n      }\\n      log_qr_scan: {\\n        Args: {\\n          p_client_id?: string\\n          p_client_ip?: string\\n          p_create_session?: boolean\\n          p_qr_id: string\\n          p_source?: Database[\\\"public\\\"][\\\"Enums\\\"][\\\"scan_source\\\"]\\n          p_user_agent?: string\\n        }\\n        Returns: Json\\n      }\\n      log_retry_metric: {\\n        Args: {\\n          p_attempts: number\\n          p_duration_ms: number\\n          p_error_code?: string\\n          p_final_status: string\\n          p_rpc_name: string\\n        }\\n        Returns: string\\n      }\\n      manual_cleanup_abandoned_orders: {\\n        Args: { p_store_id: string; p_timeout_hours?: number }\\n        Returns: Json\\n      }\\n      normalize_location_name: { Args: { p_name: string }; Returns: string }\\n      open_cash_session: {\\n        Args: {\\n          p_dispatch_station_id?: string\\n          p_opened_by: string\\n          p_start_amount?: number\\n          p_store_id: string\\n          p_zone_id: string\\n        }\\n        Returns: Json\\n      }\\n      open_package: {\\n        Args: { p_item_id: string; p_location_id: string }\\n        Returns: Json\\n      }\\n      open_table: {\\n        Args: { p_node_id: string; p_store_id: string; p_user_id: string }\\n        Returns: Json\\n      }\\n      p2p_wallet_transfer: {\\n        Args: { p_amount: number; p_recipient_email: string }\\n        Returns: Json\\n      }\\n      pay_with_wallet: {\\n        Args: { p_amount: number; p_client_id: string; p_order_id?: string }\\n        Returns: Json\\n      }\\n      redeem_reward: {\\n        Args: { p_client_id: string; p_order_id: string; p_reward_id: string }\\n        Returns: Json\\n      }\\n      register_cash_adjustment: {\\n        Args: {\\n          p_amount: number\\n          p_cash_session_id: string\\n          p_description: string\\n          p_performed_by: string\\n        }\\n        Returns: Json\\n      }\\n      register_cash_withdrawal: {\\n        Args: {\\n          p_amount: number\\n          p_cash_session_id: string\\n          p_description: string\\n          p_performed_by: string\\n        }\\n        Returns: Json\\n      }\\n      register_fixed_expense: {\\n        Args: {\\n          p_amount: number\\n          p_category: string\\n          p_date: string\\n          p_description: string\\n          p_is_recurring: boolean\\n          p_name: string\\n          p_recurrence_frequency: string\\n          p_store_id: string\\n        }\\n        Returns: Json\\n      }\\n      resolve_menu: {\\n        Args: {\\n          p_bar_id?: string\\n          p_session_type?: string\\n          p_store_id: string\\n          p_table_id?: string\\n        }\\n        Returns: string\\n      }\\n      rollback_redemption: { Args: { p_order_id: string }; Returns: Json }\\n      schedule_cleanup_abandoned_orders: { Args: never; Returns: undefined }\\n      secure_log_qr_scan: {\\n        Args: { p_client_ip: string; p_qr_hash: string; p_user_agent: string }\\n        Returns: Json\\n      }\\n      sync_bar_location: {\\n        Args: { p_bar_id: string; p_bar_name: string; p_store_id: string }\\n        Returns: string\\n      }\\n      sync_offline_order: {\\n        Args: { p_allow_negative_stock?: boolean; p_order_data: Json }\\n        Returns: Json\\n      }\\n      transfer_stock: {\\n        Args: {\\n          p_from_location_id: string\\n          p_item_id: string\\n          p_quantity: number\\n          p_to_location_id: string\\n        }\\n        Returns: Json\\n      }\\n      transfer_stock_between_locations: {\\n        Args: {\\n          p_from_location_id: string\\n          p_inventory_item_id: string\\n          p_notes?: string\\n          p_quantity: number\\n          p_reason?: string\\n          p_to_location_id: string\\n        }\\n        Returns: Json\\n      }\\n      update_email_log_status: {\\n        Args: {\\n          p_error_code?: string\\n          p_error_message?: string\\n          p_log_id: string\\n          p_resend_id?: string\\n          p_resend_response?: Json\\n          p_status: string\\n        }\\n        Returns: boolean\\n      }\\n      update_order_node: {\\n        Args: { p_new_node_id: string; p_order_id: string }\\n        Returns: Json\\n      }\\n      user_tenant_id: { Args: never; Returns: string }\\n      validate_order_delivery: { Args: { qr_code: string }; Returns: Json }\\n      verify_loyalty_balance: { Args: { p_client_id: string }; Returns: Json }\\n      verify_payment:\\n        | {\\n            Args: {\\n              p_amount: number\\n              p_date_approved: string\\n              p_mp_payment_id: string\\n              p_order_id: string\\n              p_payer_email: string\\n              p_payment_method: string\\n              p_payment_type: string\\n              p_status: string\\n              p_status_detail: string\\n            }\\n            Returns: Json\\n          }\\n        | { Args: { p_order_id: string; p_status: string }; Returns: Json }\\n      verify_stock_integrity: {\\n        Args: { p_store_id: string }\\n        Returns: {\\n          calculated_stock: number\\n          current_stock_field: number\\n          difference: number\\n          item_id: string\\n          item_name: string\\n        }[]\\n      }\\n      verify_wallet_integrity: {\\n        Args: { p_store_id: string }\\n        Returns: {\\n          client_id: string\\n          client_name: string\\n          difference: number\\n          txn_sum: number\\n          wallet_field: number\\n        }[]\\n      }\\n    }\\n    Enums: {\\n      global_role_enum: \\\"super_admin\\\" | \\\"staff\\\"\\n      inventory_movement_enum: \\\"in\\\" | \\\"out\\\" | \\\"adjustment\\\"\\n      order_channel_enum: \\\"table\\\" | \\\"qr\\\" | \\\"takeaway\\\" | \\\"delivery\\\"\\n      order_status_enum:\\n        | \\\"draft\\\"\\n        | \\\"pending\\\"\\n        | \\\"paid\\\"\\n        | \\\"preparing\\\"\\n        | \\\"ready\\\"\\n        | \\\"served\\\"\\n        | \\\"cancelled\\\"\\n        | \\\"refunded\\\"\\n        | \\\"bill_requested\\\"\\n        | \\\"completed\\\"\\n        | \\\"delivered\\\"\\n        | \\\"in_progress\\\"\\n      qr_target_type: \\\"table\\\" | \\\"zone\\\"\\n      qr_type: \\\"table\\\" | \\\"bar\\\" | \\\"pickup\\\" | \\\"generic\\\"\\n      scan_source: \\\"camera\\\" | \\\"link\\\" | \\\"manual\\\"\\n      session_type: \\\"table\\\" | \\\"bar\\\" | \\\"pickup\\\" | \\\"generic\\\"\\n      venue_node_status:\\n        | \\\"free\\\"\\n        | \\\"occupied\\\"\\n        | \\\"bill_requested\\\"\\n        | \\\"closed\\\"\\n        | \\\"cleaning\\\"\\n      venue_node_type: \\\"table\\\" | \\\"bar\\\" | \\\"pickup_zone\\\"\\n    }\\n    CompositeTypes: {\\n      [_ in never]: never\\n    }\\n  }\\n}\\n\\ntype DatabaseWithoutInternals = Omit<Database, \\\"__InternalSupabase\\\">\\n\\ntype DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, \\\"public\\\">]\\n\\nexport type Tables<\\n  DefaultSchemaTableNameOrOptions extends\\n    | keyof (DefaultSchema[\\\"Tables\\\"] & DefaultSchema[\\\"Views\\\"])\\n    | { schema: keyof DatabaseWithoutInternals },\\n  TableName extends DefaultSchemaTableNameOrOptions extends {\\n    schema: keyof DatabaseWithoutInternals\\n  }\\n    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\\\"schema\\\"]][\\\"Tables\\\"] &\\n        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\\\"schema\\\"]][\\\"Views\\\"])\\n    : never = never,\\n> = DefaultSchemaTableNameOrOptions extends {\\n  schema: keyof DatabaseWithoutInternals\\n}\\n  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\\\"schema\\\"]][\\\"Tables\\\"] &\\n      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\\\"schema\\\"]][\\\"Views\\\"])[TableName] extends {\\n      Row: infer R\\n    }\\n    ? R\\n    : never\\n  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema[\\\"Tables\\\"] &\\n        DefaultSchema[\\\"Views\\\"])\\n    ? (DefaultSchema[\\\"Tables\\\"] &\\n        DefaultSchema[\\\"Views\\\"])[DefaultSchemaTableNameOrOptions] extends {\\n        Row: infer R\\n      }\\n      ? R\\n      : never\\n    : never\\n\\nexport type TablesInsert<\\n  DefaultSchemaTableNameOrOptions extends\\n    | keyof DefaultSchema[\\\"Tables\\\"]\\n    | { schema: keyof DatabaseWithoutInternals },\\n  TableName extends DefaultSchemaTableNameOrOptions extends {\\n    schema: keyof DatabaseWithoutInternals\\n  }\\n    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\\\"schema\\\"]][\\\"Tables\\\"]\\n    : never = never,\\n> = DefaultSchemaTableNameOrOptions extends {\\n  schema: keyof DatabaseWithoutInternals\\n}\\n  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\\\"schema\\\"]][\\\"Tables\\\"][TableName] extends {\\n      Insert: infer I\\n    }\\n    ? I\\n    : never\\n  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema[\\\"Tables\\\"]\\n    ? DefaultSchema[\\\"Tables\\\"][DefaultSchemaTableNameOrOptions] extends {\\n        Insert: infer I\\n      }\\n      ? I\\n      : never\\n    : never\\n\\nexport type TablesUpdate<\\n  DefaultSchemaTableNameOrOptions extends\\n    | keyof DefaultSchema[\\\"Tables\\\"]\\n    | { schema: keyof DatabaseWithoutInternals },\\n  TableName extends DefaultSchemaTableNameOrOptions extends {\\n    schema: keyof DatabaseWithoutInternals\\n  }\\n    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\\\"schema\\\"]][\\\"Tables\\\"]\\n    : never = never,\\n> = DefaultSchemaTableNameOrOptions extends {\\n  schema: keyof DatabaseWithoutInternals\\n}\\n  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\\\"schema\\\"]][\\\"Tables\\\"][TableName] extends {\\n      Update: infer U\\n    }\\n    ? U\\n    : never\\n  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema[\\\"Tables\\\"]\\n    ? DefaultSchema[\\\"Tables\\\"][DefaultSchemaTableNameOrOptions] extends {\\n        Update: infer U\\n      }\\n      ? U\\n      : never\\n    : never\\n\\nexport type Enums<\\n  DefaultSchemaEnumNameOrOptions extends\\n    | keyof DefaultSchema[\\\"Enums\\\"]\\n    | { schema: keyof DatabaseWithoutInternals },\\n  EnumName extends DefaultSchemaEnumNameOrOptions extends {\\n    schema: keyof DatabaseWithoutInternals\\n  }\\n    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions[\\\"schema\\\"]][\\\"Enums\\\"]\\n    : never = never,\\n> = DefaultSchemaEnumNameOrOptions extends {\\n  schema: keyof DatabaseWithoutInternals\\n}\\n  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions[\\\"schema\\\"]][\\\"Enums\\\"][EnumName]\\n  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema[\\\"Enums\\\"]\\n    ? DefaultSchema[\\\"Enums\\\"][DefaultSchemaEnumNameOrOptions]\\n    : never\\n\\nexport type CompositeTypes<\\n  PublicCompositeTypeNameOrOptions extends\\n    | keyof DefaultSchema[\\\"CompositeTypes\\\"]\\n    | { schema: keyof DatabaseWithoutInternals },\\n  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {\\n    schema: keyof DatabaseWithoutInternals\\n  }\\n    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions[\\\"schema\\\"]][\\\"CompositeTypes\\\"]\\n    : never = never,\\n> = PublicCompositeTypeNameOrOptions extends {\\n  schema: keyof DatabaseWithoutInternals\\n}\\n  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions[\\\"schema\\\"]][\\\"CompositeTypes\\\"][CompositeTypeName]\\n  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema[\\\"CompositeTypes\\\"]\\n    ? DefaultSchema[\\\"CompositeTypes\\\"][PublicCompositeTypeNameOrOptions]\\n    : never\\n\\nexport const Constants = {\\n  public: {\\n    Enums: {\\n      global_role_enum: [\\\"super_admin\\\", \\\"staff\\\"],\\n      inventory_movement_enum: [\\\"in\\\", \\\"out\\\", \\\"adjustment\\\"],\\n      order_channel_enum: [\\\"table\\\", \\\"qr\\\", \\\"takeaway\\\", \\\"delivery\\\"],\\n      order_status_enum: [\\n        \\\"draft\\\",\\n        \\\"pending\\\",\\n        \\\"paid\\\",\\n        \\\"preparing\\\",\\n        \\\"ready\\\",\\n        \\\"served\\\",\\n        \\\"cancelled\\\",\\n        \\\"refunded\\\",\\n        \\\"bill_requested\\\",\\n        \\\"completed\\\",\\n        \\\"delivered\\\",\\n        \\\"in_progress\\\",\\n      ],\\n      qr_target_type: [\\\"table\\\", \\\"zone\\\"],\\n      qr_type: [\\\"table\\\", \\\"bar\\\", \\\"pickup\\\", \\\"generic\\\"],\\n      scan_source: [\\\"camera\\\", \\\"link\\\", \\\"manual\\\"],\\n      session_type: [\\\"table\\\", \\\"bar\\\", \\\"pickup\\\", \\\"generic\\\"],\\n      venue_node_status: [\\n        \\\"free\\\",\\n        \\\"occupied\\\",\\n        \\\"bill_requested\\\",\\n        \\\"closed\\\",\\n        \\\"cleaning\\\",\\n      ],\\n      venue_node_type: [\\\"table\\\", \\\"bar\\\", \\\"pickup_zone\\\"],\\n    },\\n  },\\n} as const\\n\"}"
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.1"
   }
-]
+  public: {
+    Tables: {
+      abandoned_order_alerts: {
+        Row: {
+          acknowledged: boolean | null
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_time: string | null
+          auto_cancelled: boolean | null
+          hours_pending: number | null
+          id: string
+          order_id: string
+          payment_provider: string | null
+          store_id: string
+          total_amount: number | null
+        }
+        Insert: {
+          acknowledged?: boolean | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_time?: string | null
+          auto_cancelled?: boolean | null
+          hours_pending?: number | null
+          id?: string
+          order_id: string
+          payment_provider?: string | null
+          store_id: string
+          total_amount?: number | null
+        }
+        Update: {
+          acknowledged?: boolean | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_time?: string | null
+          auto_cancelled?: boolean | null
+          hours_pending?: number | null
+          id?: string
+          order_id?: string
+          payment_provider?: string | null
+          store_id?: string
+          total_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "abandoned_order_alerts_acknowledged_by_fkey"
+            columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "abandoned_order_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "abandonable_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "abandoned_order_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["active_order_id"]
+          },
+          {
+            foreignKeyName: "abandoned_order_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "abandoned_order_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "abandoned_order_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_price_tampering_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "abandoned_order_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_stock_rollback_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "abandoned_order_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_edit_stock_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "abandoned_order_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "abandoned_order_alerts_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_closures: {
+        Row: {
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string | null
+          difference: number | null
+          expected_cash: number
+          id: string
+          notes: string | null
+          opened_at: string | null
+          real_cash: number
+          session_id: string
+          start_amount: number | null
+          store_id: string
+          total_card_sales: number | null
+          total_cash_sales: number | null
+          total_mp_sales: number | null
+          total_orders: number | null
+          total_sales: number | null
+          total_topups: number | null
+          total_wallet_sales: number | null
+          zone_name: string | null
+        }
+        Insert: {
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string | null
+          difference?: number | null
+          expected_cash?: number
+          id?: string
+          notes?: string | null
+          opened_at?: string | null
+          real_cash?: number
+          session_id: string
+          start_amount?: number | null
+          store_id: string
+          total_card_sales?: number | null
+          total_cash_sales?: number | null
+          total_mp_sales?: number | null
+          total_orders?: number | null
+          total_sales?: number | null
+          total_topups?: number | null
+          total_wallet_sales?: number | null
+          zone_name?: string | null
+        }
+        Update: {
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string | null
+          difference?: number | null
+          expected_cash?: number
+          id?: string
+          notes?: string | null
+          opened_at?: string | null
+          real_cash?: number
+          session_id?: string
+          start_amount?: number | null
+          store_id?: string
+          total_card_sales?: number | null
+          total_cash_sales?: number | null
+          total_mp_sales?: number | null
+          total_orders?: number | null
+          total_sales?: number | null
+          total_topups?: number | null
+          total_wallet_sales?: number | null
+          zone_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_closures_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_session_reconciliation"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "cash_closures_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_closures_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_closures_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_cash_session_reconciliation"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "cash_closures_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_events: {
+        Row: {
+          amount: number
+          cash_session_id: string
+          created_at: string
+          description: string | null
+          event_type: string
+          id: string
+          payment_method: string | null
+          performed_by: string | null
+          reference_id: string | null
+          reference_type: string | null
+          store_id: string
+        }
+        Insert: {
+          amount: number
+          cash_session_id: string
+          created_at?: string
+          description?: string | null
+          event_type: string
+          id?: string
+          payment_method?: string | null
+          performed_by?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          store_id: string
+        }
+        Update: {
+          amount?: number
+          cash_session_id?: string
+          created_at?: string
+          description?: string | null
+          event_type?: string
+          id?: string
+          payment_method?: string | null
+          performed_by?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_events_cash_session_id_fkey"
+            columns: ["cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_session_reconciliation"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "cash_events_cash_session_id_fkey"
+            columns: ["cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_events_cash_session_id_fkey"
+            columns: ["cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_events_cash_session_id_fkey"
+            columns: ["cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_cash_session_reconciliation"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "cash_events_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_events_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_movements: {
+        Row: {
+          amount: number
+          created_at: string | null
+          created_by: string | null
+          id: string
+          order_id: string | null
+          reason: string | null
+          session_id: string
+          store_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          order_id?: string | null
+          reason?: string | null
+          session_id: string
+          store_id: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          order_id?: string | null
+          reason?: string | null
+          session_id?: string
+          store_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_movements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_movements_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "abandonable_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_movements_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["active_order_id"]
+          },
+          {
+            foreignKeyName: "cash_movements_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "cash_movements_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "cash_movements_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_price_tampering_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "cash_movements_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_stock_rollback_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "cash_movements_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_edit_stock_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "cash_movements_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_movements_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_session_reconciliation"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "cash_movements_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_movements_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_movements_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_cash_session_reconciliation"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "fk_cash_movements_store"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_sessions: {
+        Row: {
+          closed_at: string | null
+          closed_by: string | null
+          closing_notes: string | null
+          created_at: string | null
+          difference: number | null
+          dispatch_station_id: string | null
+          expected_cash: number | null
+          id: string
+          opened_at: string | null
+          opened_by: string
+          real_cash: number | null
+          start_amount: number
+          status: string
+          store_id: string
+          total_card_sales: number | null
+          total_cash_sales: number | null
+          total_mp_sales: number | null
+          total_orders: number | null
+          total_topups: number | null
+          total_wallet_sales: number | null
+          zone_id: string
+        }
+        Insert: {
+          closed_at?: string | null
+          closed_by?: string | null
+          closing_notes?: string | null
+          created_at?: string | null
+          difference?: number | null
+          dispatch_station_id?: string | null
+          expected_cash?: number | null
+          id?: string
+          opened_at?: string | null
+          opened_by: string
+          real_cash?: number | null
+          start_amount?: number
+          status?: string
+          store_id: string
+          total_card_sales?: number | null
+          total_cash_sales?: number | null
+          total_mp_sales?: number | null
+          total_orders?: number | null
+          total_topups?: number | null
+          total_wallet_sales?: number | null
+          zone_id: string
+        }
+        Update: {
+          closed_at?: string | null
+          closed_by?: string | null
+          closing_notes?: string | null
+          created_at?: string | null
+          difference?: number | null
+          dispatch_station_id?: string | null
+          expected_cash?: number | null
+          id?: string
+          opened_at?: string | null
+          opened_by?: string
+          real_cash?: number | null
+          start_amount?: number
+          status?: string
+          store_id?: string
+          total_card_sales?: number | null
+          total_cash_sales?: number | null
+          total_mp_sales?: number | null
+          total_orders?: number | null
+          total_topups?: number | null
+          total_wallet_sales?: number | null
+          zone_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_sessions_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_dispatch_station_id_fkey"
+            columns: ["dispatch_station_id"]
+            isOneToOne: false
+            referencedRelation: "dispatch_stations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_opened_by_fkey"
+            columns: ["opened_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "venue_zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      categories: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          position: number | null
+          store_id: string | null
+          type: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          position?: number | null
+          store_id?: string | null
+          type?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          position?: number | null
+          store_id?: string | null
+          type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categories_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_activity_log: {
+        Row: {
+          action_type: string
+          amount: number | null
+          client_id: string
+          created_at: string | null
+          description: string | null
+          id: string
+          metadata: Json | null
+          performed_by: string | null
+          store_id: string
+        }
+        Insert: {
+          action_type: string
+          amount?: number | null
+          client_id: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          performed_by?: string | null
+          store_id: string
+        }
+        Update: {
+          action_type?: string
+          amount?: number | null
+          client_id?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          performed_by?: string | null
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_activity_log_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_activity_log_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_balance_audit"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "client_activity_log_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_wallet_integrity"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "client_activity_log_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_activity_log_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_sessions: {
+        Row: {
+          bar_id: string | null
+          client_id: string | null
+          created_at: string | null
+          end_reason: string | null
+          ended_at: string | null
+          expires_at: string
+          id: string
+          is_active: boolean | null
+          last_activity_at: string | null
+          location_id: string | null
+          menu_id: string | null
+          qr_id: string | null
+          session_type: Database["public"]["Enums"]["session_type"]
+          started_at: string | null
+          store_id: string
+          table_id: string | null
+        }
+        Insert: {
+          bar_id?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          end_reason?: string | null
+          ended_at?: string | null
+          expires_at: string
+          id?: string
+          is_active?: boolean | null
+          last_activity_at?: string | null
+          location_id?: string | null
+          menu_id?: string | null
+          qr_id?: string | null
+          session_type: Database["public"]["Enums"]["session_type"]
+          started_at?: string | null
+          store_id: string
+          table_id?: string | null
+        }
+        Update: {
+          bar_id?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          end_reason?: string | null
+          ended_at?: string | null
+          expires_at?: string
+          id?: string
+          is_active?: boolean | null
+          last_activity_at?: string | null
+          location_id?: string | null
+          menu_id?: string | null
+          qr_id?: string | null
+          session_type?: Database["public"]["Enums"]["session_type"]
+          started_at?: string | null
+          store_id?: string
+          table_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_sessions_bar_id_fkey"
+            columns: ["bar_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "client_sessions_bar_id_fkey"
+            columns: ["bar_id"]
+            isOneToOne: false
+            referencedRelation: "available_nodes_for_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_sessions_bar_id_fkey"
+            columns: ["bar_id"]
+            isOneToOne: false
+            referencedRelation: "venue_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_sessions_bar_id_fkey"
+            columns: ["bar_id"]
+            isOneToOne: false
+            referencedRelation: "venue_nodes_with_orders"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "client_sessions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_sessions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_balance_audit"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "client_sessions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_wallet_integrity"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "client_sessions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_sessions_menu_id_fkey"
+            columns: ["menu_id"]
+            isOneToOne: false
+            referencedRelation: "menus"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_sessions_qr_id_fkey"
+            columns: ["qr_id"]
+            isOneToOne: false
+            referencedRelation: "qr_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_sessions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_sessions_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "client_sessions_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "available_nodes_for_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_sessions_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "venue_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_sessions_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "venue_nodes_with_orders"
+            referencedColumns: ["node_id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          auth_user_id: string | null
+          created_at: string
+          customer_code: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          is_active: boolean | null
+          loyalty_points: number
+          name: string | null
+          nfc_uid: string | null
+          phone: string | null
+          store_id: string | null
+          wallet_balance: number | null
+        }
+        Insert: {
+          auth_user_id?: string | null
+          created_at?: string
+          customer_code?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          loyalty_points?: number
+          name?: string | null
+          nfc_uid?: string | null
+          phone?: string | null
+          store_id?: string | null
+          wallet_balance?: number | null
+        }
+        Update: {
+          auth_user_id?: string | null
+          created_at?: string
+          customer_code?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          loyalty_points?: number
+          name?: string | null
+          nfc_uid?: string | null
+          phone?: string | null
+          store_id?: string | null
+          wallet_balance?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dispatch_stations: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_visible: boolean | null
+          name: string
+          sort_order: number | null
+          store_id: string
+          updated_at: string | null
+          zone_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_visible?: boolean | null
+          name: string
+          sort_order?: number | null
+          store_id: string
+          updated_at?: string | null
+          zone_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_visible?: boolean | null
+          name?: string
+          sort_order?: number | null
+          store_id?: string
+          updated_at?: string | null
+          zone_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_stations_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_stations_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "venue_zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_logs: {
+        Row: {
+          attempts: number | null
+          clicked_at: string | null
+          correlation_id: string | null
+          created_at: string | null
+          error_code: string | null
+          error_message: string | null
+          event_entity: string | null
+          event_id: string | null
+          event_type: string
+          id: string
+          idempotency_key: string
+          max_attempts: number | null
+          next_retry_at: string | null
+          opened_at: string | null
+          payload_core: Json
+          queued_at: string | null
+          recipient_email: string
+          recipient_name: string | null
+          recipient_type: string | null
+          resend_id: string | null
+          resend_response: Json | null
+          sent_at: string | null
+          status: string | null
+          store_id: string
+          template_key: string
+          template_provider_id: string | null
+          template_version: number | null
+          trigger_source: string | null
+          triggered_by: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          clicked_at?: string | null
+          correlation_id?: string | null
+          created_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          event_entity?: string | null
+          event_id?: string | null
+          event_type: string
+          id?: string
+          idempotency_key: string
+          max_attempts?: number | null
+          next_retry_at?: string | null
+          opened_at?: string | null
+          payload_core: Json
+          queued_at?: string | null
+          recipient_email: string
+          recipient_name?: string | null
+          recipient_type?: string | null
+          resend_id?: string | null
+          resend_response?: Json | null
+          sent_at?: string | null
+          status?: string | null
+          store_id: string
+          template_key: string
+          template_provider_id?: string | null
+          template_version?: number | null
+          trigger_source?: string | null
+          triggered_by?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          clicked_at?: string | null
+          correlation_id?: string | null
+          created_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          event_entity?: string | null
+          event_id?: string | null
+          event_type?: string
+          id?: string
+          idempotency_key?: string
+          max_attempts?: number | null
+          next_retry_at?: string | null
+          opened_at?: string | null
+          payload_core?: Json
+          queued_at?: string | null
+          recipient_email?: string
+          recipient_name?: string | null
+          recipient_type?: string | null
+          resend_id?: string | null
+          resend_response?: Json | null
+          sent_at?: string | null
+          status?: string | null
+          store_id?: string
+          template_key?: string
+          template_provider_id?: string | null
+          template_version?: number | null
+          trigger_source?: string | null
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_queue: {
+        Row: {
+          attempts: number | null
+          created_at: string | null
+          id: string
+          last_error: string | null
+          next_retry_at: string | null
+          order_id: string
+          payload: Json
+          recipient: string
+          status: string | null
+          store_id: string
+          subject: string
+          updated_at: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          created_at?: string | null
+          id?: string
+          last_error?: string | null
+          next_retry_at?: string | null
+          order_id: string
+          payload: Json
+          recipient: string
+          status?: string | null
+          store_id: string
+          subject: string
+          updated_at?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          created_at?: string | null
+          id?: string
+          last_error?: string | null
+          next_retry_at?: string | null
+          order_id?: string
+          payload?: Json
+          recipient?: string
+          status?: string | null
+          store_id?: string
+          subject?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_queue_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "abandonable_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_queue_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["active_order_id"]
+          },
+          {
+            foreignKeyName: "email_queue_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "email_queue_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "email_queue_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_price_tampering_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "email_queue_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_stock_rollback_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "email_queue_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_edit_stock_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "email_queue_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_queue_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      failed_sync_events: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          event_type: string
+          id: string
+          payload: Json
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          retry_count: number | null
+          store_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          event_type: string
+          id?: string
+          payload: Json
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          retry_count?: number | null
+          store_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          retry_count?: number | null
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "failed_sync_events_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fixed_expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          expense_date: string
+          id: string
+          is_recurring: boolean | null
+          name: string
+          recurrence_frequency: string | null
+          store_id: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          expense_date?: string
+          id?: string
+          is_recurring?: boolean | null
+          name: string
+          recurrence_frequency?: string | null
+          store_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          expense_date?: string
+          id?: string
+          is_recurring?: boolean | null
+          name?: string
+          recurrence_frequency?: string | null
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fixed_expenses_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_audit_logs: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          id: string
+          invoice_ref: string | null
+          item_id: string
+          location_from: string | null
+          location_to: string | null
+          new_value: Json | null
+          old_value: Json | null
+          order_id: string | null
+          package_delta: number | null
+          quantity_delta: number | null
+          reason: string
+          source_ui: string | null
+          store_id: string
+          supplier_id: string | null
+          unit: string | null
+          unit_cost: number | null
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          id?: string
+          invoice_ref?: string | null
+          item_id: string
+          location_from?: string | null
+          location_to?: string | null
+          new_value?: Json | null
+          old_value?: Json | null
+          order_id?: string | null
+          package_delta?: number | null
+          quantity_delta?: number | null
+          reason: string
+          source_ui?: string | null
+          store_id: string
+          supplier_id?: string | null
+          unit?: string | null
+          unit_cost?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          id?: string
+          invoice_ref?: string | null
+          item_id?: string
+          location_from?: string | null
+          location_to?: string | null
+          new_value?: Json | null
+          old_value?: Json | null
+          order_id?: string | null
+          package_delta?: number | null
+          quantity_delta?: number | null
+          reason?: string
+          source_ui?: string | null
+          store_id?: string
+          supplier_id?: string | null
+          unit?: string | null
+          unit_cost?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_audit_logs_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_audit_logs_location_from_fkey"
+            columns: ["location_from"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_audit_logs_location_to_fkey"
+            columns: ["location_to"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_audit_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "abandonable_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_audit_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["active_order_id"]
+          },
+          {
+            foreignKeyName: "inventory_audit_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "inventory_audit_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "inventory_audit_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_price_tampering_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "inventory_audit_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_stock_rollback_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "inventory_audit_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_edit_stock_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "inventory_audit_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_audit_logs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_audit_logs_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_audit_logs_user_id_profiles_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_items: {
+        Row: {
+          addons: Json | null
+          category_id: string | null
+          closed_stock: number | null
+          combo_items: Json | null
+          content_unit: string | null
+          cost: number
+          created_at: string | null
+          current_stock: number
+          description: string | null
+          id: string
+          ideal_stock: number | null
+          image_url: string | null
+          is_active: boolean | null
+          is_menu_visible: boolean | null
+          is_new: boolean | null
+          is_promo: boolean | null
+          is_recommended: boolean | null
+          is_sellable: boolean | null
+          item_type: string | null
+          last_purchase_price: number | null
+          last_supplier_id: string | null
+          max_stock: number | null
+          min_packages: number | null
+          min_quantity: number | null
+          min_stock_alert: number
+          name: string
+          open_count: number | null
+          open_packages: Json | null
+          package_size: number | null
+          price: number | null
+          reorder_point: number | null
+          sku: string | null
+          sort_order: number | null
+          stock_logic_version: string | null
+          store_id: string
+          unit_type: string
+          updated_at: string | null
+          variants: Json | null
+        }
+        Insert: {
+          addons?: Json | null
+          category_id?: string | null
+          closed_stock?: number | null
+          combo_items?: Json | null
+          content_unit?: string | null
+          cost?: number
+          created_at?: string | null
+          current_stock?: number
+          description?: string | null
+          id?: string
+          ideal_stock?: number | null
+          image_url?: string | null
+          is_active?: boolean | null
+          is_menu_visible?: boolean | null
+          is_new?: boolean | null
+          is_promo?: boolean | null
+          is_recommended?: boolean | null
+          is_sellable?: boolean | null
+          item_type?: string | null
+          last_purchase_price?: number | null
+          last_supplier_id?: string | null
+          max_stock?: number | null
+          min_packages?: number | null
+          min_quantity?: number | null
+          min_stock_alert?: number
+          name: string
+          open_count?: number | null
+          open_packages?: Json | null
+          package_size?: number | null
+          price?: number | null
+          reorder_point?: number | null
+          sku?: string | null
+          sort_order?: number | null
+          stock_logic_version?: string | null
+          store_id: string
+          unit_type: string
+          updated_at?: string | null
+          variants?: Json | null
+        }
+        Update: {
+          addons?: Json | null
+          category_id?: string | null
+          closed_stock?: number | null
+          combo_items?: Json | null
+          content_unit?: string | null
+          cost?: number
+          created_at?: string | null
+          current_stock?: number
+          description?: string | null
+          id?: string
+          ideal_stock?: number | null
+          image_url?: string | null
+          is_active?: boolean | null
+          is_menu_visible?: boolean | null
+          is_new?: boolean | null
+          is_promo?: boolean | null
+          is_recommended?: boolean | null
+          is_sellable?: boolean | null
+          item_type?: string | null
+          last_purchase_price?: number | null
+          last_supplier_id?: string | null
+          max_stock?: number | null
+          min_packages?: number | null
+          min_quantity?: number | null
+          min_stock_alert?: number
+          name?: string
+          open_count?: number | null
+          open_packages?: Json | null
+          package_size?: number | null
+          price?: number | null
+          reorder_point?: number | null
+          sku?: string | null
+          sort_order?: number | null
+          stock_logic_version?: string | null
+          store_id?: string
+          unit_type?: string
+          updated_at?: string | null
+          variants?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_location_stock: {
+        Row: {
+          closed_units: number | null
+          id: string
+          item_id: string
+          location_id: string
+          open_packages: Json | null
+          store_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          closed_units?: number | null
+          id?: string
+          item_id: string
+          location_id: string
+          open_packages?: Json | null
+          store_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          closed_units?: number | null
+          id?: string
+          item_id?: string
+          location_id?: string
+          open_packages?: Json | null
+          store_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_location_stock_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_location_stock_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_location_stock_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_lots: {
+        Row: {
+          cost_per_base_unit: number
+          created_at: string
+          expires_at: string | null
+          id: string
+          inventory_item_id: string
+          lot_code: string | null
+          qty_base_units: number
+          qty_base_units_remaining: number
+          received_at: string
+          supplier: string | null
+          tenant_id: string
+        }
+        Insert: {
+          cost_per_base_unit: number
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          inventory_item_id: string
+          lot_code?: string | null
+          qty_base_units: number
+          qty_base_units_remaining: number
+          received_at: string
+          supplier?: string | null
+          tenant_id: string
+        }
+        Update: {
+          cost_per_base_unit?: number
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          inventory_item_id?: string
+          lot_code?: string | null
+          qty_base_units?: number
+          qty_base_units_remaining?: number
+          received_at?: string
+          supplier?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_lots_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_movements: {
+        Row: {
+          created_at: string
+          id: string
+          inventory_item_id: string
+          lot_id: string | null
+          qty_base_units: number
+          reason: string | null
+          ref_order_id: string | null
+          tenant_id: string
+          type: Database["public"]["Enums"]["inventory_movement_enum"]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inventory_item_id: string
+          lot_id?: string | null
+          qty_base_units: number
+          reason?: string | null
+          ref_order_id?: string | null
+          tenant_id: string
+          type: Database["public"]["Enums"]["inventory_movement_enum"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inventory_item_id?: string
+          lot_id?: string | null
+          qty_base_units?: number
+          reason?: string | null
+          ref_order_id?: string | null
+          tenant_id?: string
+          type?: Database["public"]["Enums"]["inventory_movement_enum"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_ref_order_id_fkey"
+            columns: ["ref_order_id"]
+            isOneToOne: false
+            referencedRelation: "abandonable_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_ref_order_id_fkey"
+            columns: ["ref_order_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["active_order_id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_ref_order_id_fkey"
+            columns: ["ref_order_id"]
+            isOneToOne: false
+            referencedRelation: "cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_ref_order_id_fkey"
+            columns: ["ref_order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_ref_order_id_fkey"
+            columns: ["ref_order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_price_tampering_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_ref_order_id_fkey"
+            columns: ["ref_order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_stock_rollback_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_ref_order_id_fkey"
+            columns: ["ref_order_id"]
+            isOneToOne: false
+            referencedRelation: "order_edit_stock_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_ref_order_id_fkey"
+            columns: ["ref_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_suppliers: {
+        Row: {
+          active: boolean | null
+          address: string | null
+          contact_info: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          store_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          address?: string | null
+          contact_info?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          store_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          address?: string | null
+          contact_info?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          store_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_suppliers_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_items: {
+        Row: {
+          bonification: number | null
+          id: string
+          invoice_id: string | null
+          is_new_item: boolean | null
+          matched_inventory_id: string | null
+          name: string | null
+          quantity: number | null
+          tax_amount: number | null
+          total_line: number | null
+          unit: string | null
+          unit_price: number | null
+        }
+        Insert: {
+          bonification?: number | null
+          id?: string
+          invoice_id?: string | null
+          is_new_item?: boolean | null
+          matched_inventory_id?: string | null
+          name?: string | null
+          quantity?: number | null
+          tax_amount?: number | null
+          total_line?: number | null
+          unit?: string | null
+          unit_price?: number | null
+        }
+        Update: {
+          bonification?: number | null
+          id?: string
+          invoice_id?: string | null
+          is_new_item?: boolean | null
+          matched_inventory_id?: string | null
+          name?: string | null
+          quantity?: number | null
+          tax_amount?: number | null
+          total_line?: number | null
+          unit?: string | null
+          unit_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_matched_inventory_id_fkey"
+            columns: ["matched_inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          ai_analysis: Json | null
+          confirmed_at: string | null
+          created_at: string | null
+          fecha_factura: string | null
+          id: string
+          image_url: string | null
+          iva_total: number | null
+          nro_factura: string | null
+          proveedor: string | null
+          raw_extraction: Json | null
+          status: string | null
+          store_id: string | null
+          subtotal: number | null
+          total: number | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          ai_analysis?: Json | null
+          confirmed_at?: string | null
+          created_at?: string | null
+          fecha_factura?: string | null
+          id?: string
+          image_url?: string | null
+          iva_total?: number | null
+          nro_factura?: string | null
+          proveedor?: string | null
+          raw_extraction?: Json | null
+          status?: string | null
+          store_id?: string | null
+          subtotal?: number | null
+          total?: number | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          ai_analysis?: Json | null
+          confirmed_at?: string | null
+          created_at?: string | null
+          fecha_factura?: string | null
+          id?: string
+          image_url?: string | null
+          iva_total?: number | null
+          nro_factura?: string | null
+          proveedor?: string | null
+          raw_extraction?: Json | null
+          status?: string | null
+          store_id?: string | null
+          subtotal?: number | null
+          total?: number | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          company: string | null
+          created_at: string | null
+          email: string
+          id: string
+          message: string | null
+          name: string
+          phone: string | null
+          source: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string | null
+          email: string
+          id?: string
+          message?: string | null
+          name: string
+          phone?: string | null
+          source?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          company?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          message?: string | null
+          name?: string
+          phone?: string | null
+          source?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      loyalty_configs: {
+        Row: {
+          config: Json
+          created_at: string | null
+          id: string
+          store_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          config?: Json
+          created_at?: string | null
+          id?: string
+          store_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          config?: Json
+          created_at?: string | null
+          id?: string
+          store_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_configs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_product_rules: {
+        Row: {
+          created_at: string | null
+          id: string
+          multiplier: number
+          product_id: string
+          store_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          multiplier?: number
+          product_id: string
+          store_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          multiplier?: number
+          product_id?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_product_rules_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "product_inventory_map"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "loyalty_product_rules_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_product_rules_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_compat"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_product_rules_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_redemptions: {
+        Row: {
+          cost_points: number
+          cost_value: number | null
+          created_at: string | null
+          id: string
+          is_rolled_back: boolean | null
+          order_id: string | null
+          product_id: string | null
+          retail_value: number | null
+          reward_id: string | null
+          transaction_id: string
+        }
+        Insert: {
+          cost_points: number
+          cost_value?: number | null
+          created_at?: string | null
+          id?: string
+          is_rolled_back?: boolean | null
+          order_id?: string | null
+          product_id?: string | null
+          retail_value?: number | null
+          reward_id?: string | null
+          transaction_id: string
+        }
+        Update: {
+          cost_points?: number
+          cost_value?: number | null
+          created_at?: string | null
+          id?: string
+          is_rolled_back?: boolean | null
+          order_id?: string | null
+          product_id?: string | null
+          retail_value?: number | null
+          reward_id?: string | null
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_redemptions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "abandonable_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_redemptions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["active_order_id"]
+          },
+          {
+            foreignKeyName: "loyalty_redemptions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "loyalty_redemptions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "loyalty_redemptions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_price_tampering_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "loyalty_redemptions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_stock_rollback_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "loyalty_redemptions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_edit_stock_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "loyalty_redemptions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_redemptions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_redemptions_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_rewards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_redemptions_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_rewards: {
+        Row: {
+          created_at: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          name: string
+          points: number
+          product_id: string | null
+          store_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name: string
+          points?: number
+          product_id?: string | null
+          store_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name?: string
+          points?: number
+          product_id?: string | null
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_rewards_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "product_inventory_map"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "loyalty_rewards_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_rewards_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_compat"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_rewards_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_transactions: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          description: string | null
+          id: string
+          idempotency_key: string | null
+          is_rolled_back: boolean | null
+          metadata: Json | null
+          monetary_cost: number | null
+          monetary_value: number | null
+          order_id: string | null
+          points: number
+          staff_id: string | null
+          store_id: string
+          type: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          idempotency_key?: string | null
+          is_rolled_back?: boolean | null
+          metadata?: Json | null
+          monetary_cost?: number | null
+          monetary_value?: number | null
+          order_id?: string | null
+          points: number
+          staff_id?: string | null
+          store_id: string
+          type: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          idempotency_key?: string | null
+          is_rolled_back?: boolean | null
+          metadata?: Json | null
+          monetary_cost?: number | null
+          monetary_value?: number | null
+          order_id?: string | null
+          points?: number
+          staff_id?: string | null
+          store_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_loyalty_transactions_store"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_balance_audit"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_wallet_integrity"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "abandonable_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["active_order_id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_price_tampering_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_stock_rollback_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_edit_stock_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_products: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_visible: boolean | null
+          menu_id: string
+          price_override: number | null
+          product_id: string
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_visible?: boolean | null
+          menu_id: string
+          price_override?: number | null
+          product_id: string
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_visible?: boolean | null
+          menu_id?: string
+          price_override?: number | null
+          product_id?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_products_menu_id_fkey"
+            columns: ["menu_id"]
+            isOneToOne: false
+            referencedRelation: "menus"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "product_inventory_map"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "menu_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_compat"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_rules: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          menu_id: string
+          rule_config: Json
+          rule_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          menu_id: string
+          rule_config?: Json
+          rule_type: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          menu_id?: string
+          rule_config?: Json
+          rule_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_rules_menu_id_fkey"
+            columns: ["menu_id"]
+            isOneToOne: false
+            referencedRelation: "menus"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menus: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          is_fallback: boolean | null
+          name: string
+          priority: number | null
+          store_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_fallback?: boolean | null
+          name: string
+          priority?: number | null
+          store_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_fallback?: boolean | null
+          name?: string
+          priority?: number | null
+          store_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menus_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      open_packages: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          id: string
+          inventory_item_id: string
+          is_active: boolean | null
+          location_id: string | null
+          notes: string | null
+          opened_at: string
+          opened_by: string | null
+          package_capacity: number
+          remaining: number
+          store_id: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          inventory_item_id: string
+          is_active?: boolean | null
+          location_id?: string | null
+          notes?: string | null
+          opened_at?: string
+          opened_by?: string | null
+          package_capacity: number
+          remaining: number
+          store_id: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          inventory_item_id?: string
+          is_active?: boolean | null
+          location_id?: string | null
+          notes?: string | null
+          opened_at?: string
+          opened_by?: string | null
+          package_capacity?: number
+          remaining?: number
+          store_id?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_open_packages_store"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "open_packages_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "open_packages_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "open_packages_opened_by_fkey"
+            columns: ["opened_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "open_packages_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_item_addons: {
+        Row: {
+          addon_id: string
+          created_at: string
+          id: string
+          order_item_id: string
+          price: number
+          tenant_id: string
+        }
+        Insert: {
+          addon_id: string
+          created_at?: string
+          id?: string
+          order_item_id: string
+          price: number
+          tenant_id: string
+        }
+        Update: {
+          addon_id?: string
+          created_at?: string
+          id?: string
+          order_item_id?: string
+          price?: number
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_item_addons_addon_id_fkey"
+            columns: ["addon_id"]
+            isOneToOne: false
+            referencedRelation: "product_addons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_item_addons_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_item_addons_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_items: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          order_id: string
+          product_id: string
+          quantity: number
+          status: string | null
+          store_id: string
+          tenant_id: string | null
+          total_price: number
+          unit_price: number
+          variant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          order_id: string
+          product_id: string
+          quantity: number
+          status?: string | null
+          store_id: string
+          tenant_id?: string | null
+          total_price: number
+          unit_price: number
+          variant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          order_id?: string
+          product_id?: string
+          quantity?: number
+          status?: string | null
+          store_id?: string
+          tenant_id?: string | null
+          total_price?: number
+          unit_price?: number
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "abandonable_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["active_order_id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_price_tampering_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_stock_rollback_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_edit_stock_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          archived_at: string | null
+          cash_session_id: string | null
+          channel: Database["public"]["Enums"]["order_channel_enum"]
+          client_id: string | null
+          created_at: string
+          created_by_user_id: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_mode: string | null
+          delivery_status: string | null
+          discount_amount: number
+          dispatch_station: string | null
+          id: string
+          is_paid: boolean | null
+          items: Json | null
+          location_identifier: string | null
+          node_id: string | null
+          order_number: number
+          paid_at: string | null
+          payment_id: string | null
+          payment_method: string | null
+          payment_provider: string | null
+          payment_status: string
+          pickup_code: string | null
+          placed_at: string
+          session_id: string | null
+          source_location_id: string | null
+          status: Database["public"]["Enums"]["order_status_enum"]
+          stock_deducted: boolean
+          stock_reversed: boolean | null
+          store_id: string
+          subtotal: number
+          table_number: string | null
+          tax_amount: number
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          cash_session_id?: string | null
+          channel?: Database["public"]["Enums"]["order_channel_enum"]
+          client_id?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          delivered_at?: string | null
+          delivered_by?: string | null
+          delivery_mode?: string | null
+          delivery_status?: string | null
+          discount_amount?: number
+          dispatch_station?: string | null
+          id?: string
+          is_paid?: boolean | null
+          items?: Json | null
+          location_identifier?: string | null
+          node_id?: string | null
+          order_number: number
+          paid_at?: string | null
+          payment_id?: string | null
+          payment_method?: string | null
+          payment_provider?: string | null
+          payment_status?: string
+          pickup_code?: string | null
+          placed_at?: string
+          session_id?: string | null
+          source_location_id?: string | null
+          status?: Database["public"]["Enums"]["order_status_enum"]
+          stock_deducted?: boolean
+          stock_reversed?: boolean | null
+          store_id: string
+          subtotal?: number
+          table_number?: string | null
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          cash_session_id?: string | null
+          channel?: Database["public"]["Enums"]["order_channel_enum"]
+          client_id?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          delivered_at?: string | null
+          delivered_by?: string | null
+          delivery_mode?: string | null
+          delivery_status?: string | null
+          discount_amount?: number
+          dispatch_station?: string | null
+          id?: string
+          is_paid?: boolean | null
+          items?: Json | null
+          location_identifier?: string | null
+          node_id?: string | null
+          order_number?: number
+          paid_at?: string | null
+          payment_id?: string | null
+          payment_method?: string | null
+          payment_provider?: string | null
+          payment_status?: string
+          pickup_code?: string | null
+          placed_at?: string
+          session_id?: string | null
+          source_location_id?: string | null
+          status?: Database["public"]["Enums"]["order_status_enum"]
+          stock_deducted?: boolean
+          stock_reversed?: boolean | null
+          store_id?: string
+          subtotal?: number
+          table_number?: string | null
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_cash_session_id_fkey"
+            columns: ["cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_session_reconciliation"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "orders_cash_session_id_fkey"
+            columns: ["cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_cash_session_id_fkey"
+            columns: ["cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_cash_session_id_fkey"
+            columns: ["cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_cash_session_reconciliation"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "orders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_balance_audit"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "orders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_wallet_integrity"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "orders_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "orders_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "available_nodes_for_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "venue_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "venue_nodes_with_orders"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "orders_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "client_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_source_location_id_fkey"
+            columns: ["source_location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_intents: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          expires_at: string | null
+          external_reference: string
+          id: string
+          init_point: string | null
+          metadata: Json | null
+          mp_preference_id: string | null
+          order_id: string
+          status: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          expires_at?: string | null
+          external_reference: string
+          id?: string
+          init_point?: string | null
+          metadata?: Json | null
+          mp_preference_id?: string | null
+          order_id: string
+          status?: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          expires_at?: string | null
+          external_reference?: string
+          id?: string
+          init_point?: string | null
+          metadata?: Json | null
+          mp_preference_id?: string | null
+          order_id?: string
+          status?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_intents_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "abandonable_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_intents_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["active_order_id"]
+          },
+          {
+            foreignKeyName: "payment_intents_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "payment_intents_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "payment_intents_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_price_tampering_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "payment_intents_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_stock_rollback_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "payment_intents_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_edit_stock_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "payment_intents_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_intents_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_transactions: {
+        Row: {
+          amount: number
+          currency: string
+          date_approved: string | null
+          date_created: string | null
+          id: string
+          metadata: Json | null
+          mp_payment_id: string
+          order_id: string
+          payer_email: string | null
+          payer_id: string | null
+          payment_intent_id: string | null
+          payment_method: string | null
+          payment_type: string | null
+          status: string
+          status_detail: string | null
+          store_id: string
+          verified_at: string | null
+        }
+        Insert: {
+          amount: number
+          currency?: string
+          date_approved?: string | null
+          date_created?: string | null
+          id?: string
+          metadata?: Json | null
+          mp_payment_id: string
+          order_id: string
+          payer_email?: string | null
+          payer_id?: string | null
+          payment_intent_id?: string | null
+          payment_method?: string | null
+          payment_type?: string | null
+          status: string
+          status_detail?: string | null
+          store_id: string
+          verified_at?: string | null
+        }
+        Update: {
+          amount?: number
+          currency?: string
+          date_approved?: string | null
+          date_created?: string | null
+          id?: string
+          metadata?: Json | null
+          mp_payment_id?: string
+          order_id?: string
+          payer_email?: string | null
+          payer_id?: string | null
+          payment_intent_id?: string | null
+          payment_method?: string | null
+          payment_type?: string | null
+          status?: string
+          status_detail?: string | null
+          store_id?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "abandonable_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["active_order_id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_price_tampering_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_stock_rollback_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_edit_stock_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_payment_intent_id_fkey"
+            columns: ["payment_intent_id"]
+            isOneToOne: false
+            referencedRelation: "payment_intents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_webhooks: {
+        Row: {
+          action: string | null
+          created_at: string
+          error_message: string | null
+          headers_json: Json | null
+          id: string
+          mp_webhook_id: string | null
+          payload_json: Json
+          processed: boolean | null
+          processed_at: string | null
+          processing_result: string | null
+          provider: string
+          provider_event_id: string | null
+          received_at: string
+          signature_valid: boolean | null
+          store_id: string | null
+          topic: string
+        }
+        Insert: {
+          action?: string | null
+          created_at?: string
+          error_message?: string | null
+          headers_json?: Json | null
+          id?: string
+          mp_webhook_id?: string | null
+          payload_json: Json
+          processed?: boolean | null
+          processed_at?: string | null
+          processing_result?: string | null
+          provider?: string
+          provider_event_id?: string | null
+          received_at?: string
+          signature_valid?: boolean | null
+          store_id?: string | null
+          topic: string
+        }
+        Update: {
+          action?: string | null
+          created_at?: string
+          error_message?: string | null
+          headers_json?: Json | null
+          id?: string
+          mp_webhook_id?: string | null
+          payload_json?: Json
+          processed?: boolean | null
+          processed_at?: string | null
+          processing_result?: string | null
+          provider?: string
+          provider_event_id?: string | null
+          received_at?: string
+          signature_valid?: boolean | null
+          store_id?: string | null
+          topic?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_webhooks_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_addons: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          inventory_item_id: string | null
+          name: string
+          price: number
+          product_id: string | null
+          quantity_consumed: number | null
+          sku: string | null
+          tenant_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          inventory_item_id?: string | null
+          name: string
+          price?: number
+          product_id?: string | null
+          quantity_consumed?: number | null
+          sku?: string | null
+          tenant_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          inventory_item_id?: string | null
+          name?: string
+          price?: number
+          product_id?: string | null
+          quantity_consumed?: number | null
+          sku?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_addons_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_addons_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_addons_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_addons_map: {
+        Row: {
+          addon_id: string
+          id: string
+          product_id: string
+          tenant_id: string
+        }
+        Insert: {
+          addon_id: string
+          id?: string
+          product_id: string
+          tenant_id: string
+        }
+        Update: {
+          addon_id?: string
+          id?: string
+          product_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_addons_map_addon_id_fkey"
+            columns: ["addon_id"]
+            isOneToOne: false
+            referencedRelation: "product_addons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_addons_map_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "product_inventory_map"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "product_addons_map_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_addons_map_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_compat"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_addons_map_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_recipes: {
+        Row: {
+          created_at: string | null
+          id: string
+          inventory_item_id: string
+          product_id: string
+          quantity_required: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          inventory_item_id: string
+          product_id: string
+          quantity_required?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          inventory_item_id?: string
+          product_id?: string
+          quantity_required?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_recipes_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_recipes_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "product_inventory_map"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "product_recipes_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_recipes_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_compat"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_variants: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          price_delta: number
+          product_id: string
+          recipe_multiplier: number | null
+          recipe_overrides: Json | null
+          sku: string | null
+          tenant_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          price_delta?: number
+          product_id: string
+          recipe_multiplier?: number | null
+          recipe_overrides?: Json | null
+          sku?: string | null
+          tenant_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          price_delta?: number
+          product_id?: string
+          recipe_multiplier?: number | null
+          recipe_overrides?: Json | null
+          sku?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "product_inventory_map"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_compat"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_variants_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          active: boolean
+          base_price: number
+          category: string | null
+          category_slug: string | null
+          created_at: string
+          customs_options: Json | null
+          description: string | null
+          id: string
+          image: string | null
+          is_available: boolean | null
+          is_visible: boolean | null
+          linked_inventory_item_id: string | null
+          name: string
+          sku: string | null
+          store_id: string
+          tax_rate: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          base_price?: number
+          category?: string | null
+          category_slug?: string | null
+          created_at?: string
+          customs_options?: Json | null
+          description?: string | null
+          id?: string
+          image?: string | null
+          is_available?: boolean | null
+          is_visible?: boolean | null
+          linked_inventory_item_id?: string | null
+          name: string
+          sku?: string | null
+          store_id: string
+          tax_rate?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          base_price?: number
+          category?: string | null
+          category_slug?: string | null
+          created_at?: string
+          customs_options?: Json | null
+          description?: string | null
+          id?: string
+          image?: string | null
+          is_available?: boolean | null
+          is_visible?: boolean | null
+          linked_inventory_item_id?: string | null
+          name?: string
+          sku?: string | null
+          store_id?: string
+          tax_rate?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_linked_inventory_item_id_fkey"
+            columns: ["linked_inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_tenant_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          is_active: boolean | null
+          points_balance: number | null
+          role: string | null
+          role_id: string | null
+          store_id: string | null
+          updated_at: string | null
+          username: string | null
+          website: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id: string
+          is_active?: boolean | null
+          points_balance?: number | null
+          role?: string | null
+          role_id?: string | null
+          store_id?: string | null
+          updated_at?: string | null
+          username?: string | null
+          website?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          points_balance?: number | null
+          role?: string | null
+          role_id?: string | null
+          store_id?: string | null
+          updated_at?: string | null
+          username?: string | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_store_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "store_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qr_codes: {
+        Row: {
+          bar_id: string | null
+          code_hash: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          label: string
+          last_scanned_at: string | null
+          location_id: string | null
+          qr_type: Database["public"]["Enums"]["qr_type"]
+          regenerated_from: string | null
+          scan_count: number | null
+          store_id: string
+          table_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          bar_id?: string | null
+          code_hash: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          label: string
+          last_scanned_at?: string | null
+          location_id?: string | null
+          qr_type: Database["public"]["Enums"]["qr_type"]
+          regenerated_from?: string | null
+          scan_count?: number | null
+          store_id: string
+          table_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          bar_id?: string | null
+          code_hash?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          label?: string
+          last_scanned_at?: string | null
+          location_id?: string | null
+          qr_type?: Database["public"]["Enums"]["qr_type"]
+          regenerated_from?: string | null
+          scan_count?: number | null
+          store_id?: string
+          table_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qr_codes_bar_id_fkey"
+            columns: ["bar_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "qr_codes_bar_id_fkey"
+            columns: ["bar_id"]
+            isOneToOne: false
+            referencedRelation: "available_nodes_for_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_codes_bar_id_fkey"
+            columns: ["bar_id"]
+            isOneToOne: false
+            referencedRelation: "venue_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_codes_bar_id_fkey"
+            columns: ["bar_id"]
+            isOneToOne: false
+            referencedRelation: "venue_nodes_with_orders"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "qr_codes_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_codes_regenerated_from_fkey"
+            columns: ["regenerated_from"]
+            isOneToOne: false
+            referencedRelation: "qr_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_codes_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_codes_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "qr_codes_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "available_nodes_for_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_codes_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "venue_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_codes_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "venue_nodes_with_orders"
+            referencedColumns: ["node_id"]
+          },
+        ]
+      }
+      qr_links: {
+        Row: {
+          code_hash: string
+          created_at: string | null
+          hash: string | null
+          id: string
+          is_active: boolean | null
+          node_id: string | null
+          store_id: string
+          target_node_id: string | null
+          target_type: Database["public"]["Enums"]["qr_target_type"]
+          target_zone_name: string | null
+          type: string | null
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string | null
+          hash?: string | null
+          id?: string
+          is_active?: boolean | null
+          node_id?: string | null
+          store_id: string
+          target_node_id?: string | null
+          target_type: Database["public"]["Enums"]["qr_target_type"]
+          target_zone_name?: string | null
+          type?: string | null
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string | null
+          hash?: string | null
+          id?: string
+          is_active?: boolean | null
+          node_id?: string | null
+          store_id?: string
+          target_node_id?: string | null
+          target_type?: Database["public"]["Enums"]["qr_target_type"]
+          target_zone_name?: string | null
+          type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qr_links_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "qr_links_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "available_nodes_for_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_links_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "venue_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_links_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "venue_nodes_with_orders"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "qr_links_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_links_target_node_id_fkey"
+            columns: ["target_node_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "qr_links_target_node_id_fkey"
+            columns: ["target_node_id"]
+            isOneToOne: false
+            referencedRelation: "available_nodes_for_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_links_target_node_id_fkey"
+            columns: ["target_node_id"]
+            isOneToOne: false
+            referencedRelation: "venue_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_links_target_node_id_fkey"
+            columns: ["target_node_id"]
+            isOneToOne: false
+            referencedRelation: "venue_nodes_with_orders"
+            referencedColumns: ["node_id"]
+          },
+        ]
+      }
+      qr_scan_logs: {
+        Row: {
+          client_ip: unknown
+          created_at: string | null
+          id: string
+          qr_id: string
+          resolved_context: Json
+          scanned_at: string | null
+          session_id: string | null
+          source: Database["public"]["Enums"]["scan_source"] | null
+          store_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          client_ip?: unknown
+          created_at?: string | null
+          id?: string
+          qr_id: string
+          resolved_context?: Json
+          scanned_at?: string | null
+          session_id?: string | null
+          source?: Database["public"]["Enums"]["scan_source"] | null
+          store_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          client_ip?: unknown
+          created_at?: string | null
+          id?: string
+          qr_id?: string
+          resolved_context?: Json
+          scanned_at?: string | null
+          session_id?: string | null
+          source?: Database["public"]["Enums"]["scan_source"] | null
+          store_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_scan_session"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "client_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_scan_logs_qr_id_fkey"
+            columns: ["qr_id"]
+            isOneToOne: false
+            referencedRelation: "qr_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_scan_logs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      retry_metrics: {
+        Row: {
+          attempts: number
+          client_info: Json | null
+          created_at: string
+          duration_ms: number
+          error_code: string | null
+          final_status: string
+          id: string
+          rpc_name: string
+          store_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          attempts: number
+          client_info?: Json | null
+          created_at?: string
+          duration_ms: number
+          error_code?: string | null
+          final_status: string
+          id?: string
+          rpc_name: string
+          store_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          client_info?: Json | null
+          created_at?: string
+          duration_ms?: number
+          error_code?: string | null
+          final_status?: string
+          id?: string
+          rpc_name?: string
+          store_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retry_metrics_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retry_metrics_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roles: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          hierarchy_level: number | null
+          id: string
+          name: string
+          permissions: Json | null
+          store_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          hierarchy_level?: number | null
+          id?: string
+          name: string
+          permissions?: Json | null
+          store_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          hierarchy_level?: number | null
+          id?: string
+          name?: string
+          permissions?: Json | null
+          store_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roles_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saas_audit_logs: {
+        Row: {
+          action: string
+          actor_role: Database["public"]["Enums"]["global_role_enum"] | null
+          actor_user_id: string | null
+          created_at: string
+          entity_id: string | null
+          entity_table: string | null
+          id: number
+          metadata: Json
+          tenant_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_role?: Database["public"]["Enums"]["global_role_enum"] | null
+          actor_user_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_table?: string | null
+          id?: number
+          metadata?: Json
+          tenant_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_role?: Database["public"]["Enums"]["global_role_enum"] | null
+          actor_user_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_table?: string | null
+          id?: number
+          metadata?: Json
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saas_audit_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saas_feature_flags: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          feature_key: string
+          id: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          feature_key: string
+          id?: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          feature_key?: string
+          id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saas_feature_flags_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saas_plans: {
+        Row: {
+          created_at: string
+          features: Json
+          id: string
+          monthly_price: number
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          features?: Json
+          id?: string
+          monthly_price?: number
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          features?: Json
+          id?: string
+          monthly_price?: number
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      staff_members: {
+        Row: {
+          id: string
+          role: string | null
+          store_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: string | null
+          store_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: string | null
+          store_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_members_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_alerts: {
+        Row: {
+          acknowledged: boolean | null
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          created_at: string | null
+          expected_stock: number | null
+          id: string
+          inventory_item_id: string
+          message: string | null
+          order_id: string | null
+          stock_level: number
+          store_id: string
+        }
+        Insert: {
+          acknowledged?: boolean | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type: string
+          created_at?: string | null
+          expected_stock?: number | null
+          id?: string
+          inventory_item_id: string
+          message?: string | null
+          order_id?: string | null
+          stock_level: number
+          store_id: string
+        }
+        Update: {
+          acknowledged?: boolean | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type?: string
+          created_at?: string | null
+          expected_stock?: number | null
+          id?: string
+          inventory_item_id?: string
+          message?: string | null
+          order_id?: string | null
+          stock_level?: number
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_alerts_acknowledged_by_fkey"
+            columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_alerts_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "abandonable_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["active_order_id"]
+          },
+          {
+            foreignKeyName: "stock_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "stock_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "stock_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_price_tampering_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "stock_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_stock_rollback_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "stock_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_edit_stock_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "stock_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_alerts_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_deduction_errors: {
+        Row: {
+          attempted_qty: number | null
+          context: string | null
+          created_at: string | null
+          current_stock_before: number | null
+          error_detail: string | null
+          error_message: string | null
+          id: number
+          inventory_item_id: string | null
+          order_id: string | null
+          store_id: string | null
+        }
+        Insert: {
+          attempted_qty?: number | null
+          context?: string | null
+          created_at?: string | null
+          current_stock_before?: number | null
+          error_detail?: string | null
+          error_message?: string | null
+          id?: number
+          inventory_item_id?: string | null
+          order_id?: string | null
+          store_id?: string | null
+        }
+        Update: {
+          attempted_qty?: number | null
+          context?: string | null
+          created_at?: string | null
+          current_stock_before?: number | null
+          error_detail?: string | null
+          error_message?: string | null
+          id?: number
+          inventory_item_id?: string | null
+          order_id?: string | null
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_deduction_errors_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "abandonable_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_deduction_errors_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["active_order_id"]
+          },
+          {
+            foreignKeyName: "stock_deduction_errors_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "stock_deduction_errors_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "stock_deduction_errors_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_price_tampering_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "stock_deduction_errors_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_stock_rollback_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "stock_deduction_errors_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_edit_stock_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "stock_deduction_errors_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_deduction_errors_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_movements: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: number
+          idempotency_key: string
+          inventory_item_id: string
+          location_id: string | null
+          order_id: string | null
+          qty_delta: number
+          reason: string
+          store_id: string
+          unit_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: number
+          idempotency_key: string
+          inventory_item_id: string
+          location_id?: string | null
+          order_id?: string | null
+          qty_delta: number
+          reason: string
+          store_id: string
+          unit_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: number
+          idempotency_key?: string
+          inventory_item_id?: string
+          location_id?: string | null
+          order_id?: string | null
+          qty_delta?: number
+          reason?: string
+          store_id?: string
+          unit_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_stock_movements_store"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_transfers: {
+        Row: {
+          batch_id: string | null
+          created_at: string | null
+          from_location_id: string | null
+          id: string
+          inventory_item_id: string
+          invoice_ref: string | null
+          movement_type: string | null
+          notes: string | null
+          quantity: number
+          reason: string | null
+          supplier_id: string | null
+          to_location_id: string | null
+          unit_cost: number | null
+          user_id: string | null
+        }
+        Insert: {
+          batch_id?: string | null
+          created_at?: string | null
+          from_location_id?: string | null
+          id?: string
+          inventory_item_id: string
+          invoice_ref?: string | null
+          movement_type?: string | null
+          notes?: string | null
+          quantity: number
+          reason?: string | null
+          supplier_id?: string | null
+          to_location_id?: string | null
+          unit_cost?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          batch_id?: string | null
+          created_at?: string | null
+          from_location_id?: string | null
+          id?: string
+          inventory_item_id?: string
+          invoice_ref?: string | null
+          movement_type?: string | null
+          notes?: string | null
+          quantity?: number
+          reason?: string | null
+          supplier_id?: string | null
+          to_location_id?: string | null
+          unit_cost?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_transfers_from_location_id_fkey"
+            columns: ["from_location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_to_location_id_fkey"
+            columns: ["to_location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      storage_locations: {
+        Row: {
+          bar_id: string | null
+          created_at: string | null
+          id: string
+          is_consumable: boolean | null
+          is_default: boolean | null
+          is_deletable: boolean | null
+          is_point_of_sale: boolean | null
+          location_type: string | null
+          name: string
+          store_id: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          bar_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_consumable?: boolean | null
+          is_default?: boolean | null
+          is_deletable?: boolean | null
+          is_point_of_sale?: boolean | null
+          location_type?: string | null
+          name: string
+          store_id: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          bar_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_consumable?: boolean | null
+          is_default?: boolean | null
+          is_deletable?: boolean | null
+          is_point_of_sale?: boolean | null
+          location_type?: string | null
+          name?: string
+          store_id?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "storage_locations_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_create_requests: {
+        Row: {
+          created_at: string | null
+          id: string
+          idempotency_key: string
+          owner_email: string
+          slug: string
+          store_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          idempotency_key: string
+          owner_email: string
+          slug: string
+          store_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          idempotency_key?: string
+          owner_email?: string
+          slug?: string
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_create_requests_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_role_permissions: {
+        Row: {
+          can_create: boolean | null
+          can_delete: boolean | null
+          can_edit: boolean | null
+          can_view: boolean | null
+          created_at: string | null
+          id: string
+          role_id: string
+          section_slug: string
+        }
+        Insert: {
+          can_create?: boolean | null
+          can_delete?: boolean | null
+          can_edit?: boolean | null
+          can_view?: boolean | null
+          created_at?: string | null
+          id?: string
+          role_id: string
+          section_slug: string
+        }
+        Update: {
+          can_create?: boolean | null
+          can_delete?: boolean | null
+          can_edit?: boolean | null
+          can_view?: boolean | null
+          created_at?: string | null
+          id?: string
+          role_id?: string
+          section_slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_role_permissions_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "store_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_roles: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_system: boolean | null
+          name: string
+          store_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean | null
+          name: string
+          store_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean | null
+          name?: string
+          store_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_roles_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_secrets: {
+        Row: {
+          created_at: string
+          encrypted_value: string
+          expires_at: string | null
+          id: string
+          key_id: string
+          nonce: string
+          secret_type: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          encrypted_value: string
+          expires_at?: string | null
+          id?: string
+          key_id: string
+          nonce: string
+          secret_type: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          encrypted_value?: string
+          expires_at?: string | null
+          id?: string
+          key_id?: string
+          nonce?: string
+          secret_type?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_secrets_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stores: {
+        Row: {
+          address: string | null
+          business_hours: Json | null
+          cover_url: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          logo_url: string | null
+          menu_logic: Json | null
+          menu_theme: Json | null
+          mp_access_token: string | null
+          mp_connected_at: string | null
+          mp_email: string | null
+          mp_expires_at: string | null
+          mp_first_name: string | null
+          mp_last_name: string | null
+          mp_nickname: string | null
+          mp_public_key: string | null
+          mp_refresh_token: string | null
+          mp_tokens_encrypted: boolean | null
+          mp_user_id: string | null
+          name: string
+          onboarding_status: string | null
+          owner_email: string | null
+          plan: string | null
+          service_mode: string | null
+          slug: string
+          tax_info: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          business_hours?: Json | null
+          cover_url?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          menu_logic?: Json | null
+          menu_theme?: Json | null
+          mp_access_token?: string | null
+          mp_connected_at?: string | null
+          mp_email?: string | null
+          mp_expires_at?: string | null
+          mp_first_name?: string | null
+          mp_last_name?: string | null
+          mp_nickname?: string | null
+          mp_public_key?: string | null
+          mp_refresh_token?: string | null
+          mp_tokens_encrypted?: boolean | null
+          mp_user_id?: string | null
+          name: string
+          onboarding_status?: string | null
+          owner_email?: string | null
+          plan?: string | null
+          service_mode?: string | null
+          slug: string
+          tax_info?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          business_hours?: Json | null
+          cover_url?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          menu_logic?: Json | null
+          menu_theme?: Json | null
+          mp_access_token?: string | null
+          mp_connected_at?: string | null
+          mp_email?: string | null
+          mp_expires_at?: string | null
+          mp_first_name?: string | null
+          mp_last_name?: string | null
+          mp_nickname?: string | null
+          mp_public_key?: string | null
+          mp_refresh_token?: string | null
+          mp_tokens_encrypted?: boolean | null
+          mp_user_id?: string | null
+          name?: string
+          onboarding_status?: string | null
+          owner_email?: string | null
+          plan?: string | null
+          service_mode?: string | null
+          slug?: string
+          tax_info?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      team_invitations: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          role: string
+          status: string | null
+          store_id: string | null
+          token: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          role: string
+          status?: string | null
+          store_id?: string | null
+          token?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          role?: string
+          status?: string | null
+          store_id?: string | null
+          token?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_invitations_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenants: {
+        Row: {
+          config: Json
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          plan_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          plan_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          plan_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenants_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "saas_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venue_nodes: {
+        Row: {
+          active_badges: Json | null
+          active_order_ids: string[] | null
+          created_at: string | null
+          current_order_count: number | null
+          dispatch_station: string | null
+          height: number | null
+          id: string
+          label: string
+          location_id: string | null
+          metadata: Json | null
+          position_x: number | null
+          position_y: number | null
+          rotation: number | null
+          shape: string | null
+          status: Database["public"]["Enums"]["venue_node_status"] | null
+          store_id: string
+          type: Database["public"]["Enums"]["venue_node_type"] | null
+          updated_at: string | null
+          width: number | null
+          zone_id: string | null
+        }
+        Insert: {
+          active_badges?: Json | null
+          active_order_ids?: string[] | null
+          created_at?: string | null
+          current_order_count?: number | null
+          dispatch_station?: string | null
+          height?: number | null
+          id?: string
+          label: string
+          location_id?: string | null
+          metadata?: Json | null
+          position_x?: number | null
+          position_y?: number | null
+          rotation?: number | null
+          shape?: string | null
+          status?: Database["public"]["Enums"]["venue_node_status"] | null
+          store_id: string
+          type?: Database["public"]["Enums"]["venue_node_type"] | null
+          updated_at?: string | null
+          width?: number | null
+          zone_id?: string | null
+        }
+        Update: {
+          active_badges?: Json | null
+          active_order_ids?: string[] | null
+          created_at?: string | null
+          current_order_count?: number | null
+          dispatch_station?: string | null
+          height?: number | null
+          id?: string
+          label?: string
+          location_id?: string | null
+          metadata?: Json | null
+          position_x?: number | null
+          position_y?: number | null
+          rotation?: number | null
+          shape?: string | null
+          status?: Database["public"]["Enums"]["venue_node_status"] | null
+          store_id?: string
+          type?: Database["public"]["Enums"]["venue_node_type"] | null
+          updated_at?: string | null
+          width?: number | null
+          zone_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_nodes_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_nodes_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_nodes_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "venue_zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venue_notifications: {
+        Row: {
+          attended_at: string | null
+          attended_by: string | null
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          message: string | null
+          node_id: string | null
+          order_id: string | null
+          store_id: string
+          type: string
+        }
+        Insert: {
+          attended_at?: string | null
+          attended_by?: string | null
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          node_id?: string | null
+          order_id?: string | null
+          store_id: string
+          type: string
+        }
+        Update: {
+          attended_at?: string | null
+          attended_by?: string | null
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          node_id?: string | null
+          order_id?: string | null
+          store_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_notifications_attended_by_fkey"
+            columns: ["attended_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_notifications_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "venue_notifications_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "available_nodes_for_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_notifications_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "venue_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_notifications_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "venue_nodes_with_orders"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "venue_notifications_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "abandonable_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_notifications_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["active_order_id"]
+          },
+          {
+            foreignKeyName: "venue_notifications_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "venue_notifications_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "venue_notifications_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_price_tampering_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "venue_notifications_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_stock_rollback_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "venue_notifications_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_edit_stock_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "venue_notifications_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_notifications_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venue_zones: {
+        Row: {
+          created_at: string
+          default_dispatch_station: string | null
+          description: string | null
+          id: string
+          name: string
+          primary_location_id: string | null
+          store_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_dispatch_station?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          primary_location_id?: string | null
+          store_id: string
+        }
+        Update: {
+          created_at?: string
+          default_dispatch_station?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          primary_location_id?: string | null
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_zones_primary_location_id_fkey"
+            columns: ["primary_location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_zones_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallet_ledger: {
+        Row: {
+          amount: number
+          balance_after: number
+          created_at: string
+          currency: string
+          description: string | null
+          entry_type: string
+          id: string
+          idempotency_key: string | null
+          payment_method: string | null
+          performed_by: string | null
+          reference_id: string | null
+          reference_type: string | null
+          source: string | null
+          store_id: string
+          wallet_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          created_at?: string
+          currency?: string
+          description?: string | null
+          entry_type: string
+          id?: string
+          idempotency_key?: string | null
+          payment_method?: string | null
+          performed_by?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          source?: string | null
+          store_id: string
+          wallet_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          created_at?: string
+          currency?: string
+          description?: string | null
+          entry_type?: string
+          id?: string
+          idempotency_key?: string | null
+          payment_method?: string | null
+          performed_by?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          source?: string | null
+          store_id?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_ledger_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_ledger_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallet_transactions: {
+        Row: {
+          amount: number
+          client_id: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          mp_payment_id: string | null
+          payment_method: string | null
+          processed_at: string | null
+          staff_id: string | null
+          status: string | null
+          store_id: string | null
+          type: string
+          user_id: string | null
+          wallet_id: string | null
+        }
+        Insert: {
+          amount: number
+          client_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          mp_payment_id?: string | null
+          payment_method?: string | null
+          processed_at?: string | null
+          staff_id?: string | null
+          status?: string | null
+          store_id?: string | null
+          type: string
+          user_id?: string | null
+          wallet_id?: string | null
+        }
+        Update: {
+          amount?: number
+          client_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          mp_payment_id?: string | null
+          payment_method?: string | null
+          processed_at?: string | null
+          staff_id?: string | null
+          status?: string | null
+          store_id?: string | null
+          type?: string
+          user_id?: string | null
+          wallet_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_transactions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_transactions_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      wallets: {
+        Row: {
+          balance: number | null
+          currency: string | null
+          id: string | null
+          last_updated: string | null
+          store_id: string | null
+          user_id: string
+        }
+        Insert: {
+          balance?: number | null
+          currency?: string | null
+          id?: string | null
+          last_updated?: string | null
+          store_id?: string | null
+          user_id: string
+        }
+        Update: {
+          balance?: number | null
+          currency?: string | null
+          id?: string | null
+          last_updated?: string | null
+          store_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallets_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      abandonable_orders: {
+        Row: {
+          abandonment_status: string | null
+          created_at: string | null
+          id: string | null
+          minutes_pending: number | null
+          order_number: number | null
+          payment_method: string | null
+          payment_provider: string | null
+          status: Database["public"]["Enums"]["order_status_enum"] | null
+          store_id: string | null
+          store_name: string | null
+          total_amount: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      active_venue_states: {
+        Row: {
+          active_order_id: string | null
+          current_total: number | null
+          derived_status: string | null
+          label: string | null
+          node_id: string | null
+          order_start_time: string | null
+          order_status: Database["public"]["Enums"]["order_status_enum"] | null
+          position_x: number | null
+          position_y: number | null
+          store_id: string | null
+          type: Database["public"]["Enums"]["venue_node_type"] | null
+          zone_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_nodes_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_nodes_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "venue_zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analytics_retry_by_rpc: {
+        Row: {
+          avg_attempts: number | null
+          avg_duration_ms: number | null
+          max_attempts: number | null
+          rpc_name: string | null
+          success_rate: number | null
+          successful: number | null
+          total_calls: number | null
+        }
+        Relationships: []
+      }
+      analytics_retry_errors: {
+        Row: {
+          affected_rpcs: string[] | null
+          avg_attempts_before_fail: number | null
+          error_code: string | null
+          first_seen: string | null
+          last_seen: string | null
+          occurrence_count: number | null
+        }
+        Relationships: []
+      }
+      analytics_retry_success_rate_daily: {
+        Row: {
+          avg_attempts: number | null
+          avg_duration_ms: number | null
+          date: string | null
+          failed: number | null
+          store_id: string | null
+          store_name: string | null
+          success_rate: number | null
+          successful: number | null
+          total_retries: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retry_metrics_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_logs: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          new_data: Json | null
+          old_data: Json | null
+          operation: string | null
+          store_id: string | null
+          table_name: string | null
+          user_id: string | null
+          user_name: string | null
+          user_role: string | null
+        }
+        Relationships: []
+      }
+      available_nodes_for_orders: {
+        Row: {
+          default_dispatch_station: string | null
+          dispatch_station: string | null
+          effective_dispatch_station: string | null
+          id: string | null
+          label: string | null
+          sort_priority: number | null
+          store_id: string | null
+          type: Database["public"]["Enums"]["venue_node_type"] | null
+          zone_id: string | null
+          zone_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_nodes_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_nodes_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "venue_zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cancelled_orders_audit: {
+        Row: {
+          created_at: string | null
+          is_paid: boolean | null
+          order_id: string | null
+          order_number: number | null
+          payment_method: string | null
+          restock_movements: number | null
+          stock_deducted: boolean | null
+          store_id: string | null
+          store_name: string | null
+          total_amount: number | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_closures_detailed: {
+        Row: {
+          closed_at: string | null
+          closed_by: string | null
+          closed_by_name: string | null
+          created_at: string | null
+          default_dispatch_station: string | null
+          difference: number | null
+          duration_hours: number | null
+          expected_cash: number | null
+          id: string | null
+          notes: string | null
+          opened_at: string | null
+          opened_by: string | null
+          opened_by_name: string | null
+          real_cash: number | null
+          session_id: string | null
+          start_amount: number | null
+          store_id: string | null
+          total_card_sales: number | null
+          total_cash_sales: number | null
+          total_mp_sales: number | null
+          total_orders: number | null
+          total_sales: number | null
+          total_topups: number | null
+          total_wallet_sales: number | null
+          zone_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_closures_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_session_reconciliation"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "cash_closures_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_closures_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_closures_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_cash_session_reconciliation"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "cash_closures_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_opened_by_fkey"
+            columns: ["opened_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_session_reconciliation: {
+        Row: {
+          actual_cash_sales: number | null
+          closed_at: string | null
+          closed_by: string | null
+          closed_by_name: string | null
+          difference: number | null
+          expected_cash: number | null
+          manual_movements: number | null
+          opened_at: string | null
+          opened_by: string | null
+          opened_by_name: string | null
+          real_cash: number | null
+          session_id: string | null
+          start_amount: number | null
+          status: string | null
+          store_id: string | null
+          total_adjustments: number | null
+          zone_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_sessions_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_opened_by_fkey"
+            columns: ["opened_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "venue_zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_sessions_summary: {
+        Row: {
+          closed_at: string | null
+          closed_by: string | null
+          closed_by_name: string | null
+          closing_notes: string | null
+          created_at: string | null
+          difference: number | null
+          dispatch_station_id: string | null
+          dispatch_station_name: string | null
+          duration_hours: number | null
+          expected_cash: number | null
+          id: string | null
+          live_order_count: number | null
+          opened_at: string | null
+          opened_by: string | null
+          opened_by_name: string | null
+          real_cash: number | null
+          start_amount: number | null
+          status: string | null
+          store_id: string | null
+          total_card_sales: number | null
+          total_cash_sales: number | null
+          total_mp_sales: number | null
+          total_orders: number | null
+          total_sales: number | null
+          total_topups: number | null
+          total_wallet_sales: number | null
+          zone_id: string | null
+          zone_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_sessions_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_dispatch_station_id_fkey"
+            columns: ["dispatch_station_id"]
+            isOneToOne: false
+            referencedRelation: "dispatch_stations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_opened_by_fkey"
+            columns: ["opened_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "venue_zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_sales_summary: {
+        Row: {
+          average_order_value: number | null
+          paid_orders: number | null
+          paid_revenue: number | null
+          payment_methods: Json | null
+          preparing_orders: number | null
+          ready_orders: number | null
+          sale_date: string | null
+          served_orders: number | null
+          store_id: string | null
+          total_orders: number | null
+          total_revenue: number | null
+          unique_customers: number | null
+          unpaid_revenue: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_balance_audit: {
+        Row: {
+          balance_difference: number | null
+          calculated_balance: number | null
+          client_email: string | null
+          client_id: string | null
+          client_name: string | null
+          current_balance: number | null
+        }
+        Relationships: []
+      }
+      monitoring_active_orders_integrity: {
+        Row: {
+          description: string | null
+          issue_type: string | null
+          label: string | null
+          node_id: string | null
+          order_ref: string | null
+        }
+        Relationships: []
+      }
+      monitoring_cancelled_orders_audit: {
+        Row: {
+          audit_status: string | null
+          created_at: string | null
+          is_paid: boolean | null
+          order_id: string | null
+          order_number: number | null
+          payment_method: string | null
+          rollback_movements_count: number | null
+          status: Database["public"]["Enums"]["order_status_enum"] | null
+          stock_deducted: boolean | null
+          store_id: string | null
+          store_name: string | null
+          total_amount: number | null
+          updated_at: string | null
+          wallet_refund_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      monitoring_cash_session_reconciliation: {
+        Row: {
+          audit_status: string | null
+          calculated_diff: number | null
+          closed_at: string | null
+          difference: number | null
+          expected_cash: number | null
+          formula_error: number | null
+          opened_at: string | null
+          real_cash: number | null
+          session_id: string | null
+          staff_name: string | null
+          start_amount: number | null
+          status: string | null
+          store_name: string | null
+        }
+        Relationships: []
+      }
+      monitoring_functions_without_checks: {
+        Row: {
+          audit_status: string | null
+          function_name: unknown
+          has_permission_check: boolean | null
+          has_store_id_ref: boolean | null
+          is_security_definer: boolean | null
+        }
+        Relationships: []
+      }
+      monitoring_idempotency_violations: {
+        Row: {
+          duplicate_count: number | null
+          first_created: string | null
+          idempotency_key: string | null
+          last_created: string | null
+          record_ids: number[] | null
+          table_name: string | null
+        }
+        Relationships: []
+      }
+      monitoring_price_tampering_audit: {
+        Row: {
+          audit_status: string | null
+          calculated_subtotal: number | null
+          channel: Database["public"]["Enums"]["order_channel_enum"] | null
+          client_id: string | null
+          created_at: string | null
+          order_id: string | null
+          order_number: number | null
+          order_subtotal: number | null
+          order_total: number | null
+          price_drift: number | null
+          store_id: string | null
+          store_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_balance_audit"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "orders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_wallet_integrity"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      monitoring_stock_alerts_pending: {
+        Row: {
+          alert_type: string | null
+          created_at: string | null
+          expected_stock: number | null
+          hours_pending: number | null
+          id: string | null
+          inventory_item_id: string | null
+          item_name: string | null
+          message: string | null
+          order_id: string | null
+          order_number: number | null
+          sku: string | null
+          stock_level: number | null
+          store_id: string | null
+          store_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_alerts_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "abandonable_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "active_venue_states"
+            referencedColumns: ["active_order_id"]
+          },
+          {
+            foreignKeyName: "stock_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "stock_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_cancelled_orders_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "stock_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_price_tampering_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "stock_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_stock_rollback_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "stock_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_edit_stock_audit"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "stock_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_alerts_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      monitoring_stock_rollback_audit: {
+        Row: {
+          audit_status: string | null
+          net_delta: number | null
+          order_id: string | null
+          order_number: number | null
+          status: Database["public"]["Enums"]["order_status_enum"] | null
+          stock_deducted: boolean | null
+          store_name: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+      monitoring_tables_without_rls: {
+        Row: {
+          action_required: string | null
+          policy_count: number | null
+          rls_enabled: boolean | null
+          table_name: unknown
+        }
+        Relationships: []
+      }
+      monitoring_wallet_integrity: {
+        Row: {
+          cached_balance: number | null
+          client_id: string | null
+          discrepancy: number | null
+          email: string | null
+          ledger_sum: number | null
+          store_id: string | null
+          store_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_edit_stock_audit: {
+        Row: {
+          compensation_movements: number | null
+          created_at: string | null
+          order_id: string | null
+          order_number: number | null
+          status: Database["public"]["Enums"]["order_status_enum"] | null
+          store_id: string | null
+          store_name: string | null
+          total_amount: number | null
+          total_compensation_delta: number | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_inventory_map: {
+        Row: {
+          active: boolean | null
+          category: string | null
+          has_recipe: boolean | null
+          inventory_item_id: string | null
+          product_id: string | null
+          product_name: string | null
+          store_id: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          category?: string | null
+          has_recipe?: never
+          inventory_item_id?: never
+          product_id?: string | null
+          product_name?: string | null
+          store_id?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          category?: string | null
+          has_recipe?: never
+          inventory_item_id?: never
+          product_id?: string | null
+          product_name?: string | null
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_tenant_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products_compat: {
+        Row: {
+          available: boolean | null
+          category: string | null
+          category_id: string | null
+          category_slug: string | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          image_url: string | null
+          is_available: boolean | null
+          is_visible: boolean | null
+          name: string | null
+          price: number | null
+          sku: string | null
+          store_id: string | null
+          tax_rate: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          available?: boolean | null
+          category?: string | null
+          category_id?: never
+          category_slug?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          image_url?: string | null
+          is_available?: boolean | null
+          is_visible?: boolean | null
+          name?: string | null
+          price?: number | null
+          sku?: string | null
+          store_id?: string | null
+          tax_rate?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          available?: boolean | null
+          category?: string | null
+          category_id?: never
+          category_slug?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          image_url?: string | null
+          is_available?: boolean | null
+          is_visible?: boolean | null
+          name?: string | null
+          price?: number | null
+          sku?: string | null
+          store_id?: string | null
+          tax_rate?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_tenant_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rls_policies_audit: {
+        Row: {
+          cmd: string | null
+          permissive: string | null
+          policyname: unknown
+          qual: string | null
+          roles: unknown[] | null
+          schemaname: unknown
+          tablename: unknown
+          validates_store_id: boolean | null
+          with_check: string | null
+        }
+        Relationships: []
+      }
+      sales_by_dispatch_station: {
+        Row: {
+          card_sales: number | null
+          cash_sales: number | null
+          dispatch_station: string | null
+          mp_sales: number | null
+          sale_date: string | null
+          store_id: string | null
+          total_orders: number | null
+          total_sales: number | null
+          wallet_sales: number | null
+          zone_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      security_definer_functions_audit: {
+        Row: {
+          function_definition: string | null
+          function_name: unknown
+          has_permission_check: boolean | null
+          schema_name: unknown
+          validates_auth_uid: boolean | null
+          validates_store_id: boolean | null
+        }
+        Relationships: []
+      }
+      stock_movements_audit: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          created_by_email: string | null
+          created_by_name: string | null
+          id: number | null
+          idempotency_key: string | null
+          inventory_item_id: string | null
+          is_transfer: boolean | null
+          item_name: string | null
+          location_id: string | null
+          location_name: string | null
+          order_id: string | null
+          order_number: number | null
+          qty_delta: number | null
+          reason: string | null
+          sku: string | null
+          store_id: string | null
+          store_name: string | null
+          unit_type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_stock_movements_store"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_transfer_history: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          from_location_id: string | null
+          from_location_name: string | null
+          inventory_item_id: string | null
+          item_name: string | null
+          quantity: number | null
+          reason: string | null
+          store_id: string | null
+          store_name: string | null
+          to_location_id: string | null
+          to_location_name: string | null
+          transfer_id: string | null
+          transferred_by_name: string | null
+          unit_type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_stock_movements_store"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_location_id_fkey"
+            columns: ["to_location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_location_id_fkey"
+            columns: ["from_location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      storage_usage_by_store: {
+        Row: {
+          bucket_id: string | null
+          file_count: number | null
+          store_id: string | null
+          store_name: string | null
+          total_bytes: number | null
+          total_mb: number | null
+        }
+        Relationships: []
+      }
+      tables_without_store_id_audit: {
+        Row: {
+          rls_enabled: boolean | null
+          table_name: unknown
+          table_type: string | null
+        }
+        Relationships: []
+      }
+      venue_nodes_with_orders: {
+        Row: {
+          active_order_count: number | null
+          active_order_ids: string[] | null
+          active_orders_details: Json | null
+          label: string | null
+          node_id: string | null
+          status: Database["public"]["Enums"]["venue_node_status"] | null
+          total_pending_amount: number | null
+          type: Database["public"]["Enums"]["venue_node_type"] | null
+        }
+        Insert: {
+          active_order_count?: never
+          active_order_ids?: string[] | null
+          active_orders_details?: never
+          label?: string | null
+          node_id?: string | null
+          status?: Database["public"]["Enums"]["venue_node_status"] | null
+          total_pending_amount?: never
+          type?: Database["public"]["Enums"]["venue_node_type"] | null
+        }
+        Update: {
+          active_order_count?: never
+          active_order_ids?: string[] | null
+          active_orders_details?: never
+          label?: string | null
+          node_id?: string | null
+          status?: Database["public"]["Enums"]["venue_node_status"] | null
+          total_pending_amount?: never
+          type?: Database["public"]["Enums"]["venue_node_type"] | null
+        }
+        Relationships: []
+      }
+    }
+    Functions: {
+      adjust_inventory: {
+        Args: {
+          p_inventory_item_id: string
+          p_location_id: string
+          p_new_stock: number
+          p_notes?: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      admin_add_balance: {
+        Args: { p_amount: number; p_client_id: string; p_description?: string }
+        Returns: Json
+      }
+      admin_add_client_balance: {
+        Args: { amount: number; description?: string; target_client_id: string }
+        Returns: number
+      }
+      admin_add_points: {
+        Args: {
+          description?: string
+          points_amount: number
+          staff_id?: string
+          target_client_id: string
+        }
+        Returns: number
+      }
+      admin_adjust_client_balance: {
+        Args: { p_amount: number; p_client_id: string; p_reason?: string }
+        Returns: Json
+      }
+      admin_grant_gift: {
+        Args: {
+          gift_description?: string
+          gift_name: string
+          monetary_cost?: number
+          monetary_value?: number
+          product_id?: string
+          staff_id?: string
+          target_client_id: string
+        }
+        Returns: Json
+      }
+      alert_pending_abandonment: { Args: never; Returns: undefined }
+      apply_stock_delta:
+        | {
+            Args: {
+              p_created_by?: string
+              p_idempotency_key?: string
+              p_inventory_item_id: string
+              p_location_id?: string
+              p_order_id?: string
+              p_qty_delta: number
+              p_reason: string
+              p_store_id: string
+              p_unit_type?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_created_by?: string
+              p_idempotency_key?: string
+              p_inventory_item_id: string
+              p_location_id?: string
+              p_notes?: string
+              p_order_id?: string
+              p_qty_delta: number
+              p_reason: string
+              p_store_id: string
+              p_unit_type?: string
+            }
+            Returns: Json
+          }
+      assign_nfc_to_client: {
+        Args: { p_client_id: string; p_nfc_uid: string; p_store_id: string }
+        Returns: Json
+      }
+      calculate_item_totals: { Args: { p_item_id: string }; Returns: undefined }
+      calculate_order_points: { Args: { p_order_id: string }; Returns: number }
+      calculate_total_stock: {
+        Args: { p_inventory_item_id: string }
+        Returns: number
+      }
+      can_manage_store: { Args: { p_store_id: string }; Returns: boolean }
+      check_product_stock_availability: {
+        Args: { p_product_id: string }
+        Returns: boolean
+      }
+      check_rate_limit: { Args: { p_ip: string }; Returns: boolean }
+      classify_and_validate_scan: {
+        Args: { scanned_code: string }
+        Returns: Json
+      }
+      cleanup_abandoned_orders: {
+        Args: { p_timeout_hours?: number }
+        Returns: Json
+      }
+      cleanup_old_retry_metrics: {
+        Args: { p_retention_days?: number }
+        Returns: Json
+      }
+      close_cash_session: {
+        Args: { p_notes?: string; p_real_cash: number; p_session_id: string }
+        Returns: Json
+      }
+      complete_wallet_payment: { Args: { p_order_id: string }; Returns: Json }
+      confirm_order_delivery: {
+        Args: { p_order_id: string; p_staff_id: string }
+        Returns: Json
+      }
+      consume_from_open_packages: {
+        Args: { p_item_id: string; p_quantity: number; p_store_id: string }
+        Returns: Json
+      }
+      consume_from_smart_packages: {
+        Args: {
+          p_inventory_item_id: string
+          p_order_id?: string
+          p_reason?: string
+          p_required_qty: number
+          p_unit: string
+        }
+        Returns: Json
+      }
+      create_client_session: {
+        Args: {
+          p_bar_id?: string
+          p_client_id?: string
+          p_location_id?: string
+          p_qr_id?: string
+          p_session_type?: Database["public"]["Enums"]["session_type"]
+          p_store_id: string
+          p_table_id?: string
+          p_ttl_minutes?: number
+        }
+        Returns: Json
+      }
+      create_default_location: { Args: { p_store_id: string }; Returns: string }
+      create_email_log: {
+        Args: {
+          p_event_entity: string
+          p_event_id: string
+          p_event_type: string
+          p_idempotency_key: string
+          p_payload_core: Json
+          p_recipient_email: string
+          p_recipient_name: string
+          p_recipient_type: string
+          p_store_id: string
+          p_template_key: string
+          p_trigger_source?: string
+          p_triggered_by?: string
+        }
+        Returns: {
+          already_exists: boolean
+          log_id: string
+        }[]
+      }
+      create_order: {
+        Args: {
+          p_channel?: string
+          p_delivery_mode?: string
+          p_items: Json
+          p_location_identifier?: string
+          p_node_id?: string
+          p_source_location_id?: string
+          p_store_id: string
+          p_table_number?: string
+        }
+        Returns: Json
+      }
+      create_order_atomic: {
+        Args: { p_items?: Json; p_order: Json }
+        Returns: Json
+      }
+      create_order_secure: {
+        Args: {
+          p_channel?: string
+          p_client_id: string
+          p_customer_email?: string
+          p_customer_name?: string
+          p_node_id?: string
+          p_order_items?: Json
+          p_payment_method?: string
+          p_store_id: string
+          p_table_number?: string
+        }
+        Returns: Json
+      }
+      create_recipe_product: {
+        Args: {
+          p_base_price: number
+          p_name: string
+          p_sku: string
+          p_store_id: string
+        }
+        Returns: Json
+      }
+      create_store_safe: {
+        Args: {
+          p_idempotency_key: string
+          p_name: string
+          p_owner_email: string
+          p_slug: string
+        }
+        Returns: string
+      }
+      credit_wallet:
+        | {
+            Args: { p_client_id?: string; p_transaction_id: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_mp_payment_id: string
+              p_status: string
+              p_transaction_id: string
+            }
+            Returns: Json
+          }
+      end_session: {
+        Args: { p_reason?: string; p_session_id: string }
+        Returns: Json
+      }
+      enqueue_payment_email: {
+        Args: { p_order_id: string }
+        Returns: undefined
+      }
+      ensure_client_in_store: { Args: { p_store_id: string }; Returns: Json }
+      evaluate_menu_rule: {
+        Args: {
+          p_bar_id: string
+          p_current_time: string
+          p_rule: Database["public"]["Tables"]["menu_rules"]["Row"]
+          p_session_type: string
+          p_table_id: string
+          p_weekday: number
+        }
+        Returns: boolean
+      }
+      get_active_cash_sessions: { Args: { p_store_id: string }; Returns: Json }
+      get_active_session: { Args: { p_session_id: string }; Returns: Json }
+      get_cash_session_breakdown: {
+        Args: { p_session_id: string }
+        Returns: Json
+      }
+      get_cash_session_events: { Args: { p_session_id: string }; Returns: Json }
+      get_cash_session_for_node: {
+        Args: { p_node_id: string; p_store_id: string }
+        Returns: string
+      }
+      get_client_by_nfc: {
+        Args: { p_nfc_uid: string; p_store_id: string }
+        Returns: Json
+      }
+      get_client_store_id: { Args: never; Returns: string }
+      get_default_node_for_store: {
+        Args: { p_store_id: string }
+        Returns: string
+      }
+      get_default_node_for_zone: {
+        Args: { p_zone_id: string }
+        Returns: string
+      }
+      get_effective_stock: {
+        Args: { p_item_id: string }
+        Returns: {
+          closed_packages: number
+          effective_stock: number
+          open_packages_count: number
+          open_packages_percentage: number
+          unit: string
+        }[]
+      }
+      get_financial_chart_data: {
+        Args: { p_end_date: string; p_start_date: string; p_store_id: string }
+        Returns: Json
+      }
+      get_financial_metrics:
+        | {
+            Args: {
+              p_end_date: string
+              p_start_date: string
+              p_store_id: string
+            }
+            Returns: Json
+          }
+        | { Args: { p_store_id: string }; Returns: Json }
+      get_financial_metrics_extended: {
+        Args: {
+          p_end_date: string
+          p_limit?: number
+          p_offset?: number
+          p_start_date: string
+          p_store_id: string
+        }
+        Returns: {
+          loyalty_cost: number
+          sale_date: string
+          topups_today: number
+          total_count: number
+          total_liability: number
+          total_orders: number
+          total_revenue: number
+          unique_customers: number
+        }[]
+      }
+      get_financial_metrics_paginated: {
+        Args: {
+          p_end_date: string
+          p_limit?: number
+          p_offset?: number
+          p_start_date: string
+          p_store_id: string
+        }
+        Returns: {
+          average_order_value: number
+          paid_revenue: number
+          payment_methods: Json
+          sale_date: string
+          total_count: number
+          total_orders: number
+          total_revenue: number
+          unique_customers: number
+          unpaid_revenue: number
+        }[]
+      }
+      get_item_stock_by_locations: {
+        Args: { p_item_id: string }
+        Returns: {
+          closed_units: number
+          effective_stock: number
+          location_id: string
+          location_name: string
+          location_type: string
+          open_packages_count: number
+          open_remaining_sum: number
+        }[]
+      }
+      get_live_session_stats: { Args: { p_session_id: string }; Returns: Json }
+      get_location_stock: {
+        Args: { p_location_id: string }
+        Returns: {
+          estimated_value: number
+          total_closed_units: number
+          total_effective_stock: number
+          total_items: number
+          total_open_packages: number
+        }[]
+      }
+      get_location_stock_details: {
+        Args: { p_location_id: string }
+        Returns: {
+          closed_units: number
+          item_cost: number
+          item_image_url: string
+          item_name: string
+          item_package_size: number
+          item_unit_type: string
+          open_packages: Json
+          res_id: string
+          res_item_id: string
+        }[]
+      }
+      get_menu_products: {
+        Args: { p_menu_id: string }
+        Returns: {
+          base_price: number
+          category: string
+          description: string
+          effective_price: number
+          image_url: string
+          is_available: boolean
+          name: string
+          position: number
+          product_id: string
+        }[]
+      }
+      get_products_with_availability: {
+        Args: { p_store_id: string }
+        Returns: {
+          category: string
+          category_slug: string
+          description: string
+          id: string
+          image_url: string
+          is_available: boolean
+          is_visible: boolean
+          name: string
+          price: number
+        }[]
+      }
+      get_public_order_status: { Args: { p_order_id: string }; Returns: Json }
+      get_revenue_by_bar: {
+        Args: { p_end_date: string; p_start_date: string; p_store_id: string }
+        Returns: {
+          avg_ticket: number
+          bar_id: string
+          bar_name: string
+          order_count: number
+          payment_breakdown: Json
+          total_revenue: number
+          zone_name: string
+        }[]
+      }
+      get_session_cash_summary: {
+        Args: { query_session_id: string }
+        Returns: Json
+      }
+      get_session_expected_cash: {
+        Args: { query_session_id: string }
+        Returns: number
+      }
+      get_sessions_expected_cash_batch: {
+        Args: { session_ids: string[] }
+        Returns: {
+          expected_cash: number
+          session_id: string
+        }[]
+      }
+      get_smart_insights: {
+        Args: { p_days?: number; p_store_id: string }
+        Returns: Json
+      }
+      get_stats_by_dispatch_station: {
+        Args: {
+          p_date_from?: string
+          p_date_to?: string
+          p_dispatch_station: string
+          p_store_id: string
+        }
+        Returns: {
+          card_sales: number
+          cash_sales: number
+          dispatch_station: string
+          mp_sales: number
+          total_orders: number
+          total_sales: number
+          wallet_sales: number
+          zone_name: string
+        }[]
+      }
+      get_store_branding: { Args: { p_store_id: string }; Returns: Json }
+      get_store_mp_status: {
+        Args: { p_store_id: string }
+        Returns: {
+          connected_at: string
+          is_connected: boolean
+          mp_email: string
+          mp_first_name: string
+          mp_last_name: string
+          mp_nickname: string
+          mp_user_id: string
+        }[]
+      }
+      get_store_stock: {
+        Args: { p_store_id: string }
+        Returns: {
+          closed_units: number
+          id: string
+          item_id: string
+          location_id: string
+          open_packages: Json
+          store_id: string
+          updated_at: string
+        }[]
+      }
+      get_table_active_orders: {
+        Args: { p_node_id: string }
+        Returns: {
+          created_at: string
+          is_paid: boolean
+          order_id: string
+          order_number: string
+          payment_method: string
+          status: Database["public"]["Enums"]["order_status_enum"]
+          total_amount: number
+        }[]
+      }
+      get_top_products:
+        | {
+            Args: {
+              p_end_date: string
+              p_limit?: number
+              p_start_date: string
+              p_store_id: string
+            }
+            Returns: {
+              category_name: string
+              order_count: number
+              product_id: string
+              product_name: string
+              total_quantity: number
+              total_revenue: number
+            }[]
+          }
+        | {
+            Args: {
+              p_end_date: string
+              p_start_date: string
+              p_store_id: string
+            }
+            Returns: Json
+          }
+      get_user_store_id: { Args: never; Returns: string }
+      insert_product_with_category_mapping: {
+        Args: {
+          p_category_id?: string
+          p_description?: string
+          p_image_url?: string
+          p_name: string
+          p_price?: number
+          p_store_id: string
+        }
+        Returns: string
+      }
+      inspect_table_columns: {
+        Args: { table_name: string }
+        Returns: {
+          column_name: string
+          data_type: string
+        }[]
+      }
+      is_revenue_order: { Args: { p_status: string }; Returns: boolean }
+      is_super_admin: { Args: never; Returns: boolean }
+      log_inventory_action: {
+        Args: {
+          p_action_type: string
+          p_invoice_ref?: string
+          p_item_id: string
+          p_location_from?: string
+          p_location_to?: string
+          p_order_id?: string
+          p_package_delta?: number
+          p_quantity_delta?: number
+          p_reason?: string
+          p_source_ui?: string
+          p_supplier_id?: string
+          p_unit_cost?: number
+        }
+        Returns: string
+      }
+      log_qr_scan: {
+        Args: {
+          p_client_id?: string
+          p_client_ip?: string
+          p_create_session?: boolean
+          p_qr_id: string
+          p_source?: Database["public"]["Enums"]["scan_source"]
+          p_user_agent?: string
+        }
+        Returns: Json
+      }
+      log_retry_metric: {
+        Args: {
+          p_attempts: number
+          p_duration_ms: number
+          p_error_code?: string
+          p_final_status: string
+          p_rpc_name: string
+        }
+        Returns: string
+      }
+      manual_cleanup_abandoned_orders: {
+        Args: { p_store_id: string; p_timeout_hours?: number }
+        Returns: Json
+      }
+      normalize_location_name: { Args: { p_name: string }; Returns: string }
+      open_cash_session: {
+        Args: {
+          p_dispatch_station_id?: string
+          p_opened_by: string
+          p_start_amount?: number
+          p_store_id: string
+          p_zone_id: string
+        }
+        Returns: Json
+      }
+      open_package: {
+        Args: { p_item_id: string; p_location_id: string }
+        Returns: Json
+      }
+      open_table: {
+        Args: { p_node_id: string; p_store_id: string; p_user_id: string }
+        Returns: Json
+      }
+      p2p_wallet_transfer: {
+        Args: { p_amount: number; p_recipient_email: string }
+        Returns: Json
+      }
+      pay_with_wallet: {
+        Args: { p_amount: number; p_client_id: string; p_order_id: string }
+        Returns: Json
+      }
+      reconcile_wallet_balances: {
+        Args: { p_store_id: string }
+        Returns: {
+          cached_balance: number
+          client_id: string
+          client_name: string
+          corrected: boolean
+          discrepancy: number
+          ledger_balance: number
+        }[]
+      }
+      redeem_points: { Args: { p_reward_id: string }; Returns: Json }
+      redeem_reward: {
+        Args: { p_client_id: string; p_order_id: string; p_reward_id: string }
+        Returns: Json
+      }
+      register_cash_adjustment: {
+        Args: {
+          p_amount: number
+          p_cash_session_id: string
+          p_description: string
+          p_performed_by: string
+        }
+        Returns: Json
+      }
+      register_cash_withdrawal: {
+        Args: {
+          p_amount: number
+          p_cash_session_id: string
+          p_description: string
+          p_performed_by: string
+        }
+        Returns: Json
+      }
+      register_fixed_expense: {
+        Args: {
+          p_amount: number
+          p_category: string
+          p_date: string
+          p_description: string
+          p_is_recurring: boolean
+          p_name: string
+          p_recurrence_frequency: string
+          p_store_id: string
+        }
+        Returns: Json
+      }
+      resolve_menu: {
+        Args: {
+          p_bar_id?: string
+          p_session_type?: string
+          p_store_id: string
+          p_table_id?: string
+        }
+        Returns: string
+      }
+      rollback_redemption: { Args: { p_order_id: string }; Returns: Json }
+      schedule_cleanup_abandoned_orders: { Args: never; Returns: undefined }
+      secure_log_qr_scan: {
+        Args: { p_client_ip: string; p_qr_hash: string; p_user_agent: string }
+        Returns: Json
+      }
+      store_secret_decrypt: {
+        Args: { p_secret_type: string; p_store_id: string }
+        Returns: string
+      }
+      store_secret_encrypt: {
+        Args: {
+          p_expires_at?: string
+          p_plaintext_value: string
+          p_secret_type: string
+          p_store_id: string
+        }
+        Returns: Json
+      }
+      sync_bar_location: {
+        Args: { p_bar_id: string; p_bar_name: string; p_store_id: string }
+        Returns: string
+      }
+      sync_offline_order: {
+        Args: { p_allow_negative_stock?: boolean; p_order_data: Json }
+        Returns: Json
+      }
+      transfer_stock: {
+        Args: {
+          p_from_location_id: string
+          p_item_id: string
+          p_movement_type?: string
+          p_notes?: string
+          p_quantity: number
+          p_reason?: string
+          p_to_location_id: string
+          p_user_id?: string
+        }
+        Returns: Json
+      }
+      transfer_stock_between_locations: {
+        Args: {
+          p_from_location_id: string
+          p_inventory_item_id: string
+          p_notes?: string
+          p_quantity: number
+          p_reason?: string
+          p_to_location_id: string
+        }
+        Returns: Json
+      }
+      update_email_log_status: {
+        Args: {
+          p_error_code?: string
+          p_error_message?: string
+          p_log_id: string
+          p_resend_id?: string
+          p_resend_response?: Json
+          p_status: string
+        }
+        Returns: boolean
+      }
+      update_order_node: {
+        Args: { p_new_node_id: string; p_order_id: string }
+        Returns: Json
+      }
+      user_tenant_id: { Args: never; Returns: string }
+      validate_order_delivery: { Args: { qr_code: string }; Returns: Json }
+      validate_order_total: { Args: { p_order_id: string }; Returns: number }
+      validate_product_inventory_consistency: {
+        Args: never
+        Returns: {
+          description: string
+          issue_type: string
+          product_id: string
+          product_name: string
+        }[]
+      }
+      validate_stock_integrity: {
+        Args: { p_store_id?: string }
+        Returns: {
+          cached_stock: number
+          drift: number
+          has_drift: boolean
+          item_id: string
+          item_name: string
+          ledger_sum: number
+          store_id: string
+        }[]
+      }
+      verify_loyalty_balance: { Args: { p_client_id: string }; Returns: Json }
+      verify_payment:
+        | {
+            Args: {
+              p_amount: number
+              p_date_approved: string
+              p_mp_payment_id: string
+              p_order_id: string
+              p_payer_email: string
+              p_payment_method: string
+              p_payment_type: string
+              p_status: string
+              p_status_detail: string
+            }
+            Returns: Json
+          }
+        | { Args: { p_order_id: string; p_status: string }; Returns: Json }
+      verify_stock_integrity: {
+        Args: { p_store_id: string }
+        Returns: {
+          calculated_stock: number
+          current_stock_field: number
+          difference: number
+          item_id: string
+          item_name: string
+        }[]
+      }
+      verify_wallet_integrity: {
+        Args: { p_store_id: string }
+        Returns: {
+          client_id: string
+          client_name: string
+          drift: number
+          ledger_balance: number
+          wallet_balance: number
+        }[]
+      }
+    }
+    Enums: {
+      global_role_enum: "super_admin" | "staff"
+      inventory_movement_enum: "in" | "out" | "adjustment"
+      order_channel_enum: "table" | "qr" | "takeaway" | "delivery"
+      order_status_enum:
+        | "draft"
+        | "pending"
+        | "paid"
+        | "preparing"
+        | "ready"
+        | "served"
+        | "cancelled"
+        | "refunded"
+        | "bill_requested"
+        | "completed"
+        | "delivered"
+        | "in_progress"
+      qr_target_type: "table" | "zone"
+      qr_type: "table" | "bar" | "pickup" | "generic"
+      scan_source: "camera" | "link" | "manual"
+      session_type: "table" | "bar" | "pickup" | "generic"
+      venue_node_status:
+        | "free"
+        | "occupied"
+        | "bill_requested"
+        | "closed"
+        | "cleaning"
+      venue_node_type: "table" | "bar" | "pickup_zone"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      global_role_enum: ["super_admin", "staff"],
+      inventory_movement_enum: ["in", "out", "adjustment"],
+      order_channel_enum: ["table", "qr", "takeaway", "delivery"],
+      order_status_enum: [
+        "draft",
+        "pending",
+        "paid",
+        "preparing",
+        "ready",
+        "served",
+        "cancelled",
+        "refunded",
+        "bill_requested",
+        "completed",
+        "delivered",
+        "in_progress",
+      ],
+      qr_target_type: ["table", "zone"],
+      qr_type: ["table", "bar", "pickup", "generic"],
+      scan_source: ["camera", "link", "manual"],
+      session_type: ["table", "bar", "pickup", "generic"],
+      venue_node_status: [
+        "free",
+        "occupied",
+        "bill_requested",
+        "closed",
+        "cleaning",
+      ],
+      venue_node_type: ["table", "bar", "pickup_zone"],
+    },
+  },
+} as const

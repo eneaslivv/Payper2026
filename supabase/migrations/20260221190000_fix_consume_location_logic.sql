@@ -1,0 +1,25 @@
+-- ============================================================================
+-- Fix: consume_from_smart_packages uses wrong location for stock deduction
+-- Date: 2026-02-21
+--
+-- Root cause: consume_from_smart_packages always uses the DEFAULT location
+--   when opening closed packages. But stock may be in a different location.
+--   Result: GREATEST(0 - 1, 0) = 0 → no actual decrement → WASTE doesn't work.
+--
+-- Fix: When opening a closed package, SELECT a location that actually HAS
+--   closed_units > 0 (prefer default, then most stock).
+--
+-- Also: stock_movements INSERT now uses the actual consume location
+--   (was always using default location).
+-- ============================================================================
+
+-- Function body deployed via execute_sql (see consume_from_smart_packages above)
+-- This file documents the change for git history.
+
+-- Key changes in consume_from_smart_packages:
+-- 1. Added v_consume_location_id variable
+-- 2. In WHILE loop: SELECT location with closed_units > 0 instead of always using default
+-- 3. Open package uses v_consume_location_id (location with actual stock)
+-- 4. Decrement inventory_location_stock uses v_consume_location_id
+-- 5. stock_movements INSERT uses v_consume_location_id
+-- 6. Open packages from FIFO loop use COALESCE(v_open_pkg.location_id, v_location_id)

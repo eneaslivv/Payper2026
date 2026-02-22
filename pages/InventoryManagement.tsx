@@ -100,7 +100,7 @@ function InputBlock({ label, children }: { label: string, children: React.ReactN
 }
 
 // Location Stock Breakdown Component
-function LocationStockBreakdown({ itemId, unitType, packageSize, onLocationClick, refreshKey }: { itemId: string, unitType: string, packageSize: number, onLocationClick?: (locationName: string) => void, refreshKey?: number }) {
+function LocationStockBreakdown({ itemId, unitType, packageSize, onLocationClick, refreshKey, currentStock }: { itemId: string, unitType: string, packageSize: number, onLocationClick?: (locationName: string) => void, refreshKey?: number, currentStock?: number }) {
   const [locations, setLocations] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
 
@@ -130,6 +130,21 @@ function LocationStockBreakdown({ itemId, unitType, packageSize, onLocationClick
   }
 
   if (locations.length === 0) {
+    if (currentStock && currentStock > 0) {
+      return (
+        <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-sm text-orange-400/60">warning</span>
+            <span className="text-[10px] font-bold text-white/60">Sin ubicación asignada</span>
+          </div>
+          <div className="flex items-baseline gap-1 pl-6">
+            <span className="text-lg font-black text-orange-400">{Math.round(currentStock * 100) / 100}</span>
+            <span className="text-[8px] font-bold text-white/30">{unitType} sin asignar</span>
+          </div>
+          <p className="text-[8px] text-white/20 pl-6">Hacé un RE-INGRESO para asignar a una ubicación</p>
+        </div>
+      );
+    }
     return (
       <div className="text-[10px] text-white/30 italic">Sin stock registrado en ubicaciones.</div>
     );
@@ -375,17 +390,19 @@ const InventoryManagement: React.FC = () => {
     fetchData();
   }, []);
 
-  // Persist filters
+  // Persist filters (safe — ignore quota errors)
   useEffect(() => {
-    localStorage.setItem('inventory_filter_v1', filter);
+    try { localStorage.setItem('inventory_filter_v1', filter); } catch (_) { /* quota */ }
   }, [filter]);
 
   useEffect(() => {
-    if (activeLocationFilter) {
-      localStorage.setItem('inventory_location_filter_v1', activeLocationFilter);
-    } else {
-      localStorage.removeItem('inventory_location_filter_v1');
-    }
+    try {
+      if (activeLocationFilter) {
+        localStorage.setItem('inventory_location_filter_v1', activeLocationFilter);
+      } else {
+        localStorage.removeItem('inventory_location_filter_v1');
+      }
+    } catch (_) { /* quota */ }
   }, [activeLocationFilter]);
 
   // REALTIME: Suscripción para actualización automática de inventario
@@ -489,7 +506,8 @@ const InventoryManagement: React.FC = () => {
           String(freshItem.current_stock) !== String(selectedItem.current_stock) ||
           String(freshItem.closed_stock) !== String(selectedItem.closed_stock) ||
           String(freshItem.open_count) !== String(selectedItem.open_count) ||
-          JSON.stringify(freshItem.open_packages) !== JSON.stringify(selectedItem.open_packages);
+          JSON.stringify(freshItem.open_packages) !== JSON.stringify(selectedItem.open_packages) ||
+          JSON.stringify((freshItem as any).location_stocks) !== JSON.stringify((selectedItem as any).location_stocks);
 
         if (hasChanged) {
           console.log('[Sync] Refreshing selected item in drawer:', freshItem.name, {
@@ -511,6 +529,11 @@ const InventoryManagement: React.FC = () => {
     // CACHE STRATEGY
     const CACHE_KEY = `inventory_cache_v7_${storeId}`; // Force refresh (v7 - fix open package location)
     const CACHE_DURATION = 30 * 1000; // 30 seconds (Stock is critical)
+
+    // Cleanup old cache versions to free localStorage quota
+    try {
+      [`inventory_cache_v4_${storeId}`, `inventory_cache_v5_${storeId}`, `inventory_cache_v6_${storeId}`].forEach(k => localStorage.removeItem(k));
+    } catch (_) { /* ignore */ }
 
     // 1. Check Cache
     if (!forceRefresh) {
@@ -639,7 +662,7 @@ const InventoryManagement: React.FC = () => {
           cafe_id: i.store_id,
           name: i.name,
           sku: i.sku || 'N/A',
-          item_type: 'ingredient' as const,
+          item_type: (i.item_type === 'sellable' ? 'sellable' : 'ingredient') as 'ingredient' | 'sellable',
           unit_type: (i.unit_type || 'unit') as UnitType,
           image_url: i.image_url || i.image || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
           is_active: true,
@@ -655,7 +678,9 @@ const InventoryManagement: React.FC = () => {
           closed_packages: [],
           // Use open_packages directly from inventory_items table (JSONB column)
           open_packages: i.open_packages || [],
-          open_count: i.open_count || 0
+          open_count: i.open_count || 0,
+          last_purchase_price: i.last_purchase_price ? parseFloat(i.last_purchase_price) : null,
+          last_supplier_id: i.last_supplier_id || null
         }));
 
       // Map product recipes to products for easy cost calculation
@@ -750,15 +775,22 @@ const InventoryManagement: React.FC = () => {
       setItems(activeItems);
 
 
-      // 4. Save to Cache (including productRecipes)
-      localStorage.setItem(CACHE_KEY, JSON.stringify({
-        timestamp: Date.now(),
-        items: finalItems,
-        categories: mappedCategories,
-        productRecipes: recipesData || []
-      }));
-
-      console.log('[Inventory] Data refreshed and cached.');
+      // 4. Save to Cache (including productRecipes) — non-blocking
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({
+          timestamp: Date.now(),
+          items: finalItems,
+          categories: mappedCategories,
+          productRecipes: recipesData || []
+        }));
+        console.log('[Inventory] Data refreshed and cached.');
+      } catch (cacheErr) {
+        // localStorage quota exceeded — clear ALL inventory caches and continue
+        console.warn('[Inventory] Cache write failed (quota exceeded), clearing old caches:', cacheErr);
+        try {
+          Object.keys(localStorage).filter(k => k.startsWith('inventory_cache_')).forEach(k => localStorage.removeItem(k));
+        } catch (_) { /* ignore */ }
+      }
     } catch (err: any) {
       console.error('[Inventory] Error:', err);
       addToast('Error al cargar datos', 'error');
@@ -1284,6 +1316,8 @@ const InventoryManagement: React.FC = () => {
         (item.open_packages?.some(pkg => (pkg.location_name || pkg.location) === activeLocationFilter)) ||
         ((item as any).location_stocks?.some((ls: any) => ls.location_name === activeLocationFilter && ls.closed_units > 0));
 
+      // is_menu_visible controls customer-facing menu only, NOT inventory visibility
+      // All items (ingredients + products) should always be visible in inventory management
       return matchesSearch && matchesFilter && matchesCategory && matchesLocation;
     });
   }, [effectiveItems, searchTerm, filter, activeCategoryFilter]);
@@ -1418,7 +1452,7 @@ const InventoryManagement: React.FC = () => {
   const handleDeleteItem = async () => {
     if (!selectedItem) return;
     const storeId = profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
-    localStorage.removeItem(`inventory_cache_v6_${storeId}`);
+    localStorage.removeItem(`inventory_cache_v7_${storeId}`);
     if (!confirm('¿Estás seguro de que deseas eliminar este ítem? Esta acción no se puede deshacer.')) return;
 
     setIsProcessing(true);
@@ -1732,7 +1766,7 @@ const InventoryManagement: React.FC = () => {
             onClick={() => {
               // Clear cache and force refresh
               const storeId = profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
-              localStorage.removeItem(`inventory_cache_v6_${storeId}`);
+              localStorage.removeItem(`inventory_cache_v7_${storeId}`);
               fetchData(true);
               addToast('Inventario actualizado', 'success');
             }}
@@ -2041,7 +2075,7 @@ const InventoryManagement: React.FC = () => {
                     <thead>
                       <tr className="bg-white/[0.01] border-b border-white/[0.03]">
                         <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest">Identidad Operativa</th>
-                        <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest">Stock Sellado</th>
+                        <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest">Stock Total</th>
                         <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest">Abiertos</th>
                         <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest text-center">Clase</th>
                         <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest text-center">Menú</th>
@@ -2050,9 +2084,9 @@ const InventoryManagement: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/[0.02]">
-                      {filteredItems.map(item => (
+                      {filteredItems.map((item, idx) => (
                         <tr
-                          key={item.id}
+                          key={`${item.id}-${item.item_type || idx}`}
                           className="hover:bg-white/[0.01] transition-colors cursor-pointer group"
                         >
                           <td className="px-6 py-4" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); }}>
@@ -2116,12 +2150,13 @@ const InventoryManagement: React.FC = () => {
                                 })()
                               ) : (
                                 <>
-                                  {/* Stock cerrado: solo el número de paquetes/unidades selladas */}
-                                  <span className="font-black italic text-[14px] text-neon">
-                                    {Math.floor(item.closed_stock || 0)}
+                                  {/* Stock total (current_stock = calculated by DB) */}
+                                  <span className={`font-black italic text-[14px] ${(item.current_stock || 0) > 0 ? 'text-neon' : 'text-red-400'}`}>
+                                    {Math.round((item.current_stock || 0) * 100) / 100}
                                   </span>
-                                  {(item.closed_stock || 0) <= (item.min_stock || 0) && (
-                                    <span className="text-[6px] font-black text-white/40 uppercase tracking-widest mt-1">CRÍTICO</span>
+                                  <span className="text-[7px] font-bold text-white/20 uppercase ml-1">{item.unit_type === 'unit' ? 'un' : item.unit_type}</span>
+                                  {(item.current_stock || 0) <= (item.min_stock || 0) && (
+                                    <span className="text-[6px] font-black text-red-400/80 uppercase tracking-widest mt-1">CRÍTICO</span>
                                   )}
                                 </>
                               )}
@@ -2240,7 +2275,7 @@ const InventoryManagement: React.FC = () => {
                                 try {
                                   // Update LocalStorage Cache immediately to persist state across navigations
                                   const storeId = profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
-                                  const cacheKey = `inventory_cache_v6_${storeId}`;
+                                  const cacheKey = `inventory_cache_v7_${storeId}`;
 
                                   // Try to update existing cache to avoid reload spinner
                                   try {
@@ -2558,20 +2593,29 @@ const InventoryManagement: React.FC = () => {
                   {/* METRICS & DETAILS */}
                   {drawerTab === 'details' && (
                     <div className="bg-white/[0.02] rounded-2xl p-6 border border-white/5 space-y-6">
-                      {/* STOCK CERRADO - Principal */}
+                      {/* STOCK TOTAL - Principal (current_stock from DB) */}
                       <div className="flex justify-between items-start">
                         <div>
-                          <p className="text-[10px] font-medium text-cream/70 uppercase tracking-[0.2em] mb-2">STOCK CERRADO</p>
-                          <div className="flex items-baseline gap-3">
-                            <p className="text-5xl font-light text-cream tracking-tighter">
-                              {Math.floor(selectedItem.closed_stock || 0)}
-                            </p>
-                            <p className="text-sm font-medium text-white/30">unidades</p>
-                          </div>
-                          {/* Clarificación de qué contiene cada unidad */}
+                          <p className="text-[10px] font-medium text-cream/70 uppercase tracking-[0.2em] mb-2">STOCK TOTAL</p>
+                          {(() => {
+                            const stockValue = Math.round((selectedItem.current_stock || 0) * 100) / 100;
+                            const unitLabel = selectedItem.unit_type === 'unit' ? 'unidades' :
+                              selectedItem.unit_type === 'gram' ? 'gramos' :
+                                selectedItem.unit_type === 'ml' ? 'ml' :
+                                  selectedItem.unit_type === 'kilo' ? 'kilos' :
+                                    selectedItem.unit_type === 'liter' ? 'litros' : 'unidades';
+                            return (
+                              <div className="flex items-baseline gap-3">
+                                <p className={`text-5xl font-light tracking-tighter ${stockValue > 0 ? 'text-cream' : 'text-red-400'}`}>
+                                  {stockValue}
+                                </p>
+                                <p className="text-sm font-medium text-white/30">{unitLabel}</p>
+                              </div>
+                            );
+                          })()}
                           {selectedItem.package_size && selectedItem.package_size > 1 && (
                             <p className="text-[11px] font-light text-white/30 mt-2">
-                              1 unidad = <span className="text-cream/50 font-medium">{selectedItem.package_size}{selectedItem.unit_type === 'gram' ? 'g' : selectedItem.unit_type === 'ml' ? 'ml' : ''}</span>
+                              1 unidad cerrada = <span className="text-cream/50 font-medium">{selectedItem.package_size}{selectedItem.unit_type === 'gram' ? 'g' : selectedItem.unit_type === 'ml' ? 'ml' : ''}</span>
                             </p>
                           )}
                         </div>
@@ -2586,24 +2630,29 @@ const InventoryManagement: React.FC = () => {
 
                       <div className="h-px bg-white/5 w-full"></div>
 
-                      {/* STOCK TOTAL - Secundario */}
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-baseline">
-                          <p className="text-[9px] font-medium text-white/30 uppercase tracking-widest">Stock Total (calculado)</p>
-                          <div className="text-[9px] text-white/20 italic">cerrados × tamaño + abiertos</div>
+                      {/* DESGLOSE: Cerrados + Abiertos */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-medium text-white/30 uppercase tracking-widest">Cerrados</p>
+                          {(() => {
+                            const totalClosed = ((selectedItem as any).location_stocks || []).reduce((sum: number, ls: any) => sum + (ls.closed_units || 0), 0);
+                            return (
+                              <p className="text-lg font-light text-white/60 tracking-tight">
+                                {Math.floor(totalClosed)} <span className="text-[9px] text-white/20">un</span>
+                              </p>
+                            );
+                          })()}
                         </div>
-
-                        <div className="flex items-baseline gap-2">
-                          <p className="text-2xl font-light text-white/60 tracking-tight">
-                            {selectedItem.current_stock}
-                          </p>
-                          <span className="text-xs font-medium text-white/30">
-                            {selectedItem.unit_type === 'unit' ? 'unidades' :
-                              selectedItem.unit_type === 'gram' ? 'gramos' :
-                                selectedItem.unit_type === 'ml' ? 'ml' :
-                                  selectedItem.unit_type === 'kilo' ? 'kilos' :
-                                    selectedItem.unit_type === 'liter' ? 'litros' : 'unidades'}
-                          </span>
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-medium text-white/30 uppercase tracking-widest">Abiertos</p>
+                          {(() => {
+                            const openRemaining = (selectedItem.open_packages || []).reduce((sum: number, pkg: any) => sum + (pkg.remaining || 0), 0);
+                            return (
+                              <p className="text-lg font-light text-white/60 tracking-tight">
+                                {Math.round(openRemaining * 100) / 100} <span className="text-[9px] text-white/20">{selectedItem.unit_type || 'un'}</span>
+                              </p>
+                            );
+                          })()}
                         </div>
                       </div>
 
@@ -2619,6 +2668,7 @@ const InventoryManagement: React.FC = () => {
                             itemId={selectedItem.id}
                             unitType={selectedItem.unit_type}
                             packageSize={selectedItem.package_size || 1}
+                            currentStock={selectedItem.current_stock || 0}
                             refreshKey={stockRefreshKey}
                             onLocationClick={(locName) => {
                               console.log('📍 Navigating to Logistics:', locName);

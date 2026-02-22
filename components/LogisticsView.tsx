@@ -107,23 +107,30 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
             console.error(error);
             addToast('Error al cargar ubicaciones', 'error');
         } else {
-            // 🔧 FIX N+1: Batch fetch metrics for all locations at once
+            // Batch fetch metrics for all locations at once
             const locationIds = (data || []).map(loc => loc.id);
 
-            // Fetch stock data in batch using .in()
+            // Fetch stock data with item cost for estimated_value
             const { data: stockData } = await supabase
                 .from('inventory_location_stock')
-                .select('location_id, inventory_item_id, quantity')
+                .select('location_id, item_id, closed_units, inventory_items(cost, package_size)')
                 .in('location_id', locationIds);
 
             // Group metrics by location_id
-            const metricsByLocation: Record<string, { total_items: number; total_effective_stock: number }> = {};
+            const metricsByLocation: Record<string, { total_items: number; total_effective_stock: number; total_closed_units: number; estimated_value: number }> = {};
             (stockData || []).forEach((stock: any) => {
                 if (!metricsByLocation[stock.location_id]) {
-                    metricsByLocation[stock.location_id] = { total_items: 0, total_effective_stock: 0 };
+                    metricsByLocation[stock.location_id] = { total_items: 0, total_effective_stock: 0, total_closed_units: 0, estimated_value: 0 };
                 }
-                metricsByLocation[stock.location_id].total_items += 1;
-                metricsByLocation[stock.location_id].total_effective_stock += stock.quantity || 0;
+                const units = stock.closed_units || 0;
+                if (units > 0) {
+                    const cost = stock.inventory_items?.cost || 0;
+                    const pkgSize = stock.inventory_items?.package_size || 1;
+                    metricsByLocation[stock.location_id].total_items += 1;
+                    metricsByLocation[stock.location_id].total_closed_units += units;
+                    metricsByLocation[stock.location_id].total_effective_stock += units;
+                    metricsByLocation[stock.location_id].estimated_value += units * pkgSize * cost;
+                }
             });
 
             // Map locations with their metrics
@@ -175,12 +182,12 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
             console.error(error);
         } else {
             const formatted = (data || []).map((item: any) => ({
-                id: item.res_id,
-                item_id: item.res_item_id,
+                id: item.id,
+                item_id: item.item_id,
                 closed_units: item.closed_units,
                 open_packages: item.open_packages,
                 inventory_items: {
-                    id: item.res_item_id,
+                    id: item.item_id,
                     name: item.item_name,
                     unit_type: item.item_unit_type,
                     image_url: item.item_image_url,
