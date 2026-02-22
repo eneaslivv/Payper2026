@@ -540,8 +540,95 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const refreshOrders = async () => {
+    // If online, fetch from Supabase (source of truth) and merge with local unsynced
+    if (navigator.onLine && storeId) {
+      try {
+        const { data: remoteOrders, error } = await supabase
+          .from('orders')
+          .select(`
+            id, store_id, status, total_amount, created_at, payment_status, payment_method,
+            payment_provider, is_paid, order_number, table_number, archived_at, dispatch_station,
+            node_id, node:venue_nodes(dispatch_station), client:clients(name, email), items,
+            order_items(id, quantity, unit_price, product_id, product:inventory_items(name))
+          `)
+          .is('archived_at', null)
+          .order('created_at', { ascending: false }) as any;
+
+        if (!error && remoteOrders) {
+          const mappedRemote: DBOrder[] = (remoteOrders as any[]).map((ro: any) => ({
+            id: ro.id,
+            store_id: ro.store_id,
+            customer: ro.client?.name || 'Cliente',
+            client_email: ro.client?.email,
+            table: ro.table_number,
+            status: ro.status ? mapStatusFromSupabase(ro.status) : 'pending',
+            type: ro.table_number ? 'dine-in' : 'takeaway',
+            paid: ro.is_paid || ro.payment_status === 'approved' || ro.payment_status === 'paid',
+            items: (ro.order_items && ro.order_items.length > 0)
+              ? ro.order_items.map((i: any) => ({
+                  id: i.id || 'unknown',
+                  name: i.product?.name || 'Ítem',
+                  quantity: i.quantity,
+                  price_unit: i.unit_price || 0,
+                  productId: i.product_id,
+                  inventory_items_to_deduct: []
+                }))
+              : (Array.isArray(ro.items) ? ro.items.map((i: any) => ({
+                  id: i.id || 'unknown',
+                  name: i.name || 'Ítem',
+                  quantity: i.quantity,
+                  price_unit: i.price_unit || i.price || 0,
+                  productId: i.productId || i.id,
+                  inventory_items_to_deduct: []
+                })) : []),
+            amount: ro.total_amount || 0,
+            time: new Date(ro.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            paymentMethod: ro.payment_method || undefined,
+            payment_provider: ro.payment_provider || undefined,
+            payment_status: ro.payment_status || undefined,
+            is_paid: ro.is_paid,
+            order_number: ro.order_number,
+            table_number: ro.table_number || undefined,
+            archived_at: ro.archived_at || undefined,
+            node_id: ro.node_id || undefined,
+            dispatch_station: ro.dispatch_station || ro.node?.dispatch_station || undefined,
+            created_at: ro.created_at,
+            syncStatus: 'synced' as const,
+            lastModified: new Date(ro.created_at).getTime()
+          }));
+
+          // Merge: remote + local unsynced
+          const localOrders = await dbOps.getAllOrders();
+          const localUnsynced = localOrders.filter(lo => lo.syncStatus === 'pending' && lo.store_id === storeId);
+          const merged = [...mappedRemote];
+          localUnsynced.forEach(lu => {
+            if (!merged.some(m => m.id === lu.id)) merged.push(lu);
+          });
+          merged.sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0));
+          setOrders(merged);
+
+          // Update IndexedDB with fresh remote data
+          await Promise.all(mappedRemote.map(o => dbOps.saveOrder(o)));
+
+          // Clean stale orders from IndexedDB (archived remotely but still cached locally)
+          const remoteIds = new Set(mappedRemote.map(o => o.id));
+          const unsyncedIds = new Set(localUnsynced.map(o => o.id));
+          for (const lo of localOrders) {
+            if (!remoteIds.has(lo.id) && !unsyncedIds.has(lo.id)) {
+              await dbOps.deleteOrder(lo.id).catch(() => {});
+            }
+          }
+          return;
+        }
+      } catch (err) {
+        console.error('[refreshOrders] Remote fetch failed, falling back to local', err);
+      }
+    }
+
+    // Fallback: read from IndexedDB (offline or fetch failed)
     const localOrders = await dbOps.getAllOrders();
-    setOrders(localOrders.reverse());
+    const filtered = storeId ? localOrders.filter(o => o.store_id === storeId) : localOrders;
+    setOrders(filtered.sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0)));
   };
 
   const syncOrder = async (orderId: string) => {

@@ -1029,7 +1029,7 @@ const FinanceCashManager: React.FC<{
         />
       )}
 
-      <CashAuditTable dateRange={dateRange} />
+      <CashSessionHistory />
     </div>
   );
 };
@@ -1566,167 +1566,438 @@ const CashEventTimelineModal: React.FC<{
   );
 };
 
-const CashAuditTable: React.FC<{ dateRange: { start: string | Date; end: string | Date } }> = ({ dateRange }) => {
-  const [closures, setClosures] = useState<any[]>([]);
+const CashSessionHistory: React.FC = () => {
   const { profile } = useAuth();
+
+  // Data
+  const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
+
+  // Filters
+  const [datePreset, setDatePreset] = useState<'hoy' | '7d' | '30d' | 'todo'>('30d');
+  const [zoneFilter, setZoneFilter] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
+
+  // Zones for filter pills
+  const [zones, setZones] = useState<{ id: string; name: string }[]>([]);
+
+  // Detail modals
   const [selectedClosure, setSelectedClosure] = useState<any | null>(null);
   const [detailSummary, setDetailSummary] = useState<any | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [timelineSession, setTimelineSession] = useState<any | null>(null);
 
-  useEffect(() => {
-    const fetchClosures = async () => {
-      if (!profile?.store_id) return;
-      setLoading(true);
-
-      const start = new Date(dateRange.start).toISOString();
-      const end = new Date(dateRange.end).toISOString();
-
-      try {
-        const { data, error } = await supabase
-          .from('cash_sessions_summary')
-          .select('*')
-          .eq('store_id', profile.store_id)
-          .gte('opened_at', start)
-          .lte('opened_at', end)
-          .order('opened_at', { ascending: false });
-
-        if (error) throw error;
-        setClosures(data || []);
-      } catch (err) {
-        console.error('Error loading audit:', err);
-      } finally {
-        setLoading(false);
+  const getDateRange = (): { start: string | null; end: string | null } => {
+    const now = new Date();
+    switch (datePreset) {
+      case 'hoy': {
+        const s = new Date(); s.setHours(0, 0, 0, 0);
+        return { start: s.toISOString(), end: now.toISOString() };
       }
+      case '7d': {
+        const s = new Date(); s.setDate(now.getDate() - 7); s.setHours(0, 0, 0, 0);
+        return { start: s.toISOString(), end: now.toISOString() };
+      }
+      case '30d': {
+        const s = new Date(); s.setDate(now.getDate() - 30); s.setHours(0, 0, 0, 0);
+        return { start: s.toISOString(), end: now.toISOString() };
+      }
+      case 'todo':
+        return { start: null, end: null };
+    }
+  };
+
+  const fetchSessions = async (loadMore = false) => {
+    if (!profile?.store_id) return;
+    loadMore ? setLoadingMore(true) : setLoading(true);
+
+    const currentPage = loadMore ? page + 1 : 1;
+    const rangeStart = (currentPage - 1) * PAGE_SIZE;
+    const rangeEnd = rangeStart + PAGE_SIZE - 1;
+
+    try {
+      let query = (supabase as any)
+        .from('cash_sessions_summary')
+        .select('*', { count: 'exact' })
+        .eq('store_id', profile.store_id)
+        .order('opened_at', { ascending: false })
+        .range(rangeStart, rangeEnd);
+
+      const { start, end } = getDateRange();
+      if (start) query = query.gte('opened_at', start);
+      if (end) query = query.lte('opened_at', end);
+      if (zoneFilter) query = query.eq('zone_id', zoneFilter);
+      if (statusFilter !== 'all') query = query.eq('status', statusFilter);
+
+      const { data, error, count } = await query;
+      if (error) throw error;
+
+      if (loadMore) {
+        setSessions(prev => [...prev, ...(data || [])]);
+        setPage(currentPage);
+      } else {
+        setSessions(data || []);
+        setPage(1);
+      }
+
+      setTotalCount(count || 0);
+      setHasMore((data?.length || 0) === PAGE_SIZE);
+    } catch (err) {
+      console.error('Error loading session history:', err);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  // Fetch zones for filter pills
+  useEffect(() => {
+    const fetchZones = async () => {
+      if (!profile?.store_id) return;
+      const { data } = await (supabase as any)
+        .from('venue_zones')
+        .select('id, name')
+        .eq('store_id', profile.store_id);
+      setZones(data || []);
     };
+    fetchZones();
+  }, [profile?.store_id]);
 
-    fetchClosures();
-  }, [profile?.store_id, dateRange]);
+  // Refetch on filter change
+  useEffect(() => {
+    fetchSessions(false);
+  }, [profile?.store_id, datePreset, zoneFilter, statusFilter]);
 
-  if (loading) return <div className="p-8 text-center text-xs uppercase tracking-widest opacity-50 text-white">Cargando auditoría...</div>;
+  const handleRowClick = async (record: any) => {
+    if (record.status === 'open') {
+      setTimelineSession(record);
+      return;
+    }
+    setSelectedClosure(record);
+    setDetailLoading(true);
+    setDetailSummary(null);
+    try {
+      const { data, error } = await (supabase as any)
+        .from('cash_closures_detailed')
+        .select('*')
+        .eq('session_id', record.id)
+        .maybeSingle();
+      if (!error && data) setDetailSummary(data);
+    } catch (err) {
+      console.error('Error fetching closure detail:', err);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
 
-  if (closures.length === 0) {
-    return (
-      <div className="bg-white dark:bg-surface-dark rounded-2xl subtle-border shadow-soft p-8 text-center">
-        <div className="flex flex-col items-center gap-3 opacity-50">
-          <span className="material-symbols-outlined text-4xl">inbox</span>
-          <p className="text-xs font-bold uppercase tracking-widest">No hay registros de cierre en este periodo</p>
-        </div>
-      </div>
-    );
-  }
+  const exportCsv = () => {
+    if (sessions.length === 0) return;
+    const headers = ['Fecha', 'Zona', 'Estacion', 'Estado', 'Apertura', 'Cierre', 'Operador Apertura', 'Operador Cierre', 'Fondo Inicial', 'Esperado', 'Real', 'Diferencia', 'Duracion (hs)', 'Notas'];
+    const rows = sessions.map(r => [
+      r.opened_at ? new Date(r.opened_at).toLocaleDateString() : '',
+      r.zone_name || '',
+      r.dispatch_station_name || '',
+      r.status === 'open' ? 'Abierta' : 'Cerrada',
+      r.opened_at ? new Date(r.opened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+      r.closed_at ? new Date(r.closed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+      r.opened_by_name || '',
+      r.closed_by_name || '',
+      r.start_amount || 0,
+      r.expected_cash || 0,
+      r.real_cash || 0,
+      r.difference ?? ((r.real_cash || 0) - (r.expected_cash || 0)),
+      r.duration_hours || '',
+      (r.closing_notes || '').replace(/"/g, '""')
+    ]);
+    const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sesiones_caja_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Summary calculations
+  const closedSessions = sessions.filter(s => s.status === 'closed');
+  const totalDiff = closedSessions.reduce((sum, r) => sum + (r.difference ?? ((r.real_cash || 0) - (r.expected_cash || 0))), 0);
+
+  const formatDuration = (hours: number | null) => {
+    if (!hours) return '-';
+    const h = Math.floor(hours);
+    const m = Math.round((hours - h) * 60);
+    return `${h}h ${m}m`;
+  };
+
+  const datePresets = [
+    { key: 'hoy' as const, label: 'Hoy' },
+    { key: '7d' as const, label: '7 Días' },
+    { key: '30d' as const, label: '30 Días' },
+    { key: 'todo' as const, label: 'Todo' }
+  ];
+
+  const statusOptions = [
+    { key: 'all' as const, label: 'Todas' },
+    { key: 'open' as const, label: 'Abiertas' },
+    { key: 'closed' as const, label: 'Cerradas' }
+  ];
 
   return (
-    <div className="bg-white dark:bg-surface-dark rounded-2xl subtle-border shadow-soft overflow-hidden">
-      <div className="p-6 border-b border-white/5 flex justify-between items-center bg-black/20">
-        <div>
-          <h3 className="text-xs font-bold uppercase tracking-[0.2em] dark:text-white mb-1">Registro de Cierres de Caja</h3>
-          <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">Auditoría Financiera</span>
+    <div className="bg-white dark:bg-surface-dark rounded-3xl subtle-border shadow-soft overflow-hidden">
+      {/* HEADER */}
+      <div className="p-6 border-b border-white/5 bg-black/20">
+        <div className="flex justify-between items-start mb-5">
+          <div>
+            <h3 className="text-sm font-black uppercase tracking-[0.2em] dark:text-white mb-1">Historial de Sesiones de Caja</h3>
+            <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">Auditoría Financiera Completa</span>
+          </div>
+          <button
+            onClick={exportCsv}
+            disabled={sessions.length === 0}
+            className="px-4 py-2 rounded-xl bg-white/5 text-[9px] font-black uppercase tracking-widest hover:bg-white/10 transition-colors text-white border border-white/5 hover:border-white/10 disabled:opacity-30 flex items-center gap-2"
+          >
+            <span className="material-symbols-outlined text-sm">download</span>
+            Exportar CSV
+          </button>
         </div>
-        <button className="px-4 py-2 rounded-lg bg-white/5 text-[9px] font-black uppercase tracking-widest hover:bg-white/10 transition-colors text-white">
-          Exportar CSV
-        </button>
+
+        {/* FILTER BAR */}
+        <div className="flex flex-col gap-3">
+          {/* Date + Status row */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex bg-black/20 p-1 rounded-xl">
+              {datePresets.map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setDatePreset(key)}
+                  className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+                    datePreset === key
+                      ? 'bg-neon/10 text-neon border border-neon/20'
+                      : 'text-white/40 hover:text-white/60 border border-transparent'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div className="h-5 w-px bg-white/10 hidden md:block" />
+
+            <div className="flex bg-black/20 p-1 rounded-xl">
+              {statusOptions.map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setStatusFilter(key)}
+                  className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+                    statusFilter === key
+                      ? 'bg-neon/10 text-neon border border-neon/20'
+                      : 'text-white/40 hover:text-white/60 border border-transparent'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Zone pills */}
+          {zones.length > 0 && (
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => setZoneFilter(null)}
+                className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all border ${
+                  !zoneFilter ? 'bg-neon/10 text-neon border-neon/20' : 'bg-white/5 text-white/40 border-white/5 hover:text-white/60'
+                }`}
+              >
+                Todas las zonas
+              </button>
+              {zones.map(zone => (
+                <button
+                  key={zone.id}
+                  onClick={() => setZoneFilter(zone.id)}
+                  className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all border ${
+                    zoneFilter === zone.id ? 'bg-neon/10 text-neon border-neon/20' : 'bg-white/5 text-white/40 border-white/5 hover:text-white/60'
+                  }`}
+                >
+                  {zone.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left">
-          <thead className="bg-black/40 text-[9px] font-black uppercase tracking-widest text-white/40">
-            <tr>
-              <th className="px-6 py-4">Fecha / Hora</th>
-              <th className="px-6 py-4">Zona / Caja</th>
-              <th className="px-6 py-4">Responsables</th>
-              <th className="px-6 py-4 text-right">Sistema (Esp)</th>
-              <th className="px-6 py-4 text-right">Real (Físico)</th>
-              <th className="px-6 py-4 text-right">Diferencia</th>
-              <th className="px-6 py-4">Notas</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5 text-[11px] font-medium text-white/70">
-            {closures.map((record) => {
-              // Difference calculation is stored in DB generated column, but we can compute or use it.
-              // Assuming record.difference is available or we compute it.
-              const diff = record.difference ?? (record.real_cash - record.expected_cash);
-              const isPositive = diff >= 0;
-              const isPerfect = diff === 0;
+      {/* TABLE */}
+      {loading ? (
+        <div className="p-8 text-center text-xs uppercase tracking-widest opacity-50 text-white animate-pulse">Cargando historial...</div>
+      ) : sessions.length === 0 ? (
+        <div className="p-12 text-center">
+          <div className="flex flex-col items-center gap-3 opacity-50">
+            <span className="material-symbols-outlined text-4xl text-white/30">inbox</span>
+            <p className="text-xs font-bold uppercase tracking-widest text-white/50">No hay sesiones en este periodo</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-black/40 text-[9px] font-black uppercase tracking-widest text-white/40">
+                <tr>
+                  <th className="px-5 py-4">Estado</th>
+                  <th className="px-5 py-4">Fecha / Hora</th>
+                  <th className="px-5 py-4">Zona / Caja</th>
+                  <th className="px-5 py-4">Duración</th>
+                  <th className="px-5 py-4">Responsables</th>
+                  <th className="px-5 py-4 text-right">Sistema (Esp)</th>
+                  <th className="px-5 py-4 text-right">Real (Físico)</th>
+                  <th className="px-5 py-4 text-right">Diferencia</th>
+                  <th className="px-5 py-4">Notas</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 text-[11px] font-medium text-white/70">
+                {sessions.map((record) => {
+                  const isOpen = record.status === 'open';
+                  const diff = record.difference ?? ((record.real_cash || 0) - (record.expected_cash || 0));
+                  const isPositive = diff >= 0;
+                  const isPerfect = diff === 0;
 
-              const handleOpenDetail = async () => {
-                setSelectedClosure(record);
-                setDetailLoading(true);
-                setDetailSummary(null);
-                try {
-                  const { data, error } = await (supabase as any)
-                    .from('cash_closures_detailed')
-                    .select('*')
-                    .eq('session_id', record.id)
-                    .maybeSingle();
-                  if (!error && data) setDetailSummary(data);
-                } catch (err) {
-                  console.error('Error fetching closure detail:', err);
-                } finally {
-                  setDetailLoading(false);
-                }
-              };
-
-              return (
-                <tr
-                  key={record.id}
-                  className="hover:bg-white/5 transition-colors group cursor-pointer"
-                  onClick={handleOpenDetail}
-                >
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col">
-                      <span className="text-white font-bold">
-                        {new Date(record.closed_at || record.opened_at || record.created_at).toLocaleDateString()}
-                      </span>
-                      <span className="text-[9px] opacity-50">
-                        {new Date(record.closed_at || record.opened_at || record.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
+                  return (
+                    <tr
+                      key={record.id}
+                      className="hover:bg-white/5 transition-colors group cursor-pointer"
+                      onClick={() => handleRowClick(record)}
+                    >
+                      {/* Status */}
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <span className={`size-2 rounded-full ${isOpen ? 'bg-neon animate-pulse' : 'bg-white/20'}`} />
+                          <span className={`text-[9px] font-black uppercase tracking-widest ${isOpen ? 'text-neon' : 'text-white/40'}`}>
+                            {isOpen ? 'Abierta' : 'Cerrada'}
+                          </span>
+                        </div>
+                      </td>
+                      {/* Fecha */}
+                      <td className="px-5 py-4">
+                        <div className="flex flex-col">
+                          <span className="text-white font-bold">
+                            {new Date(record.opened_at || record.created_at).toLocaleDateString()}
+                          </span>
+                          <span className="text-[9px] opacity-50">
+                            {new Date(record.opened_at || record.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </td>
+                      {/* Zona */}
+                      <td className="px-5 py-4">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-bold text-white">{record.zone_name || 'Zona Eliminada'}</span>
+                          {record.dispatch_station_name && (
+                            <span className="text-[9px] text-white/40 uppercase tracking-widest">{record.dispatch_station_name}</span>
+                          )}
+                        </div>
+                      </td>
+                      {/* Duración */}
+                      <td className="px-5 py-4">
+                        <span className="text-[10px] font-bold text-white/50 font-mono">
+                          {isOpen ? (
+                            <span className="text-neon/60">En curso</span>
+                          ) : (
+                            formatDuration(record.duration_hours)
+                          )}
+                        </span>
+                      </td>
+                      {/* Responsables */}
+                      <td className="px-5 py-4">
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-[10px] text-neon">lock_open</span>
+                            <span className="text-[10px]">{record.opened_by_name?.split(' ')[0] || 'Staff'}</span>
+                          </div>
+                          {!isOpen && (
+                            <div className="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                              <span className="material-symbols-outlined text-[10px] text-red-400">lock</span>
+                              <span className="text-[10px]">{record.closed_by_name?.split(' ')[0] || 'Auto'}</span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      {/* Sistema */}
+                      <td className="px-5 py-4 text-right font-mono text-white/50">
+                        {isOpen
+                          ? <span className="text-neon/60 italic text-[9px]">En curso</span>
+                          : `$${(record.expected_cash || 0).toLocaleString('es-AR')}`
+                        }
+                      </td>
+                      {/* Real */}
+                      <td className="px-5 py-4 text-right font-mono font-bold text-white">
+                        {isOpen
+                          ? <span className="text-neon/60 italic text-[9px]">En curso</span>
+                          : `$${(record.real_cash || 0).toLocaleString('es-AR')}`
+                        }
+                      </td>
+                      {/* Diferencia */}
+                      <td className="px-5 py-4 text-right">
+                        {isOpen ? (
+                          <span className="text-[9px] text-white/20">-</span>
+                        ) : (
+                          <span className={`font-mono font-black px-2 py-1 rounded-md text-[10px] ${isPerfect ? 'bg-white/5 text-white/50' : isPositive ? 'bg-neon/10 text-neon' : 'bg-red-500/10 text-red-500'}`}>
+                            {diff > 0 ? '+' : ''}${diff?.toLocaleString('es-AR')}
+                          </span>
+                        )}
+                      </td>
+                      {/* Notas */}
+                      <td className="px-5 py-4 max-w-[200px] truncate opacity-50 italic">
+                        {record.closing_notes || '-'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              {/* SUMMARY FOOTER */}
+              <tfoot className="bg-black/30 border-t border-white/10">
+                <tr>
+                  <td className="px-5 py-4 text-[9px] font-black uppercase tracking-widest text-white/60" colSpan={5}>
+                    {totalCount} sesiones · {sessions.filter(s => s.status === 'open').length} abiertas · {closedSessions.length} cerradas
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-white/20"></span>
-                        <span className="font-bold text-white">{record.zone_name || 'Zona Eliminada'}</span>
-                      </div>
-                      {record.dispatch_station_name && (
-                        <span className="text-[9px] text-white/40 uppercase tracking-widest">{record.dispatch_station_name}</span>
-                      )}
-                    </div>
+                  <td className="px-5 py-4 text-right font-mono text-[10px] font-bold text-white/40">
+                    ${closedSessions.reduce((sum, r) => sum + (r.expected_cash || 0), 0).toLocaleString('es-AR')}
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col gap-0.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-[10px] text-neon">lock_open</span>
-                        <span className="text-[10px]">{record.opened_by_name?.split(' ')[0] || 'Staff'}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
-                        <span className="material-symbols-outlined text-[10px] text-red-400">lock</span>
-                        <span className="text-[10px]">{record.closed_by_name?.split(' ')[0] || 'Auto'}</span>
-                      </div>
-                    </div>
+                  <td className="px-5 py-4 text-right font-mono text-[10px] font-bold text-white/40">
+                    ${closedSessions.reduce((sum, r) => sum + (r.real_cash || 0), 0).toLocaleString('es-AR')}
                   </td>
-                  <td className="px-6 py-4 text-right font-mono text-white/50">
-                    ${record.expected_cash?.toLocaleString('es-AR')}
-                  </td>
-                  <td className="px-6 py-4 text-right font-mono font-bold text-white">
-                    ${record.real_cash?.toLocaleString('es-AR')}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className={`font-mono font-black px-2 py-1 rounded-md text-[10px] ${isPerfect ? 'bg-white/5 text-white/50' : isPositive ? 'bg-neon/10 text-neon' : 'bg-red-500/10 text-red-500'}`}>
-                      {diff > 0 ? '+' : ''}${diff?.toLocaleString('es-AR')}
+                  <td className="px-5 py-4 text-right">
+                    <span className={`font-mono font-black text-[10px] px-2 py-1 rounded-md ${totalDiff === 0 ? 'bg-white/5 text-white/50' : totalDiff > 0 ? 'bg-neon/10 text-neon' : 'bg-red-500/10 text-red-500'}`}>
+                      {totalDiff > 0 ? '+' : ''}${totalDiff.toLocaleString('es-AR')}
                     </span>
                   </td>
-                  <td className="px-6 py-4 max-w-[200px] truncate opacity-50 italic">
-                    {record.closing_notes || '-'}
-                  </td>
+                  <td />
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+              </tfoot>
+            </table>
+          </div>
 
+          {/* PAGINATION */}
+          {hasMore && (
+            <div className="p-6 flex justify-center border-t border-white/5">
+              <button
+                onClick={() => fetchSessions(true)}
+                disabled={loadingMore}
+                className="px-8 py-3 rounded-2xl bg-white/5 hover:bg-neon/10 text-white/50 hover:text-neon border border-white/5 hover:border-neon/30 text-[9px] font-black uppercase tracking-widest transition-all disabled:opacity-40"
+              >
+                {loadingMore ? 'Cargando...' : `Cargar Más (${sessions.length} de ${totalCount})`}
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* DETAIL MODALS */}
       {selectedClosure && (
         <CashClosureDetailModal
           record={selectedClosure}
@@ -1736,6 +2007,13 @@ const CashAuditTable: React.FC<{ dateRange: { start: string | Date; end: string 
             setSelectedClosure(null);
             setDetailSummary(null);
           }}
+        />
+      )}
+
+      {timelineSession && (
+        <CashEventTimelineModal
+          session={timelineSession}
+          onClose={() => setTimelineSession(null)}
         />
       )}
     </div>

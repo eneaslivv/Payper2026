@@ -97,7 +97,8 @@ const OrderBoard: React.FC = () => {
       }
     };
 
-    // Set up Supabase Realtime subscription for live order updates
+    // Set up Supabase Realtime subscription for UI notifications only
+    // Data updates are handled by OfflineContext's own realtime subscription
     const channel = supabase
       .channel(`orders_realtime_${profile.store_id}`)
       .on('postgres_changes', {
@@ -108,27 +109,8 @@ const OrderBoard: React.FC = () => {
       }, (payload) => {
         console.log('[REALTIME] New order received:', payload.new);
         setIncomingOrder(payload.new as Order);
-        refreshOrders();
         addToast('NUEVO PEDIDO', 'success', `Pedido #${(payload.new as Order).order_number || 'nuevo'} recibido`);
         playNotificationSound();
-      })
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'orders',
-        filter: `store_id=eq.${profile.store_id}`
-      }, (payload) => {
-        console.log('[REALTIME] Order updated:', payload.new);
-        refreshOrders();
-      })
-      .on('postgres_changes', {
-        event: 'DELETE',
-        schema: 'public',
-        table: 'orders',
-        filter: `store_id=eq.${profile.store_id}`
-      }, (payload) => {
-        console.log('[REALTIME] Order deleted:', payload.old);
-        refreshOrders();
       })
       .subscribe((status) => {
         console.log('[REALTIME] Subscription status:', status);
@@ -187,7 +169,13 @@ const OrderBoard: React.FC = () => {
     }
   }, [orders, selectedOrder?.id]);
 
+  const getOrderLabel = (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    return order?.order_number ? `#${order.order_number}` : `#${orderId.slice(0, 6).toUpperCase()}`;
+  };
+
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
+    const label = getOrderLabel(orderId);
     if (newStatus === 'served') {
       const staffId = profile?.id || user?.id;
 
@@ -198,13 +186,13 @@ const OrderBoard: React.FC = () => {
 
       const result = await confirmOrderDelivery(orderId, staffId);
       if (result.success) {
-        addToast(`PEDIDO #${orderId}`, 'success', result.message);
+        addToast(`PEDIDO ${label}`, 'success', result.message);
       } else {
         addToast(`ERROR`, 'error', result.message);
       }
     } else {
       updateOrderStatus(orderId, newStatus);
-      addToast(`PEDIDO #${orderId}`, 'status', `Estado actualizado: ${newStatus}`);
+      addToast(`PEDIDO ${label}`, 'status', `Estado actualizado: ${newStatus}`);
     }
   };
 

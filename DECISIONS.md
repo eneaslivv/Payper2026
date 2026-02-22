@@ -216,3 +216,94 @@
 
 **Estado:** ✅ DEPLOYED
 **Fecha:** 2026-01-28
+
+---
+
+## 2026-02-17 — SSSMA: Single Source Stock Mutation Architecture
+
+**Decisión arquitectónica central:**
+`apply_stock_delta()` es la ÚNICA función autorizada para mutar `inventory_items.current_stock` y escribir en `stock_movements`. Ninguna otra función puede hacerlo directamente.
+
+**Jerarquía de autoridad:**
+- `stock_movements` = fuente de verdad (ledger append-only)
+- `inventory_items.current_stock` = CACHE materializado
+- `inventory_location_stock.closed_units` = fuente para paquetes cerrados
+
+**Fases implementadas:**
+
+### Fase 1 (2026-02-17) — apply_stock_delta + validate_stock_integrity
+- `apply_stock_delta()` → función atómica: INSERT ledger + UPDATE cache
+- `validate_stock_integrity()` → drift detection (cache vs ledger)
+- `adjust_inventory()` → migrada a `apply_stock_delta()`
+- Constraint `chk_nonzero_delta` en stock_movements
+- Migración: `20260217200000_sssma_phase1.sql`
+- **Estado:** ✅ DEPLOYED
+
+### Fase 2 (2026-02-17) — Migración de funciones críticas
+- `transfer_stock()` → path RESTOCK delega a `apply_stock_delta()`
+- `rollback_stock_on_cancellation()` → usa `apply_stock_delta()` por movimiento
+- `finalize_order_stock()` → cada deducción llama `apply_stock_delta()`
+- Trigger `update_inventory_from_movement` → removido 'restock' del skip list
+- Migración: `20260217210000_sssma_phase2.sql`
+- **Estado:** ✅ DEPLOYED
+
+### Fase 3 (2026-02-18) — Eliminar cascade trigger
+- DROP TRIGGER `trg_sync_open_pkg_to_item` → eliminado overwrite de current_stock
+- `calculate_total_stock()` → lee `inventory_location_stock.closed_units` (no stale closed_stock)
+- `consume_from_smart_packages()` → sincroniza closed_units al abrir paquete
+- Migración: `20260218000000_sssma_phase3.sql`
+- **Estado:** ✅ DEPLOYED
+
+### Fase 4 (PENDIENTE)
+- Migrar: `consume_from_smart_packages()`, `compensate_stock_on_order_edit()`, `sync_offline_order()`, `transfer_stock_between_locations()`
+- Ver `pending-decisions.md` → PD-002
+
+---
+
+## 2026-02-17 — P4: Stock Adjustment Fixes (9 bugs críticos)
+
+**Problema:** 9 bugs en operaciones de pérdida/re-ingreso de stock
+**Solución:** Migración `20260217150000_p4_stock_adjustment_fixes.sql`
+**Fixes:** CHECK constraint, FOR UPDATE, cross-store validation, inventory_movements schema, trigger double-counting, search_path hardening, idempotency
+
+**Estado:** ✅ DEPLOYED
+**Fecha:** 2026-02-17
+
+---
+
+## 2026-02-18 — Auditoría Sistémica Payper v1.0
+
+**Alcance:** 66 tablas, 100+ funciones, 66+ triggers, frontend completo
+**Hallazgos críticos:**
+1. Doble trigger rollback stock (BUG-C1) — ver `known-bugs.md`
+2. RLS DELETE en stock_movements (BUG-C2) — ver `known-bugs.md`
+3. clients.wallet_balance sin ledger (BUG-C3) — ver `known-bugs.md`
+
+**Multi-source-of-truth detectado:**
+- Stock: 3 fuentes (ledger, cache, location_stock)
+- Wallet: 3 fuentes (wallet_ledger, wallets.balance, clients.wallet_balance)
+- Cash: 1 fuente correcta (cash_events → ledger)
+
+**Decisiones pendientes:** Ver `pending-decisions.md`
+**Fecha:** 2026-02-18
+
+---
+
+## 2026-02-18 — Fix BUG-C1: DROP TRIGGER trg_rollback_stock_on_cancel
+
+**Decisión**: DROP del trigger redundante de rollback
+**Aprobado por**: usuario (2026-02-18)
+**Migración**: `20260218100000_fix_double_rollback_trigger.sql`
+
+**Contexto**: Dos triggers BEFORE UPDATE sobre `orders` llamaban `rollback_stock_on_cancellation()`. Al cancelar, stock se restauraba x2 (apply_stock_delta genera UUID único por llamada, sin idempotency cross-trigger).
+
+**Trigger eliminado**: `trg_rollback_stock_on_cancel` (BEFORE UPDATE genérico — redundante)
+**Trigger conservado**: `trg_rollback_stock_on_cancellation` (BEFORE UPDATE OF status — correcto)
+
+**Verificación post-deploy**:
+- `trg_rollback_stock_on_cancellation` presente ✅
+- `trg_rollback_stock_on_cancel` eliminado ✅
+- validate_stock_integrity(): 3 drifts pre-existentes conocidos (no relacionados)
+
+**Estado:** ✅ DEPLOYED
+**Fecha:** 2026-02-18

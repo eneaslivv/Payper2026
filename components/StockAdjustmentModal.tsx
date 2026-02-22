@@ -57,7 +57,8 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
             setLocationId('');
             setSupplierId(item.last_supplier_id || null);
             setInvoiceRef('');
-            setUnitCost(item.last_purchase_price?.toString() || '');
+            const defaultCost = item.last_purchase_price ?? item.cost ?? null;
+            setUnitCost(defaultCost ? defaultCost.toString() : '');
             setAdjustmentType('ADDR'); // Reset default
         }
     }, [isOpen, item.id]);
@@ -199,17 +200,26 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                 p_item_id: item.id,
                 p_action_type: rpcActionType,
                 p_quantity_delta: quantityDelta,
+                p_package_delta: usePackageMode ? parseInt(quantity) : 0,
                 p_reason: `${reason}${notes ? ': ' + notes : ''}`,
-                p_supplier_id: (type === 'PURCHASE' || type === 'RESTOCK') ? supplierId : null,
                 p_location_from: fromLocation,
                 p_location_to: toLocation,
                 p_source_ui: 'quick_action',
+                p_supplier_id: (type === 'PURCHASE' || type === 'RESTOCK') ? supplierId : null,
+                p_order_id: null,
                 p_invoice_ref: (type === 'PURCHASE' || type === 'RESTOCK') ? invoiceRef || null : null,
                 p_unit_cost: (type === 'PURCHASE' || type === 'RESTOCK') ? parsedCost : null
             });
 
             if (logError) {
                 console.warn('Audit log failed (non-blocking):', logError);
+            }
+
+            // Update last_purchase_price so next restock pre-fills the cost
+            if ((type === 'PURCHASE' || type === 'RESTOCK') && parsedCost && parsedCost > 0) {
+                const updateFields: any = { last_purchase_price: parsedCost };
+                if (supplierId) updateFields.last_supplier_id = supplierId;
+                await supabase.from('inventory_items').update(updateFields).eq('id', item.id);
             }
 
             addToast(`✓ Movimiento registrado: ${type}`, 'success');
@@ -406,10 +416,26 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                 </div>
 
                 <div className="p-6 bg-white/[0.02] border-t border-white/5">
+                    {/* Validation hint when button is disabled */}
+                    {(() => {
+                        const missing: string[] = [];
+                        if (!locationId) missing.push('Ubicación');
+                        if (!quantity) missing.push('Cantidad');
+                        if (!reason) missing.push('Motivo');
+                        if (type === 'PURCHASE' && !supplierId) missing.push('Proveedor');
+                        if (missing.length > 0 && !loading) {
+                            return (
+                                <p className="text-[9px] font-bold text-red-400/80 uppercase tracking-widest text-center mb-3">
+                                    Falta: {missing.join(', ')}
+                                </p>
+                            );
+                        }
+                        return null;
+                    })()}
                     <button
                         onClick={handleConfirm}
                         disabled={loading || !quantity || !reason || !locationId || (type === 'PURCHASE' && !supplierId)}
-                        className={`w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all shadow-xl shadow-neon/5 active:scale-95 disabled:opacity-50 ${type === 'WASTE' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
+                        className={`w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all shadow-xl shadow-neon/5 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100 ${type === 'WASTE' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
                             (type === 'PURCHASE' || type === 'RESTOCK') ? 'bg-green-500 text-black' :
                                 'bg-orange-500 text-black'
                             }`}

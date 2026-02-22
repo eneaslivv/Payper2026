@@ -100,11 +100,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 userId: currentUser?.id,
                 email: currentUser?.email
             });
-            setIsLoading(false);
 
+            // FIX: Set emergency profile BEFORE releasing loading to avoid
+            // rendering with isLoading=false + profile=null
             if (currentUser && !currentProfile) {
-                void applyEmergencyProfile(currentUser);
+                const emergencyProfile = buildEmergencyProfile(currentUser);
+                setProfile(emergencyProfile);
+                profileRef.current = emergencyProfile;
             }
+            setIsLoading(false);
         }, 8000);
         return () => clearTimeout(timer);
     }, [isLoading]);
@@ -198,7 +202,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
             if (!mounted) return;
 
-            if (event === 'SIGNED_IN' && !initComplete) return;
+            // FIX: Guard ALL session events with initComplete, not just SIGNED_IN.
+            // TOKEN_REFRESHED can fire before init finishes, causing profile=null race.
+            if (!initComplete && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) return;
 
             if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
                 const newUserId = newSession?.user?.id;
@@ -219,7 +225,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 userIdRef.current = newSession?.user?.id || null;
 
                 if (newSession?.user) {
-                    await fetchProfile(newSession.user.id, newSession.user.email);
+                    try {
+                        await fetchProfile(newSession.user.id, newSession.user.email);
+                    } catch (e) {
+                        console.error('[AUTH] fetchProfile failed in onAuthStateChange:', e);
+                        // Guarantee a profile exists even on unexpected errors
+                        if (!profileRef.current) {
+                            const emergency = buildEmergencyProfile(newSession.user);
+                            setProfile(emergency);
+                            profileRef.current = emergency;
+                        }
+                    }
                 }
                 setIsLoading(false);
 
