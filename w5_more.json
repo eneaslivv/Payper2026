@@ -1,0 +1,1 @@
+{"query": "\nSELECT \n    p.proname,\n    pg_get_function_identity_arguments(p.oid) AS args,\n    p.prosrc AS body\nFROM pg_proc p\nJOIN pg_namespace n ON n.oid = p.pronamespace\nWHERE n.nspname = 'public'\n  AND p.proname IN ('pay_with_wallet', 'p2p_wallet_transfer', 'reconcile_wallet_balances', 'verify_wallet_integrity')\nORDER BY p.proname;\n"}

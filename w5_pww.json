@@ -1,0 +1,1 @@
+{"query": "SELECT p.proname, pg_get_function_identity_arguments(p.oid) AS args, p.prosrc AS body\nFROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace\nWHERE n.nspname = 'public' AND p.proname = 'pay_with_wallet';"}

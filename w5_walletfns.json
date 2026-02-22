@@ -1,0 +1,1 @@
+{"query": "\nSELECT \n    p.proname,\n    pg_get_function_identity_arguments(p.oid) AS args,\n    p.prosrc AS body,\n    p.prosecdef AS security_definer,\n    p.proconfig AS config\nFROM pg_proc p\nJOIN pg_namespace n ON n.oid = p.pronamespace\nWHERE n.nspname = 'public'\n  AND p.proname ILIKE '%wallet%'\nORDER BY p.proname, p.oid;\n"}
