@@ -86,14 +86,8 @@ const StoreSettings: React.FC = () => {
             }
 
             if (data) {
-                // Enrich with emails from profiles
-                const userIds = [...new Set(data.map(r => r.user_id).filter(Boolean))] as string[];
-                const emailMap: Record<string, string> = {};
-                if (userIds.length > 0) {
-                    const { data: profiles } = await supabase.from('profiles').select('id, email').in('id', userIds);
-                    profiles?.forEach(p => { emailMap[p.id] = p.email || ''; });
-                }
-                const formatted = data.map(log => formatAuditLog({ ...log, user_email: emailMap[log.user_id] || '' } as any));
+                // VIEW already includes user_email from profiles JOIN
+                const formatted = data.map(log => formatAuditLog(log as any));
                 setLogs(formatted);
             }
         };
@@ -609,7 +603,7 @@ const StoreSettings: React.FC = () => {
                                         onUpload={(url) => setStore({ ...store, logo_url: url })}
                                     />
                                     <div className="space-y-2">
-                                        <h4 className="text-2xl font-black text-text-main dark:text-white italic uppercase tracking-tighter">Identidad del Nodo</h4>
+                                        <h4 className="text-base font-black text-text-main dark:text-white italic uppercase tracking-tighter">Identidad del Nodo</h4>
                                         <p className="text-[10px] text-text-secondary/60 dark:text-white/30 font-bold uppercase tracking-widest">Personaliza el ADN visual de tu local</p>
                                         <p className="text-[9px] text-neon/60 font-bold mt-2 uppercase tracking-widest">
                                             Hacé click en el logo para subir una imagen
@@ -617,9 +611,9 @@ const StoreSettings: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-8">
-                                    <div className="space-y-3">
-                                        <label className="text-[10px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.3em] ml-2">Nombre Comercial</label>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest ml-1">Nombre Comercial</label>
                                         <input
                                             value={store.name || ''}
                                             onChange={e => {
@@ -628,16 +622,16 @@ const StoreSettings: React.FC = () => {
                                                 const newSlug = newName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
                                                 setStore({ ...store, name: newName, slug: newSlug });
                                             }}
-                                            className="w-full h-16 bg-black/[0.03] dark:bg-white/[0.03] border border-border-color dark:border-white/10 rounded-[1.2rem] px-6 text-text-main dark:text-white text-xs font-bold focus:border-neon outline-none uppercase transition-all shadow-inner"
+                                            className="w-full h-10 bg-black/[0.03] dark:bg-white/[0.03] border border-border-color dark:border-white/10 rounded-lg px-6 text-text-main dark:text-white text-xs font-bold focus:border-neon outline-none uppercase transition-all shadow-inner"
                                         />
                                     </div>
-                                    <div className="space-y-3">
-                                        <label className="text-[10px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.3em] ml-2">Identificador Slug (URL del Menú)</label>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest ml-1">Identificador Slug (URL del Menú)</label>
                                         <div className="flex gap-3">
                                             <input
                                                 value={store.slug || ''}
                                                 onChange={e => setStore({ ...store, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/\s+/g, '-') })}
-                                                className="flex-1 h-16 bg-black/[0.03] dark:bg-white/[0.03] border border-border-color dark:border-white/10 rounded-[1.2rem] px-6 text-text-main dark:text-white text-xs font-bold focus:border-neon outline-none lowercase transition-all shadow-inner"
+                                                className="flex-1 h-10 bg-black/[0.03] dark:bg-white/[0.03] border border-border-color dark:border-white/10 rounded-lg px-6 text-text-main dark:text-white text-xs font-bold focus:border-neon outline-none lowercase transition-all shadow-inner"
                                                 placeholder="mi-tienda"
                                             />
                                             <button
@@ -653,7 +647,7 @@ const StoreSettings: React.FC = () => {
                                                         setStore({ ...store, slug: newSlug });
                                                     }
                                                 }}
-                                                className="h-16 px-6 bg-accent/10 border border-accent/20 rounded-[1.2rem] text-accent text-[10px] font-black uppercase tracking-widest hover:bg-accent hover:text-black transition-all flex items-center gap-2"
+                                                className="h-10 px-6 bg-accent/10 border border-accent/20 rounded-lg text-accent text-[10px] font-black uppercase tracking-widest hover:bg-accent hover:text-black transition-all flex items-center gap-2"
                                                 title="Regenerar desde Nombre"
                                             >
                                                 <span className="material-symbols-outlined text-lg">autorenew</span>
@@ -664,27 +658,27 @@ const StoreSettings: React.FC = () => {
                                             URL del menú: <span className="text-neon">/m/{store.slug || 'tu-slug'}</span>
                                         </p>
                                     </div>
-                                    <div className="space-y-3">
-                                        <label className="text-[10px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.3em] ml-2">Dirección Operativa</label>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest ml-1">Dirección Operativa</label>
                                         <input
                                             value={store.address || ''}
                                             onChange={e => setStore({ ...store, address: e.target.value })}
-                                            className="w-full h-16 bg-black/[0.03] dark:bg-white/[0.03] border border-border-color dark:border-white/10 rounded-[1.2rem] px-6 text-text-main dark:text-white text-xs font-bold focus:border-neon outline-none uppercase transition-all shadow-inner"
+                                            className="w-full h-10 bg-black/[0.03] dark:bg-white/[0.03] border border-border-color dark:border-white/10 rounded-lg px-6 text-text-main dark:text-white text-xs font-bold focus:border-neon outline-none uppercase transition-all shadow-inner"
                                         />
                                     </div>
-                                    <div className="space-y-3">
-                                        <label className="text-[10px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.3em] ml-2">Info Fiscal (CUIT/NIT)</label>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest ml-1">Info Fiscal (CUIT/NIT)</label>
                                         <input
                                             value={store.tax_info || ''}
                                             onChange={e => setStore({ ...store, tax_info: e.target.value })}
-                                            className="w-full h-16 bg-black/[0.03] dark:bg-white/[0.03] border border-border-color dark:border-white/10 rounded-[1.2rem] px-6 text-text-main dark:text-white text-xs font-bold focus:border-neon outline-none uppercase transition-all shadow-inner"
+                                            className="w-full h-10 bg-black/[0.03] dark:bg-white/[0.03] border border-border-color dark:border-white/10 rounded-lg px-6 text-text-main dark:text-white text-xs font-bold focus:border-neon outline-none uppercase transition-all shadow-inner"
                                         />
                                     </div>
                                 </div>
                             </div>
 
                             {/* Service Mode Configuration */}
-                            <div className="mt-12 p-8 rounded-[2rem] bg-neon/5 border border-neon/10 space-y-6">
+                            <div className="mt-6 p-4 rounded-xl bg-neon/5 border border-neon/10 space-y-6">
                                 <div className="flex items-center gap-3">
                                     <span className="material-symbols-outlined text-neon text-xl">tune</span>
                                     <h5 className="text-[10px] font-black text-neon uppercase tracking-widest pt-0.5 whitespace-nowrap">Modo de Operación</h5>
@@ -704,12 +698,12 @@ const StoreSettings: React.FC = () => {
                                             <button
                                                 key={mode.id}
                                                 onClick={() => setStore({ ...store, service_mode: mode.id })}
-                                                className={`relative p-6 rounded-2xl border flex flex-col items-center text-center gap-3 transition-all group ${((store as any).service_mode === mode.id || (!((store as any).service_mode) && mode.id === 'counter'))
+                                                className={`relative p-4 rounded-xl border flex flex-col items-center text-center gap-3 transition-all group ${((store as any).service_mode === mode.id || (!((store as any).service_mode) && mode.id === 'counter'))
                                                     ? 'bg-neon/10 border-neon/30 text-text-main dark:text-white shadow-neon-soft'
                                                     : 'bg-gray-100 dark:bg-black/40 border-border-color/30 dark:border-white/5 text-text-secondary dark:text-white/30 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-text-main dark:hover:text-white hover:border-border-color dark:hover:border-white/10'
                                                     }`}
                                             >
-                                                <div className={`size-10 rounded-full flex items-center justify-center transition-all ${((store as any).service_mode === mode.id || (!((store as any).service_mode) && mode.id === 'counter'))
+                                                <div className={`size-8 rounded-full flex items-center justify-center transition-all ${((store as any).service_mode === mode.id || (!((store as any).service_mode) && mode.id === 'counter'))
                                                     ? 'bg-neon text-black'
                                                     : 'bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/30 group-hover:bg-black/5 dark:group-hover:bg-white/10 group-hover:text-text-main dark:group-hover:text-white'
                                                     }`}>
@@ -728,20 +722,20 @@ const StoreSettings: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="mt-12 p-8 rounded-[2rem] bg-neon/5 border border-neon/10 space-y-6">
+                            <div className="mt-6 p-4 rounded-xl bg-neon/5 border border-neon/10 space-y-6">
                                 <div className="flex items-center gap-3">
                                     <span className="material-symbols-outlined text-neon text-xl">security</span>
                                     <h5 className="text-[10px] font-black text-neon uppercase tracking-widest pt-0.5 whitespace-nowrap">Gestión de Seguridad</h5>
                                     <div className="w-full h-px bg-neon/10"></div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-8 items-end">
-                                    <div className="space-y-3">
+                                <div className="grid grid-cols-2 gap-4 items-end">
+                                    <div className="space-y-1.5">
                                         <p className="text-[9px] font-black text-text-secondary/40 dark:text-white/20 uppercase tracking-widest ml-2">Cambiar Contraseña Maestra</p>
                                         <input
                                             type="password"
                                             value={newPassword}
                                             onChange={e => setNewPassword(e.target.value)}
-                                            className="w-full h-14 bg-white dark:bg-black border border-border-color/30 dark:border-white/5 rounded-xl px-6 text-text-main dark:text-white text-xs font-bold focus:border-neon outline-none transition-all placeholder:text-text-secondary/40 dark:placeholder:text-white/5"
+                                            className="w-full h-10 bg-white dark:bg-black border border-border-color/30 dark:border-white/5 rounded-xl px-6 text-text-main dark:text-white text-xs font-bold focus:border-neon outline-none transition-all placeholder:text-text-secondary/40 dark:placeholder:text-white/5"
                                             placeholder="DEJAR EN BLANCO PARA MANTENER LA ACTUAL"
                                         />
                                     </div>
@@ -754,63 +748,63 @@ const StoreSettings: React.FC = () => {
                     )}
 
                     {activeTab === 'staff' && (
-                        <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
+                        <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
                             {/* Sub-Header para Staff */}
                             <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-xl italic font-black uppercase tracking-tighter text-text-main dark:text-white">Equipo y <span className="text-neon">Permisos</span></h3>
+                                <h3 className="text-sm italic font-black uppercase tracking-tighter text-text-main dark:text-white">Equipo y <span className="text-neon">Permisos</span></h3>
                                 <div className="flex bg-black/[0.02] dark:bg-white/[0.02] p-1 rounded-xl border border-border-color/30 dark:border-white/5 shadow-soft">
-                                    <button onClick={() => setStaffSubTab('members')} className={`px-5 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${staffSubTab === 'members' ? 'bg-black/5 dark:bg-white/10 text-neon' : 'text-text-secondary dark:text-white/30 hover:text-text-main dark:hover:text-white'}`}>Directorio Staff</button>
-                                    <button onClick={() => setStaffSubTab('roles')} className={`px-5 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${staffSubTab === 'roles' ? 'bg-black/5 dark:bg-white/10 text-neon' : 'text-text-secondary dark:text-white/30 hover:text-text-main dark:hover:text-white'}`}>Definición Roles</button>
+                                    <button onClick={() => setStaffSubTab('members')} className={`px-3 py-1.5 rounded-md text-[8px] font-bold uppercase tracking-widest transition-all ${staffSubTab === 'members' ? 'bg-black/5 dark:bg-white/10 text-neon' : 'text-text-secondary dark:text-white/30 hover:text-text-main dark:hover:text-white'}`}>Directorio Staff</button>
+                                    <button onClick={() => setStaffSubTab('roles')} className={`px-3 py-1.5 rounded-md text-[8px] font-bold uppercase tracking-widest transition-all ${staffSubTab === 'roles' ? 'bg-black/5 dark:bg-white/10 text-neon' : 'text-text-secondary dark:text-white/30 hover:text-text-main dark:hover:text-white'}`}>Definición Roles</button>
                                 </div>
                             </div>
 
-                            <div className="min-h-[500px]">
+                            <div className="min-h-[300px]">
                                 {staffSubTab === 'members' && (
                                     <div className="space-y-6 animate-in slide-in-from-left-4">
                                         <div className="flex justify-end">
                                             <button
                                                 onClick={() => setShowInviteModal(true)}
-                                                className="px-8 py-4 rounded-2xl bg-neon text-black font-black text-[12px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-neon-soft flex items-center gap-3"
+                                                className="px-4 py-2 rounded-lg bg-neon text-black font-black text-[9px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-neon-soft flex items-center gap-3"
                                             >
                                                 <span className="material-symbols-outlined font-black">person_add</span>
                                                 Invitar al Equipo
                                             </button>
                                         </div>
-                                        <div className="bg-black/[0.02] dark:bg-white/[0.02] border border-border-color/30 dark:border-white/5 rounded-[2.5rem] overflow-hidden shadow-soft">
+                                        <div className="bg-black/[0.02] dark:bg-white/[0.02] border border-border-color/30 dark:border-white/5 rounded-xl overflow-hidden shadow-soft">
                                             <table className="w-full text-left border-collapse">
                                                 <thead>
                                                     <tr className="bg-black/[0.01] dark:bg-white/[0.01] border-b border-black/[0.02] dark:border-white/[0.02]">
-                                                        <th className="px-8 py-5 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest">Operador</th>
-                                                        <th className="px-8 py-5 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest">Rango</th>
-                                                        <th className="px-8 py-5 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest text-center">Estatus</th>
-                                                        <th className="px-8 py-5 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest text-right">Acciones</th>
+                                                        <th className="px-3 py-2 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest">Operador</th>
+                                                        <th className="px-3 py-2 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest">Rango</th>
+                                                        <th className="px-3 py-2 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest text-center">Estatus</th>
+                                                        <th className="px-3 py-2 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest text-right">Acciones</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-black/[0.02] dark:divide-white/[0.02]">
                                                     {members.map(m => (
                                                         <tr key={m.id} className="hover:bg-black/[0.01] dark:hover:bg-white/[0.01] transition-colors">
-                                                            <td className="px-8 py-5">
+                                                            <td className="px-3 py-2">
                                                                 <div className="flex items-center gap-4">
-                                                                    <div className="size-10 rounded-xl bg-neon/10 text-neon flex items-center justify-center font-black italic uppercase">{m.name.charAt(0)}</div>
+                                                                    <div className="size-7 rounded-md bg-neon/10 text-neon flex items-center justify-center font-black italic uppercase">{m.name.charAt(0)}</div>
                                                                     <div>
-                                                                        <p className="text-[12px] font-black text-text-main dark:text-white uppercase italic">{m.name}</p>
-                                                                        <p className="text-[10px] text-text-secondary dark:text-white/30 font-bold opacity-40 uppercase">{m.email}</p>
+                                                                        <p className="text-[9px] font-black text-text-main dark:text-white uppercase italic">{m.name}</p>
+                                                                        <p className="text-[8px] text-text-secondary dark:text-white/30 font-bold opacity-40 uppercase">{m.email}</p>
                                                                     </div>
                                                                 </div>
                                                             </td>
-                                                            <td className="px-8 py-5">
+                                                            <td className="px-3 py-2">
                                                                 <span className={`text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest italic ${(m as any).systemRole ? 'bg-accent/10 text-accent' : 'bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/60'
                                                                     }`}>
                                                                     {(m as any).systemRole || roles.find(r => r.id === m.roleId)?.name || 'Sin Rol'}
 
                                                                 </span>
                                                             </td>
-                                                            <td className="px-8 py-5 text-center">
+                                                            <td className="px-3 py-2 text-center">
                                                                 <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase border ${m.status === 'active' ? 'bg-neon/5 text-neon border-neon/10' : m.status === 'pending' ? 'bg-amber-500/5 text-amber-500 border-amber-500/10' : 'bg-red-500/5 text-red-500 border-red-500/10'}`}>
                                                                     {m.status === 'active' ? 'READY' : m.status === 'pending' ? 'PENDIENTE' : 'SUSPENDIDO'}
                                                                 </span>
                                                             </td>
-                                                            <td className="px-8 py-5 text-right">
+                                                            <td className="px-3 py-2 text-right">
                                                                 <button onClick={() => toggleStatus(m.id, m.status)} className={`size-8 rounded-lg flex items-center justify-center transition-all ${m.status === 'active' ? 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white' : 'bg-neon/10 text-neon hover:bg-neon hover:text-black'} ml-auto`}>
                                                                     <span className="material-symbols-outlined text-base">{m.status === 'active' ? 'block' : 'check'}</span>
                                                                 </button>
@@ -827,30 +821,30 @@ const StoreSettings: React.FC = () => {
                                 )}
 
                                 {staffSubTab === 'roles' && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-8 animate-in slide-in-from-right-4">
-                                        <button onClick={handleNewRole} className="min-h-[220px] rounded-[3rem] border border-dashed border-border-color dark:border-white/10 flex flex-col items-center justify-center gap-4 group hover:border-neon/40 hover:bg-neon/[0.02] transition-all">
-                                            <div className="size-16 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center text-text-secondary/40 dark:text-white/20 group-hover:text-neon group-hover:scale-110 transition-all">
-                                                <span className="material-symbols-outlined text-3xl">add</span>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-3 animate-in slide-in-from-right-4">
+                                        <button onClick={handleNewRole} className="min-h-[100px] rounded-xl border border-dashed border-border-color dark:border-white/10 flex flex-col items-center justify-center gap-4 group hover:border-neon/40 hover:bg-neon/[0.02] transition-all">
+                                            <div className="size-8 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center text-text-secondary/40 dark:text-white/20 group-hover:text-neon group-hover:scale-110 transition-all">
+                                                <span className="material-symbols-outlined text-lg">add</span>
                                             </div>
                                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary dark:text-white/40 group-hover:text-neon transition-colors">Crear Nueva Jerarquía</p>
                                         </button>
 
                                         {roles.map(role => (
-                                            <div key={role.id} className="bg-black/[0.02] dark:bg-white/[0.02] p-10 rounded-[3rem] border border-border-color/30 dark:border-white/5 flex flex-col justify-between group hover:border-border-color dark:hover:border-white/10 transition-all shadow-soft overflow-hidden relative">
+                                            <div key={role.id} className="bg-black/[0.02] dark:bg-white/[0.02] p-4 rounded-xl border border-border-color/30 dark:border-white/5 flex flex-col justify-between group hover:border-border-color dark:hover:border-white/10 transition-all shadow-soft overflow-hidden relative">
                                                 <div>
-                                                    <div className="flex justify-between items-start mb-8">
-                                                        <div className="size-14 rounded-2xl bg-black/5 dark:bg-white/5 flex items-center justify-center text-text-secondary dark:text-white/30 group-hover:text-text-main dark:group-hover:text-white transition-colors">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <div className="size-8 rounded-lg bg-black/5 dark:bg-white/5 flex items-center justify-center text-text-secondary dark:text-white/30 group-hover:text-text-main dark:group-hover:text-white transition-colors">
                                                             <span className="material-symbols-outlined text-2xl">security</span>
                                                         </div>
                                                         {role.is_system && <span className="text-[8px] bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/40 px-3 py-1.5 rounded-xl font-black uppercase tracking-widest border border-border-color/30 dark:border-white/5">System Locked</span>}
                                                     </div>
-                                                    <h3 className="text-2xl font-black italic uppercase tracking-tight text-text-main dark:text-white mb-2">{role.name}</h3>
+                                                    <h3 className="text-sm font-black italic uppercase tracking-tight text-text-main dark:text-white mb-2">{role.name}</h3>
                                                     <p className="text-[10px] text-text-secondary dark:text-white/40 font-medium leading-relaxed opacity-60 line-clamp-2">{role.description}</p>
                                                 </div>
 
-                                                <div className="mt-10 pt-8 border-t border-border-color/30 dark:border-white/5 flex items-center justify-between">
+                                                <div className="mt-3 pt-2.5 border-t border-border-color/30 dark:border-white/5 flex items-center justify-between">
                                                     <span className="text-[9px] font-black text-text-secondary/40 dark:text-white/10 uppercase tracking-widest">Permisos Configurados</span>
-                                                    <button onClick={() => handleEditRole(role)} className="px-6 py-3 rounded-2xl bg-black/5 dark:bg-white/5 text-text-main dark:text-white font-black text-[9px] uppercase tracking-widest hover:bg-neon hover:text-black transition-all">
+                                                    <button onClick={() => handleEditRole(role)} className="px-3 py-1.5 rounded-lg bg-black/5 dark:bg-white/5 text-text-main dark:text-white font-black text-[9px] uppercase tracking-widest hover:bg-neon hover:text-black transition-all">
                                                         Editar Matriz
                                                     </button>
                                                 </div>
@@ -863,14 +857,14 @@ const StoreSettings: React.FC = () => {
                     )}
 
                     {activeTab === 'audit' && (
-                        <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <div className="flex flex-col xl:flex-row justify-between gap-6 items-center">
-                                <div className="flex bg-black/[0.02] dark:bg-white/[0.02] p-1 rounded-[1.5rem] border border-border-color/30 dark:border-white/5 shadow-soft overflow-x-auto no-scrollbar backdrop-blur-xl">
+                                <div className="flex bg-black/[0.02] dark:bg-white/[0.02] p-0.5 rounded-lg border border-border-color/30 dark:border-white/5 shadow-soft overflow-x-auto no-scrollbar backdrop-blur-xl">
                                     {AUDIT_CATEGORIES.map(cat => (
                                         <button
                                             key={cat.slug}
                                             onClick={() => setAuditFilter(cat.slug)}
-                                            className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3 whitespace-nowrap ${auditFilter === cat.slug ? 'bg-neon/10 text-neon shadow-neon-soft' : 'text-text-secondary dark:text-white/30 hover:text-neon'}`}
+                                            className={`px-3 py-1.5 rounded-md text-[8px] font-black uppercase tracking-widest transition-all flex items-center gap-3 whitespace-nowrap ${auditFilter === cat.slug ? 'bg-neon/10 text-neon shadow-neon-soft' : 'text-text-secondary dark:text-white/30 hover:text-neon'}`}
                                         >
                                             <span className="material-symbols-outlined text-lg">{cat.icon}</span>
                                             {cat.label}
@@ -883,42 +877,42 @@ const StoreSettings: React.FC = () => {
                                         value={auditSearch}
                                         onChange={(e) => setAuditSearch(e.target.value)}
                                         placeholder="BUSCAR EVENTO OPERATIVO..."
-                                        className="h-12 w-full pl-11 pr-5 rounded-2xl border border-border-color/30 dark:border-white/5 bg-black/5 dark:bg-white/5 outline-none focus:ring-1 focus:ring-neon/20 text-[10px] font-black uppercase tracking-[0.2em] text-text-main dark:text-white placeholder:text-text-secondary/40 dark:placeholder:text-white/10 transition-all"
+                                        className="h-8 w-full pl-8 pr-3 rounded-lg border border-border-color/30 dark:border-white/5 bg-black/5 dark:bg-white/5 outline-none focus:ring-1 focus:ring-neon/20 text-[8px] font-black uppercase tracking-widest text-text-main dark:text-white placeholder:text-text-secondary/40 dark:placeholder:text-white/10 transition-all"
                                     />
                                 </div>
                             </div>
 
-                            <div className="bg-black/[0.02] dark:bg-white/[0.02] rounded-[3rem] border border-border-color/30 dark:border-white/5 shadow-soft overflow-hidden">
+                            <div className="bg-black/[0.02] dark:bg-white/[0.02] rounded-xl border border-border-color/30 dark:border-white/5 shadow-soft overflow-hidden">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
                                         <tr className="bg-black/[0.01] dark:bg-white/[0.01] border-b border-black/[0.02] dark:border-white/[0.02]">
-                                            <th className="px-8 py-6 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest">Tiempo</th>
-                                            <th className="px-8 py-6 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest">Operador</th>
-                                            <th className="px-8 py-6 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest">Acción / Entidad</th>
-                                            <th className="px-8 py-6 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest">Detalle Táctico</th>
-                                            <th className="px-8 py-6 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest text-right">Impacto</th>
+                                            <th className="px-3 py-2 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest">Tiempo</th>
+                                            <th className="px-3 py-2 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest">Operador</th>
+                                            <th className="px-3 py-2 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest">Acción / Entidad</th>
+                                            <th className="px-3 py-2 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest">Detalle Táctico</th>
+                                            <th className="px-3 py-2 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest text-right">Impacto</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-black/[0.02] dark:divide-white/[0.02]">
                                         {filteredLogs.map(log => (
                                             <tr key={log.id} className="hover:bg-black/[0.01] dark:hover:bg-white/[0.01] transition-all group">
-                                                <td className="px-8 py-6">
-                                                    <p className="text-[12px] font-black text-text-main dark:text-white uppercase italic leading-none mb-1.5">{log.timestamp.split(' ')[1]}</p>
+                                                <td className="px-3 py-2">
+                                                    <p className="text-[9px] font-black text-text-main dark:text-white uppercase italic leading-none mb-1.5">{log.timestamp.split(' ')[1]}</p>
                                                     <p className="text-[9px] text-text-secondary dark:text-white/30 font-bold uppercase tracking-widest opacity-40">{log.timestamp.split(' ')[0]}</p>
                                                 </td>
-                                                <td className="px-8 py-6">
-                                                    <p className="text-[12px] font-black text-text-main dark:text-white uppercase italic leading-none mb-1.5">{log.userName}</p>
+                                                <td className="px-3 py-2">
+                                                    <p className="text-[9px] font-black text-text-main dark:text-white uppercase italic leading-none mb-1.5">{log.userName}</p>
                                                     <p className="text-[9px] text-text-secondary dark:text-white/30 font-bold opacity-50 tracking-tight">{log.userRole}</p>
                                                 </td>
-                                                <td className="px-8 py-6">
-                                                    <p className="text-[12px] font-black uppercase text-text-main dark:text-white tracking-tight leading-none mb-1.5">{log.action}</p>
+                                                <td className="px-3 py-2">
+                                                    <p className="text-[9px] font-black uppercase text-text-main dark:text-white tracking-tight leading-none mb-1.5">{log.action}</p>
                                                     <p className="text-[10px] text-neon font-black uppercase italic tracking-tighter">{log.entity}</p>
                                                 </td>
-                                                <td className="px-8 py-6">
-                                                    <p className="text-[11px] font-medium text-text-secondary dark:text-white/50 leading-relaxed uppercase tracking-tight max-w-xs opacity-70 group-hover:opacity-100 transition-opacity">{log.detail}</p>
+                                                <td className="px-3 py-2">
+                                                    <p className="text-[8px] font-medium text-text-secondary dark:text-white/50 leading-relaxed uppercase tracking-tight max-w-xs opacity-70 group-hover:opacity-100 transition-opacity">{log.detail}</p>
                                                 </td>
-                                                <td className="px-8 py-6 text-right">
-                                                    <div className={`size-3 ml-auto rounded-full ${log.impact === 'critical' ? 'bg-orange-500 animate-pulse shadow-[0_0_12px_rgba(249,115,22,0.6)]' : log.impact === 'positive' ? 'bg-neon shadow-neon-soft' : 'bg-black/5 dark:bg-white/10'}`}></div>
+                                                <td className="px-3 py-2 text-right">
+                                                    <div className={`size-2 ml-auto rounded-full ${log.impact === 'critical' ? 'bg-orange-500 animate-pulse shadow-[0_0_12px_rgba(249,115,22,0.6)]' : log.impact === 'positive' ? 'bg-neon shadow-neon-soft' : 'bg-black/5 dark:bg-white/10'}`}></div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -929,22 +923,22 @@ const StoreSettings: React.FC = () => {
                     )}
 
                     {activeTab === 'ai' && (
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 animate-in fade-in slide-in-from-right-4 duration-500">
-                            <div className="lg:col-span-8 space-y-10">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 animate-in fade-in slide-in-from-right-4 duration-500">
+                            <div className="lg:col-span-8 space-y-4">
                                 <Section title="Configuración de Inteligencia" icon="auto_awesome">
-                                    <div className="space-y-10">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            <div className="p-8 rounded-[2.5rem] bg-gray-100 dark:bg-black/40 border border-border-color/30 dark:border-white/5 space-y-6">
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <div className="p-3 rounded-xl bg-gray-100 dark:bg-black/40 border border-border-color/30 dark:border-white/5 space-y-3">
                                                 <h4 className="text-[11px] font-black uppercase text-neon tracking-[0.2em] italic leading-none">Modo Operativo</h4>
-                                                <div className="flex bg-gray-200 dark:bg-black/60 p-1.5 rounded-[1.2rem] border border-border-color/30 dark:border-white/5">
-                                                    <button onClick={() => setAiConfig({ ...aiConfig, activeMode: 'assistant' })} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${aiConfig.activeMode === 'assistant' ? 'bg-white dark:bg-white/10 text-text-main dark:text-white shadow-xl' : 'text-text-secondary/40 dark:text-white/20 hover:text-text-secondary dark:hover:text-white/40'}`}>Asistente</button>
-                                                    <button onClick={() => setAiConfig({ ...aiConfig, activeMode: 'agent' })} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${aiConfig.activeMode === 'agent' ? 'bg-white dark:bg-white/10 text-text-main dark:text-white shadow-xl' : 'text-text-secondary/40 dark:text-white/20 hover:text-text-secondary dark:hover:text-white/40'}`}>Agente</button>
+                                                <div className="flex bg-gray-200 dark:bg-black/60 p-0.5 rounded-lg border border-border-color/30 dark:border-white/5">
+                                                    <button onClick={() => setAiConfig({ ...aiConfig, activeMode: 'assistant' })} className={`flex-1 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${aiConfig.activeMode === 'assistant' ? 'bg-white dark:bg-white/10 text-text-main dark:text-white shadow-xl' : 'text-text-secondary/40 dark:text-white/20 hover:text-text-secondary dark:hover:text-white/40'}`}>Asistente</button>
+                                                    <button onClick={() => setAiConfig({ ...aiConfig, activeMode: 'agent' })} className={`flex-1 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${aiConfig.activeMode === 'agent' ? 'bg-white dark:bg-white/10 text-text-main dark:text-white shadow-xl' : 'text-text-secondary/40 dark:text-white/20 hover:text-text-secondary dark:hover:text-white/40'}`}>Agente</button>
                                                 </div>
                                                 <p className="text-[9px] text-text-secondary dark:text-white/30 uppercase font-bold tracking-tight leading-relaxed italic">
                                                     El modo Agente permite a la IA realizar acciones directas como autorizar correcciones de stock o ajustes de precios.
                                                 </p>
                                             </div>
-                                            <div className="p-8 rounded-[2.5rem] bg-gray-100 dark:bg-black/40 border border-border-color/30 dark:border-white/5 space-y-6">
+                                            <div className="p-3 rounded-xl bg-gray-100 dark:bg-black/40 border border-border-color/30 dark:border-white/5 space-y-3">
                                                 <h4 className="text-[11px] font-black uppercase text-text-secondary dark:text-white/40 tracking-[0.2em] italic leading-none">Capacidades del Enlace</h4>
                                                 <div className="space-y-3">
                                                     <LogicRow title="Insights Predictivos" desc="Detección de tendencias de venta" active={aiConfig.capabilities.analysis} onToggle={() => setAiConfig({ ...aiConfig, capabilities: { ...aiConfig.capabilities, analysis: !aiConfig.capabilities.analysis } })} />
@@ -955,12 +949,12 @@ const StoreSettings: React.FC = () => {
                                     </div>
                                 </Section>
                             </div>
-                            <div className="lg:col-span-4 space-y-10">
+                            <div className="lg:col-span-4 space-y-4">
                                 <Section title="Consumo de Créditos" icon="bolt">
-                                    <div className="space-y-8">
+                                    <div className="space-y-3">
                                         <div className="flex justify-between items-end">
                                             <div>
-                                                <p className="text-5xl font-black italic text-text-main dark:text-white leading-none tracking-tighter">{(aiConfig.usageStats.current / 1000).toFixed(1)}k</p>
+                                                <p className="text-lg font-black italic text-text-main dark:text-white leading-none tracking-tighter">{(aiConfig.usageStats.current / 1000).toFixed(1)}k</p>
                                                 <p className="text-[10px] font-black text-text-secondary/40 dark:text-white/20 uppercase tracking-widest mt-2">Tokens este mes</p>
                                             </div>
                                             <div className="text-right">
@@ -968,10 +962,10 @@ const StoreSettings: React.FC = () => {
                                                 <p className="text-[10px] font-black text-text-secondary/40 dark:text-white/20 uppercase tracking-widest mt-2">Límite Pro</p>
                                             </div>
                                         </div>
-                                        <div className="w-full h-3 bg-black/5 dark:bg-white/5 rounded-full overflow-hidden border border-border-color/30 dark:border-white/5">
+                                        <div className="w-full h-1.5 bg-black/5 dark:bg-white/5 rounded-full overflow-hidden border border-border-color/30 dark:border-white/5">
                                             <div className="h-full bg-neon shadow-neon-soft transition-all duration-1000" style={{ width: `${(aiConfig.usageStats.current / aiConfig.usageStats.limit) * 100}%` }}></div>
                                         </div>
-                                        <button className="w-full py-5 rounded-[1.5rem] bg-white text-black text-[11px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl">
+                                        <button className="w-full py-2 rounded-lg bg-white text-black text-[9px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl">
                                             Ampificar Plan IA
                                         </button>
                                     </div>
@@ -988,35 +982,35 @@ const StoreSettings: React.FC = () => {
                 </div>
 
                 {/* SIDEBAR STATUS */}
-                <div className="w-96 space-y-8">
-                    <div className="p-10 rounded-[3rem] bg-black/[0.02] dark:bg-white/[0.02] border border-border-color dark:border-white/10 space-y-8 backdrop-blur-xl">
-                        <div className="flex items-center gap-4 pb-6 border-b border-border-color/30 dark:border-white/5">
-                            <div className="size-12 rounded-2xl bg-neon/10 flex items-center justify-center text-neon">
-                                <span className="material-symbols-outlined text-2xl">monitor_heart</span>
+                <div className="w-64 space-y-3">
+                    <div className="p-4 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-border-color dark:border-white/10 space-y-3 backdrop-blur-xl">
+                        <div className="flex items-center gap-2 pb-3 border-b border-border-color/30 dark:border-white/5">
+                            <div className="size-7 rounded-lg bg-neon/10 flex items-center justify-center text-neon">
+                                <span className="material-symbols-outlined text-[14px]">monitor_heart</span>
                             </div>
-                            <h4 className="text-xs font-black text-text-main dark:text-white uppercase tracking-[0.3em]">Estado del Sistema</h4>
+                            <h4 className="text-[9px] font-black text-text-main dark:text-white uppercase tracking-widest">Estado del Sistema</h4>
                         </div>
 
-                        <div className="space-y-8">
-                            <div className="p-6 rounded-2xl bg-gray-100 dark:bg-black/40 border border-border-color/30 dark:border-white/5 flex items-center justify-between group hover:border-neon/20 transition-all">
-                                <span className="text-[10px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest">Servidores Operativos</span>
-                                <div className="size-2.5 bg-neon rounded-full shadow-[0_0_15px_rgba(74,222,128,0.5)] animate-pulse"></div>
+                        <div className="space-y-3">
+                            <div className="p-2.5 rounded-lg bg-gray-100 dark:bg-black/40 border border-border-color/30 dark:border-white/5 flex items-center justify-between">
+                                <span className="text-[8px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest">Servidores Operativos</span>
+                                <div className="size-2 bg-neon rounded-full shadow-neon-soft animate-pulse"></div>
                             </div>
 
-                            <div className="space-y-3 px-2">
-                                <div className="flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-text-secondary/40 dark:text-white/20 text-lg">sync</span>
-                                    <p className="text-[10px] font-black text-text-secondary/40 dark:text-white/20 uppercase tracking-[0.2em]">Ultima Sincronización</p>
+                            <div className="space-y-1 px-1">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="material-symbols-outlined text-text-secondary/40 dark:text-white/20 text-sm">sync</span>
+                                    <p className="text-[8px] font-black text-text-secondary/40 dark:text-white/20 uppercase tracking-widest">Ultima Sincronización</p>
                                 </div>
-                                <p className="text-text-main dark:text-white font-black italic text-base">Hace 2 minutos <span className="text-neon/60">(Nodo Alpha)</span></p>
+                                <p className="text-text-main dark:text-white font-black italic text-xs">Hace 2 min <span className="text-neon/60">(Nodo Alpha)</span></p>
                             </div>
 
-                            <div className="p-6 rounded-2xl bg-black/[0.03] dark:bg-white/[0.03] border border-border-color/30 dark:border-white/5 flex flex-col gap-4">
-                                <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest">
-                                    <span className="text-text-secondary dark:text-white/30">Nivel de Latencia</span>
-                                    <span className="text-neon">12ms - EXCELLENT</span>
+                            <div className="p-2.5 rounded-lg bg-black/[0.03] dark:bg-white/[0.03] border border-border-color/30 dark:border-white/5 flex flex-col gap-2">
+                                <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-widest">
+                                    <span className="text-text-secondary dark:text-white/30">Latencia</span>
+                                    <span className="text-neon">12ms</span>
                                 </div>
-                                <div className="w-full h-1.5 bg-black/5 dark:bg-white/5 rounded-full overflow-hidden">
+                                <div className="w-full h-1 bg-black/5 dark:bg-white/5 rounded-full overflow-hidden">
                                     <div className="h-full bg-neon w-[95%]"></div>
                                 </div>
                             </div>
@@ -1026,18 +1020,18 @@ const StoreSettings: React.FC = () => {
                     <button
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="w-full py-8 bg-white text-black rounded-[2.5rem] font-black text-[14px] uppercase tracking-[0.4em] hover:scale-[1.03] active:scale-95 transition-all shadow-2xl flex items-center justify-center gap-4 disabled:opacity-50"
+                        className="w-full py-2.5 bg-neon text-black rounded-lg font-black text-[9px] uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-neon-soft flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                         {isSaving ? (
-                            <div className="size-5 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
+                            <div className="size-3.5 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
                         ) : (
-                            <span className="material-symbols-outlined font-black">save_as</span>
+                            <span className="material-symbols-outlined text-sm">save</span>
                         )}
-                        {isSaving ? 'Sincronizando...' : 'Actualizar Configuración'}
+                        {isSaving ? 'Guardando...' : 'Guardar Cambios'}
                     </button>
 
-                    <button className="w-full py-6 text-text-secondary/40 dark:text-white/20 text-[10px] font-black uppercase tracking-[0.3em] hover:text-red-500 transition-all italic underline decoration-border-color/30 dark:decoration-white/5">
-                        Restaurar Valores por Defecto
+                    <button className="w-full py-1.5 text-text-secondary/40 dark:text-white/20 text-[8px] font-bold uppercase tracking-widest hover:text-red-500 transition-all">
+                        Restaurar valores
                     </button>
                 </div>
             </div>
@@ -1068,12 +1062,12 @@ const StoreSettings: React.FC = () => {
 // --- HELPER COMPONENTS ---
 
 const Section: React.FC<{ title: string, icon: string, children: React.ReactNode }> = ({ title, icon, children }) => (
-    <div className="bg-black/[0.02] dark:bg-white/[0.02] p-10 rounded-[3rem] border border-border-color/30 dark:border-white/5 space-y-10 backdrop-blur-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-10 opacity-[0.02] pointer-events-none">
-            <span className="material-symbols-outlined text-8xl">{icon}</span>
+    <div className="bg-black/[0.02] dark:bg-white/[0.02] p-4 rounded-xl border border-border-color/30 dark:border-white/5 space-y-3 backdrop-blur-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-4 opacity-[0.02] pointer-events-none">
+            <span className="material-symbols-outlined text-4xl">{icon}</span>
         </div>
-        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] border-b border-border-color/30 dark:border-white/5 pb-8 text-text-main dark:text-white flex items-center gap-4 italic leading-none">
-            <span className="material-symbols-outlined text-neon text-xl">{icon}</span>
+        <h3 className="text-[10px] font-black uppercase tracking-widest border-b border-border-color/30 dark:border-white/5 pb-3 text-text-main dark:text-white flex items-center gap-2 italic leading-none">
+            <span className="material-symbols-outlined text-neon text-[15px]">{icon}</span>
             {title}
         </h3>
         <div className="relative z-10">
@@ -1320,13 +1314,13 @@ const PaymentSettingsInline: React.FC<{ storeId: string }> = ({ storeId }) => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-10 border-t border-border-color/30 dark:border-white/5">
                         <div className="space-y-4">
-                            <label className="text-[10px] font-black uppercase text-text-secondary/40 dark:text-white/20 tracking-[0.3em] ml-2">App Access Token</label>
+                            <label className="text-[10px] font-black uppercase text-text-secondary/40 dark:text-white/20 tracking-widest ml-1">App Access Token</label>
                             <div className="relative group">
                                 <input type="password" value={status.mp_access_token ? '●'.repeat(30) : ''} readOnly className="w-full h-14 px-6 rounded-2xl bg-gray-100 dark:bg-black/60 border border-border-color dark:border-white/10 text-text-main dark:text-white text-[11px] font-mono outline-none group-hover:border-border-color dark:group-hover:border-white/20 transition-all" />
                             </div>
                         </div>
                         <div className="space-y-4">
-                            <label className="text-[10px] font-black uppercase text-text-secondary/40 dark:text-white/20 tracking-[0.3em] ml-2">MP User ID</label>
+                            <label className="text-[10px] font-black uppercase text-text-secondary/40 dark:text-white/20 tracking-widest ml-1">MP User ID</label>
                             <div className="relative group">
                                 <input type="text" value={status.mp_user_id || ''} readOnly className="w-full h-14 px-6 rounded-2xl bg-gray-100 dark:bg-black/60 border border-border-color dark:border-white/10 text-text-main dark:text-white text-[11px] font-mono outline-none group-hover:border-border-color dark:group-hover:border-white/20 transition-all" />
                             </div>
@@ -1416,7 +1410,7 @@ const RoleModal: React.FC<{
                 <div className="flex-1 flex overflow-hidden">
                     <div className="w-96 p-12 border-r border-border-color/30 dark:border-white/5 bg-gray-50 dark:bg-black/40 overflow-y-auto shrink-0 space-y-10">
                         <div className="space-y-4">
-                            <label className="text-[10px] font-black uppercase text-text-secondary/40 dark:text-white/20 tracking-[0.3em] ml-2">Nombre del Rol</label>
+                            <label className="text-[10px] font-black uppercase text-text-secondary/40 dark:text-white/20 tracking-widest ml-1">Nombre del Rol</label>
                             <input
                                 value={roleForm.name || ''}
                                 onChange={e => setRoleForm({ ...roleForm, name: e.target.value })}
@@ -1425,7 +1419,7 @@ const RoleModal: React.FC<{
                             />
                         </div>
                         <div className="space-y-4">
-                            <label className="text-[10px] font-black uppercase text-text-secondary/40 dark:text-white/20 tracking-[0.3em] ml-2">Descripción Funcional</label>
+                            <label className="text-[10px] font-black uppercase text-text-secondary/40 dark:text-white/20 tracking-widest ml-1">Descripción Funcional</label>
                             <textarea
                                 value={roleForm.description || ''}
                                 onChange={e => setRoleForm({ ...roleForm, description: e.target.value })}

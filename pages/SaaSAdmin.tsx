@@ -721,31 +721,31 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
          {selectedStore && (
             <div className="fixed inset-0 z-[500] flex items-center justify-center p-6">
                <div className="absolute inset-0 bg-black/98 backdrop-blur-3xl" onClick={() => setSelectedStore(null)}></div>
-               <div className="relative bg-[#0F110F] rounded-[4rem] p-16 border border-white/10 w-full max-w-6xl shadow-2xl animate-in zoom-in-95 duration-500 overflow-hidden">
+               <div className="relative bg-[#0F110F] rounded-2xl p-8 border border-white/10 w-full max-w-6xl shadow-2xl animate-in zoom-in-95 duration-500 overflow-hidden max-h-[90vh] overflow-y-auto">
 
                   {/* BACKGROUND GLOWS */}
-                  <div className="absolute top-[-10%] left-[-10%] size-96 bg-accent/5 blur-[120px] rounded-full"></div>
-                  <div className="absolute bottom-[-10%] right-[-10%] size-96 bg-neon/5 blur-[120px] rounded-full"></div>
+                  <div className="absolute top-[-10%] left-[-10%] size-64 bg-accent/5 blur-[80px] rounded-full"></div>
+                  <div className="absolute bottom-[-10%] right-[-10%] size-64 bg-neon/5 blur-[80px] rounded-full"></div>
 
-                  <header className="relative z-10 mb-16">
+                  <header className="relative z-10 mb-6">
                      <div className="flex justify-between items-start">
-                        <div className="space-y-3">
-                           <div className="flex items-center gap-3">
-                              <div className="size-2 bg-accent rounded-full animate-pulse"></div>
-                              <p className="text-[10px] font-black text-accent uppercase tracking-[0.5em]">Global Config Hub</p>
+                        <div className="space-y-1.5">
+                           <div className="flex items-center gap-2">
+                              <div className="size-1.5 bg-accent rounded-full animate-pulse"></div>
+                              <p className="text-[9px] font-black text-accent uppercase tracking-[0.3em]">Config Hub</p>
                            </div>
-                           <h3 className="text-6xl font-black text-white italic leading-none tracking-tighter uppercase">
+                           <h3 className="text-2xl font-black text-white italic leading-none tracking-tighter uppercase">
                               Panel de <span className="text-accent">Configuración</span>
                            </h3>
-                           <p className="text-[11px] font-bold text-white/30 uppercase tracking-[0.4em]">Mando centralizado de negocio, equipo y seguridad</p>
+                           <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em]">Negocio, equipo y seguridad</p>
                         </div>
-                        <button onClick={() => setSelectedStore(null)} className="size-16 rounded-[2rem] bg-white/5 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 transition-all border border-white/5 group">
-                           <span className="material-symbols-outlined text-3xl group-hover:rotate-90 transition-transform duration-500">close</span>
+                        <button onClick={() => setSelectedStore(null)} className="size-10 rounded-xl bg-white/5 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 transition-all border border-white/5 group">
+                           <span className="material-symbols-outlined text-xl group-hover:rotate-90 transition-transform duration-500">close</span>
                         </button>
                      </div>
 
                      {/* TABS NAVBAR */}
-                     <nav className="flex gap-4 mt-12 p-2 bg-white/[0.02] border border-white/5 rounded-[2.5rem] w-fit">
+                     <nav className="flex gap-2 mt-5 p-1.5 bg-white/[0.02] border border-white/5 rounded-xl w-fit">
                         {[
                            { id: 'negocio', label: 'NEGOCIO', icon: 'storefront' },
                            { id: 'staff', label: 'STAFF & ROLES', icon: 'badge' },
@@ -756,59 +756,59 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                            <button
                               key={t.id}
                               onClick={() => setConfigTab(t.id as any)}
-                              className={`flex items-center gap-3 px-8 py-4 rounded-[1.8rem] text-[11px] font-black tracking-widest transition-all ${configTab === t.id ? 'bg-accent/10 text-accent border border-accent/20 shadow-lg' : 'text-white/30 hover:text-white/60'}`}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black tracking-wider transition-all ${configTab === t.id ? 'bg-accent/10 text-accent border border-accent/20 shadow-sm' : 'text-white/30 hover:text-white/60'}`}
                            >
-                              <span className="material-symbols-outlined text-xl">{t.icon}</span>
+                              <span className="material-symbols-outlined text-base">{t.icon}</span>
                               {t.label}
                            </button>
                         ))}
                      </nav>
                   </header>
 
-                  <div className="relative z-10 flex gap-12">
+                  <div className="relative z-10 flex gap-6">
                      {/* MAIN CONTENT AREA */}
-                     <div className="flex-1 space-y-12">
+                     <div className="flex-1 space-y-6">
                         {configTab === 'negocio' && (
-                           <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                              <div className="flex items-center gap-4 border-b border-white/5 pb-6">
-                                 <span className="material-symbols-outlined text-accent text-3xl">info</span>
-                                 <h4 className="text-xl font-black text-white italic uppercase tracking-tighter">Información Operativa</h4>
+                           <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                              <div className="flex items-center gap-3 border-b border-white/5 pb-3">
+                                 <span className="material-symbols-outlined text-accent text-xl">info</span>
+                                 <h4 className="text-base font-black text-white italic uppercase tracking-tighter">Información Operativa</h4>
                               </div>
 
-                              <div className="grid grid-cols-2 gap-10">
-                                 <div className="space-y-4">
-                                    <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] ml-2">Nombre de Fantasía</label>
+                              <div className="grid grid-cols-2 gap-4">
+                                 <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] ml-1">Nombre de Fantasía</label>
                                     <div className="relative group">
                                        <input
                                           defaultValue={selectedStore.name}
                                           onBlur={(e) => handleUpdateStore(selectedStore.id, { name: e.target.value })}
-                                          className="w-full h-20 bg-white/[0.03] border border-white/10 rounded-[1.5rem] px-8 text-white text-sm font-bold focus:border-accent outline-none uppercase transition-all shadow-inner"
+                                          className="w-full h-11 bg-white/[0.03] border border-white/10 rounded-xl px-4 text-white text-xs font-bold focus:border-accent outline-none uppercase transition-all"
                                        />
-                                       <div className="absolute right-6 top-1/2 -translate-y-1/2 text-white/10 group-focus-within:text-accent transition-colors"><span className="material-symbols-outlined">edit</span></div>
+                                       <div className="absolute right-3 top-1/2 -translate-y-1/2 text-white/10 group-focus-within:text-accent transition-colors"><span className="material-symbols-outlined text-sm">edit</span></div>
                                     </div>
                                  </div>
-                                 <div className="space-y-4">
-                                    <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] ml-2">Eslogan Comercial</label>
+                                 <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] ml-1">Eslogan Comercial</label>
                                     <input
-                                       className="w-full h-20 bg-white/[0.03] border border-white/10 rounded-[1.5rem] px-8 text-white text-sm font-bold focus:border-accent outline-none uppercase transition-all shadow-inner placeholder:text-white/5"
+                                       className="w-full h-11 bg-white/[0.03] border border-white/10 rounded-xl px-4 text-white text-xs font-bold focus:border-accent outline-none uppercase transition-all placeholder:text-white/5"
                                        placeholder="COFFEE EXPERIENCE UNIT"
                                     />
                                  </div>
-                                 <div className="space-y-4">
-                                    <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] ml-2">Dirección Física</label>
+                                 <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] ml-1">Dirección Física</label>
                                     <input
                                        defaultValue={selectedStore.address || ''}
                                        onBlur={(e) => handleUpdateStore(selectedStore.id, { address: e.target.value })}
-                                       className="w-full h-20 bg-white/[0.03] border border-white/10 rounded-[1.5rem] px-8 text-white text-sm font-bold focus:border-accent outline-none transition-all shadow-inner"
+                                       className="w-full h-11 bg-white/[0.03] border border-white/10 rounded-xl px-4 text-white text-xs font-bold focus:border-accent outline-none transition-all"
                                        placeholder="AV. PRINCIPAL 123"
                                     />
                                  </div>
-                                 <div className="space-y-4">
-                                    <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] ml-2">Email de Contacto</label>
+                                 <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] ml-1">Email de Contacto</label>
                                     <input
                                        defaultValue={selectedStore.owner_email}
                                        onBlur={(e) => handleUpdateStore(selectedStore.id, { owner_email: e.target.value })}
-                                       className="w-full h-20 bg-white/[0.03] border border-white/10 rounded-[1.5rem] px-8 text-white text-sm font-bold focus:border-accent outline-none transition-all shadow-inner"
+                                       className="w-full h-11 bg-white/[0.03] border border-white/10 rounded-xl px-4 text-white text-xs font-bold focus:border-accent outline-none transition-all"
                                        placeholder="HOLA@CAFE.COM"
                                     />
                                  </div>
@@ -820,10 +820,10 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
                               {/* COL 1: CONFIGURATION */}
-                              <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col gap-6">
-                                 <div className="flex items-center gap-3 border-b border-white/5 pb-4">
-                                    <span className="material-symbols-outlined text-accent text-xl">auto_awesome</span>
-                                    <h4 className="text-sm font-black text-white italic uppercase tracking-widest">Configuración IA</h4>
+                              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col gap-4">
+                                 <div className="flex items-center gap-2 border-b border-white/5 pb-3">
+                                    <span className="material-symbols-outlined text-accent text-lg">auto_awesome</span>
+                                    <h4 className="text-xs font-black text-white italic uppercase tracking-widest">Configuración IA</h4>
                                  </div>
 
                                  {/* MODO OPERATIVO */}
@@ -858,19 +858,19 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                               </div>
 
                               {/* COL 2: CREDITS */}
-                              <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col justify-between relative overflow-hidden">
-                                 <div className="absolute top-0 right-0 p-8 opacity-5">
-                                    <span className="material-symbols-outlined text-8xl">bolt</span>
+                              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col justify-between relative overflow-hidden">
+                                 <div className="absolute top-0 right-0 p-4 opacity-5">
+                                    <span className="material-symbols-outlined text-6xl">bolt</span>
                                  </div>
 
                                  <div className="space-y-1 relative z-10">
-                                    <span className="material-symbols-outlined text-accent text-xl mb-2">bolt</span>
-                                    <h4 className="text-sm font-black text-white uppercase tracking-widest">Consumo Créditos</h4>
+                                    <span className="material-symbols-outlined text-accent text-lg mb-1">bolt</span>
+                                    <h4 className="text-xs font-black text-white uppercase tracking-widest">Consumo Créditos</h4>
                                  </div>
 
-                                 <div className="space-y-4 relative z-10 my-8">
+                                 <div className="space-y-3 relative z-10 my-4">
                                     <div className="flex items-baseline gap-2">
-                                       <span className="text-5xl font-black text-white tracking-tighter">0.5k</span>
+                                       <span className="text-3xl font-black text-white tracking-tighter">0.5k</span>
                                        <span className="text-xs font-bold text-zinc-500">/ 5k</span>
                                     </div>
                                     <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
@@ -885,10 +885,10 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                               </div>
 
                               {/* COL 3: SYSTEM STATUS */}
-                              <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col gap-6">
-                                 <div className="flex items-center gap-3 border-b border-white/5 pb-4">
-                                    <span className="material-symbols-outlined text-neon text-xl">activity_zone</span>
-                                    <h4 className="text-sm font-black text-white italic uppercase tracking-widest">Estado Sistema</h4>
+                              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col gap-4">
+                                 <div className="flex items-center gap-2 border-b border-white/5 pb-3">
+                                    <span className="material-symbols-outlined text-neon text-lg">activity_zone</span>
+                                    <h4 className="text-xs font-black text-white italic uppercase tracking-widest">Estado Sistema</h4>
                                  </div>
 
                                  <div className="p-4 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between">
@@ -904,7 +904,7 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                                     <p className="text-sm font-black text-white italic">Hace 2 minutos <span className="text-neon decoration-neon underline decoration-2 underline-offset-2">(Nodo Alpha)</span></p>
                                  </div>
 
-                                 <div className="mt-auto space-y-3 pt-6 border-t border-white/5">
+                                 <div className="mt-auto space-y-2 pt-4 border-t border-white/5">
                                     <div className="flex justify-between items-end">
                                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Latencia</span>
                                        <span className="text-[9px] font-black text-neon uppercase">12ms - Excellent</span>
@@ -922,40 +922,40 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                         )}
 
                         {(configTab === 'staff' || configTab === 'audit') && (
-                           <div className="flex flex-col items-center justify-center p-20 border border-white/5 rounded-[3rem] bg-white/[0.01] animate-in fade-in zoom-in-95">
-                              <span className="material-symbols-outlined text-6xl text-white/10 mb-6">lock</span>
-                              <p className="text-white font-black italic text-xl uppercase tracking-tighter">Módulo en Desarrollo</p>
-                              <p className="text-[10px] text-white/30 font-bold uppercase tracking-[0.4em] mt-2">Próximamente disponible en SQUAD v2.1</p>
+                           <div className="flex flex-col items-center justify-center p-12 border border-white/5 rounded-2xl bg-white/[0.01] animate-in fade-in zoom-in-95">
+                              <span className="material-symbols-outlined text-4xl text-white/10 mb-4">lock</span>
+                              <p className="text-white font-black italic text-base uppercase tracking-tighter">Módulo en Desarrollo</p>
+                              <p className="text-[10px] text-white/30 font-bold uppercase tracking-[0.2em] mt-1.5">Próximamente disponible en SQUAD v2.1</p>
                            </div>
                         )}
                      </div>
 
                      {/* SIDEBAR STATUS */}
-                     <div className="w-96 space-y-8">
-                        <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/10 space-y-8">
-                           <div className="flex items-center gap-4 pb-6 border-b border-white/5">
-                              <span className="material-symbols-outlined text-neon text-3xl">analytics</span>
-                              <h4 className="text-sm font-black text-white uppercase tracking-widest">Estado del Sistema</h4>
+                     <div className="w-64 space-y-4 flex-shrink-0">
+                        <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-4">
+                           <div className="flex items-center gap-2.5 pb-3 border-b border-white/5">
+                              <span className="material-symbols-outlined text-neon text-xl">analytics</span>
+                              <h4 className="text-xs font-black text-white uppercase tracking-widest">Estado del Sistema</h4>
                            </div>
 
-                           <div className="space-y-6">
-                              <div className="p-6 rounded-2xl bg-black border border-white/5 flex items-center justify-between group">
+                           <div className="space-y-3">
+                              <div className="p-3 rounded-xl bg-black border border-white/5 flex items-center justify-between group">
                                  <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Servidores Operativos</span>
                                  <div className="size-2.5 bg-neon rounded-full shadow-[0_0_15px_rgba(74,222,128,0.5)] animate-pulse"></div>
                               </div>
 
-                              <div className="space-y-2">
-                                 <p className="text-[10px] font-black text-white/20 uppercase tracking-widest ml-2">Ultima Sincronización</p>
-                                 <p className="text-white font-black italic text-sm ml-2">Hace 2 minutos <span className="text-accent">(Nodo Alpha)</span></p>
+                              <div className="space-y-1">
+                                 <p className="text-[9px] font-black text-white/20 uppercase tracking-widest ml-1">Ultima Sincronización</p>
+                                 <p className="text-white font-black italic text-xs ml-1">Hace 2 minutos <span className="text-accent">(Nodo Alpha)</span></p>
                               </div>
                            </div>
                         </div>
 
                         <button
                            onClick={() => setSelectedStore(null)}
-                           className="w-full py-8 bg-white text-black rounded-[2.5rem] font-black text-[13px] uppercase tracking-[0.4em] hover:scale-[1.03] active:scale-95 transition-all shadow-2xl flex items-center justify-center gap-4"
+                           className="w-full py-3.5 bg-white text-black rounded-xl font-black text-[11px] uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2.5"
                         >
-                           <span className="material-symbols-outlined font-black">save_as</span>
+                           <span className="material-symbols-outlined text-lg">save_as</span>
                            Cerrar y Sincronizar
                         </button>
                      </div>
@@ -968,52 +968,52 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
          {showNewStoreModal && (
             <div className="fixed inset-0 z-[500] flex items-center justify-center p-6">
                <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" onClick={() => setShowNewStoreModal(false)}></div>
-               <div className="relative bg-[#0F110F] rounded-3xl p-10 border border-white/10 w-full max-w-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-500">
-                  <div className="flex justify-between items-start mb-8">
+               <div className="relative bg-[#0F110F] rounded-2xl p-7 border border-white/10 w-full max-w-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-500">
+                  <div className="flex justify-between items-start mb-5">
                      <div className="space-y-1">
-                        <h3 className="text-3xl font-black text-white uppercase italic leading-none tracking-tighter">NUEVO DESPLIEGUE</h3>
-                        <p className="text-[9px] font-bold text-white/30 uppercase tracking-[0.4em]">Protocolo de Instancia</p>
+                        <h3 className="text-xl font-black text-white uppercase italic leading-none tracking-tighter">NUEVO DESPLIEGUE</h3>
+                        <p className="text-[9px] font-bold text-white/30 uppercase tracking-[0.2em]">Protocolo de Instancia</p>
                      </div>
-                     <div className="size-16 rounded-2xl bg-accent text-black flex items-center justify-center shadow-accent-glow"><span className="material-symbols-outlined text-3xl font-black">rocket_launch</span></div>
+                     <div className="size-10 rounded-xl bg-accent text-black flex items-center justify-center shadow-accent-glow"><span className="material-symbols-outlined text-xl font-black">rocket_launch</span></div>
                   </div>
 
-                  <form onSubmit={handleCreateStore} className="space-y-6">
+                  <form onSubmit={handleCreateStore} className="space-y-4">
                      <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                            <label className="text-[9px] font-black text-white/40 uppercase tracking-widest ml-2">Nombre del Local</label>
-                           <input value={newStore.name} onChange={e => setNewStore({ ...newStore, name: e.target.value })} className="w-full h-12 bg-white/[0.03] border border-white/10 rounded-xl px-4 text-white text-sm uppercase font-bold focus:border-accent outline-none transition-all placeholder:text-white/10" placeholder="EJ: SQUAD CENTRAL" required />
+                           <input value={newStore.name} onChange={e => setNewStore({ ...newStore, name: e.target.value })} className="w-full h-10 bg-white/[0.03] border border-white/10 rounded-lg px-3.5 text-white text-xs uppercase font-bold focus:border-accent outline-none transition-all placeholder:text-white/10" placeholder="EJ: SQUAD CENTRAL" required />
                         </div>
                         <div className="space-y-2">
                            <label className="text-[9px] font-black text-white/40 uppercase tracking-widest ml-2">Nombre Propietario</label>
-                           <input value={newStore.ownerName} onChange={e => setNewStore({ ...newStore, ownerName: e.target.value })} className="w-full h-12 bg-white/[0.03] border border-white/10 rounded-xl px-4 text-white text-sm font-bold focus:border-accent outline-none transition-all placeholder:text-white/10" placeholder="EJ: ENEAS WEB" />
+                           <input value={newStore.ownerName} onChange={e => setNewStore({ ...newStore, ownerName: e.target.value })} className="w-full h-10 bg-white/[0.03] border border-white/10 rounded-lg px-3.5 text-white text-xs font-bold focus:border-accent outline-none transition-all placeholder:text-white/10" placeholder="EJ: ENEAS WEB" />
                         </div>
                      </div>
 
                      <div className="space-y-2">
                         <label className="text-[9px] font-black text-white/40 uppercase tracking-widest ml-2">Email de Acceso Primario (Único)</label>
-                        <input value={newStore.ownerEmail} onChange={e => setNewStore({ ...newStore, ownerEmail: e.target.value })} className="w-full h-12 bg-white/[0.03] border border-white/10 rounded-xl px-4 text-white text-sm font-bold focus:border-accent outline-none shadow-inner transition-all placeholder:text-white/10" placeholder="propietario@email.com" required />
+                        <input value={newStore.ownerEmail} onChange={e => setNewStore({ ...newStore, ownerEmail: e.target.value })} className="w-full h-10 bg-white/[0.03] border border-white/10 rounded-lg px-3.5 text-white text-xs font-bold focus:border-accent outline-none transition-all placeholder:text-white/10" placeholder="propietario@email.com" required />
                      </div>
 
                      <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                            <label className="text-[9px] font-black text-white/40 uppercase tracking-widest ml-2">Dirección</label>
-                           <input value={newStore.address} onChange={e => setNewStore({ ...newStore, address: e.target.value })} className="w-full h-12 bg-white/[0.03] border border-white/10 rounded-xl px-4 text-white text-xs font-bold focus:border-accent outline-none" placeholder="Dirección física" />
+                           <input value={newStore.address} onChange={e => setNewStore({ ...newStore, address: e.target.value })} className="w-full h-10 bg-white/[0.03] border border-white/10 rounded-lg px-3.5 text-white text-xs font-bold focus:border-accent outline-none" placeholder="Dirección física" />
                         </div>
                         <div className="space-y-2">
                            <label className="text-[9px] font-black text-white/40 uppercase tracking-widest ml-2">Info Fiscal (CUIT/NIT)</label>
-                           <input value={newStore.taxInfo} onChange={e => setNewStore({ ...newStore, taxInfo: e.target.value })} className="w-full h-12 bg-white/[0.03] border border-white/10 rounded-xl px-4 text-white text-xs font-bold focus:border-accent outline-none" placeholder="ID Fiscal" />
+                           <input value={newStore.taxInfo} onChange={e => setNewStore({ ...newStore, taxInfo: e.target.value })} className="w-full h-10 bg-white/[0.03] border border-white/10 rounded-lg px-3.5 text-white text-xs font-bold focus:border-accent outline-none" placeholder="ID Fiscal" />
                         </div>
                      </div>
 
-                     <div className="space-y-4">
-                        <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.4em] text-center italic">Scope del Plan</p>
+                     <div className="space-y-2.5">
+                        <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] text-center italic">Scope del Plan</p>
                         <div className="grid grid-cols-3 gap-3">
                            {['FREE', 'PRO', 'DEMO'].map(p => (
                               <button
                                  key={p}
                                  type="button"
                                  onClick={() => setNewStore({ ...newStore, plan: p })}
-                                 className={`py-4 rounded-xl border font-black text-[10px] uppercase transition-all flex flex-col items-center gap-1 ${newStore.plan === p ? 'bg-accent/10 border-accent text-accent shadow-accent-soft' : 'bg-white/5 border-white/5 text-white/20 hover:border-white/10 hover:text-white/40'}`}
+                                 className={`py-3 rounded-lg border font-black text-[10px] uppercase transition-all flex flex-col items-center gap-1 ${newStore.plan === p ? 'bg-accent/10 border-accent text-accent shadow-accent-soft' : 'bg-white/5 border-white/5 text-white/20 hover:border-white/10 hover:text-white/40'}`}
                               >
                                  <span className="material-symbols-outlined text-lg">
                                     {p === 'PRO' ? 'military_tech' : p === 'DEMO' ? 'timer' : 'lock_open'}
@@ -1024,12 +1024,12 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                         </div>
                      </div>
 
-                     <div className="mt-10 flex gap-4">
-                        <button type="button" onClick={() => setShowNewStoreModal(false)} className="flex-1 py-4 text-white/20 text-[10px] font-black uppercase tracking-widest hover:text-white transition-all italic">Cancelar</button>
+                     <div className="mt-5 flex gap-3">
+                        <button type="button" onClick={() => setShowNewStoreModal(false)} className="flex-1 py-3 text-white/20 text-[10px] font-black uppercase tracking-widest hover:text-white transition-all italic">Cancelar</button>
                         <button
                            type="submit"
                            disabled={isSaving}
-                           className="flex-[2] py-4 bg-accent text-black rounded-xl font-black text-[11px] uppercase tracking-[0.2em] shadow-accent-glow hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                           className="flex-[2] py-3 bg-accent text-black rounded-xl font-black text-[11px] uppercase tracking-[0.15em] shadow-accent-glow hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
                         >
                            {isSaving ? 'DESPLEGANDO...' : 'LANZAR LOCAL'}
                         </button>
@@ -1259,10 +1259,10 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
          {showPlanModal && planModalStore && (
             <div className="fixed inset-0 z-[500] flex items-center justify-center p-6">
                <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" onClick={() => { setShowPlanModal(false); setPlanModalStore(null); }}></div>
-               <div className="relative bg-[#0D0F0D] rounded-2xl p-8 border border-white/10 w-full max-w-md shadow-2xl animate-in zoom-in-95">
-                  <div className="flex justify-between items-start mb-6">
+               <div className="relative bg-[#0D0F0D] rounded-2xl p-6 border border-white/10 w-full max-w-md shadow-2xl animate-in zoom-in-95">
+                  <div className="flex justify-between items-start mb-4">
                      <div>
-                        <h3 className="text-xl font-black text-white uppercase italic tracking-tight">Cambiar Plan</h3>
+                        <h3 className="text-base font-black text-white uppercase italic tracking-tight">Cambiar Plan</h3>
                         <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">{planModalStore.name}</p>
                      </div>
                      <button onClick={() => { setShowPlanModal(false); setPlanModalStore(null); }} className="size-8 rounded-full bg-white/5 flex items-center justify-center text-white/30 hover:text-white">
@@ -1276,7 +1276,7 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                            key={plan}
                            onClick={() => handlePlanChange(plan)}
                            disabled={isSaving}
-                           className={`py-6 rounded-xl border font-black text-[11px] uppercase transition-all flex flex-col items-center gap-2 disabled:opacity-50 ${planModalStore.plan?.toUpperCase() === plan
+                           className={`py-4 rounded-lg border font-black text-[11px] uppercase transition-all flex flex-col items-center gap-1.5 disabled:opacity-50 ${planModalStore.plan?.toUpperCase() === plan
                               ? 'bg-accent/20 border-accent text-accent'
                               : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20 hover:text-white/60'
                               }`}
