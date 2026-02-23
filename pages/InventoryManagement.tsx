@@ -2823,11 +2823,22 @@ const InventoryManagement: React.FC = () => {
                                 })()}
                               </div>
 
-                              {/* COSTO TEÓRICO */}
-                              <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                                <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Costo Teórico</span>
-                                <span className="text-sm font-black text-white font-mono">${selectedItem.cost.toFixed(2)}</span>
-                              </div>
+                              {/* COSTO TEÓRICO — calculated on-the-fly from ingredients */}
+                              {(() => {
+                                const liveRecipeCost = baseRecipe.reduce((sum: number, r: any) => {
+                                  const ing = items.find(i => i.id === r.inventory_item_id);
+                                  if (!ing) return sum;
+                                  const ingCost = ing.cost || ing.last_purchase_price || 0;
+                                  const costPerBase = ingCost / (ing.package_size || 1);
+                                  return sum + costPerBase * (parseFloat(r.quantity_required as any) || 0);
+                                }, 0);
+                                return (
+                                  <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/5">
+                                    <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Costo Teórico</span>
+                                    <span className="text-sm font-black text-white font-mono">${liveRecipeCost.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                  </div>
+                                );
+                              })()}
                             </>
                           );
                         })()
@@ -3076,7 +3087,14 @@ const InventoryManagement: React.FC = () => {
                   <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10">
                     <div>
                       <h4 className="text-[10px] font-black uppercase text-white italic leading-none">Protocolo de Insumos</h4>
-                      <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest mt-1">COSTO TEÓRICO: ${selectedItem.cost.toFixed(2)}</p>
+                      <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest mt-1">COSTO TEÓRICO: ${(() => {
+                        const rc = productRecipes.filter(r => r.product_id === selectedItem.id).reduce((sum: number, r: any) => {
+                          const ing = items.find((i: any) => i.id === r.inventory_item_id);
+                          if (!ing) return sum;
+                          return sum + ((ing.cost || ing.last_purchase_price || 0) / (ing.package_size || 1)) * (parseFloat(r.quantity_required as any) || 0);
+                        }, 0);
+                        return rc.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                      })()}</p>
                     </div>
                     {!isAddingRecipeItem && (
                       <button onClick={() => setIsAddingRecipeItem(true)} className="flex items-center gap-1 bg-neon text-black px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]">
