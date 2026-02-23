@@ -65,13 +65,13 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
 
             // 2. Get Stock Levels
             const { data: levels, error: stockError } = await supabase
-                .from('item_stock_levels')
-                .select('location_id, quantity')
-                .eq('inventory_item_id', localItem!.id); // Use localItem
+                .from('inventory_location_stock' as any)
+                .select('location_id, closed_units')
+                .eq('item_id', localItem!.id);
             if (stockError) throw stockError;
 
             const levelsMap: Record<string, number> = {};
-            levels?.forEach((l: any) => { levelsMap[l.location_id] = Number(l.quantity); });
+            levels?.forEach((l: any) => { levelsMap[l.location_id] = Number(l.closed_units); });
             setStockLevels(levelsMap);
 
             // 3. Smart Auto-Select Origin
@@ -138,7 +138,7 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
         if (isOpen) {
             if (item) {
                 setLocalItem(item);
-                fetchLocationsAndStock();
+                // fetchLocationsAndStock runs via the localItem useEffect below
             } else {
                 // Fetch All Items for selection
                 const fetchAllItems = async () => {
