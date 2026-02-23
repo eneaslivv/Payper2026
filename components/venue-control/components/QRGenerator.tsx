@@ -62,7 +62,7 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ nodeId, storeId, nodeName, on
         }
     };
 
-    const qrUrl = qrHash ? `${window.location.origin}/#/qr/${qrHash}` : '';
+    const qrUrl = qrHash ? `${window.location.origin}/qr/${qrHash}` : '';
 
     const handleCopy = () => {
         if (!qrUrl) return;

@@ -1,3 +1,15 @@
+// Path-to-Hash redirect: WhatsApp/iOS strip # from shared URLs.
+// /m/slug → /#/m/slug — runs before React mounts (no flash).
+(function () {
+    var p = window.location.pathname;
+    if (p !== '/' && p !== '/index.html' &&
+        /^\/(m|qr|orden|reserve)\//.test(p)) {
+        window.location.replace(
+            window.location.origin + '/#' + p + window.location.search
+        );
+    }
+})();
+
 import * as React from 'react';
 import ReactDOM from 'react-dom/client';
 import * as Sentry from '@sentry/react';
