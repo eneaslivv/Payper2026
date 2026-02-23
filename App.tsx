@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import payperLogo from './src/assets/payper-logo.png';
+import payperBranding from './src/assets/payper-branding.png';
 import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
 
 import DebugPayment from './pages/DebugPayment';
@@ -127,7 +128,7 @@ const SaaSLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <div className="p-4 border-t border-white/5">
           {/* PAYPER BRANDING */}
           <div className="w-full flex justify-center pb-4 pt-1 opacity-40 hover:opacity-100 transition-opacity duration-500">
-            <img src="/src/assets/payper-branding.png" alt="Payper" className="w-20 object-contain" />
+            <img src={payperBranding} alt="Payper" className="w-20 object-contain" />
           </div>
 
           <button
@@ -375,7 +376,7 @@ const OperativeLayout: React.FC<{ children: React.ReactNode, activeNode: CafeNod
 
           {/* PAYPER BRANDING */}
           <div className="w-full flex justify-center pb-4 pt-1 opacity-40 hover:opacity-100 transition-opacity duration-500">
-            <img src="/src/assets/payper-branding.png" alt="Payper" className="w-20 object-contain dark:invert-0" />
+            <img src={payperBranding} alt="Payper" className="w-20 object-contain dark:invert-0" />
           </div>
 
           {isUserMenuOpen && (
