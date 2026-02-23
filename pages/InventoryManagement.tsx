@@ -2190,39 +2190,48 @@ const InventoryManagement: React.FC = () => {
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            {/* CELDA 2: Paquetes Abiertos */}
+                            {/* CELDA 2: Envases — barra de % + capacidad */}
                             {(() => {
                               const openPkgs = item.open_packages || [];
                               const hasOpen = openPkgs.length > 0 || (item.open_count || 0) > 0;
+                              const pkgSize = item.package_size || 1;
+                              const unitAbbr = item.unit_type === 'ml' ? 'ml' : item.unit_type === 'gram' ? 'g' : item.unit_type === 'liter' ? 'L' : item.unit_type === 'kilo' ? 'kg' : item.unit_type === 'unit' ? 'un' : item.unit_type || 'un';
+
+                              // Format capacity label (1000ml → 1L)
+                              const formatCap = (size: number, unit: string) => {
+                                let d = size; let u = unit;
+                                if ((u === 'ml' || u === 'g') && d >= 1000) { d = d / 1000; u = u === 'ml' ? 'L' : 'kg'; }
+                                return `${d}${u}`;
+                              };
+                              const capLabel = pkgSize > 1 ? formatCap(pkgSize, unitAbbr) : '';
+
+                              // Render a single bar row
+                              const renderBar = (pct: number, label: string, barColor: string, textColor: string) => (
+                                <div className="flex flex-col gap-1 min-w-[90px]">
+                                  <div className="flex items-center justify-between">
+                                    <span className={`text-[9px] font-black ${textColor}`}>{pct}%</span>
+                                    {label && <span className="text-[8px] font-bold text-white/30 uppercase">{label}</span>}
+                                  </div>
+                                  <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                    <div className={`h-full rounded-full ${barColor} transition-all`} style={{ width: `${Math.max(pct, 2)}%` }} />
+                                  </div>
+                                </div>
+                              );
 
                               if (hasOpen && openPkgs.length > 0) {
-                                // Show each open package with % and capacity
                                 return (
                                   <div
-                                    className="flex flex-col gap-1 cursor-pointer hover:opacity-80 transition-opacity"
+                                    className="flex flex-col gap-2 cursor-pointer hover:opacity-80 transition-opacity"
                                     onClick={(e) => { e.stopPropagation(); setSelectedItem(item); setDrawerTab('details'); }}
                                   >
                                     {openPkgs.slice(0, 3).map((pkg: any, i: number) => {
-                                      const capacity = pkg.package_capacity || item.package_size || 1;
+                                      const capacity = pkg.package_capacity || pkgSize || 1;
                                       const remaining = pkg.remaining || 0;
                                       const pct = capacity > 0 ? Math.round((remaining / capacity) * 100) : 0;
-                                      const unitAbbr = item.unit_type === 'ml' ? 'ml' : item.unit_type === 'gram' ? 'g' : item.unit_type === 'liter' ? 'L' : item.unit_type === 'kilo' ? 'kg' : item.unit_type === 'unit' ? 'un' : item.unit_type || 'un';
-                                      // Format capacity (1000ml → 1L)
-                                      let capDisplay = capacity;
-                                      let capUnit = unitAbbr;
-                                      if ((unitAbbr === 'ml' || unitAbbr === 'g') && capacity >= 1000) {
-                                        capDisplay = capacity / 1000;
-                                        capUnit = unitAbbr === 'ml' ? 'L' : 'kg';
-                                      }
-                                      const pctColor = pct > 50 ? 'text-neon bg-neon/10 border-neon/20' : pct > 20 ? 'text-orange-400 bg-orange-400/10 border-orange-400/20' : 'text-red-400 bg-red-400/10 border-red-400/20';
-
-                                      return (
-                                        <div key={pkg.id || `open-${i}`} className={`flex items-center gap-1.5 px-2 py-1 rounded-md border ${pctColor}`}>
-                                          <span className="text-[9px] font-black">{pct}%</span>
-                                          <span className="w-px h-2.5 opacity-20 bg-current mx-0.5"></span>
-                                          <span className="text-[8px] font-bold opacity-80">{capDisplay}{capUnit}</span>
-                                        </div>
-                                      );
+                                      const pkgCapLabel = formatCap(capacity, unitAbbr);
+                                      const barColor = pct > 50 ? 'bg-neon' : pct > 20 ? 'bg-orange-400' : 'bg-red-400';
+                                      const txtColor = pct > 50 ? 'text-neon' : pct > 20 ? 'text-orange-400' : 'text-red-400';
+                                      return <div key={pkg.id || `open-${i}`}>{renderBar(pct, pkgCapLabel, barColor, txtColor)}</div>;
                                     })}
                                     {openPkgs.length > 3 && (
                                       <span className="text-[7px] font-bold text-white/30 uppercase">+{openPkgs.length - 3} mas</span>
@@ -2230,31 +2239,19 @@ const InventoryManagement: React.FC = () => {
                                   </div>
                                 );
                               } else if (hasOpen) {
-                                // Has open count but no package details
                                 const totalOpen = item.open_count || 0;
                                 return (
-                                  <div className="flex items-center gap-2 opacity-70"
+                                  <div className="flex items-center gap-2 opacity-70 cursor-pointer"
                                     onClick={(e) => { e.stopPropagation(); setSelectedItem(item); setDrawerTab('details'); }}
                                   >
                                     <span className="material-symbols-outlined text-orange-500 text-sm">inventory_2</span>
-                                    <span className="text-[10px] font-black text-white uppercase">{totalOpen} ABIERTO{totalOpen > 1 ? 'S' : ''}</span>
+                                    <span className="text-[10px] font-black text-white uppercase">{totalOpen} abierto{totalOpen > 1 ? 's' : ''}</span>
                                   </div>
                                 );
                               } else if (item.current_stock > 0) {
-                                // No open packages, all sealed
-                                return (
-                                  <div className="flex items-center gap-1.5 opacity-40">
-                                    <span className="material-symbols-outlined text-green-500 text-[10px]">verified</span>
-                                    <span className="text-[9px] font-bold text-white/60 uppercase">Todo sellado</span>
-                                  </div>
-                                );
+                                return renderBar(100, capLabel, 'bg-neon', 'text-neon');
                               } else {
-                                return (
-                                  <div className="flex items-center gap-2 opacity-30">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-white/50"></span>
-                                    <span className="text-[9px] font-bold text-white uppercase">SIN STOCK</span>
-                                  </div>
-                                );
+                                return renderBar(0, capLabel || unitAbbr, 'bg-white/10', 'text-white/20');
                               }
                             })()}
                           </td>
