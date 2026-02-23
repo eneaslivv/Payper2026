@@ -1281,11 +1281,12 @@ const CashShiftModal: React.FC<{
                   <select
                     value={selectedStation}
                     onChange={(e) => setSelectedStation(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 text-white text-xs font-bold outline-none focus:border-white/20 transition-all"
+                    className="w-full bg-[#1a1c1a] border border-white/10 rounded-2xl px-4 py-4 text-white text-xs font-bold outline-none focus:border-neon/30 transition-all appearance-none cursor-pointer"
+                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.4)' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 16px center' }}
                   >
-                    <option value="">Sin estacion especifica</option>
+                    <option value="" className="bg-[#1a1c1a] text-white/60">Sin estacion especifica</option>
                     {dispatchStations.map((station) => (
-                      <option key={station.id} value={station.id}>{station.name}</option>
+                      <option key={station.id} value={station.id} className="bg-[#1a1c1a] text-white">{station.name}</option>
                     ))}
                   </select>
                 </div>

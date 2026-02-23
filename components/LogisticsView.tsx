@@ -443,6 +443,7 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
                                             </div>
                                             <button
                                                 onClick={() => {
+                                                    setSelectedItemIds([stock.item_id]);
                                                     setTransferItemId(stock.item_id);
                                                     setIsTransferModalOpen(true);
                                                 }}
@@ -680,6 +681,7 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
                 onClose={() => {
                     setIsTransferModalOpen(false);
                     setTransferItemId(undefined);
+                    setSelectedItemIds([]);
                 }}
                 onSuccess={() => {
                     fetchLocations();
