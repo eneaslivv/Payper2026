@@ -2203,7 +2203,7 @@ const InventoryManagement: React.FC = () => {
                                 if ((u === 'ml' || u === 'g') && d >= 1000) { d = d / 1000; u = u === 'ml' ? 'L' : 'kg'; }
                                 return `${d}${u}`;
                               };
-                              const capLabel = pkgSize > 1 ? formatCap(pkgSize, unitAbbr) : unitAbbr;
+                              const capLabel = formatCap(pkgSize, unitAbbr);
 
                               // Render a single bar row
                               const renderBar = (pct: number, label: string, barColor: string, textColor: string) => (
