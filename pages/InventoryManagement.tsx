@@ -2203,7 +2203,7 @@ const InventoryManagement: React.FC = () => {
                                 if ((u === 'ml' || u === 'g') && d >= 1000) { d = d / 1000; u = u === 'ml' ? 'L' : 'kg'; }
                                 return `${d}${u}`;
                               };
-                              const capLabel = pkgSize > 1 ? formatCap(pkgSize, unitAbbr) : '';
+                              const capLabel = pkgSize > 1 ? formatCap(pkgSize, unitAbbr) : unitAbbr;
 
                               // Render a single bar row
                               const renderBar = (pct: number, label: string, barColor: string, textColor: string) => (
@@ -2478,11 +2478,12 @@ const InventoryManagement: React.FC = () => {
               })()}
 
               {drawerTab === 'details' && (
-                <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
-                  <div className="space-y-4">
-                    {/* Compact Category & Unit Size Row */}
-                    <div className="flex gap-3">
-                      <div className="flex-1">
+                <div className="space-y-5 animate-in slide-in-from-right-8 duration-500">
+                  <div className="space-y-3">
+                    {/* Category + Envase Config Row */}
+                    <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
+                      <div>
+                        <label className="text-[7px] font-black text-white/30 uppercase tracking-widest ml-1 mb-1 block">Categoría</label>
                         <div className="relative">
                           <select
                             value={selectedItem.category_ids?.[0] || ''}
@@ -2490,7 +2491,7 @@ const InventoryManagement: React.FC = () => {
                               const newCatId = e.target.value;
                               setSelectedItem(prev => prev ? { ...prev, category_ids: newCatId ? [newCatId] : [] } : null);
                             }}
-                            className="w-full appearance-none bg-[#111] border border-white/10 rounded-lg h-9 pl-3 pr-8 text-[11px] font-bold text-white outline-none focus:border-neon/50 cursor-pointer hover:border-white/20 transition-all"
+                            className="w-full appearance-none bg-[#111] border border-white/10 rounded-lg h-8 pl-3 pr-7 text-[10px] font-bold text-white outline-none focus:border-neon/50 cursor-pointer hover:border-white/20 transition-all"
                           >
                             <option value="">Sin categoría</option>
                             {categories
@@ -2499,28 +2500,23 @@ const InventoryManagement: React.FC = () => {
                                 <option key={cat.id} value={cat.id}>{cat.name}</option>
                               ))}
                           </select>
-                          <span className="absolute right-2 top-1/2 -translate-y-1/2 material-symbols-outlined text-white/30 text-sm pointer-events-none">expand_more</span>
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 material-symbols-outlined text-white/30 text-xs pointer-events-none">expand_more</span>
                         </div>
                       </div>
 
                       {selectedItem.item_type !== 'sellable' && (
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-[7px] font-black text-neon uppercase tracking-widest whitespace-nowrap">
-                            CONFIGURACIÓN DE ENVASE CERRADO
-                          </label>
-                          <div className="flex items-center gap-1.5">
+                        <div>
+                          <label className="text-[7px] font-black text-neon/70 uppercase tracking-widest ml-1 mb-1 block">Envase</label>
+                          <div className="flex items-center gap-1">
                             <input
                               type="number"
-                              // Bind to package_size (DB) or fallback to unit_size
                               value={selectedItem.package_size || selectedItem.unit_size || ''}
                               onChange={(e) => setSelectedItem(prev => prev ? { ...prev, package_size: parseFloat(e.target.value) || 0, unit_size: parseFloat(e.target.value) || 0 } : null)}
                               placeholder="750"
-                              className="w-16 h-9 rounded-lg bg-[#111] border border-white/10 px-2 text-center text-[11px] font-bold text-white outline-none focus:border-neon/50 hover:border-white/20 transition-all"
+                              className="w-14 h-8 rounded-lg bg-[#111] border border-white/10 px-1.5 text-center text-[10px] font-bold text-white outline-none focus:border-neon/50 hover:border-white/20 transition-all"
                             />
                             <div className="relative">
                               <select
-                                // Bind to unit_type (used for stock display) and sync with content_unit
-                                // Normalize DB values to dropdown values: kg→kilo, g→gram, L→liter
                                 value={(() => {
                                   const dbValue = selectedItem.unit_type || 'unit';
                                   const normalize: Record<string, string> = { 'kg': 'kilo', 'g': 'gram', 'L': 'liter', 'un': 'unit' };
@@ -2531,44 +2527,36 @@ const InventoryManagement: React.FC = () => {
                                   unit_type: e.target.value,
                                   content_unit: e.target.value === 'gram' ? 'g' : e.target.value === 'ml' ? 'ml' : e.target.value === 'kilo' ? 'kg' : e.target.value === 'liter' ? 'L' : 'un'
                                 } : null)}
-                                className="appearance-none bg-[#111] border border-white/10 rounded-lg h-9 pl-2 pr-6 text-[10px] font-bold text-white outline-none cursor-pointer hover:border-white/20 transition-all"
+                                className="appearance-none bg-[#111] border border-white/10 rounded-lg h-8 pl-2 pr-5 text-[9px] font-bold text-white outline-none cursor-pointer hover:border-white/20 transition-all"
                               >
-                                <option value="unit">Unidades</option>
-                                <option value="gram">Gramos</option>
-                                <option value="kilo">Kilos</option>
-                                <option value="ml">Mililitros</option>
-                                <option value="liter">Litros</option>
+                                <option value="unit">UN</option>
+                                <option value="gram">GR</option>
+                                <option value="kilo">KG</option>
+                                <option value="ml">ML</option>
+                                <option value="liter">LT</option>
                               </select>
-                              <span className="absolute right-1 top-1/2 -translate-y-1/2 material-symbols-outlined text-white/30 text-[10px] pointer-events-none">expand_more</span>
+                              <span className="absolute right-0.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-white/30 text-[9px] pointer-events-none">expand_more</span>
                             </div>
                           </div>
                         </div>
                       )}
                     </div>
 
-                    {/* Cost & Price Row */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black uppercase text-white/40 tracking-[0.2em] ml-1"> Costo Unit. </label>
-                        <div
-                          onClick={() => setShowEditPriceModal(true)}
-                          className="relative cursor-pointer group"
-                        >
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20 text-xs">$</span>
-                          <div className="w-full bg-black border border-white/10 rounded-2xl h-12 pl-6 pr-10 font-black text-white text-lg flex items-center justify-end group-hover:border-amber-500/30 transition-all">
-                            {selectedItem.cost || 0}
-                          </div>
-                          <button className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 group-hover:text-amber-500 transition-colors">
-                            <span className="material-symbols-outlined text-base">edit</span>
-                          </button>
-                        </div>
+                    {/* Cost & Stock Value Row */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div
+                        onClick={() => setShowEditPriceModal(true)}
+                        className="relative cursor-pointer group bg-black border border-white/10 rounded-xl h-10 flex items-center px-3 gap-2 hover:border-amber-500/30 transition-all"
+                      >
+                        <span className="text-[7px] font-black text-white/30 uppercase tracking-widest">Costo</span>
+                        <span className="flex-1 text-right font-black text-white text-sm">${selectedItem.cost || 0}</span>
+                        <span className="material-symbols-outlined text-white/20 text-xs group-hover:text-amber-500 transition-colors">edit</span>
                       </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black uppercase text-white/40 tracking-[0.2em] ml-1"> Valor Stock </label>
-                        <div className="h-12 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-end px-4 font-black text-white/40 text-lg">
+                      <div className="bg-white/[0.02] border border-white/5 rounded-xl h-10 flex items-center px-3 gap-2">
+                        <span className="text-[7px] font-black text-white/30 uppercase tracking-widest">Valor</span>
+                        <span className="flex-1 text-right font-black text-white/40 text-sm">
                           ${(((selectedItem.current_stock || 0) / (selectedItem.package_size || 1)) * (selectedItem.cost || 0)).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                        </div>
+                        </span>
                       </div>
                     </div>
 
