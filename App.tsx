@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from './lib/supabase';
+import payperLogo from './src/assets/payper-logo.png';
 import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
 
 import DebugPayment from './pages/DebugPayment';
@@ -307,7 +308,7 @@ const OperativeLayout: React.FC<{ children: React.ReactNode, activeNode: CafeNod
               {storeBranding.logo_url ? (
                 <img src={storeBranding.logo_url} alt="Logo" className="w-full h-full object-cover" />
               ) : (
-                <img src="/src/assets/payper-logo.png" alt="Payper" className="w-full h-full object-contain p-0.5" />
+                <img src={payperLogo} alt="Payper" className="w-full h-full object-contain p-0.5" />
               )}
             </div>
             <div className="flex flex-col">
