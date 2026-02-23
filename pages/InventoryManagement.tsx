@@ -2149,90 +2149,112 @@ const InventoryManagement: React.FC = () => {
                                   }
                                 })()
                               ) : (
-                                <>
-                                  {/* Stock total (current_stock = calculated by DB) */}
-                                  <span className={`font-black italic text-[14px] ${(item.current_stock || 0) > 0 ? 'text-neon' : 'text-red-400'}`}>
-                                    {Math.round((item.current_stock || 0) * 100) / 100}
-                                  </span>
-                                  <span className="text-[7px] font-bold text-white/20 uppercase ml-1">{item.unit_type === 'unit' ? 'un' : item.unit_type}</span>
-                                  {(item.current_stock || 0) <= (item.min_stock || 0) && (
-                                    <span className="text-[6px] font-black text-red-400/80 uppercase tracking-widest mt-1">CRÍTICO</span>
-                                  )}
-                                </>
+                                (() => {
+                                  const closedUnits = Math.floor(item.closed_stock || 0);
+                                  const pkgSize = item.package_size || 1;
+                                  const unitAbbr = item.unit_type === 'unit' ? 'un' : item.unit_type === 'gram' ? 'g' : item.unit_type === 'kilo' ? 'kg' : item.unit_type === 'liter' ? 'L' : item.unit_type === 'ml' ? 'ml' : item.unit_type || 'un';
+                                  const isCritical = (item.current_stock || 0) <= (item.min_stock || 0);
+                                  const hasStock = closedUnits > 0 || (item.current_stock || 0) > 0;
+
+                                  // Format package size display (e.g. "x 750 ml" or "x 1 L")
+                                  let sizeLabel = '';
+                                  if (pkgSize > 1) {
+                                    let dSize = pkgSize;
+                                    let dUnit = unitAbbr;
+                                    if ((unitAbbr === 'ml' || unitAbbr === 'g') && dSize >= 1000) {
+                                      dSize = dSize / 1000;
+                                      dUnit = unitAbbr === 'ml' ? 'L' : 'kg';
+                                    }
+                                    sizeLabel = `x ${dSize}${dUnit}`;
+                                  }
+
+                                  return (
+                                    <>
+                                      <div className="flex items-baseline gap-1">
+                                        <span className={`font-black italic text-[14px] ${hasStock ? 'text-neon' : 'text-red-400'}`}>
+                                          {closedUnits}
+                                        </span>
+                                        {sizeLabel ? (
+                                          <span className="text-[7px] font-bold text-white/30 uppercase">{sizeLabel}</span>
+                                        ) : (
+                                          <span className="text-[7px] font-bold text-white/20 uppercase">{unitAbbr}</span>
+                                        )}
+                                      </div>
+                                      {isCritical && (
+                                        <span className="text-[6px] font-black text-red-400/80 uppercase tracking-widest mt-0.5">CRITICO</span>
+                                      )}
+                                    </>
+                                  );
+                                })()
                               )}
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            {/* Estado del Paquete (Calculado) - TABLE VIEW SIMPLIFIED */}
+                            {/* CELDA 2: Paquetes Abiertos */}
                             {(() => {
-                              // Logic for Open Packages - TABLE CELL (SUMMARY ONLY)
-                              const isOpenList = (item.open_packages?.length > 0 || item.open_count > 0);
+                              const openPkgs = item.open_packages || [];
+                              const hasOpen = openPkgs.length > 0 || (item.open_count || 0) > 0;
 
-                              if (isOpenList) {
-                                // SUMMARY view for multiple open packages
-                                const totalOpen = item.open_packages?.length || item.open_count || 0;
+                              if (hasOpen && openPkgs.length > 0) {
+                                // Show each open package with % and capacity
                                 return (
                                   <div
-                                    className="flex flex-col items-start justify-center gap-0.5 p-2 rounded-lg bg-white/[0.02] border border-white/5 cursor-pointer hover:bg-white/5 transition-colors group/open w-fit min-w-[100px]"
+                                    className="flex flex-col gap-1 cursor-pointer hover:opacity-80 transition-opacity"
                                     onClick={(e) => { e.stopPropagation(); setSelectedItem(item); setDrawerTab('details'); }}
                                   >
-                                    <div className="flex items-center gap-2">
-                                      <span className="material-symbols-outlined text-orange-500 text-sm group-hover/open:scale-110 transition-transform">inventory_2</span>
-                                      <span className="text-[10px] font-black text-white uppercase">{totalOpen} ABIERTO{totalOpen > 1 ? 'S' : ''}</span>
-                                    </div>
-                                    {/* Visual helper dots */}
-                                    <div className="flex gap-0.5 pl-6">
-                                      {Array.from({ length: Math.min(totalOpen, 5) }).map((_, i) => (
-                                        <div key={`dot-${item.id}-${i}`} className="size-1.5 rounded-full bg-orange-500/50"></div>
-                                      ))}
-                                      {totalOpen > 5 && <span className="text-[6px] text-white/30">+</span>}
-                                    </div>
+                                    {openPkgs.slice(0, 3).map((pkg: any, i: number) => {
+                                      const capacity = pkg.package_capacity || item.package_size || 1;
+                                      const remaining = pkg.remaining || 0;
+                                      const pct = capacity > 0 ? Math.round((remaining / capacity) * 100) : 0;
+                                      const unitAbbr = item.unit_type === 'ml' ? 'ml' : item.unit_type === 'gram' ? 'g' : item.unit_type === 'liter' ? 'L' : item.unit_type === 'kilo' ? 'kg' : item.unit_type === 'unit' ? 'un' : item.unit_type || 'un';
+                                      // Format capacity (1000ml → 1L)
+                                      let capDisplay = capacity;
+                                      let capUnit = unitAbbr;
+                                      if ((unitAbbr === 'ml' || unitAbbr === 'g') && capacity >= 1000) {
+                                        capDisplay = capacity / 1000;
+                                        capUnit = unitAbbr === 'ml' ? 'L' : 'kg';
+                                      }
+                                      const pctColor = pct > 50 ? 'text-neon bg-neon/10 border-neon/20' : pct > 20 ? 'text-orange-400 bg-orange-400/10 border-orange-400/20' : 'text-red-400 bg-red-400/10 border-red-400/20';
+
+                                      return (
+                                        <div key={pkg.id || `open-${i}`} className={`flex items-center gap-1.5 px-2 py-1 rounded-md border ${pctColor}`}>
+                                          <span className="text-[9px] font-black">{pct}%</span>
+                                          <span className="w-px h-2.5 opacity-20 bg-current mx-0.5"></span>
+                                          <span className="text-[8px] font-bold opacity-80">{capDisplay}{capUnit}</span>
+                                        </div>
+                                      );
+                                    })}
+                                    {openPkgs.length > 3 && (
+                                      <span className="text-[7px] font-bold text-white/30 uppercase">+{openPkgs.length - 3} mas</span>
+                                    )}
+                                  </div>
+                                );
+                              } else if (hasOpen) {
+                                // Has open count but no package details
+                                const totalOpen = item.open_count || 0;
+                                return (
+                                  <div className="flex items-center gap-2 opacity-70"
+                                    onClick={(e) => { e.stopPropagation(); setSelectedItem(item); setDrawerTab('details'); }}
+                                  >
+                                    <span className="material-symbols-outlined text-orange-500 text-sm">inventory_2</span>
+                                    <span className="text-[10px] font-black text-white uppercase">{totalOpen} ABIERTO{totalOpen > 1 ? 'S' : ''}</span>
+                                  </div>
+                                );
+                              } else if (item.current_stock > 0) {
+                                // No open packages, all sealed
+                                return (
+                                  <div className="flex items-center gap-1.5 opacity-40">
+                                    <span className="material-symbols-outlined text-green-500 text-[10px]">verified</span>
+                                    <span className="text-[9px] font-bold text-white/60 uppercase">Todo sellado</span>
                                   </div>
                                 );
                               } else {
-                                // NO OPEN PACKAGES -> Show 100% Sealed Indicator if Stock Exists
-                                if (item.current_stock > 0) {
-                                  // Smart Unit Display - Standarized
-                                  // Prioritize package_size/content_unit (DB columns)
-                                  let rawSize = item.package_size || item.unit_size || 1;
-                                  // Fix: If content_unit is 'un' or empty, try to use unit_type if available and different
-                                  let initialUnit = item.content_unit || item.unit_measure || item.unit_type || 'un';
-                                  if ((!initialUnit || initialUnit === 'un' || initialUnit === 'unit') && item.unit_type && item.unit_type !== 'un' && item.unit_type !== 'unit') {
-                                    initialUnit = item.unit_type;
-                                  }
-                                  let rawUnit = initialUnit || 'un';
-
-                                  // Normalize unit display
-                                  if (rawUnit === 'unit') rawUnit = 'un';
-
-                                  let displaySize = rawSize;
-                                  let displayUnit = rawUnit;
-
-                                  if (['gram', 'ml', 'g'].includes(rawUnit)) {
-                                    if (displaySize >= 1000) {
-                                      displaySize /= 1000;
-                                      displayUnit = rawUnit === 'gram' || rawUnit === 'g' ? 'KG' : 'L';
-                                    }
-                                  }
-
-                                  return (
-                                    <div className="flex items-center gap-2 group/sealed opacity-80">
-                                      <div className="flex items-center gap-1.5 bg-green-500/10 pl-2.5 pr-3 py-1 rounded-md border border-green-500/20">
-                                        <span className="material-symbols-outlined text-green-500 text-[10px]">verified</span>
-                                        <span className="text-[9px] font-black text-green-500 uppercase">100%</span>
-                                        <span className="w-px h-2.5 bg-green-500/20 mx-0.5"></span>
-                                        <span className="text-[9px] font-bold text-green-500/90 uppercase tracking-wide">{displaySize} {displayUnit}</span>
-                                      </div>
-                                    </div>
-                                  );
-                                } else {
-                                  return (
-                                    <div className="flex items-center gap-2 opacity-30">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-white/50"></span>
-                                      <span className="text-[9px] font-bold text-white uppercase">SIN STOCK</span>
-                                    </div>
-                                  );
-                                }
+                                return (
+                                  <div className="flex items-center gap-2 opacity-30">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-white/50"></span>
+                                    <span className="text-[9px] font-bold text-white uppercase">SIN STOCK</span>
+                                  </div>
+                                );
                               }
                             })()}
                           </td>
@@ -2593,31 +2615,45 @@ const InventoryManagement: React.FC = () => {
                   {/* METRICS & DETAILS */}
                   {drawerTab === 'details' && (
                     <div className="bg-white/[0.02] rounded-2xl p-6 border border-white/5 space-y-6">
-                      {/* STOCK TOTAL - Principal (current_stock from DB) */}
+                      {/* STOCK TOTAL - Show closed units as primary */}
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="text-[10px] font-medium text-cream/70 uppercase tracking-[0.2em] mb-2">STOCK TOTAL</p>
                           {(() => {
-                            const stockValue = Math.round((selectedItem.current_stock || 0) * 100) / 100;
-                            const unitLabel = selectedItem.unit_type === 'unit' ? 'unidades' :
-                              selectedItem.unit_type === 'gram' ? 'gramos' :
-                                selectedItem.unit_type === 'ml' ? 'ml' :
-                                  selectedItem.unit_type === 'kilo' ? 'kilos' :
-                                    selectedItem.unit_type === 'liter' ? 'litros' : 'unidades';
+                            const closedUnits = Math.floor(selectedItem.closed_stock || 0);
+                            const pkgSize = selectedItem.package_size || 1;
+                            const unitAbbr = selectedItem.unit_type === 'gram' ? 'g' : selectedItem.unit_type === 'ml' ? 'ml' : selectedItem.unit_type === 'kilo' ? 'kg' : selectedItem.unit_type === 'liter' ? 'L' : '';
+
+                            // Format capacity label
+                            let capLabel = '';
+                            if (pkgSize > 1 && unitAbbr) {
+                              let dSize = pkgSize;
+                              let dUnit = unitAbbr;
+                              if ((unitAbbr === 'ml' || unitAbbr === 'g') && dSize >= 1000) {
+                                dSize = dSize / 1000;
+                                dUnit = unitAbbr === 'ml' ? 'L' : 'kg';
+                              }
+                              capLabel = `x ${dSize}${dUnit} c/u`;
+                            }
+
                             return (
-                              <div className="flex items-baseline gap-3">
-                                <p className={`text-5xl font-light tracking-tighter ${stockValue > 0 ? 'text-cream' : 'text-red-400'}`}>
-                                  {stockValue}
-                                </p>
-                                <p className="text-sm font-medium text-white/30">{unitLabel}</p>
-                              </div>
+                              <>
+                                <div className="flex items-baseline gap-3">
+                                  <p className={`text-5xl font-light tracking-tighter ${closedUnits > 0 ? 'text-cream' : 'text-red-400'}`}>
+                                    {closedUnits}
+                                  </p>
+                                  <p className="text-sm font-medium text-white/30">
+                                    {closedUnits === 1 ? 'unidad' : 'unidades'}
+                                  </p>
+                                </div>
+                                {capLabel && (
+                                  <p className="text-[11px] font-light text-white/30 mt-2">
+                                    {capLabel}
+                                  </p>
+                                )}
+                              </>
                             );
                           })()}
-                          {selectedItem.package_size && selectedItem.package_size > 1 && (
-                            <p className="text-[11px] font-light text-white/30 mt-2">
-                              1 unidad cerrada = <span className="text-cream/50 font-medium">{selectedItem.package_size}{selectedItem.unit_type === 'gram' ? 'g' : selectedItem.unit_type === 'ml' ? 'ml' : ''}</span>
-                            </p>
-                          )}
                         </div>
                         <button
                           onClick={() => setIsTransferModalOpen(true)}
@@ -2646,11 +2682,24 @@ const InventoryManagement: React.FC = () => {
                         <div className="space-y-1">
                           <p className="text-[9px] font-medium text-white/30 uppercase tracking-widest">Abiertos</p>
                           {(() => {
-                            const openRemaining = (selectedItem.open_packages || []).reduce((sum: number, pkg: any) => sum + (pkg.remaining || 0), 0);
+                            const openPkgs = selectedItem.open_packages || [];
+                            const openCount = openPkgs.length;
+                            const unitAbbr = selectedItem.unit_type === 'ml' ? 'ml' : selectedItem.unit_type === 'gram' ? 'g' : selectedItem.unit_type === 'liter' ? 'L' : selectedItem.unit_type === 'kilo' ? 'kg' : selectedItem.unit_type === 'unit' ? 'un' : selectedItem.unit_type || 'un';
+
+                            if (openCount === 0) {
+                              return <p className="text-lg font-light text-white/20 tracking-tight">0</p>;
+                            }
+
+                            const openRemaining = openPkgs.reduce((sum: number, pkg: any) => sum + (pkg.remaining || 0), 0);
                             return (
-                              <p className="text-lg font-light text-white/60 tracking-tight">
-                                {Math.round(openRemaining * 100) / 100} <span className="text-[9px] text-white/20">{selectedItem.unit_type || 'un'}</span>
-                              </p>
+                              <div>
+                                <p className="text-lg font-light text-orange-400 tracking-tight">
+                                  {openCount} <span className="text-[9px] text-white/20">envase{openCount > 1 ? 's' : ''}</span>
+                                </p>
+                                <p className="text-[9px] text-white/30 mt-0.5">
+                                  {Math.round(openRemaining * 100) / 100} {unitAbbr} restantes
+                                </p>
+                              </div>
                             );
                           })()}
                         </div>
