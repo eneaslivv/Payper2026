@@ -9,6 +9,21 @@ import { getQRContext, clearQRContext, QRContext } from '../lib/qrContext';
 
 // Local interfaces removed in favor of global types
 
+export interface ReservationContext {
+    reservation_id: string;
+    invite_token: string;
+    store_id: string;
+    node_id: string;
+    table_label: string;
+    initial_credit: number;
+    remaining_credit: number;
+    menu_id: string | null;
+    customer_name: string;
+    pax: number;
+    claimed_at: number;
+    expires_at: number;
+}
+
 interface ClientContextType {
     store: Store | null;
     loadingStore: boolean;
@@ -56,6 +71,9 @@ interface ClientContextType {
     onSessionCreated: (sessionId: string, sessionType: string, label: string | null) => void;
     // Dynamic Menu System
     menuId: string | null;
+    // Reservation System
+    reservationContext: ReservationContext | null;
+    refreshReservationCredit: () => Promise<void>;
     disconnectTable: () => void;
 }
 
@@ -95,6 +113,9 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     // Dynamic Menu System State
     const [menuId, setMenuId] = useState<string | null>(null);
+
+    // Reservation Context State
+    const [reservationContext, setReservationContext] = useState<ReservationContext | null>(null);
 
     const getAvailableStock = (item: any) => {
         if (item?.available_stock !== undefined && item?.available_stock !== null) {
@@ -405,6 +426,24 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     // Don't auto-show - let the checkout page handle it
                 }
             }
+
+            // Load reservation context from localStorage
+            const rawReservation = localStorage.getItem('reservation_context');
+            if (rawReservation) {
+                try {
+                    const resCtx = JSON.parse(rawReservation) as ReservationContext;
+                    if (resCtx.expires_at && Date.now() < resCtx.expires_at && resCtx.store_id === store.id) {
+                        setReservationContext(resCtx);
+                        console.log('[ClientContext] Reservation loaded:', resCtx.reservation_id, 'credit:', resCtx.remaining_credit);
+                    } else {
+                        localStorage.removeItem('reservation_context');
+                        setReservationContext(null);
+                    }
+                } catch (e) {
+                    console.error('[ClientContext] Error parsing reservation context:', e);
+                    localStorage.removeItem('reservation_context');
+                }
+            }
         };
 
         loadContext();
@@ -457,21 +496,36 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 });
 
                 // 2. DYNAMIC MENU RESOLUTION
-                // Determine session context for menu resolution
-                const sessionType = qrContext?.node_type || orderChannel || 'generic';
-                const tableId = qrContext?.node_id || null;
+                // Check for reservation menu override first
+                let resolvedMenuId: string | null = null;
+                const rawRes = localStorage.getItem('reservation_context');
+                if (rawRes) {
+                    try {
+                        const resCtx = JSON.parse(rawRes);
+                        if (resCtx.expires_at && Date.now() < resCtx.expires_at && resCtx.store_id === store.id && resCtx.menu_id) {
+                            resolvedMenuId = resCtx.menu_id;
+                            console.log('[ClientContext] Reservation menu override:', resolvedMenuId);
+                        }
+                    } catch (e) {}
+                }
 
-                // Call resolve_menu RPC
-                const { data: resolvedMenuId, error: menuError } = await (supabase.rpc as any)('resolve_menu', {
-                    p_store_id: store.id,
-                    p_session_type: sessionType,
-                    p_table_id: tableId,
-                    p_bar_id: null
-                });
+                if (!resolvedMenuId) {
+                    // Determine session context for menu resolution
+                    const sessionType = qrContext?.node_type || orderChannel || 'generic';
+                    const tableId = qrContext?.node_id || null;
 
-                if (menuError) {
-                    console.error('[ClientContext] Error resolving menu:', menuError);
-                    // Fallback: load all products directly (backward compatibility)
+                    // Call resolve_menu RPC
+                    const { data: rpcMenuId, error: menuError } = await (supabase.rpc as any)('resolve_menu', {
+                        p_store_id: store.id,
+                        p_session_type: sessionType,
+                        p_table_id: tableId,
+                        p_bar_id: null
+                    });
+
+                    if (menuError) {
+                        console.error('[ClientContext] Error resolving menu:', menuError);
+                    }
+                    resolvedMenuId = rpcMenuId;
                 }
 
                 if (resolvedMenuId) {
@@ -902,13 +956,34 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         console.log('[Session] Created:', newSessionId, sessionType, label);
     };
 
+    // Reservation Credit Helper
+    const refreshReservationCredit = async () => {
+        const raw = localStorage.getItem('reservation_context');
+        if (!raw) return;
+        try {
+            const resCtx = JSON.parse(raw) as ReservationContext;
+            const { data, error } = await (supabase.rpc as any)('get_active_reservation_for_node', {
+                p_node_id: resCtx.node_id
+            });
+            if (!error && data?.remaining_credit !== undefined) {
+                const updated = { ...resCtx, remaining_credit: data.remaining_credit };
+                localStorage.setItem('reservation_context', JSON.stringify(updated));
+                setReservationContext(updated);
+            }
+        } catch (e) {
+            console.error('[ClientContext] Error refreshing reservation credit:', e);
+        }
+    };
+
     // QR Context Helper
     const disconnectTable = () => {
         clearQRContext();
         setQRContextState(null);
         setTableLabel(null);
-        setOrderChannel('takeaway'); // Default fallback
-        window.location.reload(); // Hard reload to ensure clean state for all components
+        setOrderChannel('takeaway');
+        localStorage.removeItem('reservation_context');
+        setReservationContext(null);
+        window.location.reload();
     };
 
     return (
@@ -958,6 +1033,9 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             onSessionCreated,
             // Dynamic Menu System
             menuId,
+            // Reservation System
+            reservationContext,
+            refreshReservationCredit,
         }}>
             {children}
         </ClientContext.Provider>

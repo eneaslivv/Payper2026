@@ -12,7 +12,8 @@ const MenuPage: React.FC = () => {
     store, products, user, hasActiveOrder, setIsHubOpen, cart,
     getMenuRule, isOrderingAllowed, serviceMode, tableLabel,
     showSessionSelector, setShowSessionSelector, onSessionCreated,
-    disconnectTable, addToCart, updateQuantity, removeFromCart
+    disconnectTable, addToCart, updateQuantity, removeFromCart,
+    reservationContext
   } = useClient();
 
   const [selectedCategory, setSelectedCategory] = useState('Todos');
@@ -186,16 +187,36 @@ const MenuPage: React.FC = () => {
 
       {/* CONTEXT BANNER (Always visible to clarify state) */}
       <div className="fixed top-0 left-0 right-0 z-[60] flex justify-center pointer-events-none">
-        <div className={`mt-[calc(env(safe-area-inset-top)+1rem)] pointer-events-auto backdrop-blur-md border rounded-full py-2 px-4 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 ${tableLabel ? 'bg-[#1a1c1a]/90 border-white/10' : 'bg-black/80 border-white/5'}`}>
-          <div className="flex flex-col items-center leading-none">
-            <span className="text-[8px] uppercase tracking-widest text-white/50 font-bold mb-0.5">Ubicación</span>
-            <span className={`text-sm font-black tracking-wide ${tableLabel ? 'text-neon shadow-neon-soft' : 'text-white/80'}`}>
-              {tableLabel || 'QR LIBRE'}
-            </span>
-          </div>
+        <div className={`mt-[calc(env(safe-area-inset-top)+1rem)] pointer-events-auto backdrop-blur-md border rounded-full py-2 px-4 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 ${reservationContext ? 'bg-indigo-950/90 border-indigo-500/30' : tableLabel ? 'bg-[#1a1c1a]/90 border-white/10' : 'bg-black/80 border-white/5'}`}>
+          {reservationContext ? (
+            <>
+              <div className="flex flex-col items-center leading-none">
+                <span className="text-[8px] uppercase tracking-widest text-indigo-300/60 font-bold mb-0.5">Mesa Reservada</span>
+                <span className="text-sm font-black tracking-wide text-indigo-300">
+                  {reservationContext.table_label}
+                </span>
+              </div>
+              <div className="h-6 w-px bg-indigo-500/20 mx-1"></div>
+              <div className="flex flex-col items-center leading-none">
+                <span className="text-[8px] uppercase tracking-widest text-indigo-300/60 font-bold mb-0.5">Crédito</span>
+                <span className="text-sm font-black tracking-wide text-indigo-300">
+                  ${reservationContext.remaining_credit.toFixed(2)}
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex flex-col items-center leading-none">
+                <span className="text-[8px] uppercase tracking-widest text-white/50 font-bold mb-0.5">Ubicación</span>
+                <span className={`text-sm font-black tracking-wide ${tableLabel ? 'text-neon shadow-neon-soft' : 'text-white/80'}`}>
+                  {tableLabel || 'QR LIBRE'}
+                </span>
+              </div>
+            </>
+          )}
 
           {/* Only show disconnect X if actually connected to a table */}
-          {tableLabel && (
+          {tableLabel && !reservationContext && (
             <>
               <div className="h-6 w-px bg-white/10 mx-1"></div>
               <button

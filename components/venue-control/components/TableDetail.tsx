@@ -20,7 +20,7 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
   const { profile } = useAuth();
   const { addToast } = useToast();
   const [activeTab, setActiveTab] = useState<'active' | 'history' | 'analytics'>('active');
-  const [view, setView] = useState<'details' | 'checkout' | 'closing' | 'qr' | 'addOrder' | 'reservation'>('details');
+  const [view, setView] = useState<'details' | 'checkout' | 'closing' | 'qr' | 'addOrder' | 'reservation' | 'invitation'>('details');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'qr'>('card');
   const [isProcessing, setIsProcessing] = useState(false);
   const [qrHash, setQrHash] = useState<string | null>(null);
@@ -35,6 +35,12 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
   const [foundCustomers, setFoundCustomers] = useState<any[]>([]);
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+
+  // Reservation invite state
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [reservationId, setReservationId] = useState<string | null>(null);
+  const [selectedMenuId, setSelectedMenuId] = useState<string | null>(null);
+  const [availableMenus, setAvailableMenus] = useState<{ id: string; name: string }[]>([]);
 
   // Dispatch Stations for dropdown
   const [dispatchStations, setDispatchStations] = useState<{ id: string; name: string }[]>([]);
@@ -65,6 +71,20 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
       .order('name', { ascending: true })
       .then(({ data }) => {
         if (data) setStorageLocations(data as any);
+      });
+  }, [profile?.store_id]);
+
+  // Fetch available menus for reservation
+  useEffect(() => {
+    if (!profile?.store_id) return;
+    supabase
+      .from('menus')
+      .select('id, name')
+      .eq('store_id', profile.store_id)
+      .eq('is_active', true)
+      .order('priority')
+      .then(({ data }) => {
+        if (data) setAvailableMenus(data);
       });
   }, [profile?.store_id]);
 
@@ -475,28 +495,30 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
     if (!profile?.store_id) return;
     setIsProcessing(true);
     try {
-      const { error } = await supabase
-        .from('venue_nodes' as any)
-        .update({
-          status: 'reserved',
-          label: customerName ? `${table.name} (${customerName})` : table.name,
-          metadata: {
-            ...(table as any).metadata,
-            reserved_for: customerName,
-            reserved_email: customerEmail,
-            reserved_customer_id: selectedCustomerId,
-            reservation_amount: reservationAmount ? parseFloat(reservationAmount) : 0,
-            pax: pax
-          }
-        })
-        .eq('id', table.id);
+      const { data, error } = await (supabase.rpc as any)('create_reservation', {
+        p_store_id: profile.store_id,
+        p_node_id: table.id,
+        p_customer_name: customerName,
+        p_customer_email: customerEmail || null,
+        p_customer_phone: null,
+        p_client_id: selectedCustomerId || null,
+        p_pax: pax,
+        p_initial_credit: reservationAmount ? parseFloat(reservationAmount) : 0,
+        p_menu_id: selectedMenuId || null,
+        p_notes: null,
+        p_reserved_by: profile.id
+      });
 
       if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Error al crear reserva');
+
+      setInviteToken(data.invite_token);
+      setReservationId(data.reservation_id);
       addToast('Mesa Reservada', 'success');
-      setView('details');
-    } catch (e) {
+      setView('invitation');
+    } catch (e: any) {
       console.error(e);
-      addToast('Error al reservar', 'error');
+      addToast('Error al reservar', 'error', e.message);
     } finally {
       setIsProcessing(false);
     }
@@ -505,9 +527,17 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
   const handleCancelReservation = async () => {
     if (!profile?.store_id) return;
     try {
+      // Cancel the reservation record
+      await supabase
+        .from('table_reservations' as any)
+        .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
+        .eq('node_id', table.id)
+        .in('status', ['active', 'arrived']);
+
+      // Reset venue node
       const { error } = await supabase
         .from('venue_nodes' as any)
-        .update({ status: 'free' })
+        .update({ status: 'free', metadata: {} })
         .eq('id', table.id);
 
       if (error) throw error;
@@ -1130,7 +1160,7 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
                         <ArrowLeft size={16} className="rotate-180" />
                       </button>
                       <button
-                        onClick={handleReserveTable}
+                        onClick={() => setView('reservation')}
                         className="w-full py-3 bg-zinc-900 text-indigo-400 text-[9px] font-black uppercase tracking-widest rounded-2xl border border-zinc-800 hover:bg-indigo-500/10 transition-all"
                       >
                         Reservar Mesa
@@ -1393,25 +1423,22 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
                 </div>
               </div>
 
-              <div className="p-6 bg-indigo-500/5 border border-indigo-500/10 rounded-[32px] space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400">
-                      <CheckCircle2 size={16} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-white uppercase tracking-widest">Enviar Invitación</p>
-                      <p className="text-[9px] text-zinc-500">Link de registro rápido vía App</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setInviteEnabled(!inviteEnabled)}
-                    className={`w-12 h-6 rounded-full transition-all relative ${inviteEnabled ? 'bg-indigo-500' : 'bg-zinc-800'}`}
+              {availableMenus.length > 0 && (
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] italic">Menú Especial (Opcional)</label>
+                  <select
+                    value={selectedMenuId || ''}
+                    onChange={(e) => setSelectedMenuId(e.target.value || null)}
+                    className="w-full bg-[#0a0a0a] border border-zinc-900 rounded-[24px] py-5 px-6 text-sm font-black text-white focus:border-indigo-500/50 outline-none transition-all appearance-none"
                   >
-                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${inviteEnabled ? 'left-7' : 'left-1'}`} />
-                  </button>
+                    <option value="">Menú estándar</option>
+                    {availableMenus.map(m => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </select>
+                  <p className="text-[8px] text-zinc-600 font-medium px-4">Si se selecciona, el cliente solo verá los productos de ese menú.</p>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="p-8 bg-black border-t border-zinc-900">
@@ -1425,6 +1452,79 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
               >
                 {isProcessing ? 'Procesando...' : 'Confirmar Reserva'}
               </button>
+            </div>
+          </div>
+        )}
+        {view === 'invitation' && inviteToken && (
+          <div className="fixed inset-y-0 right-0 w-full md:w-[420px] bg-[#050505] border-l border-zinc-900 shadow-[0_0_100px_rgba(0,0,0,1)] z-[210] flex flex-col animate-in slide-in-from-right duration-500">
+            <div className="p-8 border-b border-zinc-900 flex items-center justify-between bg-[#080808]">
+              <button onClick={() => setView('details')} className="flex items-center gap-2 text-zinc-500 hover:text-white transition-all">
+                <ArrowLeft size={18} />
+                <span className="text-[10px] font-black uppercase tracking-widest">Listo</span>
+              </button>
+              <h3 className="text-sm font-black text-[#36e27b] uppercase tracking-widest italic flex items-center gap-2">
+                <Check size={16} />
+                Reserva Confirmada
+              </h3>
+              <div className="w-8"></div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-8 space-y-10 flex flex-col items-center justify-center text-center">
+              <div className="w-20 h-20 rounded-full bg-[#36e27b]/10 border-4 border-[#36e27b]/30 flex items-center justify-center">
+                <Check size={40} className="text-[#36e27b]" />
+              </div>
+
+              <div>
+                <h3 className="text-xl font-black text-white italic uppercase">
+                  {customerName}
+                </h3>
+                <p className="text-zinc-500 text-xs mt-1">{table.name} — {pax} personas</p>
+                {reservationAmount && parseFloat(reservationAmount) > 0 && (
+                  <p className="text-[#36e27b] font-black text-lg mt-2">
+                    ${parseFloat(reservationAmount).toLocaleString()} crédito
+                  </p>
+                )}
+              </div>
+
+              <div className="w-full space-y-3 max-w-[320px]">
+                <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Invitar al Cliente</p>
+
+                {/* WhatsApp */}
+                <button
+                  onClick={() => {
+                    const inviteUrl = `${window.location.origin}/#/reserve/${inviteToken}`;
+                    const msg = encodeURIComponent(
+                      `¡Te esperamos! Tu mesa está reservada.\n\n` +
+                      `📍 Mesa: ${table.name}\n` +
+                      `👥 Personas: ${pax}\n` +
+                      (reservationAmount && parseFloat(reservationAmount) > 0 ? `💰 Crédito: $${parseFloat(reservationAmount).toLocaleString()}\n` : '') +
+                      `\nAccedé al menú:\n${inviteUrl}`
+                    );
+                    window.open(`https://wa.me/?text=${msg}`, '_blank');
+                  }}
+                  className="w-full py-4 bg-[#25D366] text-white text-[10px] font-black uppercase tracking-widest rounded-2xl flex items-center justify-center gap-3 hover:scale-[1.02] transition-all"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                  Enviar por WhatsApp
+                </button>
+
+                {/* Copy Link */}
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/#/reserve/${inviteToken}`);
+                    addToast('Link copiado al portapapeles', 'success');
+                  }}
+                  className="w-full py-4 bg-zinc-900 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl border border-zinc-800 flex items-center justify-center gap-3 hover:border-[#36e27b]/30 transition-all"
+                >
+                  <span className="material-symbols-outlined text-sm">content_copy</span>
+                  Copiar Link de Invitación
+                </button>
+
+                {/* Show Link */}
+                <div className="p-3 bg-zinc-900 rounded-xl border border-zinc-800 text-[9px] font-mono text-zinc-500 break-all select-all">
+                  {window.location.origin}/#/reserve/{inviteToken}
+                </div>
+              </div>
             </div>
           </div>
         )}

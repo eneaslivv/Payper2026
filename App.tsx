@@ -33,6 +33,7 @@ import ClientProfilePage from './pages/client/ProfilePage';
 import ClientLoyaltyPage from './pages/client/LoyaltyPage';
 import ClientOrderStatusPage from './pages/client/OrderStatusPage';
 import QRResolver from './pages/QRResolver';
+import ReservationResolver from './pages/ReservationResolver';
 import ClientWalletPage from './pages/client/WalletPage';
 import ScanOrderModal from './components/ScanOrderModal';
 import { MenuPage } from './pages/MenuPage';
@@ -509,12 +510,13 @@ const MainRouter: React.FC = () => {
     window.location.hash.includes('/order/') ||
     window.location.hash.includes('/tracking/');
   const isQRRoute = window.location.hash.includes('#/qr/');
+  const isReserveRoute = window.location.hash.includes('#/reserve/');
 
   // DEBUG: Log routing decision
   console.log('[ROUTING] Hash:', window.location.hash);
   console.log('[ROUTING] isClientMenu:', isClientMenu, 'isOrderRoute:', isOrderRoute, 'isQRRoute:', isQRRoute);
 
-  if (isClientMenu || isOrderRoute || isQRRoute) {
+  if (isClientMenu || isOrderRoute || isQRRoute || isReserveRoute) {
     return (
       <Router>
         <Routes>
@@ -538,6 +540,9 @@ const MainRouter: React.FC = () => {
 
           {/* QR Resolver Route */}
           <Route path="/qr/:hash" element={<QRResolver />} />
+
+          {/* Reservation Invite Route */}
+          <Route path="/reserve/:token" element={<ReservationResolver />} />
 
           {/* Order Confirmation Routes */}
           <Route path="/orden/:orderId/confirmado" element={<OrderConfirmationPage />} />
@@ -730,6 +735,7 @@ const MainRouter: React.FC = () => {
             <Route path="/join" element={<JoinTeam />} />
             {/* QR Resolver Fallback */}
             <Route path="/qr/:hash" element={<QRResolver />} />
+            <Route path="/reserve/:token" element={<ReservationResolver />} />
 
             {/* Public Menu Routes for Testing */}
             <Route path="/m/:slug" element={
@@ -794,6 +800,7 @@ const MainRouter: React.FC = () => {
           <Routes>
             {/* QR Resolver Fallback */}
             <Route path="/qr/:hash" element={<QRResolver />} />
+            <Route path="/reserve/:token" element={<ReservationResolver />} />
 
             {/* Public Menu Routes (Accessible when logged in) */}
             <Route path="/m/:slug" element={

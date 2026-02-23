@@ -5,7 +5,7 @@ import { useClient } from '../../contexts/ClientContext';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../components/ToastSystem';
 
-type PaymentMethodType = 'wallet' | 'mercadopago';
+type PaymentMethodType = 'wallet' | 'mercadopago' | 'table_credit';
 
 interface Reward {
   id: string;
@@ -18,7 +18,7 @@ interface Reward {
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
-  const { cart, isRedeemingPoints, clearCart, setHasActiveOrder, store, user, qrContext, tableLabel: qrTableLabel, orderChannel } = useClient();
+  const { cart, isRedeemingPoints, clearCart, setHasActiveOrder, store, user, qrContext, tableLabel: qrTableLabel, orderChannel, reservationContext, refreshReservationCredit } = useClient();
   // Use QR context if available, otherwise it's generic
   const initialTable = qrTableLabel || '';
 
@@ -30,9 +30,11 @@ const CheckoutPage: React.FC = () => {
   const surfaceColor = theme.surfaceColor || '#141714';
 
   const walletBalance = user?.balance || 0;
+  const tableCredit = reservationContext?.remaining_credit || 0;
+  const hasTableCredit = tableCredit > 0;
 
   const [deliveryMode, setDeliveryMode] = useState<'local' | 'takeout'>(initialTable ? 'local' : 'takeout');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('wallet');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>(hasTableCredit ? 'table_credit' : 'wallet');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const { addToast } = useToast();
 
@@ -130,6 +132,94 @@ const CheckoutPage: React.FC = () => {
         location_identifier: safeQrContext ? qrTableLabel : null,
         session_id: sessionId
       };
+
+      // 1.5 TABLE CREDIT FLOW — Reservation credit payment
+      if (paymentMethod === 'table_credit') {
+        if (!reservationContext) {
+          addToast('No hay crédito de mesa disponible', 'error');
+          setIsProcessingPayment(false);
+          return;
+        }
+
+        const creditToUse = Math.min(tableCredit, total);
+        const orderId = crypto.randomUUID();
+
+        if (selectedRewardId) {
+          const { data: redeemResult, error: redeemError } = await (supabase.rpc as any)('redeem_reward', {
+            p_client_id: user?.id,
+            p_reward_id: selectedRewardId,
+            p_order_id: orderId
+          });
+          if (redeemError || !redeemResult?.success) {
+            addToast(redeemResult?.error || 'Error al canjear recompensa', 'error');
+            setIsProcessingPayment(false);
+            return;
+          }
+        }
+
+        const itemsPayload = cart.map(item => ({
+          product_id: item.id,
+          variant_id: item.variant_id || null,
+          quantity: item.quantity,
+          unit_price: item.price,
+          notes: (item as any).notes || null,
+          addon_ids: item.addon_ids || [],
+          addon_prices: item.addons?.map((a: any) => ({ id: a.id, price: a.price })) || []
+        }));
+
+        const { data: rpcResult, error: rpcError } = await (supabase.rpc as any)('create_order_atomic', {
+          p_order: {
+            id: orderId,
+            store_id: store.id,
+            client_id: user?.id || null,
+            total_amount: total,
+            status: 'pending',
+            payment_method: 'table_credit',
+            payment_provider: 'table_credit',
+            payment_status: 'paid',
+            is_paid: true,
+            table_number: reservationContext.table_label || (deliveryMode === 'local' ? currentTable : currentBar),
+            node_id: safeQrContext?.node_id || reservationContext.node_id || null,
+            channel: orderChannel || 'table',
+            delivery_mode: 'local',
+            delivery_status: 'pending',
+            session_id: sessionId
+          },
+          p_items: itemsPayload
+        });
+
+        if (rpcError) {
+          console.error('[CheckoutPage] create_order_atomic error:', rpcError);
+          addToast('Error al procesar pedido', 'error');
+          setIsProcessingPayment(false);
+          return;
+        }
+
+        const result = rpcResult as any;
+        if (!result?.success) {
+          addToast(result?.message || 'Error al crear pedido', 'error');
+          setIsProcessingPayment(false);
+          return;
+        }
+
+        // Consume reservation credit
+        const { error: creditError } = await (supabase.rpc as any)('consume_reservation_credit', {
+          p_reservation_id: reservationContext.reservation_id,
+          p_order_id: orderId,
+          p_amount: creditToUse
+        });
+
+        if (creditError) {
+          console.error('[CheckoutPage] consume_reservation_credit error:', creditError);
+          addToast('Pedido creado. Error al descontar crédito.', 'info');
+        }
+
+        await refreshReservationCredit();
+        setHasActiveOrder(true);
+        clearCart();
+        navigate(`/m/${slug}/order/${orderId}`, { replace: true });
+        return;
+      }
 
       // 2. WALLET FLOW — P0 FIX: Atomic order + wallet deduction in one transaction
       if (paymentMethod === 'wallet') {
@@ -555,6 +645,40 @@ const CheckoutPage: React.FC = () => {
         <section className="px-6 mb-12">
           <h3 className="mb-6 text-[10px] font-black uppercase tracking-[0.4em] px-1" style={{ color: `${textColor}99` }}>Método de Pago</h3>
           <div className="flex flex-col gap-4">
+            {/* TABLE CREDIT OPTION */}
+            {hasTableCredit && (
+              <div
+                onClick={() => setPaymentMethod('table_credit')}
+                className={`group flex cursor-pointer items-center justify-between rounded-[2.8rem] p-6 active:scale-[0.98] transition-all duration-500 border-2 ${paymentMethod === 'table_credit' ? 'shadow-2xl' : 'opacity-50'}`}
+                style={{
+                  backgroundColor: paymentMethod === 'table_credit' ? 'rgba(99,102,241,0.05)' : `${textColor}05`,
+                  borderColor: paymentMethod === 'table_credit' ? '#818cf8' : `${textColor}0D`
+                }}
+              >
+                <div className="flex items-center gap-6">
+                  <div
+                    className="flex size-16 items-center justify-center rounded-[1.4rem] shadow-xl"
+                    style={paymentMethod === 'table_credit' ? { backgroundColor: '#818cf8', color: '#fff' } : { backgroundColor: `${textColor}0D`, color: `${textColor}80` }}
+                  >
+                    <span className="material-symbols-outlined text-3xl font-black">payments</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-black text-[15px] uppercase tracking-tight italic" style={{ color: textColor }}>Crédito de Mesa</span>
+                    <span className="text-[12px] font-black uppercase tracking-widest mt-1" style={{ color: tableCredit >= total ? '#818cf8' : '#f59e0b' }}>
+                      ${tableCredit.toFixed(2)} disponible
+                      {tableCredit < total && ` · Falta $${(total - tableCredit).toFixed(2)}`}
+                    </span>
+                  </div>
+                </div>
+                <div
+                  className={`flex h-10 w-10 items-center justify-center rounded-full transition-all duration-700 ${paymentMethod === 'table_credit' ? 'scale-100' : 'scale-50'}`}
+                  style={paymentMethod === 'table_credit' ? { backgroundColor: '#818cf8', color: '#fff' } : { backgroundColor: `${textColor}0D`, color: 'transparent' }}
+                >
+                  <span className="material-symbols-outlined text-xl font-black">check</span>
+                </div>
+              </div>
+            )}
+
             <div
               onClick={() => setPaymentMethod('wallet')}
               className={`group flex cursor-pointer items-center justify-between rounded-[2.8rem] p-6 active:scale-[0.98] transition-all duration-500 border-2 ${paymentMethod === 'wallet' ? 'shadow-2xl' : 'opacity-50'
@@ -621,10 +745,26 @@ const CheckoutPage: React.FC = () => {
               <p className="font-black uppercase tracking-widest text-[11px]" style={{ color: `${textColor}99` }}>Subtotal</p>
               <p className="font-black italic text-[18px] tracking-tighter" style={{ color: textColor }}>${subtotal.toFixed(2)}</p>
             </div>
+            {paymentMethod === 'table_credit' && (
+              <>
+                <div className="flex justify-between py-3">
+                  <p className="font-black uppercase tracking-widest text-[11px] text-indigo-400/80">Crédito Mesa</p>
+                  <p className="font-black italic text-[18px] tracking-tighter text-indigo-400">-${Math.min(tableCredit, total).toFixed(2)}</p>
+                </div>
+                {total > tableCredit && (
+                  <div className="flex justify-between py-2">
+                    <p className="font-black uppercase tracking-widest text-[11px] text-amber-400/80">Restante</p>
+                    <p className="font-black italic text-[16px] tracking-tighter text-amber-400">${(total - tableCredit).toFixed(2)}</p>
+                  </div>
+                )}
+              </>
+            )}
             <div className="my-6 h-px w-full" style={{ backgroundColor: `${textColor}0D` }}></div>
             <div className="flex justify-between items-end">
               <p className="text-[12px] font-black uppercase tracking-[0.5em] italic" style={{ color: textColor }}>Monto a Pagar</p>
-              <p className="text-[48px] font-black tabular-nums tracking-tighter italic leading-none" style={{ color: textColor }}>${total.toFixed(2)}</p>
+              <p className="text-[48px] font-black tabular-nums tracking-tighter italic leading-none" style={{ color: textColor }}>
+                ${paymentMethod === 'table_credit' ? Math.max(0, total - tableCredit).toFixed(2) : total.toFixed(2)}
+              </p>
             </div>
           </div>
         </section>
@@ -641,8 +781,8 @@ const CheckoutPage: React.FC = () => {
             disabled={isProcessingPayment}
             className={`group relative flex h-24 w-full items-center justify-between pl-12 pr-5 transition-all duration-500 active:scale-[0.97] shadow-2xl overflow-hidden disabled:opacity-50 rounded-full border border-white/20`}
             style={{
-              backgroundColor: paymentMethod === 'mercadopago' ? '#009ee3' : accentColor,
-              color: paymentMethod === 'mercadopago' ? '#fff' : '#000'
+              backgroundColor: paymentMethod === 'mercadopago' ? '#009ee3' : paymentMethod === 'table_credit' ? '#818cf8' : accentColor,
+              color: paymentMethod === 'mercadopago' ? '#fff' : paymentMethod === 'table_credit' ? '#fff' : '#000'
             }}
           >
             <div className="relative z-10 flex flex-col items-start leading-none text-left">
@@ -653,14 +793,14 @@ const CheckoutPage: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-6 relative z-10">
-              <div className="h-12 w-[1px]" style={{ backgroundColor: paymentMethod === 'mercadopago' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)' }}></div>
+              <div className="h-12 w-[1px]" style={{ backgroundColor: paymentMethod === 'mercadopago' || paymentMethod === 'table_credit' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)' }}></div>
               <div className="flex items-center gap-4">
                 <span className="text-[28px] font-black italic tracking-tighter tabular-nums leading-none">${total.toFixed(2)}</span>
                 <div
                   className="w-16 h-16 rounded-full flex items-center justify-center transition-all group-hover:scale-105 shadow-2xl"
                   style={{
-                    backgroundColor: paymentMethod === 'mercadopago' ? '#fff' : '#000',
-                    color: paymentMethod === 'mercadopago' ? '#009ee3' : accentColor
+                    backgroundColor: paymentMethod === 'mercadopago' ? '#fff' : paymentMethod === 'table_credit' ? '#fff' : '#000',
+                    color: paymentMethod === 'mercadopago' ? '#009ee3' : paymentMethod === 'table_credit' ? '#818cf8' : accentColor
                   }}
                 >
                   {isProcessingPayment ? (

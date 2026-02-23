@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Table, Bar, QR, TableStatus, Position, AppMode, OrderStatus, NotificationType } from '../types';
 import { STATUS_COLORS } from '../constants';
-import { Beer, QrCode, RotateCw, Maximize2, Minimize2, Circle, Square, Trash2, Clock, Hand, Receipt } from 'lucide-react';
+import { Beer, QrCode, RotateCw, Maximize2, Minimize2, Trash2, Clock, Hand } from 'lucide-react';
 import VenueItem from './VenueItem';
 import EditControls from './EditControls';
 
@@ -274,54 +274,6 @@ const TableMap: React.FC<TableMapProps> = ({
           );
         })}
       </div>
-      {/* FLOATING STATUS MENU (LIVE MODE) */}
-      {mode === AppMode.VIEW && selectedTableId && tables.find(t => t.id === selectedTableId) && (
-        (() => {
-          const table = tables.find(t => t.id === selectedTableId)!;
-          return (
-            <div
-              className="absolute z-[100] flex flex-col gap-2 p-2 bg-black/90 backdrop-blur-xl border border-zinc-800 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200"
-              style={{
-                left: table.position.x + table.size.w / 2, // Centered horizontally
-                top: table.position.y - 120, // Above the table
-                transform: 'translateX(-50%)'
-              }}
-              onPointerDown={(e) => e.stopPropagation()} // Prevent map drag
-            >
-              <div className="flex items-center justify-center gap-2 pb-2 border-b border-zinc-800 mb-1">
-                <span className="text-[9px] font-black text-white uppercase tracking-widest">{table.name}</span>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => { onTableAction?.(table.id, TableStatus.FREE); onBackgroundClick?.(); }}
-                  className="flex flex-col items-center gap-1 p-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-black border border-emerald-500/30 transition-all group"
-                  title="Liberar Mesa"
-                >
-                  <Circle size={18} className="fill-current" />
-                  <span className="text-[7px] font-black uppercase tracking-widest">Libre</span>
-                </button>
-                <button
-                  onClick={() => { onTableAction?.(table.id, TableStatus.OCCUPIED); onBackgroundClick?.(); }}
-                  className="flex flex-col items-center gap-1 p-3 rounded-xl bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white border border-rose-500/30 transition-all group"
-                  title="Ocupar Mesa"
-                >
-                  <Square size={18} className="fill-current" />
-                  <span className="text-[7px] font-black uppercase tracking-widest">Ocupada</span>
-                </button>
-                <button
-                  onClick={() => { onTableAction?.(table.id, TableStatus.BILL_REQUESTED); onBackgroundClick?.(); }} // Using existing status or generic
-                  className="flex flex-col items-center gap-1 p-3 rounded-xl bg-amber-500/10 hover:bg-amber-500 text-amber-500 hover:text-black border border-amber-500/30 transition-all group"
-                  title="Cobrar / Cuenta"
-                >
-                  <Receipt size={18} />
-                  <span className="text-[7px] font-black uppercase tracking-widest">Cuenta</span>
-                </button>
-              </div>
-              <div className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-3 h-3 bg-black/90 border-r border-b border-zinc-800 rotate-45"></div>
-            </div>
-          );
-        })()
-      )}
     </div>
   );
 };
