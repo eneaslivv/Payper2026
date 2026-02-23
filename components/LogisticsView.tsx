@@ -182,12 +182,12 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
             console.error(error);
         } else {
             const formatted = (data || []).map((item: any) => ({
-                id: item.id,
-                item_id: item.item_id,
+                id: item.res_id || item.id,
+                item_id: item.res_item_id || item.item_id,
                 closed_units: item.closed_units,
                 open_packages: item.open_packages,
                 inventory_items: {
-                    id: item.item_id,
+                    id: item.res_item_id || item.item_id,
                     name: item.item_name,
                     unit_type: item.item_unit_type,
                     image_url: item.item_image_url,
@@ -285,15 +285,15 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
         <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-700">
             {/* Selected Location Detail */}
             {selectedLocation && (
-                <div className="bg-[#0D0F0D] border border-neon/30 rounded-2xl p-6 shadow-2xl animate-in slide-in-from-top-4">
+                <div className="bg-white dark:bg-[#0D0F0D] border border-neon/30 rounded-2xl p-6 shadow-2xl animate-in slide-in-from-top-4">
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-4">
                             <div className="size-12 rounded-xl bg-neon/10 flex items-center justify-center border border-neon/20">
                                 <span className="material-symbols-outlined text-neon text-xl">{getLocationIcon(selectedLocation)}</span>
                             </div>
                             <div>
-                                <h2 className="text-xl font-black text-white uppercase tracking-tight">{selectedLocation.name}</h2>
-                                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                                <h2 className="text-xl font-black text-text-main dark:text-white uppercase tracking-tight">{selectedLocation.name}</h2>
+                                <p className="text-[10px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest">
                                     {(selectedLocation as any).location_type || selectedLocation.type}
                                     {selectedLocation.is_default && ' · BASE'}
                                 </p>
@@ -321,7 +321,7 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
                             </button>
                             <button
                                 onClick={() => setSelectedLocation(null)}
-                                className="size-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all"
+                                className="size-10 rounded-xl bg-black/5 dark:bg-white/5 flex items-center justify-center text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-all"
                             >
                                 <span className="material-symbols-outlined">close</span>
                             </button>
@@ -330,43 +330,68 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
 
                     {/* Metrics Cards */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                        <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-                            <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-1">Productos</p>
-                            <p className="text-2xl font-black text-white">{selectedLocation.metrics?.total_items || 0}</p>
+                        <div className="bg-black/5 dark:bg-white/5 rounded-xl p-4 border border-border-color/30 dark:border-white/5">
+                            <p className="text-[9px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest mb-1">Productos</p>
+                            <p className="text-2xl font-black text-text-main dark:text-white">{selectedLocation.metrics?.total_items || 0}</p>
                         </div>
-                        <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-                            <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-1">Cerrados</p>
+                        <div className="bg-black/5 dark:bg-white/5 rounded-xl p-4 border border-border-color/30 dark:border-white/5">
+                            <p className="text-[9px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest mb-1">Cerrados</p>
                             <p className="text-2xl font-black text-neon">{selectedLocation.metrics?.total_closed_units || 0}</p>
                         </div>
-                        <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-                            <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-1">Abiertos</p>
+                        <div className="bg-black/5 dark:bg-white/5 rounded-xl p-4 border border-border-color/30 dark:border-white/5">
+                            <p className="text-[9px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest mb-1">Abiertos</p>
                             <p className="text-2xl font-black text-amber-500">{selectedLocation.metrics?.total_open_packages || 0}</p>
                         </div>
-                        <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-                            <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-1">Valor Est.</p>
-                            <p className="text-xl font-black text-white">{formatCurrency(selectedLocation.metrics?.estimated_value || 0)}</p>
+                        <div className="bg-black/5 dark:bg-white/5 rounded-xl p-4 border border-border-color/30 dark:border-white/5">
+                            <p className="text-[9px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest mb-1">Valor Est.</p>
+                            <p className="text-xl font-black text-text-main dark:text-white">{formatCurrency(selectedLocation.metrics?.estimated_value || 0)}</p>
                         </div>
                     </div>
 
                     {/* Stock List */}
                     <div className="space-y-2 max-h-[300px] overflow-y-auto">
                         {locationStock.length === 0 ? (
-                            <div className="py-8 text-center text-white/20 text-xs uppercase tracking-widest">Sin stock en esta ubicación</div>
+                            <div className="py-8 text-center text-text-secondary/40 dark:text-white/20 text-xs uppercase tracking-widest">Sin stock en esta ubicación</div>
                         ) : (
                             <>
-                                <div className="flex justify-end px-2 mb-2">
-                                    <button onClick={handleSelectAll} className="text-[9px] font-bold text-neon hover:underline uppercase tracking-wider">
-                                        {selectedItemIds.length === locationStock.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
-                                    </button>
+                                {/* Select All / Deselect All */}
+                                <div className="flex justify-between items-center px-2 mb-2">
+                                    <div
+                                        onClick={handleSelectAll}
+                                        className="flex items-center gap-2 cursor-pointer group"
+                                    >
+                                        <div className={`size-5 rounded border flex items-center justify-center transition-all ${
+                                            selectedItemIds.length === locationStock.length && locationStock.length > 0
+                                                ? 'bg-neon border-neon'
+                                                : selectedItemIds.length > 0
+                                                    ? 'bg-neon/50 border-neon'
+                                                    : 'border-border-color dark:border-white/20 group-hover:border-white/40'
+                                        }`}>
+                                            {selectedItemIds.length === locationStock.length && locationStock.length > 0 && (
+                                                <span className="material-symbols-outlined text-black text-sm font-bold">check</span>
+                                            )}
+                                            {selectedItemIds.length > 0 && selectedItemIds.length < locationStock.length && (
+                                                <span className="material-symbols-outlined text-black text-sm font-bold">remove</span>
+                                            )}
+                                        </div>
+                                        <span className="text-[9px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-wider group-hover:text-white/60 transition-colors">
+                                            {selectedItemIds.length > 0 ? `${selectedItemIds.length} seleccionados` : 'Seleccionar todos'}
+                                        </span>
+                                    </div>
+                                    {selectedItemIds.length > 0 && (
+                                        <button onClick={() => setSelectedItemIds([])} className="text-[9px] font-bold text-red-400 hover:text-red-300 uppercase tracking-wider">
+                                            Limpiar
+                                        </button>
+                                    )}
                                 </div>
                                 {locationStock.map((stock, idx) => (
                                     <div
                                         key={stock.item_id || `stock-${idx}`}
-                                        className={`flex items-center justify-between bg-white/[0.02] p-3 rounded-xl border transition-all ${selectedItemIds.includes(stock.item_id) ? 'border-neon/50 bg-neon/5' : 'border-white/5 hover:bg-white/[0.04]'}`}
+                                        className={`flex items-center justify-between bg-black/[0.02] dark:bg-white/[0.02] p-3 rounded-xl border transition-all ${selectedItemIds.includes(stock.item_id) ? 'border-neon/50 bg-neon/5' : 'border-border-color/30 dark:border-white/5 hover:bg-black/[0.04] dark:hover:bg-white/[0.04]'}`}
                                     >
                                         <div className="flex items-center gap-3">
                                             <div onClick={() => toggleSelection(stock.item_id)} className="cursor-pointer">
-                                                <div className={`size-5 rounded border flex items-center justify-center transition-all ${selectedItemIds.includes(stock.item_id) ? 'bg-neon border-neon' : 'border-white/20 hover:border-white/40'}`}>
+                                                <div className={`size-5 rounded border flex items-center justify-center transition-all ${selectedItemIds.includes(stock.item_id) ? 'bg-neon border-neon' : 'border-border-color dark:border-white/20 hover:border-border-color dark:hover:border-white/40'}`}>
                                                     {selectedItemIds.includes(stock.item_id) && <span className="material-symbols-outlined text-black text-sm font-bold">check</span>}
                                                 </div>
                                             </div>
@@ -374,9 +399,9 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
                                                 <img src={stock.inventory_items.image_url} className="size-10 rounded-lg object-cover bg-black" alt="" />
                                             )}
                                             <div>
-                                                <p className="text-[11px] font-black text-white uppercase">{stock.inventory_items?.name}</p>
+                                                <p className="text-[11px] font-black text-text-main dark:text-white uppercase">{stock.inventory_items?.name}</p>
                                                 <div className="flex items-center gap-2">
-                                                    <p className="text-[8px] text-white/40 uppercase">{stock.inventory_items?.unit_type}</p>
+                                                    <p className="text-[8px] text-text-secondary dark:text-white/40 uppercase">{stock.inventory_items?.unit_type}</p>
 
                                                     {/* Menu Visibility Toggle */}
                                                     {itemsVisibility[stock.item_id] && (
@@ -390,7 +415,7 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
                                                                 ml-2 px-1.5 py-0.5 rounded-full flex items-center gap-1 cursor-pointer transition-all border
                                                                 ${itemsVisibility[stock.item_id]?.is_visible
                                                                     ? 'bg-neon/10 border-neon/30 text-neon'
-                                                                    : 'bg-white/5 border-white/10 text-white/30 hover:bg-white/10'
+                                                                    : 'bg-black/5 dark:bg-white/5 border-border-color dark:border-white/10 text-text-secondary/60 dark:text-white/30 hover:bg-gray-100 dark:hover:bg-white/10'
                                                                 }
                                                             `}
                                                         >
@@ -405,7 +430,7 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
                                         </div>
                                         <div className="flex items-center gap-4">
                                             <div className="text-right">
-                                                <p className="text-sm font-black text-neon">{stock.closed_units} <span className="text-[8px] text-white/40">ENV</span></p>
+                                                <p className="text-sm font-black text-neon">{stock.closed_units} <span className="text-[8px] text-text-secondary dark:text-white/40">ENV</span></p>
                                                 {stock.open_packages?.length > 0 && stock.open_packages.map((pkg: any, idx: number) => {
                                                     const unitSize = Number(stock.inventory_items?.unit_size) || 1;
                                                     const remaining = Number(pkg.remaining || 0);
@@ -420,18 +445,18 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
                                                     return (
                                                         <div key={`pkg-${stock.item_id}-${idx}-${pkg.id || pkg.remaining}`} className="flex flex-col items-end gap-0.5 mt-1 text-right">
                                                             <div className="flex items-center gap-1.5 whitespace-nowrap">
-                                                                <span className="text-[10px] font-bold text-white uppercase tracking-tight">
+                                                                <span className="text-[10px] font-bold text-text-main dark:text-white uppercase tracking-tight">
                                                                     #{idx + 1}
                                                                 </span>
                                                                 <span className={`text-[10px] font-black ${textColor}`}>
                                                                     {remaining} / {unitSize} {stock.inventory_items?.unit_type}
                                                                 </span>
-                                                                <span className="text-[8px] font-bold text-white/40">
+                                                                <span className="text-[8px] font-bold text-text-secondary dark:text-white/40">
                                                                     ({percentage}%)
                                                                 </span>
                                                             </div>
                                                             {/* Mini Progress Bar */}
-                                                            <div className="w-24 h-1 bg-white/10 rounded-full overflow-hidden">
+                                                            <div className="w-24 h-1 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
                                                                 <div
                                                                     className={`h-full ${barColor} transition-all duration-500`}
                                                                     style={{ width: `${percentage}%` }}
@@ -454,8 +479,7 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
                                             </button>
                                         </div>
                                     </div>
-                                ))
-                                }
+                                ))}
                             </>
                         )}
                     </div>
@@ -467,15 +491,15 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {/* 1. List of Locations */}
-                <div className="lg:col-span-2 bg-[#141714] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col">
+                <div className="lg:col-span-2 bg-white dark:bg-surface-dark border border-border-color dark:border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col">
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-3">
                             <div className="size-8 rounded-lg bg-neon/10 flex items-center justify-center border border-neon/20">
                                 <span className="material-symbols-outlined text-neon text-sm">location_on</span>
                             </div>
-                            <h3 className="text-white font-black uppercase tracking-wider text-xs">Puntos de Almacenamiento</h3>
+                            <h3 className="text-text-main dark:text-white font-black uppercase tracking-wider text-xs">Puntos de Almacenamiento</h3>
                         </div>
-                        <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">{locations.length} Registradas</span>
+                        <span className="text-[10px] font-bold text-text-secondary/40 dark:text-white/20 uppercase tracking-widest">{locations.length} Registradas</span>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2 no-scrollbar">
@@ -486,7 +510,7 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
                             </div>
                         )}
                         {!loading && locations.length === 0 && (
-                            <div className="col-span-full py-10 flex flex-col items-center justify-center opacity-20 bg-white/5 rounded-xl border border-dashed border-white/20">
+                            <div className="col-span-full py-10 flex flex-col items-center justify-center opacity-20 bg-black/5 dark:bg-white/5 rounded-xl border border-dashed border-border-color dark:border-white/20">
                                 <span className="material-symbols-outlined text-3xl mb-2">inventory_2</span>
                                 <p className="text-[10px] uppercase font-black tracking-widest">Sin ubicaciones definidas</p>
                             </div>
@@ -495,17 +519,17 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
                             <div
                                 key={loc.id}
                                 onClick={() => handleSelectLocation(loc)}
-                                className={`cursor-pointer bg-white/[0.03] p-4 rounded-xl border group hover:bg-white/[0.06] transition-all ${selectedLocation?.id === loc.id ? 'border-neon/50 bg-neon/5' : 'border-white/5 hover:border-white/10'
+                                className={`cursor-pointer bg-black/[0.03] dark:bg-white/[0.03] p-4 rounded-xl border group hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-all ${selectedLocation?.id === loc.id ? 'border-neon/50 bg-neon/5' : 'border-border-color/30 dark:border-white/5 hover:border-border-color dark:hover:border-white/10'
                                     }`}
                             >
                                 <div className="flex justify-between items-start mb-3">
                                     <div className="flex items-center gap-3">
-                                        <span className={`material-symbols-outlined text-lg transition-colors ${selectedLocation?.id === loc.id ? 'text-neon' : 'text-white/20 group-hover:text-neon'
+                                        <span className={`material-symbols-outlined text-lg transition-colors ${selectedLocation?.id === loc.id ? 'text-neon' : 'text-text-secondary/40 dark:text-white/20 group-hover:text-neon'
                                             }`}>
                                             {getLocationIcon(loc)}
                                         </span>
                                         <div>
-                                            <p className="text-white text-[11px] font-black uppercase italic-black tracking-tight leading-none mb-1">{loc.name}</p>
+                                            <p className="text-text-main dark:text-white text-[11px] font-black uppercase italic-black tracking-tight leading-none mb-1">{loc.name}</p>
                                             <p className="text-[#71766F] text-[9px] uppercase tracking-wider font-bold">
                                                 {((loc as any).location_type || loc.type).replace('_', ' ')}
                                             </p>
@@ -517,10 +541,10 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
                                 </div>
 
                                 {/* Mini Metrics Row */}
-                                <div className="flex items-center gap-3 mt-2 pt-2 border-t border-white/5">
+                                <div className="flex items-center gap-3 mt-2 pt-2 border-t border-border-color/30 dark:border-white/5">
                                     <div className="flex items-center gap-1">
-                                        <span className="material-symbols-outlined text-xs text-white/20">inventory_2</span>
-                                        <span className="text-[10px] font-bold text-white">{loc.metrics?.total_items || 0}</span>
+                                        <span className="material-symbols-outlined text-xs text-text-secondary/40 dark:text-white/20">inventory_2</span>
+                                        <span className="text-[10px] font-bold text-text-main dark:text-white">{loc.metrics?.total_items || 0}</span>
                                     </div>
                                     <div className="flex items-center gap-1">
                                         <span className="material-symbols-outlined text-xs text-neon/50">package_2</span>
@@ -532,7 +556,7 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
                                             <span className="text-[10px] font-bold text-amber-500">{loc.metrics?.total_open_packages}</span>
                                         </div>
                                     )}
-                                    <div className="ml-auto text-[9px] font-bold text-white/30">
+                                    <div className="ml-auto text-[9px] font-bold text-text-secondary/60 dark:text-white/30">
                                         {formatCurrency(loc.metrics?.estimated_value || 0)}
                                     </div>
                                 </div>
@@ -542,34 +566,34 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
                 </div>
 
                 {/* 2. Create Section */}
-                <div className="bg-[#141714] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-6">
+                <div className="bg-white dark:bg-surface-dark border border-border-color dark:border-white/10 rounded-2xl p-6 shadow-2xl space-y-6">
                     <div className="flex items-center gap-3">
-                        <div className="size-8 rounded-lg bg-white/5 flex items-center justify-center border border-white/10">
-                            <span className="material-symbols-outlined text-white/60 text-sm">add_location</span>
+                        <div className="size-8 rounded-lg bg-black/5 dark:bg-white/5 flex items-center justify-center border border-border-color dark:border-white/10">
+                            <span className="material-symbols-outlined text-text-secondary dark:text-white/60 text-sm">add_location</span>
                         </div>
-                        <h3 className="text-white font-black uppercase tracking-wider text-xs">Nueva Ubicación</h3>
+                        <h3 className="text-text-main dark:text-white font-black uppercase tracking-wider text-xs">Nueva Ubicación</h3>
                     </div>
 
                     <div className="space-y-4">
                         <div className="space-y-2">
-                            <label className="text-[9px] font-black text-white/30 uppercase tracking-widest ml-1">Nombre Descriptivo</label>
+                            <label className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest ml-1">Nombre Descriptivo</label>
                             <input
                                 type="text"
                                 value={newLocName}
                                 onChange={e => setNewLocName(e.target.value)}
                                 placeholder="EJ. BARRA PRINCIPAL"
-                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-white uppercase tracking-widest focus:border-neon outline-none transition-all placeholder:text-white/5"
+                                className="w-full bg-gray-50 dark:bg-black/40 border border-border-color dark:border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-text-main dark:text-white uppercase tracking-widest focus:border-neon outline-none transition-all placeholder:text-text-secondary/40 dark:placeholder:text-white/5"
                             />
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-[9px] font-black text-white/30 uppercase tracking-widest ml-1">Tipo de Nodo</label>
+                            <label className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest ml-1">Tipo de Nodo</label>
                             <div className="flex gap-2">
                                 {['point_of_sale', 'warehouse', 'kitchen'].map(type => (
                                     <button
                                         key={type}
                                         onClick={() => setNewLocType(type as any)}
-                                        className={`flex-1 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest border border-white/10 transition-all ${newLocType === type ? 'bg-white text-black border-white shadow-lg' : 'bg-transparent text-white/40 hover:bg-white/5'}`}
+                                        className={`flex-1 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest border border-border-color dark:border-white/10 transition-all ${newLocType === type ? 'bg-white text-black border-white shadow-lg' : 'bg-transparent text-text-secondary dark:text-white/40 hover:bg-gray-100 dark:hover:bg-white/5'}`}
                                     >
                                         {type === 'point_of_sale' ? 'Venta' : type === 'warehouse' ? 'Depo' : 'Cocina'}
                                     </button>
@@ -589,36 +613,36 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
             </div>
 
             {/* BOTTOM SECTION: AUDIT LOG HISTORY */}
-            <div className="bg-[#141714] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
-                <div className="p-4 border-b border-white/5 bg-white/[0.01] flex items-center gap-3">
+            <div className="bg-white dark:bg-surface-dark border border-border-color dark:border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+                <div className="p-4 border-b border-border-color/30 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01] flex items-center gap-3">
                     <div className="size-8 rounded-lg bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
                         <span className="material-symbols-outlined text-orange-500 text-sm">history</span>
                     </div>
-                    <h3 className="text-white font-black uppercase tracking-wider text-xs">Historial de Movimientos</h3>
+                    <h3 className="text-text-main dark:text-white font-black uppercase tracking-wider text-xs">Historial de Movimientos</h3>
                 </div>
 
                 <div className="overflow-x-auto no-scrollbar">
                     <table className="w-full text-left">
                         <thead>
-                            <tr className="bg-black/20 border-b border-white/[0.02]">
-                                <th className="px-6 py-4 text-[9px] font-black text-white/30 uppercase tracking-widest">Fecha</th>
-                                <th className="px-6 py-4 text-[9px] font-black text-white/30 uppercase tracking-widest">Acción</th>
-                                <th className="px-6 py-4 text-[9px] font-black text-white/30 uppercase tracking-widest">Ítem</th>
-                                <th className="px-6 py-4 text-[9px] font-black text-white/30 uppercase tracking-widest">Impacto</th>
-                                <th className="px-6 py-4 text-[9px] font-black text-white/30 uppercase tracking-widest">Motivo</th>
+                            <tr className="bg-gray-50 dark:bg-black/20 border-b border-border-color/30 dark:border-white/[0.02]">
+                                <th className="px-6 py-4 text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest">Fecha</th>
+                                <th className="px-6 py-4 text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest">Acción</th>
+                                <th className="px-6 py-4 text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest">Ítem</th>
+                                <th className="px-6 py-4 text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest">Impacto</th>
+                                <th className="px-6 py-4 text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest">Motivo</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/[0.01]">
+                        <tbody className="divide-y divide-border-color/20 dark:divide-white/[0.01]">
                             {history.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-16 text-center text-[10px] text-white/10 uppercase tracking-widest font-black">Sin movimientos registrados</td>
+                                    <td colSpan={5} className="px-6 py-16 text-center text-[10px] text-text-secondary/40 dark:text-white/10 uppercase tracking-widest font-black">Sin movimientos registrados</td>
                                 </tr>
                             ) : (
                                 history.map(tr => (
-                                    <tr key={tr.id} className="hover:bg-white/[0.02] transition-colors">
+                                    <tr key={tr.id} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors">
                                         <td className="px-6 py-3 whitespace-nowrap">
-                                            <p className="text-[10px] text-white font-bold">{new Date(tr.created_at).toLocaleDateString()}</p>
-                                            <p className="text-[9px] text-white/20">{new Date(tr.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                            <p className="text-[10px] text-text-main dark:text-white font-bold">{new Date(tr.created_at).toLocaleDateString()}</p>
+                                            <p className="text-[9px] text-text-secondary/40 dark:text-white/20">{new Date(tr.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                                         </td>
                                         <td className="px-6 py-3">
                                             <span className={`text-[9px] font-black uppercase px-2 py-1 rounded ${tr.action_type === 'purchase' ? 'bg-green-500/10 text-green-500' :
@@ -633,9 +657,9 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
                                             </span>
                                         </td>
                                         <td className="px-6 py-3">
-                                            <p className="text-[10px] font-black text-white uppercase">{tr.inventory_items?.name || '-'}</p>
+                                            <p className="text-[10px] font-black text-text-main dark:text-white uppercase">{tr.inventory_items?.name || '-'}</p>
                                             {tr.inventory_items?.unit_type && (
-                                                <p className="text-[8px] text-white/30 uppercase">{tr.inventory_items.unit_type}</p>
+                                                <p className="text-[8px] text-text-secondary/60 dark:text-white/30 uppercase">{tr.inventory_items.unit_type}</p>
                                             )}
                                         </td>
                                         <td className="px-6 py-3">
@@ -644,23 +668,23 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
                                             </span>
                                         </td>
                                         <td className="px-6 py-3">
-                                            <p className="text-[9px] text-white/40 truncate max-w-[250px]">
+                                            <p className="text-[9px] text-text-secondary dark:text-white/40 truncate max-w-[250px]">
                                                 {tr.action_type === 'transfer' ? (
                                                     <span>
                                                         <span className="text-red-400">{tr.location_from?.name || 'Origen'}</span>
-                                                        <span className="text-white/20 mx-1">→</span>
+                                                        <span className="text-text-secondary/40 dark:text-white/20 mx-1">→</span>
                                                         <span className="text-green-400">{tr.location_to?.name || 'Destino'}</span>
                                                     </span>
                                                 ) : tr.action_type === 'loss' ? (
                                                     <span>
                                                         <span className="text-red-400">{tr.location_from?.name || ''}</span>
-                                                        {tr.location_from?.name && <span className="text-white/20"> · </span>}
+                                                        {tr.location_from?.name && <span className="text-text-secondary/40 dark:text-white/20"> ·</span>}
                                                         {tr.reason || 'Pérdida'}
                                                     </span>
                                                 ) : tr.action_type === 'purchase' ? (
                                                     <span>
                                                         <span className="text-green-400">{tr.location_to?.name || ''}</span>
-                                                        {tr.location_to?.name && <span className="text-white/20"> · </span>}
+                                                        {tr.location_to?.name && <span className="text-text-secondary/40 dark:text-white/20"> ·</span>}
                                                         {tr.reason || 'Compra'}
                                                     </span>
                                                 ) : (

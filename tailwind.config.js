@@ -28,6 +28,8 @@ export default {
                 'border-color': '#E2E4DF',
                 'cream': '#F3EFE9',
                 'rose-soft': '#E8B4BC',
+                'surface-light': '#FFFFFF',
+                'surface-muted': '#F3F4F2',
             },
             fontFamily: {
                 sans: ['Outfit', 'system-ui', 'sans-serif'],

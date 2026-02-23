@@ -131,19 +131,19 @@ export const InventoryAuditLog: React.FC<InventoryAuditLogProps> = ({ itemId, cl
             <div className="flex-1 overflow-y-auto no-scrollbar">
                 {loading ? (
                     <div className="flex items-center justify-center py-12">
-                        <div className="size-8 border-2 border-white/10 border-t-neon rounded-full animate-spin" />
+                        <div className="size-8 border-2 border-border-color dark:border-white/10 border-t-neon rounded-full animate-spin" />
                     </div>
                 ) : filteredLogs.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <span className="material-symbols-outlined text-4xl text-white/10 mb-4">history</span>
-                        <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">
+                        <span className="material-symbols-outlined text-4xl text-text-secondary/20 dark:text-white/10 mb-4">history</span>
+                        <p className="text-[10px] font-black text-text-secondary/40 dark:text-white/20 uppercase tracking-widest">
                             Sin registros de auditoría
                         </p>
                     </div>
                 ) : (
                     <div className="relative">
                         {/* Timeline line */}
-                        <div className="absolute left-5 top-0 bottom-0 w-px bg-white/5" />
+                        <div className="absolute left-5 top-0 bottom-0 w-px bg-border-color/30 dark:bg-white/5" />
 
                         {/* Log entries */}
                         {filteredLogs.map((log, idx) => {
@@ -156,13 +156,13 @@ export const InventoryAuditLog: React.FC<InventoryAuditLogProps> = ({ itemId, cl
                                     className="relative pl-12 pb-6 group"
                                 >
                                     {/* Icon */}
-                                    <div className={`absolute left-2 size-7 rounded-full bg-black border-2 border-white/10 flex items-center justify-center group-hover:border-white/20 transition-colors ${config.color}`}>
+                                    <div className={`absolute left-2 size-7 rounded-full bg-white dark:bg-black border-2 border-border-color dark:border-white/10 flex items-center justify-center group-hover:border-border-color dark:group-hover:border-white/20 transition-colors ${config.color}`}>
                                         <span className="material-symbols-outlined text-sm">{config.icon}</span>
                                     </div>
 
                                     {/* Content */}
                                     <div
-                                        className={`bg-white/[0.02] border border-white/5 rounded-xl p-4 cursor-pointer hover:bg-white/[0.04] transition-all ${isExpanded ? 'bg-white/[0.04]' : ''}`}
+                                        className={`bg-black/[0.02] dark:bg-white/[0.02] border border-border-color/30 dark:border-white/5 rounded-xl p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-all ${isExpanded ? 'bg-gray-50 dark:bg-white/[0.04]' : ''}`}
                                         onClick={() => setExpandedId(isExpanded ? null : log.id)}
                                     >
                                         {/* Header */}
@@ -171,7 +171,7 @@ export const InventoryAuditLog: React.FC<InventoryAuditLogProps> = ({ itemId, cl
                                                 <span className={`text-[10px] font-black uppercase tracking-widest ${config.color}`}>
                                                     {config.label}
                                                 </span>
-                                                <span className="text-[9px] font-bold text-white/40 uppercase tracking-wider">
+                                                <span className="text-[9px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-wider">
                                                     {log.reason}
                                                 </span>
                                             </div>
@@ -195,7 +195,7 @@ export const InventoryAuditLog: React.FC<InventoryAuditLogProps> = ({ itemId, cl
                                                 )}
 
                                                 {/* Time */}
-                                                <span className="text-[8px] font-bold text-white/20 uppercase tracking-widest">
+                                                <span className="text-[8px] font-bold text-text-secondary/40 dark:text-white/20 uppercase tracking-widest">
                                                     {formatDate(log.created_at)}
                                                 </span>
                                             </div>
@@ -203,7 +203,7 @@ export const InventoryAuditLog: React.FC<InventoryAuditLogProps> = ({ itemId, cl
 
                                         {/* Expanded details */}
                                         {isExpanded && (
-                                            <div className="mt-4 pt-4 border-t border-white/5 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                                            <div className="mt-4 pt-4 border-t border-border-color/30 dark:border-white/5 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
                                                 {/* User */}
                                                 {log.user?.full_name && (
                                                     <DetailRow
@@ -256,9 +256,9 @@ export const InventoryAuditLog: React.FC<InventoryAuditLogProps> = ({ itemId, cl
 
                                                 {/* Old/New values (for edits) */}
                                                 {log.action_type === 'edit_item' && (log.old_value || log.new_value) && (
-                                                    <div className="mt-3 p-3 bg-black/50 rounded-lg">
-                                                        <p className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-2">Cambios</p>
-                                                        <div className="text-[9px] font-mono text-white/40 overflow-x-auto">
+                                                    <div className="mt-3 p-3 bg-gray-50 dark:bg-black/50 rounded-lg">
+                                                        <p className="text-[8px] font-black text-text-secondary/40 dark:text-white/20 uppercase tracking-widest mb-2">Cambios</p>
+                                                        <div className="text-[9px] font-mono text-text-secondary dark:text-white/40 overflow-x-auto">
                                                             {log.old_value && (
                                                                 <div className="text-red-500/60">- {JSON.stringify(log.old_value)}</div>
                                                             )}
@@ -273,7 +273,7 @@ export const InventoryAuditLog: React.FC<InventoryAuditLogProps> = ({ itemId, cl
 
                                         {/* Expand indicator */}
                                         <div className="flex justify-center mt-2">
-                                            <span className={`material-symbols-outlined text-[10px] text-white/10 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
+                                            <span className={`material-symbols-outlined text-[10px] text-text-secondary/20 dark:text-white/10 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
                                                 expand_more
                                             </span>
                                         </div>
@@ -299,8 +299,8 @@ const FilterChip: React.FC<{
     <button
         onClick={onClick}
         className={`px-3 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${active
-            ? `bg-white/10 ${color} border border-white/10`
-            : 'bg-white/[0.02] text-white/30 border border-white/5 hover:text-white/50'
+            ? `bg-black/10 dark:bg-white/10 ${color} border border-border-color dark:border-white/10`
+            : 'bg-black/[0.02] dark:bg-white/[0.02] text-text-secondary/60 dark:text-white/30 border border-border-color/30 dark:border-white/5 hover:text-text-secondary dark:hover:text-white/50'
             }`}
     >
         {label} ({count})
@@ -309,9 +309,9 @@ const FilterChip: React.FC<{
 
 const DetailRow: React.FC<{ icon: string; label: string; value: string }> = ({ icon, label, value }) => (
     <div className="flex items-center gap-2">
-        <span className="material-symbols-outlined text-xs text-white/20">{icon}</span>
-        <span className="text-[8px] font-black text-white/30 uppercase tracking-widest w-16">{label}</span>
-        <span className="text-[10px] font-bold text-white/60 uppercase tracking-wider">{value}</span>
+        <span className="material-symbols-outlined text-xs text-text-secondary/40 dark:text-white/20">{icon}</span>
+        <span className="text-[8px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest w-16">{label}</span>
+        <span className="text-[10px] font-bold text-text-secondary dark:text-white/60 uppercase tracking-wider">{value}</span>
     </div>
 );
 

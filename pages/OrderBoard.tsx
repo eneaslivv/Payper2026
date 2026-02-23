@@ -374,13 +374,13 @@ const OrderBoard: React.FC = () => {
                 <span className={`size-1 rounded-full ${showHistory ? 'bg-white/50' : 'bg-neon animate-pulse'}`}></span>
                 {showHistory ? 'HISTORIAL DE PEDIDOS' : 'OPS REAL-TIME'}
               </div>
-              <h1 className="text-2xl font-black italic-black tracking-tighter text-white uppercase leading-none">
-                TABLERO <span className={showHistory ? "text-white/40" : "text-neon"}>DESPACHO</span>
+              <h1 className="text-2xl font-black italic-black tracking-tighter text-text-main dark:text-white uppercase leading-none">
+                TABLERO <span className={showHistory ? "text-text-secondary dark:text-white/40" : "text-neon"}>DESPACHO</span>
               </h1>
             </div>
-            <div className="h-6 w-px bg-white/10 hidden sm:block"></div>
+            <div className="h-6 w-px bg-black/5 dark:bg-white/10 hidden sm:block"></div>
             <div className="flex flex-col">
-              <p className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none mb-1">{formattedDate}</p>
+              <p className="text-[8px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest leading-none mb-1">{formattedDate}</p>
               <p className="text-lg font-black italic-black text-neon leading-none uppercase tracking-tighter">{formattedTime}</p>
             </div>
           </div>
@@ -396,7 +396,7 @@ const OrderBoard: React.FC = () => {
                   className={`h-10 pl-10 pr-10 rounded-xl border text-xs font-bold uppercase tracking-wide appearance-none cursor-pointer transition-all outline-none
                     ${locationFilter !== 'ALL'
                       ? 'bg-neon/10 border-neon/40 text-neon'
-                      : 'bg-white/5 border-white/10 text-white hover:border-white/20'
+                      : 'bg-black/5 dark:bg-white/5 border-border-color dark:border-white/10 text-text-main dark:text-white hover:border-border-color dark:hover:border-white/20'
                     } focus:ring-2 focus:ring-neon/30`}
                 >
                   <option value="ALL" className="bg-[#1a1a1a] text-white">🏪 Todas las estaciones</option>
@@ -404,14 +404,14 @@ const OrderBoard: React.FC = () => {
                     <option key={loc} value={loc} className="bg-[#1a1a1a] text-white">📍 {loc}</option>
                   ))}
                 </select>
-                <span className="material-symbols-outlined absolute right-3 text-white/40 text-base pointer-events-none">expand_more</span>
+                <span className="material-symbols-outlined absolute right-3 text-text-secondary dark:text-white/40 text-base pointer-events-none">expand_more</span>
               </div>
             )}
 
             {/* HISTORY TOGGLE */}
             <button
               onClick={() => setShowHistory(!showHistory)}
-              className={`h-9 px-4 rounded-lg border flex items-center gap-2 transition-all ${showHistory ? 'bg-white text-black border-white' : 'bg-white/5 text-white/60 border-white/5 hover:text-white'}`}
+              className={`h-9 px-4 rounded-lg border flex items-center gap-2 transition-all ${showHistory ? 'bg-white text-black border-white' : 'bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/60 border-border-color/30 dark:border-white/5 hover:text-text-main dark:hover:text-white'}`}
             >
               <span className="material-symbols-outlined text-lg">{showHistory ? 'history_toggle_off' : 'history'}</span>
               <span className="text-[9px] font-black uppercase tracking-widest hidden sm:inline">{showHistory ? 'VOLVER A ACTIVO' : 'HISTORIAL'}</span>
@@ -428,19 +428,19 @@ const OrderBoard: React.FC = () => {
               </button>
             )}
 
-            <div className="w-px h-6 bg-white/10 mx-1"></div>
+            <div className="w-px h-6 bg-black/5 dark:bg-white/10 mx-1"></div>
 
-            <div className="flex bg-white/5 p-1 rounded-lg border border-white/5">
-              <button onClick={() => setViewMode('kanban')} className={`size-8 flex items-center justify-center rounded-md transition-all ${viewMode === 'kanban' ? 'bg-neon text-black shadow-neon-soft' : 'text-white/40 hover:text-white'}`}>
+            <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-border-color/30 dark:border-white/5">
+              <button onClick={() => setViewMode('kanban')} className={`size-8 flex items-center justify-center rounded-md transition-all ${viewMode === 'kanban' ? 'bg-neon text-black shadow-neon-soft' : 'text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white'}`}>
                 <span className="material-symbols-outlined text-lg">view_kanban</span>
               </button>
-              <button onClick={() => setViewMode('list')} className={`size-8 flex items-center justify-center rounded-md transition-all ${viewMode === 'list' ? 'bg-neon text-black shadow-neon-soft' : 'text-white/40 hover:text-white'}`}>
+              <button onClick={() => setViewMode('list')} className={`size-8 flex items-center justify-center rounded-md transition-all ${viewMode === 'list' ? 'bg-neon text-black shadow-neon-soft' : 'text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white'}`}>
                 <span className="material-symbols-outlined text-lg">format_list_bulleted</span>
               </button>
             </div>
             <div className="relative group flex-1 xl:w-48">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/20 text-sm">search</span>
-              <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="BUSCAR..." className="h-9 w-full pl-9 pr-3 rounded-lg border border-white/5 bg-white/5 outline-none focus:ring-1 focus:ring-neon/20 text-[9px] font-bold uppercase tracking-widest text-white placeholder:text-white/10" />
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary/40 dark:text-white/20 text-sm">search</span>
+              <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="BUSCAR..." className="h-9 w-full pl-9 pr-3 rounded-lg border border-border-color/30 dark:border-white/5 bg-black/5 dark:bg-white/5 outline-none focus:ring-1 focus:ring-neon/20 text-[9px] font-bold uppercase tracking-widest text-text-main dark:text-white placeholder:text-text-secondary/40 dark:placeholder:text-white/10" />
             </div>
           </div>
         </header>
@@ -456,15 +456,15 @@ const OrderBoard: React.FC = () => {
             </>
           ) : (
             <>
-              <KpiBox label="TOTAL FINALIZADOS" value={stats.entregados + stats.cancelados} onClick={() => { }} active={true} border="border-white/20" textColor="text-white" />
-              <div className="lg:col-span-3 bg-white/[0.02] border border-white/5 rounded-[1.2rem] p-4 flex items-center justify-between gap-4">
+              <KpiBox label="TOTAL FINALIZADOS" value={stats.entregados + stats.cancelados} onClick={() => { }} active={true} border="border-border-color dark:border-white/20" textColor="text-text-main dark:text-white" />
+              <div className="lg:col-span-3 bg-black/[0.02] dark:bg-white/[0.02] border border-border-color/30 dark:border-white/5 rounded-[1.2rem] p-4 flex items-center justify-between gap-4">
                 <div className="flex gap-2">
                   <button
                     onClick={() => setDateFilter({
                       start: new Date(new Date().setHours(0, 0, 0, 0)).toISOString(),
                       end: new Date(new Date().setHours(23, 59, 59, 999)).toISOString()
                     })}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${new Date(dateFilter.start).getDate() === new Date().getDate() ? 'bg-neon text-black' : 'bg-white/5 text-white/40 hover:text-white'}`}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${new Date(dateFilter.start).getDate() === new Date().getDate() ? 'bg-neon text-black' : 'bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white'}`}
                   >
                     Hoy
                   </button>
@@ -477,7 +477,7 @@ const OrderBoard: React.FC = () => {
                         end: new Date(yesterday.setHours(23, 59, 59, 999)).toISOString()
                       });
                     }}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${new Date(dateFilter.start).getDate() === new Date().getDate() - 1 ? 'bg-neon text-black' : 'bg-white/5 text-white/40 hover:text-white'}`}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${new Date(dateFilter.start).getDate() === new Date().getDate() - 1 ? 'bg-neon text-black' : 'bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white'}`}
                   >
                     Ayer
                   </button>
@@ -490,7 +490,7 @@ const OrderBoard: React.FC = () => {
                         end: new Date(new Date().setHours(23, 59, 59, 999)).toISOString()
                       });
                     }}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${new Date(dateFilter.start).getDate() === 1 ? 'bg-neon text-black' : 'bg-white/5 text-white/40 hover:text-white'}`}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${new Date(dateFilter.start).getDate() === 1 ? 'bg-neon text-black' : 'bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white'}`}
                   >
                     Mes
                   </button>
@@ -500,14 +500,14 @@ const OrderBoard: React.FC = () => {
                     type="date"
                     value={dateFilter.start.split('T')[0]}
                     onChange={(e) => setDateFilter(prev => ({ ...prev, start: new Date(e.target.value + 'T00:00:00').toISOString() }))}
-                    className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] font-bold text-white uppercase outline-none focus:border-neon/50"
+                    className="bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 rounded-lg px-2 py-1 text-[10px] font-bold text-text-main dark:text-white uppercase outline-none focus:border-neon/50"
                   />
-                  <span className="text-white/20 text-[10px] font-black">A</span>
+                  <span className="text-text-secondary/40 dark:text-white/20 text-[10px] font-black">A</span>
                   <input
                     type="date"
                     value={dateFilter.end.split('T')[0]}
                     onChange={(e) => setDateFilter(prev => ({ ...prev, end: new Date(e.target.value + 'T23:59:59').toISOString() }))}
-                    className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] font-bold text-white uppercase outline-none focus:border-neon/50"
+                    className="bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 rounded-lg px-2 py-1 text-[10px] font-bold text-text-main dark:text-white uppercase outline-none focus:border-neon/50"
                   />
                 </div>
               </div>
@@ -538,23 +538,23 @@ const OrderBoard: React.FC = () => {
               )}
             </div>
           ) : (
-            <div className="h-full overflow-y-auto no-scrollbar bg-white/[0.02] border border-white/5 rounded-xl animate-in fade-in">
+            <div className="h-full overflow-y-auto no-scrollbar bg-black/[0.02] dark:bg-white/[0.02] border border-border-color/30 dark:border-white/5 rounded-xl animate-in fade-in">
               <table className="w-full text-left">
-                <thead className="sticky top-0 bg-[#0D0F0D] z-10">
-                  <tr className="border-b border-white/5 bg-white/[0.02]">
-                    <th className="px-6 py-3 text-[8px] font-black text-white/30 uppercase tracking-widest">ID</th>
-                    <th className="px-6 py-3 text-[8px] font-black text-white/30 uppercase tracking-widest">Cliente</th>
-                    <th className="px-6 py-3 text-[8px] font-black text-white/30 uppercase tracking-widest">Ubicación</th>
-                    <th className="px-6 py-3 text-[8px] font-black text-white/30 uppercase tracking-widest">Estado</th>
-                    <th className="px-6 py-3 text-[8px] font-black text-white/30 uppercase tracking-widest">Pago</th>
-                    <th className="px-6 py-3 text-right text-[8px] font-black text-white/30 uppercase tracking-widest">Monto</th>
+                <thead className="sticky top-0 bg-white dark:bg-[#0D0F0D] z-10">
+                  <tr className="border-b border-border-color/30 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
+                    <th className="px-6 py-3 text-[8px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest">ID</th>
+                    <th className="px-6 py-3 text-[8px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest">Cliente</th>
+                    <th className="px-6 py-3 text-[8px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest">Ubicación</th>
+                    <th className="px-6 py-3 text-[8px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest">Estado</th>
+                    <th className="px-6 py-3 text-[8px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest">Pago</th>
+                    <th className="px-6 py-3 text-right text-[8px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest">Monto</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-border-color/30 dark:divide-white/5">
                   {filteredOrders.map(o => (
-                    <tr key={o.id} onClick={() => setSelectedOrder(o)} className="hover:bg-white/[0.01] transition-colors cursor-pointer">
-                      <td className="px-6 py-4 text-xs font-black text-white italic tracking-tighter">#{getDisplayId(o)}</td>
-                      <td className="px-6 py-4 text-[10px] font-bold text-white uppercase">{o.customer}</td>
+                    <tr key={o.id} onClick={() => setSelectedOrder(o)} className="hover:bg-gray-100 dark:hover:bg-white/[0.01] transition-colors cursor-pointer">
+                      <td className="px-6 py-4 text-xs font-black text-text-main dark:text-white italic tracking-tighter">#{getDisplayId(o)}</td>
+                      <td className="px-6 py-4 text-[10px] font-bold text-text-main dark:text-white uppercase">{o.customer}</td>
                       <td className="px-6 py-4 text-[9px] font-bold text-neon/60 uppercase">{o.table ? `Mesa ${o.table}` : 'QR LIBRE'}</td>
                       <td className="px-6 py-4">
                         <span className={`text-[7px] font-black uppercase px-2 py-0.5 rounded border ${getStatusStyles(o.status)}`}>{o.status}</span>
@@ -562,7 +562,7 @@ const OrderBoard: React.FC = () => {
                       <td className="px-6 py-4">
                         <PaymentBadge order={o} />
                       </td>
-                      <td className="px-6 py-4 text-[10px] font-black text-white text-right">${o.amount.toFixed(2)}</td>
+                      <td className="px-6 py-4 text-[10px] font-black text-text-main dark:text-white text-right">${o.amount.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -572,14 +572,14 @@ const OrderBoard: React.FC = () => {
         </div>
       </div>
 
-      <div className={`fixed inset-y-0 right-0 z-[9999] w-full max-w-[450px] bg-surface-dark border-l border-white/5 shadow-2xl transition-transform duration-500 flex flex-col ${selectedOrder ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`fixed inset-y-0 right-0 z-[9999] w-full max-w-[450px] bg-white dark:bg-surface-dark border-l border-border-color/30 dark:border-white/5 shadow-2xl transition-transform duration-500 flex flex-col ${selectedOrder ? 'translate-x-0' : 'translate-x-full'}`}>
         {selectedOrder && (
           <>
-            <div className="p-8 border-b border-white/5 flex justify-between items-center bg-[#0D0F0D]">
+            <div className="p-8 border-b border-border-color/30 dark:border-white/5 flex justify-between items-center bg-background-light dark:bg-[#0D0F0D]">
               <div>
                 <div className="flex flex-col">
-                  <h2 className="text-3xl font-black italic-black text-white tracking-tighter uppercase leading-none">PEDIDO <span className="text-neon">#{getDisplayId(selectedOrder)}</span></h2>
-                  <div className="flex items-center gap-2 mt-2 text-white/70">
+                  <h2 className="text-3xl font-black italic-black text-text-main dark:text-white tracking-tighter uppercase leading-none">PEDIDO <span className="text-neon">#{getDisplayId(selectedOrder)}</span></h2>
+                  <div className="flex items-center gap-2 mt-2 text-text-main/80 dark:text-white/70">
                     <span className="material-symbols-outlined text-[12px]">calendar_today</span>
                     <span className="text-[10px] font-bold uppercase tracking-widest">
                       {new Date(selectedOrder.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })} • {new Date(selectedOrder.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}hs
@@ -587,7 +587,7 @@ const OrderBoard: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <button onClick={() => setSelectedOrder(null)} className="size-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-colors">
+              <button onClick={() => setSelectedOrder(null)} className="size-10 rounded-xl bg-black/5 dark:bg-white/5 flex items-center justify-center text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white transition-colors">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
@@ -596,21 +596,21 @@ const OrderBoard: React.FC = () => {
               <div className="space-y-1">
                 <label className="text-[9px] font-black text-text-secondary uppercase tracking-[0.2em]">Cliente</label>
                 <div className="flex flex-col">
-                  <p className="text-xl font-black text-white uppercase italic tracking-tight">{selectedOrder.customer}</p>
+                  <p className="text-xl font-black text-text-main dark:text-white uppercase italic tracking-tight">{selectedOrder.customer}</p>
                   {selectedOrder.client_email && (
-                    <p className="text-[10px] font-bold text-white/50 lowercase tracking-wider mb-1">{selectedOrder.client_email}</p>
+                    <p className="text-[10px] font-bold text-text-secondary dark:text-white/50 lowercase tracking-wider mb-1">{selectedOrder.client_email}</p>
                   )}
                 </div>
                 <p className="text-[10px] text-neon font-bold uppercase tracking-widest">{selectedOrder.table ? `UBICACIÓN: MESA ${selectedOrder.table}` : 'MODALIDAD: QR LIBRE / MOSTRADOR'}</p>
               </div>
 
-              <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4">
-                <h4 className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-3">Atajos de Teclado</h4>
+              <div className="bg-black/[0.02] dark:bg-white/[0.02] border border-border-color/30 dark:border-white/5 rounded-2xl p-4">
+                <h4 className="text-[9px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest mb-3">Atajos de Teclado</h4>
                 <div className="flex gap-2 flex-wrap">
-                  <span className="px-2 py-1 rounded bg-white/5 text-[9px] font-bold text-white border border-white/10">[1] Pendiente</span>
-                  <span className="px-2 py-1 rounded bg-white/5 text-[9px] font-bold text-white border border-white/10">[2] En Prep</span>
-                  <span className="px-2 py-1 rounded bg-white/5 text-[9px] font-bold text-white border border-white/10">[3] Listo</span>
-                  <span className="px-2 py-1 rounded bg-white/5 text-[9px] font-bold text-red-400 border border-white/10">[X] Cancelar</span>
+                  <span className="px-2 py-1 rounded bg-black/5 dark:bg-white/5 text-[9px] font-bold text-text-main dark:text-white border border-border-color dark:border-white/10">[1] Pendiente</span>
+                  <span className="px-2 py-1 rounded bg-black/5 dark:bg-white/5 text-[9px] font-bold text-text-main dark:text-white border border-border-color dark:border-white/10">[2] En Prep</span>
+                  <span className="px-2 py-1 rounded bg-black/5 dark:bg-white/5 text-[9px] font-bold text-text-main dark:text-white border border-border-color dark:border-white/10">[3] Listo</span>
+                  <span className="px-2 py-1 rounded bg-black/5 dark:bg-white/5 text-[9px] font-bold text-red-400 border border-border-color dark:border-white/10">[X] Cancelar</span>
                 </div>
               </div>
 
@@ -618,18 +618,18 @@ const OrderBoard: React.FC = () => {
                 <label className="text-[9px] font-black text-text-secondary uppercase tracking-[0.2em]">Detalle de Items</label>
                 <div className="space-y-2">
                   {selectedOrder.items.length === 0 ? (
-                    <p className="text-white/40 text-[10px] italic">No hay productos registrados en esta orden.</p>
+                    <p className="text-text-secondary dark:text-white/40 text-[10px] italic">No hay productos registrados en esta orden.</p>
                   ) : (
                     selectedOrder.items.map((item, idx) => (
-                      <div key={`order-item-${item.product_id || item.name || idx}`} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex justify-between items-start">
+                      <div key={`order-item-${item.product_id || item.name || idx}`} className="p-4 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-border-color/30 dark:border-white/5 flex justify-between items-start">
                         <div className="flex gap-3">
                           <span className="size-6 rounded bg-neon/10 text-neon flex items-center justify-center font-black text-[10px] shrink-0">{item.quantity}x</span>
                           <div className="flex flex-col">
-                            <span className="text-[12px] font-bold text-white uppercase tracking-tight leading-snug">{item.name || 'Producto Desconocido'}</span>
-                            {item.notes && <span className="text-[10px] text-white/50 italic mt-0.5">Nota: {item.notes}</span>}
+                            <span className="text-[12px] font-bold text-text-main dark:text-white uppercase tracking-tight leading-snug">{item.name || 'Producto Desconocido'}</span>
+                            {item.notes && <span className="text-[10px] text-text-secondary dark:text-white/50 italic mt-0.5">Nota: {item.notes}</span>}
                           </div>
                         </div>
-                        <span className="text-[11px] font-black text-white/40">${(item.price_unit * item.quantity).toFixed(2)}</span>
+                        <span className="text-[11px] font-black text-text-secondary dark:text-white/40">${(item.price_unit * item.quantity).toFixed(2)}</span>
                       </div>
                     ))
                   )}
@@ -638,11 +638,11 @@ const OrderBoard: React.FC = () => {
 
               <div className="p-6 rounded-2xl bg-neon/5 border border-neon/10 flex justify-between items-center">
                 <span className="text-[10px] font-black text-neon uppercase tracking-widest">Total</span>
-                <span className="text-2xl font-black text-white italic-black leading-none">${selectedOrder.amount.toFixed(2)}</span>
+                <span className="text-2xl font-black text-text-main dark:text-white italic-black leading-none">${selectedOrder.amount.toFixed(2)}</span>
               </div>
             </div>
 
-            <div className="p-8 bg-[#0D0F0D]/80 backdrop-blur-xl border-t border-white/5 grid grid-cols-2 gap-4">
+            <div className="p-8 bg-background-light/80 dark:bg-[#0D0F0D]/80 backdrop-blur-xl border-t border-border-color/30 dark:border-white/5 grid grid-cols-2 gap-4">
               <button
                 onClick={() => handleAdvanceStatus(selectedOrder.id)}
                 className="col-span-2 py-5 rounded-2xl bg-neon text-black font-black text-xs uppercase tracking-[0.2em] shadow-neon-soft active:scale-95 transition-all hover:bg-neon/90"
@@ -651,8 +651,8 @@ const OrderBoard: React.FC = () => {
                   selectedOrder.status === 'En Preparación' ? 'MARCAR COMO LISTO' :
                     selectedOrder.status === 'Listo' ? 'ENTREGAR PEDIDO' : 'ACCIONES COMPLETADAS'}
               </button>
-              <button onClick={() => setOrderToCancel(selectedOrder)} className="py-4 border border-white/5 rounded-xl text-[10px] font-black text-red-500/60 uppercase tracking-widest hover:text-red-500 hover:bg-red-500/5 transition-colors">Cancelar</button>
-              <button className="py-4 border border-white/5 rounded-xl text-[10px] font-black text-white/20 uppercase tracking-widest hover:text-white transition-colors">Imprimir</button>
+              <button onClick={() => setOrderToCancel(selectedOrder)} className="py-4 border border-border-color/30 dark:border-white/5 rounded-xl text-[10px] font-black text-red-500/60 uppercase tracking-widest hover:text-red-500 hover:bg-red-500/5 transition-colors">Cancelar</button>
+              <button className="py-4 border border-border-color/30 dark:border-white/5 rounded-xl text-[10px] font-black text-text-secondary/40 dark:text-white/20 uppercase tracking-widest hover:text-text-main dark:hover:text-white transition-colors">Imprimir</button>
             </div>
           </>
         )}
@@ -672,16 +672,16 @@ const OrderBoard: React.FC = () => {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              className="bg-[#1a1c1a] border border-red-500/30 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden"
+              className="bg-white dark:bg-[#1a1c1a] border border-red-500/30 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden"
             >
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-red-500 rounded-b-full shadow-[0_0_40px_rgba(239,68,68,0.5)]"></div>
               <div className="size-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-6">
                 <span className="material-symbols-outlined text-3xl text-red-500">warning</span>
               </div>
-              <h3 className="text-2xl font-black italic-black text-white uppercase tracking-tighter mb-2">¿Cancelar Pedido?</h3>
-              <p className="text-white/60 text-sm mb-8">Esta acción es irreversible. El pedido #{getDisplayId(orderToCancel)} será marcado como cancelado.</p>
+              <h3 className="text-2xl font-black italic-black text-text-main dark:text-white uppercase tracking-tighter mb-2">¿Cancelar Pedido?</h3>
+              <p className="text-text-secondary dark:text-white/60 text-sm mb-8">Esta acción es irreversible. El pedido #{getDisplayId(orderToCancel)} será marcado como cancelado.</p>
               <div className="grid grid-cols-2 gap-4">
-                <button onClick={() => setOrderToCancel(null)} className="py-4 rounded-xl border border-white/10 text-white/60 hover:text-white hover:bg-white/5 font-bold uppercase tracking-widest text-xs transition-colors">Volver</button>
+                <button onClick={() => setOrderToCancel(null)} className="py-4 rounded-xl border border-border-color dark:border-white/10 text-text-secondary dark:text-white/60 hover:text-text-main dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 font-bold uppercase tracking-widest text-xs transition-colors">Volver</button>
                 <button onClick={confirmCancelOrder} className="py-4 rounded-xl bg-red-500 hover:bg-red-600 text-white font-black uppercase tracking-widest text-xs shadow-lg transition-colors">Sí, Cancelar</button>
               </div>
             </motion.div>
@@ -704,27 +704,27 @@ const OrderBoard: React.FC = () => {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              className="bg-[#1a1c1a] border border-orange-500/30 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden"
+              className="bg-white dark:bg-[#1a1c1a] border border-orange-500/30 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden"
             >
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-orange-500 rounded-b-full shadow-[0_0_40px_rgba(249,115,22,0.5)]"></div>
               <div className="size-16 rounded-full bg-orange-500/10 flex items-center justify-center mx-auto mb-6">
                 <span className="material-symbols-outlined text-3xl text-orange-500">event_busy</span>
               </div>
-              <h3 className="text-2xl font-black italic-black text-white uppercase tracking-tighter mb-2">¿Finalizar Turno Operativo?</h3>
-              <p className="text-white/60 text-sm mb-4">
+              <h3 className="text-2xl font-black italic-black text-text-main dark:text-white uppercase tracking-tighter mb-2">¿Finalizar Turno Operativo?</h3>
+              <p className="text-text-secondary dark:text-white/60 text-sm mb-4">
                 Para un control seguro, recuerda realizar el <strong className="text-neon">Arqueo de Caja</strong> en Finanzas antes de irte.
               </p>
-              <div className="bg-white/5 rounded-xl p-4 mb-4 text-left space-y-2">
+              <div className="bg-black/5 dark:bg-white/5 rounded-xl p-4 mb-4 text-left space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-white/40">Entregados</span>
+                  <span className="text-text-secondary dark:text-white/40">Entregados</span>
                   <span className="text-neon font-bold">{stats.entregados}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-white/40">Cancelados</span>
+                  <span className="text-text-secondary dark:text-white/40">Cancelados</span>
                   <span className="text-red-400 font-bold">{stats.cancelados}</span>
                 </div>
                 {activeOrdersCount > 0 && (
-                  <div className="flex justify-between text-sm border-t border-white/10 pt-2 mt-2">
+                  <div className="flex justify-between text-sm border-t border-border-color dark:border-white/10 pt-2 mt-2">
                     <span className="text-yellow-400 font-bold">⚠️ Pedidos Activos</span>
                     <span className="text-yellow-400 font-bold">{activeOrdersCount}</span>
                   </div>
@@ -742,13 +742,13 @@ const OrderBoard: React.FC = () => {
                   />
                   <div>
                     <span className="text-yellow-400 font-bold text-xs uppercase tracking-wider block">Archivar también pedidos activos</span>
-                    <span className="text-white/40 text-[10px]">Esto limpiará el tablero incluyendo pedidos en proceso/listos.</span>
+                    <span className="text-text-secondary dark:text-white/40 text-[10px]">Esto limpiará el tablero incluyendo pedidos en proceso/listos.</span>
                   </div>
                 </label>
               )}
 
               <div className="grid grid-cols-2 gap-4">
-                <button onClick={() => { setShowCloseShiftConfirm(false); setForceArchiveAll(false); }} className="py-4 rounded-xl border border-white/10 text-white/60 hover:text-white hover:bg-white/5 font-bold uppercase tracking-widest text-xs transition-colors">Cancelar</button>
+                <button onClick={() => { setShowCloseShiftConfirm(false); setForceArchiveAll(false); }} className="py-4 rounded-xl border border-border-color dark:border-white/10 text-text-secondary dark:text-white/60 hover:text-text-main dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 font-bold uppercase tracking-widest text-xs transition-colors">Cancelar</button>
                 <div className="flex gap-2">
                   <button
                     onClick={handleCloseShift}
@@ -798,13 +798,13 @@ const OrderBoard: React.FC = () => {
   );
 };
 
-const KpiBox: React.FC<{ label: string, value: number, border?: string, textColor?: string, active?: boolean, onClick: () => void }> = ({ label, value, border = "border-white/5", textColor = "text-white", active, onClick }) => (
+const KpiBox: React.FC<{ label: string, value: number, border?: string, textColor?: string, active?: boolean, onClick: () => void }> = ({ label, value, border = "border-border-color/30 dark:border-white/5", textColor = "text-text-main dark:text-white", active, onClick }) => (
   <button
     onClick={onClick}
-    className={`bg-[#111311] border ${active ? border + ' bg-white/[0.04]' : 'border-white/5'} rounded-[1.2rem] p-4 flex flex-col items-center justify-center transition-all h-[90px] shadow-lg group active:scale-95`}
+    className={`bg-white dark:bg-[#111311] border ${active ? border + ' bg-black/[0.04] dark:bg-white/[0.04]' : 'border-border-color/30 dark:border-white/5'} rounded-[1.2rem] p-4 flex flex-col items-center justify-center transition-all h-[90px] shadow-lg group active:scale-95`}
   >
-    <p className={`text-[8px] font-black uppercase tracking-[0.15em] mb-1.5 transition-colors ${active ? textColor : 'text-white/30'}`}>{label}</p>
-    <h3 className={`text-2xl font-black italic-black leading-none tracking-tighter transition-all ${active ? textColor + ' scale-110' : 'text-white'}`}>{value}</h3>
+    <p className={`text-[8px] font-black uppercase tracking-[0.15em] mb-1.5 transition-colors ${active ? textColor : 'text-text-secondary/60 dark:text-white/30'}`}>{label}</p>
+    <h3 className={`text-2xl font-black italic-black leading-none tracking-tighter transition-all ${active ? textColor + ' scale-110' : 'text-text-main dark:text-white'}`}>{value}</h3>
     {active && <div className={`mt-2 w-4 h-0.5 rounded-full shadow-neon-soft ${textColor.includes('neon') ? 'bg-neon' : textColor.includes('orange') ? 'bg-orange-500' : 'bg-blue-500'}`}></div>}
   </button>
 );
@@ -896,15 +896,15 @@ const Column: React.FC<{
       onDragOver={handleDragOver}
       onDragLeave={() => setActiveColumn(null)}
       onDrop={handleDrop}
-      className={`flex flex-col w-[320px] shrink-0 rounded-[1.5rem] p-4 border transition-all h-full ${isActive ? 'bg-neon/5 border-neon/30 scale-[1.02] shadow-neon-soft' : 'bg-[#121412]/50 border-white/5'
+      className={`flex flex-col w-[320px] shrink-0 rounded-[1.5rem] p-4 border transition-all h-full ${isActive ? 'bg-neon/5 border-neon/30 scale-[1.02] shadow-neon-soft' : 'bg-white/50 dark:bg-[#121412]/50 border-border-color/30 dark:border-white/5'
         }`}
     >
       <div className="flex items-center justify-between mb-5 px-1 shrink-0">
         <div className="flex items-center gap-2.5">
           <div className={`size-2 rounded-full ${dotColor} shadow-[0_0_10px_rgba(255,255,255,0.1)]`}></div>
-          <h3 className="text-[11px] font-black text-white uppercase tracking-[0.25em] italic opacity-80">{title}</h3>
+          <h3 className="text-[11px] font-black text-text-main dark:text-white uppercase tracking-[0.25em] italic opacity-80">{title}</h3>
         </div>
-        <span className="text-[9px] font-black px-2 py-1 rounded bg-white/5 text-white/30">{orders.length}</span>
+        <span className="text-[9px] font-black px-2 py-1 rounded bg-black/5 dark:bg-white/5 text-text-secondary/60 dark:text-white/30">{orders.length}</span>
       </div>
 
       <div className="flex-1 space-y-3.5 overflow-y-auto no-scrollbar pr-0.5">
@@ -932,10 +932,10 @@ const Column: React.FC<{
                 boxShadow: "0 25px 60px -12px rgba(0, 0, 0, 0.7)"
               }}
               onClick={() => onClickCard(order)}
-              className="bg-[#141714] p-5 rounded-2xl border border-white/5 hover:border-neon/30 transition-all cursor-pointer group active:scale-[0.98] relative overflow-hidden shadow-xl"
+              className="bg-white dark:bg-[#141714] p-5 rounded-2xl border border-border-color/30 dark:border-white/5 hover:border-neon/30 transition-all cursor-pointer group active:scale-[0.98] relative overflow-hidden shadow-xl"
             >
               <div className="flex justify-between items-center mb-4 pointer-events-none relative">
-                <span className="text-xl font-black italic-black text-white tracking-tighter group-hover:text-neon transition-colors leading-none">#{getDisplayId(order)}</span>
+                <span className="text-xl font-black italic-black text-text-main dark:text-white tracking-tighter group-hover:text-neon transition-colors leading-none">#{getDisplayId(order)}</span>
 
                 <div className="flex items-center gap-2">
                   {/* DELAY BADGE */}
@@ -948,12 +948,12 @@ const Column: React.FC<{
                     </div>
                   )}
 
-                  <span className="text-[8px] font-black text-white/30 uppercase bg-white/5 px-2 py-1 rounded leading-none shrink-0">{order.time.toUpperCase()}</span>
+                  <span className="text-[8px] font-black text-text-secondary/60 dark:text-white/30 uppercase bg-black/5 dark:bg-white/5 px-2 py-1 rounded leading-none shrink-0">{order.time.toUpperCase()}</span>
                 </div>
               </div>
 
               <div className="space-y-1 mb-4 pointer-events-none">
-                <p className="text-[13px] font-black text-white uppercase italic tracking-tight truncate leading-tight">{order.customer}</p>
+                <p className="text-[13px] font-black text-text-main dark:text-white uppercase italic tracking-tight truncate leading-tight">{order.customer}</p>
                 <p className="text-[9px] text-neon font-bold uppercase tracking-[0.15em]">{order.table ? `MESA ${order.table}` : 'PARA LLEVAR'}</p>
               </div>
 
@@ -962,28 +962,28 @@ const Column: React.FC<{
                 {order.items && order.items.length > 0 ? (
                   <>
                     {order.items.slice(0, 3).map((item, idx) => (
-                      <div key={`preview-item-${order.id}-${item.product_id || item.name || idx}`} className="flex justify-between items-center p-1.5 rounded bg-white/[0.03] border border-white/5">
-                        <span className="text-[9px] font-bold text-white uppercase tracking-tight truncate max-w-[150px]">{item.name}</span>
+                      <div key={`preview-item-${order.id}-${item.product_id || item.name || idx}`} className="flex justify-between items-center p-1.5 rounded bg-black/[0.03] dark:bg-white/[0.03] border border-border-color/30 dark:border-white/5">
+                        <span className="text-[9px] font-bold text-text-main dark:text-white uppercase tracking-tight truncate max-w-[150px]">{item.name}</span>
                         <span className="text-xs font-black text-neon leading-none">x{item.quantity}</span>
                       </div>
                     ))}
                     {order.items.length > 3 && (
                       <div className="pt-1">
-                        <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest text-center">+ {order.items.length - 3} MÁS</p>
+                        <p className="text-[8px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest text-center">+ {order.items.length - 3} MAS</p>
                       </div>
                     )}
                   </>
                 ) : (
-                  <p className="text-[9px] text-white/20 italic">...</p>
+                  <p className="text-[9px] text-text-secondary/40 dark:text-white/20 italic">...</p>
                 )}
               </div>
 
-              <div className="flex flex-col gap-3 pt-4 border-t border-white/5">
+              <div className="flex flex-col gap-3 pt-4 border-t border-border-color/30 dark:border-white/5">
                 {/* ROW 1: PRICE & ACTION */}
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-[16px] text-neon opacity-70">payments</span>
-                    <span className="text-[14px] font-black text-white opacity-90">${order.amount.toFixed(2)}</span>
+                    <span className="text-[14px] font-black text-text-main dark:text-white opacity-90">${order.amount.toFixed(2)}</span>
                   </div>
 
                   <button
@@ -1021,7 +1021,7 @@ const Column: React.FC<{
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="h-full flex flex-col items-center justify-center border border-dashed border-white/5 rounded-2xl opacity-10 py-20"
+            className="h-full flex flex-col items-center justify-center border border-dashed border-border-color/30 dark:border-white/5 rounded-2xl opacity-10 py-20"
           >
             <span className="material-symbols-outlined text-3xl mb-2">inbox</span>
             <p className="text-[9px] font-black uppercase tracking-[0.3em]">Columna Vacía</p>
@@ -1044,14 +1044,14 @@ const NewOrderAlert: React.FC<{ order: Order, onOpen: () => void, onClose: () =>
       initial={{ opacity: 0, y: -50, scale: 0.9 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -50, scale: 0.9 }}
-      className="fixed top-24 left-1/2 -translate-x-1/2 z-[10000] bg-[#1a1c1a] border border-neon p-6 rounded-2xl shadow-[0_0_50px_rgba(74,222,128,0.2)] flex items-center gap-6 min-w-[400px]"
+      className="fixed top-24 left-1/2 -translate-x-1/2 z-[10000] bg-white dark:bg-[#1a1c1a] border border-neon p-6 rounded-2xl shadow-[0_0_50px_rgba(74,222,128,0.2)] flex items-center gap-6 min-w-[400px]"
     >
       <div className="size-16 rounded-full bg-neon/10 flex items-center justify-center animate-pulse">
         <span className="material-symbols-outlined text-3xl text-neon">notifications_active</span>
       </div>
       <div className="flex-1">
         <h3 className="text-neon font-black text-2xl italic tracking-tighter uppercase leading-none mb-1">NUEVO PEDIDO</h3>
-        <p className="text-white text-lg font-bold uppercase tracking-tight">#{getDisplayId(order)} <span className="text-white/40 mx-2">|</span> {order.table_number ? `Mesa ${order.table_number}` : 'Para Llevar'}</p>
+        <p className="text-text-main dark:text-white text-lg font-bold uppercase tracking-tight">#{getDisplayId(order)} <span className="text-text-secondary dark:text-white/40 mx-2">|</span> {order.table_number ? `Mesa ${order.table_number}` : 'Para Llevar'}</p>
       </div>
       <button
         onClick={() => { onOpen(); onClose(); }}
@@ -1059,7 +1059,7 @@ const NewOrderAlert: React.FC<{ order: Order, onOpen: () => void, onClose: () =>
       >
         VER
       </button>
-      <button onClick={onClose} className="absolute top-2 right-2 text-white/20 hover:text-white">
+      <button onClick={onClose} className="absolute top-2 right-2 text-text-secondary/40 dark:text-white/20 hover:text-text-main dark:hover:text-white">
         <span className="material-symbols-outlined text-sm">close</span>
       </button>
     </motion.div>
@@ -1097,7 +1097,7 @@ const getStatusStyles = (status: string) => {
     case 'pending': return 'bg-orange-500/10 text-orange-500 border-orange-500/20';
     case 'preparing': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
     case 'ready': return 'bg-neon/10 text-neon border-neon/20';
-    default: return 'bg-white/5 text-white/40 border-white/10';
+    default: return 'bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/40 border-border-color dark:border-white/10';
   }
 };
 

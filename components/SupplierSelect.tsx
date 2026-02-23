@@ -111,30 +111,30 @@ export const SupplierSelect: React.FC<SupplierSelectProps> = ({
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className={`w-full bg-black border rounded-xl px-4 py-3 text-left flex items-center justify-between transition-all ${isOpen ? 'border-neon' : 'border-white/10'
+                className={`w-full bg-white dark:bg-black border rounded-xl px-4 py-3 text-left flex items-center justify-between transition-all ${isOpen ? 'border-neon' : 'border-border-color dark:border-white/10'
                     } ${required && !value ? 'border-red-500/50' : ''}`}
             >
-                <span className={`text-xs font-bold uppercase tracking-widest ${selectedSupplier ? 'text-white' : 'text-white/30'}`}>
+                <span className={`text-xs font-bold uppercase tracking-widest ${selectedSupplier ? 'text-text-main dark:text-white' : 'text-text-secondary/60 dark:text-white/30'}`}>
                     {selectedSupplier?.name || 'Seleccionar proveedor...'}
                 </span>
-                <span className="material-symbols-outlined text-white/20 text-sm">
+                <span className="material-symbols-outlined text-text-secondary/40 dark:text-white/20 text-sm">
                     {isOpen ? 'expand_less' : 'expand_more'}
                 </span>
             </button>
 
             {/* Dropdown */}
             {isOpen && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-[#0a0a0a] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#0a0a0a] border border-border-color dark:border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                     {/* Search */}
-                    <div className="p-3 border-b border-white/5">
+                    <div className="p-3 border-b border-border-color/30 dark:border-white/5">
                         <div className="relative">
-                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/20 text-sm">search</span>
+                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary/40 dark:text-white/20 text-sm">search</span>
                             <input
                                 type="text"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 placeholder="Buscar proveedor..."
-                                className="w-full bg-white/5 border border-white/5 rounded-lg pl-9 pr-3 py-2 text-[10px] font-bold text-white uppercase tracking-widest outline-none focus:border-neon/50 transition-all placeholder:text-white/20"
+                                className="w-full bg-black/5 dark:bg-white/5 border border-border-color/30 dark:border-white/5 rounded-lg pl-9 pr-3 py-2 text-[10px] font-bold text-text-main dark:text-white uppercase tracking-widest outline-none focus:border-neon/50 transition-all placeholder:text-text-secondary/40 dark:placeholder:text-white/20"
                                 autoFocus
                             />
                         </div>
@@ -144,11 +144,11 @@ export const SupplierSelect: React.FC<SupplierSelectProps> = ({
                     <div className="max-h-48 overflow-y-auto">
                         {loading ? (
                             <div className="p-4 text-center">
-                                <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Cargando...</span>
+                                <span className="text-[10px] font-bold text-text-secondary/60 dark:text-white/30 uppercase tracking-widest">Cargando...</span>
                             </div>
                         ) : filteredSuppliers.length === 0 ? (
                             <div className="p-4 text-center">
-                                <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
+                                <span className="text-[10px] font-bold text-text-secondary/60 dark:text-white/30 uppercase tracking-widest">
                                     {search ? 'Sin resultados' : 'No hay proveedores'}
                                 </span>
                             </div>
@@ -162,18 +162,18 @@ export const SupplierSelect: React.FC<SupplierSelectProps> = ({
                                         setIsOpen(false);
                                         setSearch('');
                                     }}
-                                    className={`w-full px-4 py-3 text-left flex items-center gap-3 hover:bg-white/5 transition-colors ${value === supplier.id ? 'bg-neon/10' : ''
+                                    className={`w-full px-4 py-3 text-left flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors ${value === supplier.id ? 'bg-neon/10' : ''
                                         }`}
                                 >
-                                    <span className={`material-symbols-outlined text-sm ${value === supplier.id ? 'text-neon' : 'text-white/20'}`}>
+                                    <span className={`material-symbols-outlined text-sm ${value === supplier.id ? 'text-neon' : 'text-text-secondary/40 dark:text-white/20'}`}>
                                         {value === supplier.id ? 'check_circle' : 'storefront'}
                                     </span>
                                     <div className="flex flex-col">
-                                        <span className={`text-xs font-bold uppercase tracking-widest ${value === supplier.id ? 'text-neon' : 'text-white'}`}>
+                                        <span className={`text-xs font-bold uppercase tracking-widest ${value === supplier.id ? 'text-neon' : 'text-text-main dark:text-white'}`}>
                                             {supplier.name}
                                         </span>
                                         {supplier.contact_info && (
-                                            <span className="text-[9px] text-white/30">{supplier.contact_info}</span>
+                                            <span className="text-[9px] text-text-secondary/60 dark:text-white/30">{supplier.contact_info}</span>
                                         )}
                                     </div>
                                 </button>
@@ -182,7 +182,7 @@ export const SupplierSelect: React.FC<SupplierSelectProps> = ({
                     </div>
 
                     {/* Create New */}
-                    <div className="p-3 border-t border-white/5">
+                    <div className="p-3 border-t border-border-color/30 dark:border-white/5">
                         {showCreate ? (
                             <div className="flex gap-2">
                                 <input
@@ -190,7 +190,7 @@ export const SupplierSelect: React.FC<SupplierSelectProps> = ({
                                     value={newSupplierName}
                                     onChange={(e) => setNewSupplierName(e.target.value)}
                                     placeholder="Nombre del proveedor..."
-                                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold text-white uppercase tracking-widest outline-none focus:border-neon/50"
+                                    className="flex-1 bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold text-text-main dark:text-white uppercase tracking-widest outline-none focus:border-neon/50"
                                     autoFocus
                                     onKeyDown={(e) => e.key === 'Enter' && handleCreateSupplier()}
                                 />
@@ -205,7 +205,7 @@ export const SupplierSelect: React.FC<SupplierSelectProps> = ({
                                 <button
                                     type="button"
                                     onClick={() => { setShowCreate(false); setNewSupplierName(''); }}
-                                    className="px-3 py-2 bg-white/5 text-white/40 rounded-lg text-[10px] font-black uppercase tracking-widest hover:text-white transition-colors"
+                                    className="px-3 py-2 bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/40 rounded-lg text-[10px] font-black uppercase tracking-widest hover:text-text-main dark:hover:text-white transition-colors"
                                 >
                                     ✕
                                 </button>

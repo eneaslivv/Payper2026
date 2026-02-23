@@ -75,19 +75,19 @@ export const EditPriceModal: React.FC<EditPriceModalProps> = ({
             className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-200"
             onClick={(e) => e.target === e.currentTarget && onClose()}
         >
-            <div className="w-full max-w-sm bg-[#0a0a0a] border border-white/10 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="w-full max-w-sm bg-white dark:bg-[#0a0a0a] border border-border-color dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
                 {/* Header */}
-                <div className="p-5 border-b border-white/5 bg-gradient-to-r from-amber-500/5 to-transparent">
+                <div className="p-5 border-b border-border-color/30 dark:border-white/5 bg-gradient-to-r from-amber-500/5 to-transparent">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <span className="material-symbols-outlined text-amber-500">edit</span>
-                            <h3 className="text-white font-black uppercase tracking-tight text-base">Editar Precio</h3>
+                            <h3 className="text-text-main dark:text-white font-black uppercase tracking-tight text-base">Editar Precio</h3>
                         </div>
-                        <button onClick={onClose} className="text-white/20 hover:text-white transition-colors">
+                        <button onClick={onClose} className="text-text-secondary/40 dark:text-white/20 hover:text-text-main dark:hover:text-white transition-colors">
                             <span className="material-symbols-outlined">close</span>
                         </button>
                     </div>
-                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mt-1">{itemName}</p>
+                    <p className="text-[10px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest mt-1">{itemName}</p>
                 </div>
 
                 {/* Content */}
@@ -102,54 +102,54 @@ export const EditPriceModal: React.FC<EditPriceModalProps> = ({
 
                     {/* Cost Field */}
                     <div className="space-y-2">
-                        <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
+                        <label className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
                             Costo Unitario
                             {parseFloat(newCost) !== currentCost && (
                                 <span className="text-amber-500 text-[8px]">(modificado)</span>
                             )}
                         </label>
                         <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/20">$</span>
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-text-secondary/40 dark:text-white/20">$</span>
                             <input
                                 type="number"
                                 value={newCost}
                                 onChange={(e) => setNewCost(e.target.value)}
-                                className="w-full bg-black border border-white/10 rounded-xl pl-8 pr-4 py-3 text-sm font-bold text-white outline-none focus:border-amber-500/50 transition-all"
+                                className="w-full bg-gray-50 dark:bg-black border border-border-color dark:border-white/10 rounded-xl pl-8 pr-4 py-3 text-sm font-bold text-text-main dark:text-white outline-none focus:border-amber-500/50 transition-all"
                             />
                         </div>
-                        <p className="text-[9px] text-white/20 ml-1">Actual: ${currentCost}</p>
+                        <p className="text-[9px] text-text-secondary/40 dark:text-white/20 ml-1">Actual: ${currentCost}</p>
                     </div>
 
                     {/* Price Field */}
                     <div className="space-y-2">
-                        <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
+                        <label className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
                             Precio de Venta
                             {parseFloat(newPrice) !== currentPrice && (
                                 <span className="text-amber-500 text-[8px]">(modificado)</span>
                             )}
                         </label>
                         <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/20">$</span>
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-text-secondary/40 dark:text-white/20">$</span>
                             <input
                                 type="number"
                                 value={newPrice}
                                 onChange={(e) => setNewPrice(e.target.value)}
-                                className="w-full bg-black border border-white/10 rounded-xl pl-8 pr-4 py-3 text-sm font-bold text-white outline-none focus:border-amber-500/50 transition-all"
+                                className="w-full bg-gray-50 dark:bg-black border border-border-color dark:border-white/10 rounded-xl pl-8 pr-4 py-3 text-sm font-bold text-text-main dark:text-white outline-none focus:border-amber-500/50 transition-all"
                             />
                         </div>
-                        <p className="text-[9px] text-white/20 ml-1">Actual: ${currentPrice}</p>
+                        <p className="text-[9px] text-text-secondary/40 dark:text-white/20 ml-1">Actual: ${currentPrice}</p>
                     </div>
 
                     {/* Confirmation Step */}
                     {confirmStep && hasChanges && (
                         <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 space-y-2 animate-in fade-in duration-200">
                             <p className="text-[11px] font-bold text-red-400 uppercase tracking-wider">¿Confirmar cambios?</p>
-                            <div className="text-[10px] text-white/60 space-y-1">
+                            <div className="text-[10px] text-text-secondary dark:text-white/60 space-y-1">
                                 {parseFloat(newCost) !== currentCost && (
-                                    <p>Costo: <span className="text-white/40 line-through">${currentCost}</span> → <span className="text-amber-400">${newCost}</span></p>
+                                    <p>Costo: <span className="text-text-secondary dark:text-white/40 line-through">${currentCost}</span> → <span className="text-amber-400">${newCost}</span></p>
                                 )}
                                 {parseFloat(newPrice) !== currentPrice && (
-                                    <p>Precio: <span className="text-white/40 line-through">${currentPrice}</span> → <span className="text-amber-400">${newPrice}</span></p>
+                                    <p>Precio: <span className="text-text-secondary dark:text-white/40 line-through">${currentPrice}</span> → <span className="text-amber-400">${newPrice}</span></p>
                                 )}
                             </div>
                         </div>
@@ -157,10 +157,10 @@ export const EditPriceModal: React.FC<EditPriceModalProps> = ({
                 </div>
 
                 {/* Footer */}
-                <div className="p-5 bg-white/[0.02] border-t border-white/5 flex gap-3">
+                <div className="p-5 bg-black/[0.02] dark:bg-white/[0.02] border-t border-border-color/30 dark:border-white/5 flex gap-3">
                     <button
                         onClick={onClose}
-                        className="flex-1 py-3 rounded-xl bg-white/5 text-white/50 text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all"
+                        className="flex-1 py-3 rounded-xl bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/50 text-[10px] font-bold uppercase tracking-widest hover:bg-gray-100 dark:hover:bg-white/10 transition-all"
                     >
                         Cancelar
                     </button>

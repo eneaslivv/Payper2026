@@ -399,18 +399,18 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-in fade-in duration-200">
             <div
-                className="relative w-full max-w-lg bg-[#0D0F0D] border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                className="relative w-full max-w-lg bg-white dark:bg-[#0D0F0D] border border-border-color dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
                 onClick={e => e.stopPropagation()}
             >
 
                 {/* Header */}
-                <div className="p-6 border-b border-white/[0.04] flex items-center justify-between bg-white/[0.02]">
+                <div className="p-6 border-b border-border-color/30 dark:border-white/[0.04] flex items-center justify-between bg-black/[0.02] dark:bg-white/[0.02]">
                     <div>
-                        <h2 className="text-xl font-black uppercase italic-black tracking-tight text-white flex items-center gap-2">
+                        <h2 className="text-xl font-black uppercase italic-black tracking-tight text-text-main dark:text-white flex items-center gap-2">
                             <span className="material-symbols-outlined text-neon animate-pulse">qr_code_scanner</span>
                             Escáner <span className="text-neon">Rápido</span>
                         </h2>
-                        <p className="text-[9px] font-bold text-white/30 uppercase tracking-[0.2em] mt-1">
+                        <p className="text-[9px] font-bold text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.2em] mt-1">
                             {status === 'idle' ? 'Esperando lectura...' : status === 'preview' ? 'Confirmar Entrega' : 'Procesando'}
                         </p>
                     </div>
@@ -418,24 +418,24 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
                     <div className="flex gap-2">
                         {/* Mode Toggles */}
                         {status === 'idle' && (
-                            <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5 mr-2">
+                            <div className="flex bg-black/5 dark:bg-white/5 rounded-lg p-0.5 border border-border-color/30 dark:border-white/5 mr-2">
                                 <button
                                     onClick={() => setInputMode('gun')}
-                                    className={`px-3 py-1 rounded-md text-[9px] font-bold uppercase transition-all ${inputMode === 'gun' ? 'bg-neon text-black' : 'text-white/30 hover:text-white'}`}
+                                    className={`px-3 py-1 rounded-md text-[9px] font-bold uppercase transition-all ${inputMode === 'gun' ? 'bg-neon text-black' : 'text-text-secondary/60 dark:text-white/30 hover:text-text-main dark:hover:text-white'}`}
                                     title="Modo Pistola (Input Oculto)"
                                 >
                                     <span className="material-symbols-outlined text-sm">barcode_reader</span>
                                 </button>
                                 <button
                                     onClick={() => setInputMode('camera')}
-                                    className={`px-3 py-1 rounded-md text-[9px] font-bold uppercase transition-all ${inputMode === 'camera' ? 'bg-neon text-black' : 'text-white/30 hover:text-white'}`}
+                                    className={`px-3 py-1 rounded-md text-[9px] font-bold uppercase transition-all ${inputMode === 'camera' ? 'bg-neon text-black' : 'text-text-secondary/60 dark:text-white/30 hover:text-text-main dark:hover:text-white'}`}
                                     title="Usar Cámara"
                                 >
                                     <span className="material-symbols-outlined text-sm">videocam</span>
                                 </button>
                                 <button
                                     onClick={() => setInputMode('manual')}
-                                    className={`px-3 py-1 rounded-md text-[9px] font-bold uppercase transition-all ${inputMode === 'manual' ? 'bg-neon text-black' : 'text-white/30 hover:text-white'}`}
+                                    className={`px-3 py-1 rounded-md text-[9px] font-bold uppercase transition-all ${inputMode === 'manual' ? 'bg-neon text-black' : 'text-text-secondary/60 dark:text-white/30 hover:text-text-main dark:hover:text-white'}`}
                                     title="Entrada Manual"
                                 >
                                     <span className="material-symbols-outlined text-sm">keyboard</span>
@@ -443,7 +443,7 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
                             </div>
                         )}
 
-                        <button onClick={onClose} className="size-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all">
+                        <button onClick={onClose} className="size-8 rounded-full bg-black/5 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 flex items-center justify-center text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white transition-all">
                             <span className="material-symbols-outlined text-lg">close</span>
                         </button>
                     </div>
@@ -481,11 +481,11 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
 
                             {inputMode === 'gun' ? (
                                 <>
-                                    <div className="size-24 border-4 border-dashed border-white/10 rounded-3xl flex items-center justify-center mb-6 animate-pulse">
-                                        <span className="material-symbols-outlined text-4xl text-white/20">barcode_reader</span>
+                                    <div className="size-24 border-4 border-dashed border-border-color dark:border-white/10 rounded-3xl flex items-center justify-center mb-6 animate-pulse">
+                                        <span className="material-symbols-outlined text-4xl text-text-secondary/40 dark:text-white/20">barcode_reader</span>
                                     </div>
-                                    <p className="text-sm font-bold text-white uppercase tracking-widest">Escanea el código ahora</p>
-                                    <p className="text-[10px] text-white/30 mt-2">El sistema detectará automáticamente el pedido.</p>
+                                    <p className="text-sm font-bold text-text-main dark:text-white uppercase tracking-widest">Escanea el código ahora</p>
+                                    <p className="text-[10px] text-text-secondary/60 dark:text-white/30 mt-2">El sistema detectará automáticamente el pedido.</p>
 
                                     {/* Hidden form acting as listener */}
                                     <form onSubmit={(e) => handleScanSubmit(e)} className="absolute opacity-0 pointer-events-none">
@@ -494,13 +494,13 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
                                 </>
                             ) : (
                                 <div className="w-full">
-                                    <label className="text-[9px] font-black text-white/40 uppercase tracking-widest block mb-2 text-left">Ingresar Código Manualmente</label>
+                                    <label className="text-[9px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest block mb-2 text-left">Ingresar Código Manualmente</label>
                                     <div className="flex gap-2">
                                         <input
                                             ref={inputRef}
                                             value={scanValue}
                                             onChange={e => setScanValue(e.target.value)}
-                                            className="flex-1 bg-white/5 border border-white/10 rounded-xl h-12 px-4 text-white font-mono text-center uppercase focus:border-neon/50 outline-none"
+                                            className="flex-1 bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 rounded-xl h-12 px-4 text-text-main dark:text-white font-mono text-center uppercase focus:border-neon/50 outline-none"
                                             placeholder="Ej: ORDER_123"
                                             onKeyDown={(e) => e.key === 'Enter' && handleScanSubmit(e as any)}
                                         />
@@ -528,17 +528,17 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
                             <div className="size-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4 text-red-500 border border-red-500/20">
                                 <span className="material-symbols-outlined text-3xl">error_outline</span>
                             </div>
-                            <h3 className="text-lg font-black text-white uppercase mb-2">Error de Lectura</h3>
+                            <h3 className="text-lg font-black text-text-main dark:text-white uppercase mb-2">Error de Lectura</h3>
                             <p className="text-xs font-medium text-red-400 mb-8">{errorMessage}</p>
 
                             {scannedOrder && (
-                                <div className="bg-white/5 p-4 rounded-xl border border-white/5 text-left mb-6 opacity-50 grayscale">
-                                    <p className="text-[10px] text-white/40 uppercase tracking-widest mb-1">Orden Detectada</p>
-                                    <p className="text-lg font-black text-white">#{scannedOrder.order_number}</p>
+                                <div className="bg-black/5 dark:bg-white/5 p-4 rounded-xl border border-border-color/30 dark:border-white/5 text-left mb-6 opacity-50 grayscale">
+                                    <p className="text-[10px] text-text-secondary dark:text-white/40 uppercase tracking-widest mb-1">Orden Detectada</p>
+                                    <p className="text-lg font-black text-text-main dark:text-white">#{scannedOrder.order_number}</p>
                                 </div>
                             )}
 
-                            <button onClick={resetModal} className="px-6 py-3 rounded-xl bg-white/10 text-white font-bold text-xs uppercase tracking-widest hover:bg-white/20 transition-all">
+                            <button onClick={resetModal} className="px-6 py-3 rounded-xl bg-black/5 dark:bg-white/10 text-text-main dark:text-white font-bold text-xs uppercase tracking-widest hover:bg-gray-100 dark:hover:bg-white/20 transition-all">
                                 Intentar de nuevo (Enter)
                             </button>
                         </div>
@@ -551,9 +551,9 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
                             </div>
                             <h3 className="text-3xl font-black text-neon uppercase italic-black tracking-tighter mb-2">¡Pedido Entregado!</h3>
                             {scannedOrder?.order_number && (
-                                <p className="text-lg font-bold text-white/60 mb-4">Orden #{scannedOrder.order_number}</p>
+                                <p className="text-lg font-bold text-text-secondary dark:text-white/60 mb-4">Orden #{scannedOrder.order_number}</p>
                             )}
-                            <p className="text-xs font-medium text-white/40 mb-8 uppercase tracking-widest">El cliente ha sido notificado</p>
+                            <p className="text-xs font-medium text-text-secondary dark:text-white/40 mb-8 uppercase tracking-widest">El cliente ha sido notificado</p>
 
                             <button
                                 onClick={resetModal}
@@ -582,13 +582,13 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
                             </div>
 
                             {/* Order Summary Card */}
-                            <div className="bg-[#1A1C1A] border border-white/10 rounded-2xl p-5 shadow-2xl">
-                                <div className="flex justify-between items-start mb-4 border-b border-white/5 pb-4">
+                            <div className="bg-gray-50 dark:bg-[#1A1C1A] border border-border-color dark:border-white/10 rounded-2xl p-5 shadow-2xl">
+                                <div className="flex justify-between items-start mb-4 border-b border-border-color/30 dark:border-white/5 pb-4">
                                     <div>
                                         <p className="text-[9px] font-bold text-blue-400 uppercase tracking-widest mb-1">En Proceso</p>
-                                        <h3 className="text-3xl font-black text-white italic-black tracking-tighter">#{scannedOrder.order_number}</h3>
+                                        <h3 className="text-3xl font-black text-text-main dark:text-white italic-black tracking-tighter">#{scannedOrder.order_number}</h3>
                                         {scannedOrder.customer_name && (
-                                            <p className="text-[10px] text-white/50 uppercase font-bold mt-1 max-w-[150px] truncate">
+                                            <p className="text-[10px] text-text-secondary dark:text-white/50 uppercase font-bold mt-1 max-w-[150px] truncate">
                                                 {scannedOrder.customer_name}
                                             </p>
                                         )}
@@ -599,20 +599,20 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
                                 </div>
 
                                 {/* Items */}
-                                <div className="bg-black/20 rounded-xl p-3 max-h-[150px] overflow-y-auto custom-scrollbar space-y-2">
+                                <div className="bg-gray-100/50 dark:bg-black/20 rounded-xl p-3 max-h-[150px] overflow-y-auto custom-scrollbar space-y-2">
                                     {scannedOrder.order_items && scannedOrder.order_items.length > 0 ? (
                                         scannedOrder.order_items.map((item: any, idx: number) => (
-                                            <div key={`order-item-${item.id || item.product_id || `${item.name}-${idx}`}`} className="flex justify-between text-sm py-1 border-b border-white/5 last:border-0 items-center">
+                                            <div key={`order-item-${item.id || item.product_id || `${item.name}-${idx}`}`} className="flex justify-between text-sm py-1 border-b border-border-color/30 dark:border-white/5 last:border-0 items-center">
                                                 <div className="flex items-center gap-2 flex-1">
-                                                    <span className="size-5 rounded bg-white/10 flex items-center justify-center text-[10px] font-black text-white">{item.quantity}</span>
-                                                    <span className="text-white/80 font-medium text-xs truncate max-w-[180px]">
+                                                    <span className="size-5 rounded bg-black/5 dark:bg-white/10 flex items-center justify-center text-[10px] font-black text-text-main dark:text-white">{item.quantity}</span>
+                                                    <span className="text-text-main/80 dark:text-white/80 font-medium text-xs truncate max-w-[180px]">
                                                         {(item as any).enriched_name || item.name || 'Producto desconocido'}
                                                     </span>
                                                 </div>
                                             </div>
                                         ))
                                     ) : (
-                                        <p className="text-white/40 text-xs text-center py-4">Sin productos</p>
+                                        <p className="text-text-secondary dark:text-white/40 text-xs text-center py-4">Sin productos</p>
                                     )}
                                 </div>
                             </div>
@@ -621,7 +621,7 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
                             <div className="grid grid-cols-2 gap-3">
                                 <button
                                     onClick={resetModal}
-                                    className="py-4 rounded-xl bg-white/5 text-white/40 font-black text-[10px] uppercase tracking-widest hover:bg-white/10 hover:text-white transition-all"
+                                    className="py-4 rounded-xl bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/40 font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 dark:hover:bg-white/10 hover:text-text-main dark:hover:text-white transition-all"
                                 >
                                     Escanear Otro
                                 </button>
@@ -638,13 +638,13 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
                     {status === 'preview' && scannedOrder && (
                         <div className="w-full space-y-6 animate-in slide-in-from-bottom-4 duration-300 z-10 relative">
                             {/* Order Summary Card */}
-                            <div className="bg-[#1A1C1A] border border-white/10 rounded-2xl p-5 shadow-2xl">
-                                <div className="flex justify-between items-start mb-4 border-b border-white/5 pb-4">
+                            <div className="bg-gray-50 dark:bg-[#1A1C1A] border border-border-color dark:border-white/10 rounded-2xl p-5 shadow-2xl">
+                                <div className="flex justify-between items-start mb-4 border-b border-border-color/30 dark:border-white/5 pb-4">
                                     <div>
                                         <p className="text-[9px] font-bold text-neon uppercase tracking-widest mb-1">Orden Activa</p>
-                                        <h3 className="text-3xl font-black text-white italic-black tracking-tighter">#{scannedOrder.order_number}</h3>
+                                        <h3 className="text-3xl font-black text-text-main dark:text-white italic-black tracking-tighter">#{scannedOrder.order_number}</h3>
                                         {scannedOrder.customer_name && (
-                                            <p className="text-[10px] text-white/50 uppercase font-bold mt-1 max-w-[150px] truncate">
+                                            <p className="text-[10px] text-text-secondary dark:text-white/50 uppercase font-bold mt-1 max-w-[150px] truncate">
                                                 {scannedOrder.customer_name}
                                             </p>
                                         )}
@@ -658,32 +658,32 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
                             {/* Metadata Row */}
                             <div className="flex gap-2 mb-3 flex-wrap">
                                 {scannedOrder.created_at && (
-                                    <div className="bg-black/30 px-3 py-1.5 rounded-lg border border-white/5 flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-white/40 text-sm">schedule</span>
-                                        <span className="text-[10px] font-bold text-white/60 uppercase">
+                                    <div className="bg-gray-100/50 dark:bg-black/30 px-3 py-1.5 rounded-lg border border-border-color/30 dark:border-white/5 flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-text-secondary dark:text-white/40 text-sm">schedule</span>
+                                        <span className="text-[10px] font-bold text-text-secondary dark:text-white/60 uppercase">
                                             {new Date(scannedOrder.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     </div>
                                 )}
                                 {scannedOrder.delivery_method && (
-                                    <div className="bg-black/30 px-3 py-1.5 rounded-lg border border-white/5 flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-white/40 text-sm">
+                                    <div className="bg-gray-100/50 dark:bg-black/30 px-3 py-1.5 rounded-lg border border-border-color/30 dark:border-white/5 flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-text-secondary dark:text-white/40 text-sm">
                                             {scannedOrder.delivery_method === 'mesa' ? 'table_restaurant' : 'shopping_bag'}
                                         </span>
-                                        <span className="text-[10px] font-bold text-white/60 uppercase">
+                                        <span className="text-[10px] font-bold text-text-secondary dark:text-white/60 uppercase">
                                             {scannedOrder.delivery_method === 'mesa' ? `Mesa ${scannedOrder.table_number || '?'}` : 'Para Llevar'}
                                         </span>
                                     </div>
                                 )}
                             </div>
 
-                            <div className="bg-black/20 rounded-xl p-3 max-h-[150px] overflow-y-auto custom-scrollbar space-y-2 mb-2">
+                            <div className="bg-gray-100/50 dark:bg-black/20 rounded-xl p-3 max-h-[150px] overflow-y-auto custom-scrollbar space-y-2 mb-2">
                                 {scannedOrder.order_items && scannedOrder.order_items.length > 0 ? (
                                     scannedOrder.order_items.map((item: any, idx: number) => (
-                                        <div key={`scan-item-${item.id || item.product_id || `${item.name}-${idx}`}`} className="flex justify-between text-sm py-1 border-b border-white/5 last:border-0 items-center">
+                                        <div key={`scan-item-${item.id || item.product_id || `${item.name}-${idx}`}`} className="flex justify-between text-sm py-1 border-b border-border-color/30 dark:border-white/5 last:border-0 items-center">
                                             <div className="flex items-center gap-2 flex-1">
-                                                <span className="size-5 rounded bg-white/10 flex items-center justify-center text-[10px] font-black text-white">{item.quantity}</span>
-                                                <span className="text-white/80 font-medium text-xs truncate max-w-[180px]">
+                                                <span className="size-5 rounded bg-black/5 dark:bg-white/10 flex items-center justify-center text-[10px] font-black text-text-main dark:text-white">{item.quantity}</span>
+                                                <span className="text-text-main/80 dark:text-white/80 font-medium text-xs truncate max-w-[180px]">
                                                     {(item as any).enriched_name || item.name || 'Producto desconocido'}
                                                 </span>
                                             </div>
@@ -691,9 +691,9 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
                                     ))
                                 ) : (
                                     <div className="text-center py-8">
-                                        <span className="material-symbols-outlined text-white/20 text-3xl mb-2 block">shopping_cart_off</span>
-                                        <p className="text-white/40 text-xs">Sin productos detectados</p>
-                                        <p className="text-white/20 text-[10px] mt-1">Consulta con soporte técnico</p>
+                                        <span className="material-symbols-outlined text-text-secondary/40 dark:text-white/20 text-3xl mb-2 block">shopping_cart_off</span>
+                                        <p className="text-text-secondary dark:text-white/40 text-xs">Sin productos detectados</p>
+                                        <p className="text-text-secondary/40 dark:text-white/20 text-[10px] mt-1">Consulta con soporte técnico</p>
                                     </div>
                                 )}
                             </div>
@@ -702,7 +702,7 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
                             <div className="grid grid-cols-2 gap-3">
                                 <button
                                     onClick={resetModal}
-                                    className="py-4 rounded-xl bg-white/5 text-white/40 font-black text-[10px] uppercase tracking-widest hover:bg-white/10 hover:text-white transition-all"
+                                    className="py-4 rounded-xl bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/40 font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 dark:hover:bg-white/10 hover:text-text-main dark:hover:text-white transition-all"
                                 >
                                     Cancelar (Esc)
                                 </button>
@@ -715,7 +715,7 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
                                 </button>
                             </div>
                             <div className="text-center">
-                                <span className="text-[8px] text-white/20 uppercase tracking-widest">Presiona ENTER para procesar</span>
+                                <span className="text-[8px] text-text-secondary/40 dark:text-white/20 uppercase tracking-widest">Presiona ENTER para procesar</span>
                             </div>
                         </div>
                     )}

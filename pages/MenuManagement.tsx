@@ -294,12 +294,12 @@ const MenuManagement: React.FC = () => {
     }
 
     return (
-        <div className="flex h-full bg-[#0A0B09]">
+        <div className="flex h-full bg-background-light dark:bg-[#0A0B09]">
             {/* LEFT PANEL: Menu List */}
-            <div className="w-80 border-r border-white/10 flex flex-col">
-                <div className="p-4 border-b border-white/10">
+            <div className="w-80 border-r border-border-color dark:border-white/10 flex flex-col">
+                <div className="p-4 border-b border-border-color dark:border-white/10">
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-black text-white">Menús</h2>
+                        <h2 className="text-lg font-black text-text-main dark:text-white">Menús</h2>
                         <button
                             onClick={handleCreateMenu}
                             className="p-2 bg-neon/10 text-neon rounded-lg hover:bg-neon/20 transition-all"
@@ -325,21 +325,21 @@ const MenuManagement: React.FC = () => {
                             onClick={() => handleSelectMenu(menu)}
                             className={`w-full p-3 rounded-xl text-left transition-all ${selectedMenu?.id === menu.id
                                 ? 'bg-neon/10 border border-neon/30'
-                                : 'bg-white/[0.02] border border-white/5 hover:bg-white/5'
+                                : 'bg-black/[0.02] dark:bg-white/[0.02] border border-border-color/30 dark:border-white/5 hover:bg-gray-100 dark:hover:bg-white/5'
                                 }`}
                         >
                             <div className="flex items-center justify-between mb-1">
-                                <span className="font-bold text-white text-sm truncate">{menu.name}</span>
+                                <span className="font-bold text-text-main dark:text-white text-sm truncate">{menu.name}</span>
                                 <div className="flex items-center gap-1">
                                     {menu.is_fallback && (
                                         <span className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 text-[8px] font-bold rounded">DEFAULT</span>
                                     )}
-                                    <span className={`w-2 h-2 rounded-full ${menu.is_active ? 'bg-green-500' : 'bg-white/20'}`} />
+                                    <span className={`w-2 h-2 rounded-full ${menu.is_active ? 'bg-green-500' : 'bg-gray-300 dark:bg-white/20'}`} />
                                 </div>
                             </div>
                             <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-[10px] text-white/40">{menu.product_count} productos</span>
-                                <span className="text-[10px] text-white/40">P:{menu.priority}</span>
+                                <span className="text-[10px] text-text-secondary dark:text-white/40">{menu.product_count} productos</span>
+                                <span className="text-[10px] text-text-secondary dark:text-white/40">P:{menu.priority}</span>
                                 {getRuleBadges(menu.rules)}
                             </div>
                         </button>
@@ -352,20 +352,20 @@ const MenuManagement: React.FC = () => {
                 {selectedMenu ? (
                     <>
                         {/* Header */}
-                        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                        <div className="p-4 border-b border-border-color dark:border-white/10 flex items-center justify-between">
                             <div className="flex-1">
                                 {isEditing ? (
                                     <input
                                         type="text"
                                         value={editForm.name}
                                         onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
-                                        className="bg-black border border-white/20 rounded-lg px-3 py-2 text-white font-bold text-lg w-full max-w-xs"
+                                        className="bg-white dark:bg-black border border-gray-200 dark:border-white/20 rounded-lg px-3 py-2 text-text-main dark:text-white font-bold text-lg w-full max-w-xs"
                                         autoFocus
                                     />
                                 ) : (
-                                    <h2 className="text-xl font-black text-white">{selectedMenu.name}</h2>
+                                    <h2 className="text-xl font-black text-text-main dark:text-white">{selectedMenu.name}</h2>
                                 )}
-                                <p className="text-xs text-white/40 mt-1">
+                                <p className="text-xs text-text-secondary dark:text-white/40 mt-1">
                                     {selectedMenu.is_fallback ? 'Menú fallback (siempre activo)' : `Prioridad: ${selectedMenu.priority}`}
                                 </p>
                             </div>
@@ -373,15 +373,15 @@ const MenuManagement: React.FC = () => {
                             <div className="flex items-center gap-2">
                                 {isEditing ? (
                                     <>
-                                        <button onClick={() => setIsEditing(false)} className="p-2 text-white/40 hover:text-white"><X size={18} /></button>
+                                        <button onClick={() => setIsEditing(false)} className="p-2 text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white"><X size={18} /></button>
                                         <button onClick={handleSaveMenu} className="p-2 bg-neon/20 text-neon rounded-lg hover:bg-neon/30"><Save size={18} /></button>
                                     </>
                                 ) : (
                                     <>
-                                        <button onClick={() => setIsEditing(true)} className="p-2 text-white/40 hover:text-white"><Edit2 size={18} /></button>
+                                        <button onClick={() => setIsEditing(true)} className="p-2 text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white"><Edit2 size={18} /></button>
                                         <button
                                             onClick={() => handleToggleActive(selectedMenu)}
-                                            className={`p-2 rounded-lg ${selectedMenu.is_active ? 'bg-green-500/20 text-green-400' : 'bg-white/5 text-white/40'}`}
+                                            className={`p-2 rounded-lg ${selectedMenu.is_active ? 'bg-green-500/20 text-green-400' : 'bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/40'}`}
                                         >
                                             {selectedMenu.is_active ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
                                         </button>
@@ -395,15 +395,15 @@ const MenuManagement: React.FC = () => {
 
                         {/* Priority Editor (when editing) */}
                         {isEditing && (
-                            <div className="px-4 py-3 border-b border-white/10 flex items-center gap-4">
-                                <label className="text-xs text-white/40">Prioridad:</label>
+                            <div className="px-4 py-3 border-b border-border-color dark:border-white/10 flex items-center gap-4">
+                                <label className="text-xs text-text-secondary dark:text-white/40">Prioridad:</label>
                                 <input
                                     type="number"
                                     value={editForm.priority}
                                     onChange={e => setEditForm(f => ({ ...f, priority: parseInt(e.target.value) || 100 }))}
-                                    className="w-20 bg-black border border-white/20 rounded px-2 py-1 text-white text-sm"
+                                    className="w-20 bg-white dark:bg-black border border-gray-200 dark:border-white/20 rounded px-2 py-1 text-text-main dark:text-white text-sm"
                                 />
-                                <span className="text-[10px] text-white/30">(menor = mayor prioridad)</span>
+                                <span className="text-[10px] text-text-secondary/60 dark:text-white/30">(menor = mayor prioridad)</span>
                             </div>
                         )}
 
@@ -421,13 +421,13 @@ const MenuManagement: React.FC = () => {
                         <div className="px-4 pt-4 flex gap-2">
                             <button
                                 onClick={() => setActiveTab('products')}
-                                className={`px-4 py-2 rounded-lg text-xs font-bold ${activeTab === 'products' ? 'bg-neon/20 text-neon' : 'bg-white/5 text-white/40'}`}
+                                className={`px-4 py-2 rounded-lg text-xs font-bold ${activeTab === 'products' ? 'bg-neon/20 text-neon' : 'bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/40'}`}
                             >
                                 Productos ({menuProducts.length})
                             </button>
                             <button
                                 onClick={() => setActiveTab('rules')}
-                                className={`px-4 py-2 rounded-lg text-xs font-bold ${activeTab === 'rules' ? 'bg-neon/20 text-neon' : 'bg-white/5 text-white/40'}`}
+                                className={`px-4 py-2 rounded-lg text-xs font-bold ${activeTab === 'rules' ? 'bg-neon/20 text-neon' : 'bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/40'}`}
                             >
                                 Reglas ({selectedMenu.rules?.filter(r => r.is_active).length || 0})
                             </button>
@@ -438,11 +438,11 @@ const MenuManagement: React.FC = () => {
                             {activeTab === 'products' && (
                                 <div className="space-y-4">
                                     {/* Add Product */}
-                                    <div className="p-4 bg-white/[0.02] border border-white/10 rounded-xl">
-                                        <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2 block">Agregar Producto</label>
+                                    <div className="p-4 bg-black/[0.02] dark:bg-white/[0.02] border border-border-color dark:border-white/10 rounded-xl">
+                                        <label className="text-[10px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest mb-2 block">Agregar Producto</label>
                                         <select
                                             onChange={e => { if (e.target.value) handleAddProduct(e.target.value); e.target.value = ''; }}
-                                            className="w-full bg-black border border-white/20 rounded-lg px-3 py-2 text-white text-sm"
+                                            className="w-full bg-white dark:bg-black border border-gray-200 dark:border-white/20 rounded-lg px-3 py-2 text-text-main dark:text-white text-sm"
                                         >
                                             <option value="">Seleccionar producto...</option>
                                             {allProducts
@@ -456,20 +456,20 @@ const MenuManagement: React.FC = () => {
                                     {/* Product List */}
                                     <div className="space-y-2">
                                         {menuProducts.map((mp, idx) => (
-                                            <div key={mp.id} className="flex items-center gap-3 p-3 bg-white/[0.02] border border-white/10 rounded-xl group">
-                                                <GripVertical size={16} className="text-white/20 cursor-grab" />
+                                            <div key={mp.id} className="flex items-center gap-3 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-border-color dark:border-white/10 rounded-xl group">
+                                                <GripVertical size={16} className="text-text-secondary/40 dark:text-white/20 cursor-grab" />
                                                 <div className="flex-1">
-                                                    <p className="text-sm font-bold text-white">{mp.product?.name}</p>
-                                                    <p className="text-[10px] text-white/40">{mp.product?.category}</p>
+                                                    <p className="text-sm font-bold text-text-main dark:text-white">{mp.product?.name}</p>
+                                                    <p className="text-[10px] text-text-secondary dark:text-white/40">{mp.product?.category}</p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-xs text-white/40">Base: ${mp.product?.base_price}</span>
+                                                    <span className="text-xs text-text-secondary dark:text-white/40">Base: ${mp.product?.base_price}</span>
                                                     <input
                                                         type="number"
                                                         placeholder="Override"
                                                         value={mp.price_override ?? ''}
                                                         onChange={e => handleUpdatePriceOverride(mp.id, e.target.value ? parseFloat(e.target.value) : null)}
-                                                        className="w-24 bg-black border border-white/20 rounded px-2 py-1 text-white text-xs"
+                                                        className="w-24 bg-white dark:bg-black border border-gray-200 dark:border-white/20 rounded px-2 py-1 text-text-main dark:text-white text-xs"
                                                     />
                                                     <button
                                                         onClick={() => handleRemoveProduct(mp.id)}
@@ -481,7 +481,7 @@ const MenuManagement: React.FC = () => {
                                             </div>
                                         ))}
                                         {menuProducts.length === 0 && (
-                                            <div className="p-8 text-center text-white/30 text-sm">
+                                            <div className="p-8 text-center text-text-secondary/60 dark:text-white/30 text-sm">
                                                 Sin productos en este menú
                                             </div>
                                         )}
@@ -492,8 +492,8 @@ const MenuManagement: React.FC = () => {
                             {activeTab === 'rules' && (
                                 <div className="space-y-4">
                                     {/* Add Rule Buttons */}
-                                    <div className="p-4 bg-white/[0.02] border border-white/10 rounded-xl space-y-3">
-                                        <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest block">Agregar Regla</label>
+                                    <div className="p-4 bg-black/[0.02] dark:bg-white/[0.02] border border-border-color dark:border-white/10 rounded-xl space-y-3">
+                                        <label className="text-[10px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest block">Agregar Regla</label>
                                         <div className="flex flex-wrap gap-2">
                                             <button
                                                 onClick={() => handleAddRule('time_range', { from: '18:00', to: '23:59' })}
@@ -525,13 +525,13 @@ const MenuManagement: React.FC = () => {
                                     {/* Active Rules */}
                                     <div className="space-y-2">
                                         {selectedMenu.rules?.map(rule => (
-                                            <div key={rule.id} className="flex items-center gap-3 p-3 bg-white/[0.02] border border-white/10 rounded-xl">
+                                            <div key={rule.id} className="flex items-center gap-3 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-border-color dark:border-white/10 rounded-xl">
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-2">
                                                         {getRuleBadges([rule])}
-                                                        <span className="text-xs text-white/60 capitalize">{rule.rule_type.replace('_', ' ')}</span>
+                                                        <span className="text-xs text-text-secondary dark:text-white/60 capitalize">{rule.rule_type.replace('_', ' ')}</span>
                                                     </div>
-                                                    <p className="text-[10px] text-white/30 mt-1 font-mono">
+                                                    <p className="text-[10px] text-text-secondary/60 dark:text-white/30 mt-1 font-mono">
                                                         {JSON.stringify(rule.rule_config)}
                                                     </p>
                                                 </div>
@@ -544,7 +544,7 @@ const MenuManagement: React.FC = () => {
                                             </div>
                                         ))}
                                         {(!selectedMenu.rules || selectedMenu.rules.length === 0) && (
-                                            <div className="p-8 text-center text-white/30 text-sm">
+                                            <div className="p-8 text-center text-text-secondary/60 dark:text-white/30 text-sm">
                                                 Sin reglas de activación (siempre por prioridad)
                                             </div>
                                         )}
@@ -554,7 +554,7 @@ const MenuManagement: React.FC = () => {
                         </div>
                     </>
                 ) : (
-                    <div className="flex-1 flex items-center justify-center text-white/30">
+                    <div className="flex-1 flex items-center justify-center text-text-secondary/60 dark:text-white/30">
                         Seleccioná un menú para editarlo
                     </div>
                 )}

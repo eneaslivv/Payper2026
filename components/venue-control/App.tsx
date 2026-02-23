@@ -319,12 +319,18 @@ const App: React.FC = () => {
   };
 
   const handleDeleteZone = async (zoneId: string) => {
-    if (!window.confirm('¿Eliminar sala?')) return;
+    const zone = zones.find(z => z.id === zoneId);
+    if (!window.confirm(`¿Eliminar la sala "${zone?.name || ''}"? Se eliminarán también las mesas asociadas.`)) return;
     try {
       const { error } = await supabase.from('venue_zones' as any).delete().eq('id', zoneId);
       if (error) throw error;
       addToast('Sala eliminada', 'info');
-      fetchZones(); // Force refresh
+      // Switch to another zone if we deleted the active one
+      if (activeZoneId === zoneId) {
+        const remaining = zones.filter(z => z.id !== zoneId);
+        if (remaining.length > 0) setActiveZoneId(remaining[0].id);
+      }
+      fetchZones();
     } catch (e) {
       console.error(e);
       addToast('Error al eliminar sala', 'error');

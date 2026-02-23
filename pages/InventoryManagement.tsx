@@ -45,7 +45,7 @@ function TabBtn({ active, onClick, children }: { active: boolean, onClick: () =>
   return (
     <button
       onClick={onClick}
-      className={`px-6 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${active ? 'bg-neon text-black shadow-lg shadow-neon/10' : 'text-white/40 hover:text-neon hover:bg-white/5'}`}
+      className={`px-6 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${active ? 'bg-neon text-black shadow-lg shadow-neon/10' : 'text-text-secondary dark:text-white/40 hover:text-neon hover:bg-gray-100 dark:hover:bg-white/5'}`}
     >
       {children}
     </button>
@@ -56,7 +56,7 @@ function DrawerTabBtn({ active, onClick, label, icon }: { active: boolean, onCli
   return (
     <button
       onClick={onClick}
-      className={`flex-1 flex flex-col items-center py-4 border-b-2 gap-1.5 transition-all duration-500 ${active ? 'border-neon text-neon bg-white/5' : 'border-transparent text-white/20 hover:text-white/40'}`}
+      className={`flex-1 flex flex-col items-center py-4 border-b-2 gap-1.5 transition-all duration-500 ${active ? 'border-neon text-neon bg-black/5 dark:bg-white/5' : 'border-transparent text-text-secondary/40 dark:text-white/20 hover:text-text-secondary dark:hover:text-white/40'}`}
     >
       <span className="material-symbols-outlined text-[18px]">{icon}</span>
       <span className="text-[10px] font-black uppercase tracking-[0.2em]">{label}</span>
@@ -66,10 +66,10 @@ function DrawerTabBtn({ active, onClick, label, icon }: { active: boolean, onCli
 
 function KpiCard({ label, value, icon, color }: { label: string, value: string, icon: string, color: string }) {
   return (
-    <div className="bg-[#141714] border border-white/[0.04] p-5 rounded-2xl flex items-center justify-between group hover:border-white/10 transition-all">
+    <div className="bg-white dark:bg-surface-dark border border-border-color/30 dark:border-white/[0.04] p-5 rounded-2xl flex items-center justify-between group hover:border-border-color dark:hover:border-white/10 transition-all">
       <div className="space-y-1">
         <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.1em]">{label}</p>
-        <p className="text-2xl font-black italic-black text-white tracking-tighter">{value}</p>
+        <p className="text-2xl font-black italic-black text-text-main dark:text-white tracking-tighter">{value}</p>
       </div>
       <div className={`size-12 rounded-2xl flex items-center justify-center ${color} shadow-inner`}>
         <span className="material-symbols-outlined text-2xl">{icon}</span>
@@ -80,10 +80,10 @@ function KpiCard({ label, value, icon, color }: { label: string, value: string, 
 
 function MetricBlock({ label, value, icon, color = "text-neon" }: { label: string, value: string, icon: string, color?: string }) {
   return (
-    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2 group hover:bg-white/[0.04] transition-all">
+    <div className="p-4 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-border-color/30 dark:border-white/5 space-y-2 group hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-all">
       <div className="flex items-center gap-2">
-        <span className="material-symbols-outlined text-xs text-white/20">{icon}</span>
-        <label className="text-[8px] font-black uppercase text-white/30 tracking-widest">{label}</label>
+        <span className="material-symbols-outlined text-xs text-text-secondary/40 dark:text-white/20">{icon}</span>
+        <label className="text-[8px] font-black uppercase text-text-secondary/60 dark:text-white/30 tracking-widest">{label}</label>
       </div>
       <p className={`text-xl font-black italic-black ${color} tracking-tighter`}>{value}</p>
     </div>
@@ -93,7 +93,7 @@ function MetricBlock({ label, value, icon, color = "text-neon" }: { label: strin
 function InputBlock({ label, children }: { label: string, children: React.ReactNode }) {
   return (
     <div className="space-y-2">
-      <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-2">{label}</label>
+      <label className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.2em] ml-2">{label}</label>
       {children}
     </div>
   );
@@ -123,7 +123,7 @@ function LocationStockBreakdown({ itemId, unitType, packageSize, onLocationClick
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-white/30 text-[10px]">
+      <div className="flex items-center gap-2 text-text-secondary/60 dark:text-white/30 text-[10px]">
         <span className="animate-pulse">●</span> Cargando ubicaciones...
       </div>
     );
@@ -132,21 +132,21 @@ function LocationStockBreakdown({ itemId, unitType, packageSize, onLocationClick
   if (locations.length === 0) {
     if (currentStock && currentStock > 0) {
       return (
-        <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-1">
+        <div className="p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-border-color dark:border-white/10 space-y-1">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-sm text-orange-400/60">warning</span>
-            <span className="text-[10px] font-bold text-white/60">Sin ubicación asignada</span>
+            <span className="text-[10px] font-bold text-text-secondary dark:text-white/60">Sin ubicación asignada</span>
           </div>
           <div className="flex items-baseline gap-1 pl-6">
             <span className="text-lg font-black text-orange-400">{Math.round(currentStock * 100) / 100}</span>
-            <span className="text-[8px] font-bold text-white/30">{unitType} sin asignar</span>
+            <span className="text-[8px] font-bold text-text-secondary/60 dark:text-white/30">{unitType} sin asignar</span>
           </div>
-          <p className="text-[8px] text-white/20 pl-6">Hacé un RE-INGRESO para asignar a una ubicación</p>
+          <p className="text-[8px] text-text-secondary/40 dark:text-white/20 pl-6">Hacé un RE-INGRESO para asignar a una ubicación</p>
         </div>
       );
     }
     return (
-      <div className="text-[10px] text-white/30 italic">Sin stock registrado en ubicaciones.</div>
+      <div className="text-[10px] text-text-secondary/60 dark:text-white/30 italic">Sin stock registrado en ubicaciones.</div>
     );
   }
 
@@ -176,24 +176,24 @@ function LocationStockBreakdown({ itemId, unitType, packageSize, onLocationClick
           <button
             key={loc.location_id}
             onClick={() => onLocationClick?.(loc.location_name)}
-            className={`p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-1 hover:bg-white/5 transition-all text-left group ${onLocationClick ? 'cursor-pointer hover:border-neon/30 hover:shadow-lg hover:shadow-neon/5' : ''}`}
+            className={`p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-border-color dark:border-white/10 space-y-1 hover:bg-gray-100 dark:hover:bg-white/5 transition-all text-left group ${onLocationClick ? 'cursor-pointer hover:border-neon/30 hover:shadow-lg hover:shadow-neon/5' : ''}`}
           >
             <div className="flex items-center gap-2">
               <span className={`material-symbols-outlined text-sm ${onLocationClick ? 'text-neon/60 group-hover:text-neon' : 'text-neon/60'}`}>
                 {locationTypeIcons[loc.location_type] || 'place'}
               </span>
-              <span className={`text-[10px] font-bold truncate ${onLocationClick ? 'text-white/80 group-hover:text-white' : 'text-white/80'}`}>{loc.location_name}</span>
+              <span className={`text-[10px] font-bold truncate ${onLocationClick ? 'text-text-main/80 dark:text-white/80 group-hover:text-text-main dark:group-hover:text-white' : 'text-text-main/80 dark:text-white/80'}`}>{loc.location_name}</span>
             </div>
 
             {/* Closed units */}
             <div className="flex items-baseline gap-1 pl-6">
               <span className="text-lg font-black text-neon">{closedUnits}</span>
-              <span className="text-[8px] font-bold text-white/30">un cerrados</span>
+              <span className="text-[8px] font-bold text-text-secondary/60 dark:text-white/30">un cerrados</span>
             </div>
 
             {/* Open packages info */}
             {openPackagesCount > 0 && (
-              <div className="pl-6 pt-1 border-t border-white/5 mt-1">
+              <div className="pl-6 pt-1 border-t border-border-color/30 dark:border-white/5 mt-1">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-bold text-amber-400">
                     {openPackagesCount} abierto{openPackagesCount > 1 ? 's' : ''}
@@ -203,13 +203,13 @@ function LocationStockBreakdown({ itemId, unitType, packageSize, onLocationClick
                   </span>
                 </div>
                 {/* Mini progress bar */}
-                <div className="h-1 w-full bg-white/10 rounded-full mt-1 overflow-hidden">
+                <div className="h-1 w-full bg-black/5 dark:bg-white/10 rounded-full mt-1 overflow-hidden">
                   <div
                     className="h-full bg-amber-400 rounded-full transition-all"
                     style={{ width: `${Math.max(0, Math.min(100, openPackagePercentage))}%` }}
                   />
                 </div>
-                <span className="text-[8px] text-white/20 mt-0.5 block">
+                <span className="text-[8px] text-text-secondary/40 dark:text-white/20 mt-0.5 block">
                   ~{openRemainingSum.toFixed(1)} {unitType} restantes
                 </span>
               </div>
@@ -523,12 +523,14 @@ const InventoryManagement: React.FC = () => {
     }
   }, [items, selectedItem]);
 
+  const getInventoryCacheKey = () => `inventory_cache_v7_${profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533'}`;
+
   const fetchData = async (forceRefresh = false, silent = false) => {
     const storeId = profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
     if (!storeId) return;
 
     // CACHE STRATEGY
-    const CACHE_KEY = `inventory_cache_v7_${storeId}`; // Force refresh (v7 - fix open package location)
+    const CACHE_KEY = getInventoryCacheKey();
     const CACHE_DURATION = 30 * 1000; // 30 seconds (Stock is critical)
 
     // Cleanup old cache versions to free localStorage quota
@@ -1722,6 +1724,7 @@ const InventoryManagement: React.FC = () => {
       };
 
       setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, ...updatedItem } : i));
+      try { localStorage.removeItem(getInventoryCacheKey()); } catch (_) {}
 
       addToast('Ítem actualizado correctamente', 'success');
       setSelectedItem(null); // Close drawer on success
@@ -1770,12 +1773,12 @@ const InventoryManagement: React.FC = () => {
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3">
 
         <div className="space-y-0.5">
-          <div className="flex items-center gap-1.5 text-white/40 font-bold text-[8px] uppercase tracking-[0.2em]">
+          <div className="flex items-center gap-1.5 text-text-secondary dark:text-white/40 font-bold text-[8px] uppercase tracking-[0.2em]">
             <span className="size-1 rounded-full bg-neon shadow-[0_0_5px_rgba(255,255,255,0.5)]"></span>
             COFFESQUAD INVENTORY SYSTEM
           </div>
           <h1 className="text-2xl font-black italic-black tracking-tighter text-text-main dark:text-white uppercase leading-none">
-            Control <span className="text-white/80">Operativo</span>
+            Control <span className="text-text-main/80 dark:text-white/80">Operativo</span>
           </h1>
 
         </div>
@@ -1788,14 +1791,14 @@ const InventoryManagement: React.FC = () => {
               fetchData(true);
               addToast('Inventario actualizado', 'success');
             }}
-            className="px-3 md:px-4 py-1.5 rounded-lg bg-white/5 text-white/60 font-bold text-[9px] uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all hover:text-neon hover:border-white/30 hover:bg-white/5"
+            className="px-3 md:px-4 py-1.5 rounded-lg bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/60 font-bold text-[9px] uppercase tracking-widest border border-border-color dark:border-white/10 flex items-center gap-2 transition-all hover:text-neon hover:border-border-color dark:hover:border-white/30 hover:bg-gray-100 dark:hover:bg-white/5"
           >
             <span className="material-symbols-outlined text-base">refresh</span>
             <span className="hidden sm:inline">REFRESCAR</span>
           </button>
           <button
             onClick={() => setShowInvoiceProcessor(true)}
-            className="px-3 md:px-4 py-1.5 rounded-lg bg-white/5 text-white/60 font-bold text-[9px] uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all hover:text-neon hover:border-white/30 hover:bg-white/5"
+            className="px-3 md:px-4 py-1.5 rounded-lg bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/60 font-bold text-[9px] uppercase tracking-widest border border-border-color dark:border-white/10 flex items-center gap-2 transition-all hover:text-neon hover:border-border-color dark:hover:border-white/30 hover:bg-gray-100 dark:hover:bg-white/5"
           >
             <span className="material-symbols-outlined text-base">document_scanner</span>
             <span className="hidden sm:inline">ESCANEAR FACTURA</span>
@@ -1811,8 +1814,8 @@ const InventoryManagement: React.FC = () => {
       {/* KPI CARDS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
 
-        <KpiCard label="Valorización Total" value={`$${kpis.totalValue}`} icon="payments" color="text-neon bg-white/5" />
-        <KpiCard label="Alerta de Stock" value={`${kpis.lowStock}`} icon="warning" color={kpis.lowStock > 0 ? "text-neon bg-white/10" : "text-white/40 bg-white/5"} />
+        <KpiCard label="Valorización Total" value={`$${kpis.totalValue}`} icon="payments" color="text-neon bg-black/5 dark:bg-white/5" />
+        <KpiCard label="Alerta de Stock" value={`${kpis.lowStock}`} icon="warning" color={kpis.lowStock > 0 ? "text-neon bg-black/5 dark:bg-white/10" : "text-text-secondary dark:text-white/40 bg-black/5 dark:bg-white/5"} />
         {recipesAtRisk > 0 && (
           <div className="p-4 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-between group hover:scale-[1.02] transition-all">
             <div className="flex items-center gap-3">
@@ -1826,12 +1829,12 @@ const InventoryManagement: React.FC = () => {
             </div>
           </div>
         )}
-        <KpiCard label="Índice de Ítems" value={`${items.length}`} icon="inventory" color="text-neon bg-white/5" />
+        <KpiCard label="Índice de Ítems" value={`${items.length}`} icon="inventory" color="text-neon bg-black/5 dark:bg-white/5" />
       </div>
 
       <div className="flex flex-col gap-3">
         {/* Type Filters */}
-        <div className="flex overflow-x-auto no-scrollbar bg-[#141714] p-1 rounded-xl border border-white/[0.04] shadow-soft max-w-full md:max-w-fit">
+        <div className="flex overflow-x-auto no-scrollbar bg-white dark:bg-surface-dark p-1 rounded-xl border border-border-color/30 dark:border-white/[0.04] shadow-soft max-w-full md:max-w-fit">
           <TabBtn active={filter === 'all'} onClick={() => setFilter('all')}>GLOBAL</TabBtn>
           <TabBtn active={filter === 'ingredient'} onClick={() => setFilter('ingredient')}>INSUMOS</TabBtn>
           <TabBtn active={filter === 'sellable'} onClick={() => setFilter('sellable')}>PRODUCTOS</TabBtn>
@@ -1844,8 +1847,8 @@ const InventoryManagement: React.FC = () => {
           <button
             onClick={() => setActiveCategoryFilter(null)}
             className={`px-4 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest whitespace-nowrap transition-all border ${activeCategoryFilter === null
-              ? 'border-white/60 text-neon bg-white/5'
-              : 'border-white/10 text-white/50 hover:text-white/70 hover:border-white/20'
+              ? 'border-border-color dark:border-white/60 text-neon bg-black/5 dark:bg-white/5'
+              : 'border-border-color/30 dark:border-white/10 text-text-secondary dark:text-white/50 hover:text-text-main dark:hover:text-white/70 hover:border-border-color dark:hover:border-white/20'
               }`}
           >
             TODAS
@@ -1855,8 +1858,8 @@ const InventoryManagement: React.FC = () => {
               key={cat.id}
               onClick={() => setActiveCategoryFilter(cat.id)}
               className={`px-4 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest whitespace-nowrap transition-all border ${activeCategoryFilter === cat.id
-                ? 'border-white/60 text-neon bg-white/5'
-                : 'border-white/10 text-white/50 hover:text-white/70 hover:border-white/20'
+                ? 'border-border-color dark:border-white/60 text-neon bg-black/5 dark:bg-white/5'
+                : 'border-border-color/30 dark:border-white/10 text-text-secondary dark:text-white/50 hover:text-text-main dark:hover:text-white/70 hover:border-border-color dark:hover:border-white/20'
                 }`}
             >
               {cat.name}
@@ -1865,8 +1868,8 @@ const InventoryManagement: React.FC = () => {
           <button
             onClick={() => setActiveCategoryFilter('special-open')}
             className={`px-4 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest whitespace-nowrap flex items-center gap-1.5 transition-all border ${activeCategoryFilter === 'special-open'
-              ? 'border-white/60 text-neon bg-white/5'
-              : 'border-white/10 text-white/50 hover:text-white/70 hover:border-white/20'
+              ? 'border-border-color dark:border-white/60 text-neon bg-black/5 dark:bg-white/5'
+              : 'border-border-color/30 dark:border-white/10 text-text-secondary dark:text-white/50 hover:text-text-main dark:hover:text-white/70 hover:border-border-color dark:hover:border-white/20'
               }`}
           >
             <span className="material-symbols-outlined text-sm">lock_open</span>
@@ -1874,7 +1877,7 @@ const InventoryManagement: React.FC = () => {
           </button>
           <button
             onClick={() => setShowCategoryModal(true)}
-            className="ml-auto px-2 py-2 rounded-lg text-white/30 hover:text-neon border border-transparent hover:border-white/20 transition-all"
+            className="ml-auto px-2 py-2 rounded-lg text-text-secondary/60 dark:text-white/30 hover:text-neon border border-transparent hover:border-border-color dark:hover:border-white/20 transition-all"
             title="Crear nueva categoría"
           >
             <span className="material-symbols-outlined text-base">add_circle</span>
@@ -1892,7 +1895,7 @@ const InventoryManagement: React.FC = () => {
               Ubicación: {activeLocationFilter}
               <span className="material-symbols-outlined text-sm opacity-50 group-hover:opacity-100">close</span>
             </button>
-            <span className="text-[9px] text-white/30 uppercase tracking-widest">Filtrando lista</span>
+            <span className="text-[9px] text-text-secondary/60 dark:text-white/30 uppercase tracking-widest">Filtrando lista</span>
           </div>
         )}
       </div>
@@ -1903,8 +1906,8 @@ const InventoryManagement: React.FC = () => {
           {/* Header */}
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-lg font-black text-white uppercase tracking-tight">Libro de Recetas</h2>
-              <p className="text-[10px] text-white/40 uppercase tracking-widest">Define los ingredientes de cada producto compuesto</p>
+              <h2 className="text-lg font-black text-text-main dark:text-white uppercase tracking-tight">Libro de Recetas</h2>
+              <p className="text-[10px] text-text-secondary dark:text-white/40 uppercase tracking-widest">Define los ingredientes de cada producto compuesto</p>
             </div>
             <button
               onClick={() => {
@@ -1912,7 +1915,7 @@ const InventoryManagement: React.FC = () => {
                 setRecipeIngredients([]);
                 setShowRecipeModal(true);
               }}
-              className="px-4 py-2 rounded-lg bg-white/10 text-white font-bold text-[10px] uppercase tracking-widest border border-white/20 flex items-center gap-2 hover:bg-white/20 transition-all shadow-[0_0_20px_rgba(255,255,255,0.05)]"
+              className="px-4 py-2 rounded-lg bg-black/5 dark:bg-white/10 text-text-main dark:text-white font-bold text-[10px] uppercase tracking-widest border border-border-color dark:border-white/20 flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-white/20 transition-all shadow-[0_0_20px_rgba(255,255,255,0.05)]"
             >
               <span className="material-symbols-outlined text-base">add</span>
               NUEVA RECETA
@@ -1933,10 +1936,10 @@ const InventoryManagement: React.FC = () => {
 
               if (productIds.length === 0) {
                 return (
-                  <div className="col-span-2 flex flex-col items-center justify-center p-20 text-center bg-[#141714] rounded-2xl border border-white/[0.04]">
-                    <span className="material-symbols-outlined text-5xl text-white/10 mb-4">menu_book</span>
-                    <h3 className="text-lg font-black text-white/40 uppercase mb-2">Sin Recetas</h3>
-                    <p className="text-[10px] text-white/20 uppercase tracking-widest mb-6">Crea tu primera receta para productos compuestos</p>
+                  <div className="col-span-2 flex flex-col items-center justify-center p-20 text-center bg-white dark:bg-surface-dark rounded-2xl border border-border-color/30 dark:border-white/[0.04]">
+                    <span className="material-symbols-outlined text-5xl text-text-secondary/20 dark:text-white/10 mb-4">menu_book</span>
+                    <h3 className="text-lg font-black text-text-secondary dark:text-white/40 uppercase mb-2">Sin Recetas</h3>
+                    <p className="text-[10px] text-text-secondary/40 dark:text-white/20 uppercase tracking-widest mb-6">Crea tu primera receta para productos compuestos</p>
                     <button
                       onClick={() => setShowRecipeModal(true)}
                       className="px-6 py-3 bg-neon text-black rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-200 transition-all shadow-[0_0_25px_rgba(255,255,255,0.1)]"
@@ -1956,20 +1959,20 @@ const InventoryManagement: React.FC = () => {
                 }, 0);
 
                 return (
-                  <div key={productId} className="bg-[#141714] rounded-2xl border border-white/[0.04] overflow-hidden">
+                  <div key={productId} className="bg-white dark:bg-surface-dark rounded-2xl border border-border-color/30 dark:border-white/[0.04] overflow-hidden">
                     {/* Product Header */}
-                    <div className="p-4 border-b border-white/[0.04] flex items-center justify-between">
+                    <div className="p-4 border-b border-border-color/30 dark:border-white/[0.04] flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="size-12 rounded-xl bg-white/5 flex items-center justify-center">
-                          <span className="material-symbols-outlined text-white/60">restaurant</span>
+                        <div className="size-12 rounded-xl bg-black/5 dark:bg-white/5 flex items-center justify-center">
+                          <span className="material-symbols-outlined text-text-secondary dark:text-white/60">restaurant</span>
                         </div>
                         <div>
-                          <h3 className="text-sm font-black text-white uppercase">{product?.name || 'Producto'}</h3>
-                          <p className="text-[9px] text-white/40">{recipeItems.length} ingredientes</p>
+                          <h3 className="text-sm font-black text-text-main dark:text-white uppercase">{product?.name || 'Producto'}</h3>
+                          <p className="text-[9px] text-text-secondary dark:text-white/40">{recipeItems.length} ingredientes</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-[8px] text-white/30 uppercase">Costo</p>
+                        <p className="text-[8px] text-text-secondary/60 dark:text-white/30 uppercase">Costo</p>
                         <p className="text-sm font-black text-neon">${totalCost.toFixed(2)}</p>
                       </div>
                     </div>
@@ -1979,8 +1982,8 @@ const InventoryManagement: React.FC = () => {
                       {recipeItems.map((r) => {
                         const ingredient = items.find(i => i.id === r.inventory_item_id);
                         return (
-                          <div key={`recipe-${r.inventory_item_id}-${r.quantity_required}`} className="flex items-center justify-between p-2 rounded-lg bg-white/[0.02]">
-                            <span className="text-[10px] font-bold text-white/70">{ingredient?.name || 'Insumo'}</span>
+                          <div key={`recipe-${r.inventory_item_id}-${r.quantity_required}`} className="flex items-center justify-between p-2 rounded-lg bg-black/[0.02] dark:bg-white/[0.02]">
+                            <span className="text-[10px] font-bold text-text-main/70 dark:text-white/70">{ingredient?.name || 'Insumo'}</span>
                             <span className="text-[10px] font-black text-neon">{r.quantity_required} {ingredient?.unit_type}</span>
                           </div>
                         );
@@ -2003,7 +2006,7 @@ const InventoryManagement: React.FC = () => {
                           setRecipeIngredients(mappedIngredients);
                           setShowRecipeModal(true);
                         }}
-                        className="flex-1 py-2 rounded-lg bg-white/5 text-white/50 text-[9px] font-bold uppercase hover:text-neon hover:bg-white/5 transition-all"
+                        className="flex-1 py-2 rounded-lg bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/50 text-[9px] font-bold uppercase hover:text-neon hover:bg-gray-100 dark:hover:bg-white/5 transition-all"
                       >
                         Editar
                       </button>
@@ -2040,20 +2043,20 @@ const InventoryManagement: React.FC = () => {
           <div className="flex gap-3 relative z-[100]">
             <button
               onClick={() => setFilter('logistics')}
-              className={`hidden md:flex items-center gap-2 px-4 py-2 border rounded-xl transition-all group ${filter === 'logistics' ? 'bg-white border-white' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+              className={`hidden md:flex items-center gap-2 px-4 py-2 border rounded-xl transition-all group ${filter === 'logistics' ? 'bg-white border-white' : 'bg-black/5 dark:bg-white/5 border-border-color/30 dark:border-white/5 hover:bg-gray-100 dark:hover:bg-white/10'}`}
             >
-              <span className={`material-symbols-outlined text-lg ${filter === 'logistics' ? 'text-black' : 'text-white/60 group-hover:text-white'}`}>store</span>
-              <span className={`text-[10px] font-black uppercase tracking-widest ${filter === 'logistics' ? 'text-black' : 'text-white/60 group-hover:text-white'}`}>UBICACIONES</span>
+              <span className={`material-symbols-outlined text-lg ${filter === 'logistics' ? 'text-black' : 'text-text-secondary dark:text-white/60 group-hover:text-text-main dark:group-hover:text-white'}`}>store</span>
+              <span className={`text-[10px] font-black uppercase tracking-widest ${filter === 'logistics' ? 'text-black' : 'text-text-secondary dark:text-white/60 group-hover:text-text-main dark:group-hover:text-white'}`}>UBICACIONES</span>
             </button>
 
             {/* BUSCADOR */}
             <div className="relative group">
-              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-neon transition-colors">search</span>
+              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary/40 dark:text-white/20 group-focus-within:text-neon transition-colors">search</span>
               <input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Rastrear ítem por SKU o nombre..."
-                className="w-full bg-[#141714] border border-white/[0.04] rounded-2xl h-12 pl-12 pr-4 text-[10px] font-bold text-white uppercase tracking-widest outline-none focus:border-white/30 transition-all placeholder:text-white/10"
+                className="w-full bg-white dark:bg-surface-dark border border-border-color/30 dark:border-white/[0.04] rounded-2xl h-12 pl-12 pr-4 text-[10px] font-bold text-text-main dark:text-white uppercase tracking-widest outline-none focus:border-border-color dark:focus:border-white/30 transition-all placeholder:text-text-secondary/40 dark:placeholder:text-white/10"
               />
             </div>
           </div>
@@ -2062,18 +2065,18 @@ const InventoryManagement: React.FC = () => {
           {filter === 'logistics' ? (
             <LogisticsView preselectedLocationName={activeLocationFilter} />
           ) : (
-            <div className="bg-[#141714] rounded-2xl border border-white/[0.04] shadow-2xl overflow-hidden min-h-[400px]">
+            <div className="bg-white dark:bg-surface-dark rounded-2xl border border-border-color/30 dark:border-white/[0.04] shadow-2xl overflow-hidden min-h-[400px]">
               {loading ? (
                 <div className="flex flex-col items-center justify-center p-20 space-y-4">
                   <div className="size-10 border-t-2 border-neon rounded-full animate-spin"></div>
-                  <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Cargando Matrix...</p>
+                  <p className="text-[10px] font-black text-text-secondary/40 dark:text-white/20 uppercase tracking-[0.3em]">Cargando Matrix...</p>
                 </div>
               ) : items.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-20 text-center animate-in fade-in zoom-in duration-700">
-                  <div className="size-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 mb-8">
+                  <div className="size-24 rounded-full bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 flex items-center justify-center text-text-secondary dark:text-white/40 mb-8">
                     <span className="material-symbols-outlined text-5xl">inventory_2</span>
                   </div>
-                  <h3 className="text-2xl font-black text-white uppercase italic-black tracking-tighter mb-4">
+                  <h3 className="text-2xl font-black text-text-main dark:text-white uppercase italic-black tracking-tighter mb-4">
                     Nodo <span className="text-neon">sin Datos</span>
                   </h3>
                   <p className="text-[#71766F] text-[11px] font-bold uppercase tracking-[0.2em] max-w-sm mb-10 leading-relaxed opacity-60">
@@ -2091,7 +2094,7 @@ const InventoryManagement: React.FC = () => {
                   <table className="w-full text-left border-collapse min-w-[800px]">
 
                     <thead>
-                      <tr className="bg-white/[0.01] border-b border-white/[0.03]">
+                      <tr className="bg-black/[0.01] dark:bg-white/[0.01] border-b border-border-color/30 dark:border-white/[0.03]">
                         <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest">Identidad Operativa</th>
                         <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest">Stock Total</th>
                         <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest">Abiertos</th>
@@ -2101,25 +2104,25 @@ const InventoryManagement: React.FC = () => {
                         <th className="px-6 py-4 text-[8px] font-black uppercase text-text-secondary tracking-widest text-right">Audit</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/[0.02]">
+                    <tbody className="divide-y divide-border-color/20 dark:divide-white/[0.02]">
                       {filteredItems.map((item, idx) => (
                         <tr
                           key={`${item.id}-${item.item_type || idx}`}
-                          className="hover:bg-white/[0.01] transition-colors cursor-pointer group"
+                          className="hover:bg-gray-50 dark:hover:bg-white/[0.01] transition-colors cursor-pointer group"
                         >
                           <td className="px-6 py-4" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); setEditingRecipePrice(false); }}>
                             <div className="flex items-center gap-4">
-                              <div className="size-10 rounded-xl overflow-hidden bg-black/40 border border-white/5 relative">
+                              <div className="size-10 rounded-xl overflow-hidden bg-gray-100 dark:bg-black/40 border border-border-color/30 dark:border-white/5 relative">
                                 <img src={item.image_url} className="size-full object-cover group-hover:scale-110 transition-transform duration-500" />
                               </div>
                               <div>
-                                <p className="text-[11px] font-black dark:text-white uppercase italic tracking-tight leading-none mb-1">{item.name}</p>
+                                <p className="text-[11px] font-black text-text-main dark:text-white uppercase italic tracking-tight leading-none mb-1">{item.name}</p>
                                 {(() => {
                                   const cat = categories.find(c => c.id === item.category_ids?.[0]);
                                   return cat ? (
-                                    <p className="text-[7px] text-white/60 font-bold uppercase tracking-widest">{cat.name}</p>
+                                    <p className="text-[7px] text-text-secondary dark:text-white/60 font-bold uppercase tracking-widest">{cat.name}</p>
                                   ) : (
-                                    <p className="text-[7px] text-text-secondary font-bold uppercase opacity-30 tracking-widest group-hover:text-white/50">SKU: {item.sku}</p>
+                                    <p className="text-[7px] text-text-secondary font-bold uppercase opacity-30 tracking-widest group-hover:text-text-secondary dark:group-hover:text-white/50">SKU: {item.sku}</p>
                                   );
                                 })()}
                               </div>
@@ -2132,7 +2135,7 @@ const InventoryManagement: React.FC = () => {
                                 (() => {
                                   const { portions } = getRecipeAvailability(item);
                                   const hasRecipe = productRecipes.some(pr => pr.product_id === item.id);
-                                  if (!hasRecipe) return <span className="text-[14px] font-black text-white/20">--</span>;
+                                  if (!hasRecipe) return <span className="text-[14px] font-black text-text-secondary/40 dark:text-white/20">--</span>;
 
                                   const color = portions > 5 ? 'text-neon' : portions > 0 ? 'text-yellow-400' : 'text-red-400';
 
@@ -2140,7 +2143,7 @@ const InventoryManagement: React.FC = () => {
                                     <div className="flex flex-col gap-0.5">
                                       <div className="flex items-baseline gap-1.5">
                                         <span className={`font-black italic text-[14px] ${color}`}>{portions}</span>
-                                        <span className="text-[7px] font-bold text-white/30 uppercase">porciones</span>
+                                        <span className="text-[7px] font-bold text-text-secondary/60 dark:text-white/30 uppercase">porciones</span>
                                       </div>
                                       {portions === 0 && (
                                         <span className="text-[6px] font-black text-red-400/80 uppercase tracking-widest">SIN STOCK</span>
@@ -2175,9 +2178,9 @@ const InventoryManagement: React.FC = () => {
                                           {closedUnits}
                                         </span>
                                         {sizeLabel ? (
-                                          <span className="text-[7px] font-bold text-white/30 uppercase">{sizeLabel}</span>
+                                          <span className="text-[7px] font-bold text-text-secondary/60 dark:text-white/30 uppercase">{sizeLabel}</span>
                                         ) : (
-                                          <span className="text-[7px] font-bold text-white/20 uppercase">{unitAbbr}</span>
+                                          <span className="text-[7px] font-bold text-text-secondary/40 dark:text-white/20 uppercase">{unitAbbr}</span>
                                         )}
                                       </div>
                                       {isCritical && (
@@ -2210,9 +2213,9 @@ const InventoryManagement: React.FC = () => {
                                 <div className="flex flex-col gap-1 min-w-[90px]">
                                   <div className="flex items-center justify-between">
                                     <span className={`text-[9px] font-black ${textColor}`}>{pct}%</span>
-                                    {label && <span className="text-[8px] font-bold text-white/30 uppercase">{label}</span>}
+                                    {label && <span className="text-[8px] font-bold text-text-secondary/60 dark:text-white/30 uppercase">{label}</span>}
                                   </div>
-                                  <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                  <div className="w-full h-1.5 bg-black/5 dark:bg-white/5 rounded-full overflow-hidden">
                                     <div className={`h-full rounded-full ${barColor} transition-all`} style={{ width: `${Math.max(pct, 2)}%` }} />
                                   </div>
                                 </div>
@@ -2234,7 +2237,7 @@ const InventoryManagement: React.FC = () => {
                                       return <div key={pkg.id || `open-${i}`}>{renderBar(pct, pkgCapLabel, barColor, txtColor)}</div>;
                                     })}
                                     {openPkgs.length > 3 && (
-                                      <span className="text-[7px] font-bold text-white/30 uppercase">+{openPkgs.length - 3} mas</span>
+                                      <span className="text-[7px] font-bold text-text-secondary/60 dark:text-white/30 uppercase">+{openPkgs.length - 3} mas</span>
                                     )}
                                   </div>
                                 );
@@ -2245,13 +2248,13 @@ const InventoryManagement: React.FC = () => {
                                     onClick={(e) => { e.stopPropagation(); setSelectedItem(item); setDrawerTab('details'); }}
                                   >
                                     <span className="material-symbols-outlined text-orange-500 text-sm">inventory_2</span>
-                                    <span className="text-[10px] font-black text-white uppercase">{totalOpen} abierto{totalOpen > 1 ? 's' : ''}</span>
+                                    <span className="text-[10px] font-black text-text-main dark:text-white uppercase">{totalOpen} abierto{totalOpen > 1 ? 's' : ''}</span>
                                   </div>
                                 );
                               } else if (item.current_stock > 0) {
                                 return renderBar(100, capLabel, 'bg-neon', 'text-neon');
                               } else {
-                                return renderBar(0, capLabel || unitAbbr, 'bg-white/10', 'text-white/20');
+                                return renderBar(0, capLabel || unitAbbr, 'bg-black/5 dark:bg-white/10', 'text-text-secondary/40 dark:text-white/20');
                               }
                             })()}
                           </td>
@@ -2341,6 +2344,7 @@ const InventoryManagement: React.FC = () => {
 
                                   if (!response.ok) throw new Error('API Error');
 
+                                  try { localStorage.removeItem(getInventoryCacheKey()); } catch (_) {}
                                   addToast(newValue ? 'Item visible en menú' : 'Item oculto del menú', 'success');
                                 } catch (err) {
                                   console.error(err);
@@ -2349,7 +2353,7 @@ const InventoryManagement: React.FC = () => {
                                   setItems(prev => prev.map(i => i.id === item.id ? { ...i, is_menu_visible: !item.is_menu_visible } : i));
                                 }
                               }}
-                              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black ${item.is_menu_visible ? 'bg-neon' : 'bg-white/10'}`}
+                              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black ${item.is_menu_visible ? 'bg-neon' : 'bg-black/5 dark:bg-white/10'}`}
                             >
                               <span className="sr-only">Toggle Menu Visibility</span>
                               <span
@@ -2357,11 +2361,11 @@ const InventoryManagement: React.FC = () => {
                               />
                             </button>
                           </td>
-                          <td className="px-6 py-4 text-center font-mono text-[10px] text-white/60" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); setEditingRecipePrice(false); }}>
+                          <td className="px-6 py-4 text-center font-mono text-[10px] text-text-secondary dark:text-white/60" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); setEditingRecipePrice(false); }}>
                             ${item.cost.toFixed(2)}
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <button className="size-8 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-neon hover:text-black transition-all group-hover:border-white/30">
+                            <button className="size-8 rounded-xl bg-black/[0.04] dark:bg-white/5 border border-border-color/30 dark:border-white/5 flex items-center justify-center hover:bg-neon hover:text-black transition-all group-hover:border-border-color dark:group-hover:border-white/30">
                               <span className="material-symbols-outlined text-lg">bolt</span>
                             </button>
                           </td>
@@ -2388,7 +2392,7 @@ const InventoryManagement: React.FC = () => {
       }
 
       {/* DRAWER LATERAL PREMIUM */}
-      <div className={`fixed inset-y-0 right-0 z-[5000] h-screen w-full max-w-[420px] bg-[#0D0F0D] border-l border-white/10 shadow-3xl transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col ${selectedItem ? 'translate-x-0' : 'translate-x-full opacity-0 pointer-events-none invisible'}`}>
+      <div className={`fixed inset-y-0 right-0 z-[5000] h-screen w-full max-w-[420px] bg-background-light dark:bg-[#0D0F0D] border-l border-border-color dark:border-white/10 shadow-3xl transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col ${selectedItem ? 'translate-x-0' : 'translate-x-full opacity-0 pointer-events-none invisible'}`}>
         {selectedItem && (
           <>
             <div className="relative h-64 w-full shrink-0">
@@ -2399,7 +2403,7 @@ const InventoryManagement: React.FC = () => {
                 accept="image/*"
                 className="hidden"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0D0F0D] via-transparent to-transparent z-10" />
+              <div className="absolute inset-0 bg-gradient-to-t from-background-light dark:from-[#0D0F0D] via-transparent to-transparent z-10" />
               <img
                 src={selectedItem.image_url || selectedItem.image}
                 className={`w-full h-full object-cover transition-all ${isUploadingImage ? 'opacity-30 blur-sm' : ''}`}
@@ -2419,7 +2423,7 @@ const InventoryManagement: React.FC = () => {
                 </div>
               </div>
 
-              <button onClick={() => setSelectedItem(null)} className="absolute top-4 right-4 z-20 size-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white/60 hover:text-white transition-all">
+              <button onClick={() => setSelectedItem(null)} className="absolute top-4 right-4 z-20 size-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-text-secondary dark:text-white/60 hover:text-text-main dark:hover:text-white transition-all">
                 <span className="material-symbols-outlined text-lg">close</span>
               </button>
               <div className="absolute bottom-4 left-6 z-20 right-6">
@@ -2440,11 +2444,11 @@ const InventoryManagement: React.FC = () => {
                     ) : null;
                   })()}
                 </div>
-                <p className="text-[9px] font-medium text-white/50 uppercase tracking-[0.2em]">{selectedItem.item_type === 'sellable' ? 'Producto' : 'Insumo'} · {selectedItem.sku || 'SKU'}</p>
+                <p className="text-[9px] font-medium text-text-secondary dark:text-white/50 uppercase tracking-[0.2em]">{selectedItem.item_type === 'sellable' ? 'Producto' : 'Insumo'} · {selectedItem.sku || 'SKU'}</p>
               </div>
             </div>
 
-            <div className="flex border-b border-white/5 px-6 gap-6">
+            <div className="flex border-b border-border-color/30 dark:border-white/5 px-6 gap-6">
               <DrawerTabBtn active={drawerTab === 'details'} onClick={() => setDrawerTab('details')} label="FICHA" icon="analytics" />
               {selectedItem.item_type === 'sellable' && (
                 <DrawerTabBtn active={drawerTab === 'recipe'} onClick={() => setDrawerTab('recipe')} label="RECETA" icon="biotech" />
@@ -2468,9 +2472,9 @@ const InventoryManagement: React.FC = () => {
                 const finalYield = yieldlimit === Infinity ? 0 : yieldlimit;
 
                 return (
-                  <div className="mx-6 mt-2 mb-0 p-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between animate-in slide-in-from-top-2">
+                  <div className="mx-6 mt-2 mb-0 p-3 rounded-xl bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 flex items-center justify-between animate-in slide-in-from-top-2">
                     <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-white/60">inventory</span>
+                      <span className="material-symbols-outlined text-text-secondary dark:text-white/60">inventory</span>
                       <div>
                         <p className="text-[9px] font-black text-white/80 uppercase tracking-widest">Stock Estimado</p>
                         <p className="text-[9px] text-white/40">Basado en tus insumos actuales</p>
@@ -2651,6 +2655,7 @@ const InventoryManagement: React.FC = () => {
                                             .eq('id', selectedItem.id);
                                           if (error) throw error;
                                           setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, price: newPrice } : i));
+                                          try { localStorage.removeItem(getInventoryCacheKey()); } catch (_) {}
                                           setEditingRecipePrice(false);
                                           addToast('Precio actualizado', 'success');
                                         } catch (err: any) {

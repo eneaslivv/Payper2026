@@ -21,16 +21,18 @@ const Finance: React.FC = () => {
   const location = useLocation();
 
   // Tab sync from query params
-  const [activeTab, setActiveTab] = useState<'analytics' | 'caja'>(() => {
+  const [activeTab, setActiveTab] = useState<'analytics' | 'caja' | 'resultados'>(() => {
     const params = new URLSearchParams(location.search);
-    return params.get('tab') === 'caja' ? 'caja' : 'analytics';
+    const tab = params.get('tab');
+    if (tab === 'caja' || tab === 'resultados') return tab;
+    return 'analytics';
   });
 
   // Sync tab if URL changes without unmount
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tab = params.get('tab');
-    if (tab === 'caja' || tab === 'analytics') {
+    if (tab === 'caja' || tab === 'analytics' || tab === 'resultados') {
       setActiveTab(tab as any);
     }
   }, [location.search]);
@@ -51,28 +53,135 @@ const Finance: React.FC = () => {
     avgTicket: 0,
     orderCount: 0,
     revenueToday: 0,
-    topupsToday: 0, // NEW
-    totalLiability: 0, // NEW
-    loyaltyCost: 0 // Sum of monetary_cost from loyalty redemptions
+    topupsToday: 0,
+    totalLiability: 0,
+    loyaltyCost: 0
   });
   const [performanceData, setPerformanceData] = useState<any[]>([]);
+
+  const [expenseCategoryOpen, setExpenseCategoryOpen] = useState(false);
+
+  // P&L (Estado de Resultados) state
+  const [pnl, setPnl] = useState<any>(null);
+
+  // Budget state
+  const [budgetData, setBudgetData] = useState<any>(null);
+  const [showBudgetModal, setShowBudgetModal] = useState(false);
+  const [budgetForm, setBudgetForm] = useState({ category: 'revenue', amount: '' });
+  const [isSubmittingBudget, setIsSubmittingBudget] = useState(false);
 
   // Advanced Chart & Expenses State (Migrated)
   const [chartFilter, setChartFilter] = useState<'total' | 'mercadopago' | 'cash' | 'wallet'>('total');
   const [fixedExpensesList, setFixedExpensesList] = useState<any[]>([]);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [isSubmittingExpense, setIsSubmittingExpense] = useState(false);
-  const [topProducts, setTopProducts] = useState<any[]>([]); // Added correctly here
+  const [topProducts, setTopProducts] = useState<any[]>([]);
 
   const [expenseForm, setExpenseForm] = useState({
     name: '',
     amount: '',
     category: 'rent',
-    description: ''
+    description: '',
+    date: new Date().toISOString().slice(0, 10),
+    is_recurring: false,
+    recurrence_frequency: 'monthly' as 'monthly' | 'weekly' | 'yearly'
   });
 
+  // CSV Export helper
+  const exportCSV = (filename: string, rows: string[][]) => {
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportPnL = () => {
+    if (!pnl) return;
+    const exp = pnl.expenses || {};
+    const prof = pnl.profitability || {};
+    const rows = [
+      ['Concepto', 'Monto'],
+      ['Ingresos Brutos', `$${(pnl.gross_revenue || 0).toFixed(2)}`],
+      ['(-) Costo de Mercadería (COGS)', `$${(exp.cogs_estimated || 0).toFixed(2)}`],
+      ['= Ganancia Bruta', `$${(prof.gross_profit || 0).toFixed(2)}`],
+      ['(-) Gastos Variables', `$${(exp.variable_total || 0).toFixed(2)}`],
+      ['  Marketing / Regalos', `$${(exp.marketing || 0).toFixed(2)}`],
+      ['  Uso Interno', `$${(exp.internal || 0).toFixed(2)}`],
+      ['  Pérdidas Operativas', `$${(exp.operational_loss || 0).toFixed(2)}`],
+      ['(-) Gastos Fijos', `$${(exp.fixed_total || 0).toFixed(2)}`],
+      ['(-) Costo Loyalty (Canjes)', `$${(Number(exp.loyalty_cost) || metrics.loyaltyCost || 0).toFixed(2)}`],
+      ['= Ganancia Neta', `$${(prof.net_profit || 0).toFixed(2)}`],
+      ['Margen Neto', `${(prof.margin_percent || 0).toFixed(1)}%`],
+      ['', ''],
+      ['Flujo de Caja Neto', `$${(pnl.net_cash_flow || 0).toFixed(2)}`],
+      ['Total Pedidos', String(pnl.total_orders || 0)],
+    ];
+    const d = dateRange.start.toISOString().slice(0, 10);
+    exportCSV(`estado_resultados_${d}.csv`, rows);
+  };
+
+  const handleExportTransactions = () => {
+    if (!performanceData?.length) return;
+    const rows = [['Hora', 'Total', 'MercadoPago', 'Efectivo', 'Wallet', 'Cargas Efectivo', 'Cargas Transfer']];
+    performanceData.forEach(d => {
+      rows.push([d.name, String(d.total_revenue || 0), String(d.mercadopago || 0), String(d.cash_sales || 0), String(d.wallet_sales || 0), String(d.cash_topups || 0), String(d.transfer_topups || 0)]);
+    });
+    const d = dateRange.start.toISOString().slice(0, 10);
+    exportCSV(`flujo_operaciones_${d}.csv`, rows);
+  };
+
+  const handleSaveBudget = async () => {
+    if (!budgetForm.amount || !profile?.store_id) return;
+    setIsSubmittingBudget(true);
+    try {
+      const { error } = await (supabase as any).rpc('upsert_monthly_budget', {
+        p_store_id: profile.store_id,
+        p_month: new Date(dateRange.start.getFullYear(), dateRange.start.getMonth(), 1).toISOString().slice(0, 10),
+        p_category: budgetForm.category,
+        p_amount: Number(budgetForm.amount)
+      });
+      if (error) throw error;
+      setBudgetForm({ category: 'revenue', amount: '' });
+      setShowBudgetModal(false);
+      // Refresh budget data
+      const { data: bData } = await (supabase as any).rpc('get_budget_vs_actual', {
+        p_store_id: profile.store_id,
+        p_month: new Date(dateRange.start.getFullYear(), dateRange.start.getMonth(), 1).toISOString().slice(0, 10)
+      });
+      setBudgetData(bData);
+    } catch (err) {
+      console.error('Error saving budget:', err);
+    } finally {
+      setIsSubmittingBudget(false);
+    }
+  };
+
+  const CATEGORY_LABELS: Record<string, string> = {
+    rent: 'Alquiler', utilities: 'Servicios', salaries: 'Sueldos',
+    marketing_fixed: 'Marketing', software: 'Software', maintenance: 'Mantenimiento',
+    supplies: 'Insumos Operativos', insurance: 'Seguros', taxes: 'Impuestos',
+    events: 'Eventos', transport: 'Transporte / Envíos', other: 'Otros'
+  };
+
+  const CATEGORY_ICONS: Record<string, string> = {
+    rent: 'home', utilities: 'bolt', salaries: 'group', marketing_fixed: 'campaign',
+    software: 'code', maintenance: 'build', supplies: 'inventory_2', insurance: 'shield',
+    taxes: 'account_balance', events: 'celebration', transport: 'local_shipping', other: 'more_horiz'
+  };
+
+  const CATEGORY_COLORS: Record<string, string> = {
+    rent: 'text-blue-400', utilities: 'text-yellow-400', salaries: 'text-purple-400',
+    marketing_fixed: 'text-pink-400', software: 'text-cyan-400', maintenance: 'text-orange-400',
+    supplies: 'text-green-400', insurance: 'text-indigo-400', taxes: 'text-red-400',
+    events: 'text-amber-400', transport: 'text-teal-400', other: 'text-text-secondary dark:text-white/40'
+  };
+
   const handleRegisterExpense = async () => {
-    if (!expenseForm.name || !expenseForm.amount) return alert('Nombre y monto requeridos');
+    if (!expenseForm.name || !expenseForm.amount) return;
     setIsSubmittingExpense(true);
 
     try {
@@ -82,23 +191,41 @@ const Finance: React.FC = () => {
         p_amount: Number(expenseForm.amount),
         p_category: expenseForm.category,
         p_description: expenseForm.description,
-        p_date: new Date().toISOString(),
-        p_is_recurring: false,
-        p_recurrence_frequency: 'monthly'
+        p_date: expenseForm.date,
+        p_is_recurring: expenseForm.is_recurring,
+        p_recurrence_frequency: expenseForm.recurrence_frequency
       });
 
       if (error) throw error;
 
-      alert('Gasto registrado correctamente');
+      // Refresh expenses without page reload
+      const { data: expensesList } = await safeQuery(
+        (supabase as any)
+          .from('fixed_expenses')
+          .select('*')
+          .eq('store_id', profile?.store_id)
+          .gte('expense_date', dateRange.start.toISOString())
+          .lte('expense_date', dateRange.end.toISOString())
+          .order('expense_date', { ascending: false })
+      );
+      setFixedExpensesList(expensesList || []);
+
       setShowExpenseModal(false);
-      setExpenseForm({ name: '', amount: '', category: 'rent', description: '' });
-      // Trigger refresh
-      window.location.reload();
+      setExpenseForm({ name: '', amount: '', category: 'rent', description: '', date: new Date().toISOString().slice(0, 10), is_recurring: false, recurrence_frequency: 'monthly' });
     } catch (err) {
       console.error('Error al registrar gasto:', err);
-      alert('Error al registrar el gasto');
     } finally {
       setIsSubmittingExpense(false);
+    }
+  };
+
+  const handleDeleteExpense = async (expenseId: string) => {
+    try {
+      const { error } = await supabase.from('fixed_expenses').delete().eq('id', expenseId);
+      if (error) throw error;
+      setFixedExpensesList(prev => prev.filter(e => e.id !== expenseId));
+    } catch (err) {
+      console.error('Error deleting expense:', err);
     }
   };
 
@@ -252,6 +379,23 @@ const Finance: React.FC = () => {
         const totalLoyaltyCost = (loyaltyData || []).reduce((sum: number, tx: any) => sum + (Number(tx.monetary_cost) || 0), 0);
         setMetrics(prev => ({ ...prev, loyaltyCost: totalLoyaltyCost }));
 
+        // 4. Fetch full P&L metrics (COGS, expenses, profitability)
+        const { data: pnlData, error: pnlError } = await (supabase as any).rpc('get_financial_metrics', {
+          p_start_date: dateRange.start.toISOString(),
+          p_end_date: dateRange.end.toISOString(),
+          p_store_id: profile.store_id
+        });
+        if (pnlError) console.error('Error P&L:', pnlError);
+        else setPnl(pnlData);
+
+        // 5. Fetch Budget vs Actual
+        const { data: bvData, error: bvError } = await (supabase as any).rpc('get_budget_vs_actual', {
+          p_store_id: profile.store_id,
+          p_month: new Date(dateRange.start.getFullYear(), dateRange.start.getMonth(), 1).toISOString().slice(0, 10)
+        });
+        if (bvError) console.error('Error budget:', bvError);
+        else setBudgetData(bvData);
+
       } catch (err) {
         console.error('Error fetching advanced data:', err);
       }
@@ -287,6 +431,12 @@ const Finance: React.FC = () => {
               Ventas
             </button>
             <button
+              onClick={() => setActiveTab('resultados')}
+              className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'resultados' ? 'bg-primary dark:bg-neon/10 text-white dark:text-neon border border-primary dark:border-neon/20' : 'text-text-secondary hover:text-primary dark:hover:text-neon'}`}
+            >
+              Resultados
+            </button>
+            <button
               onClick={() => setActiveTab('caja')}
               className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'caja' ? 'bg-primary dark:bg-neon/10 text-white dark:text-neon border border-primary dark:border-neon/20' : 'text-text-secondary hover:text-primary dark:hover:text-neon'}`}
             >
@@ -302,32 +452,61 @@ const Finance: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
             <FinanceCard
               label="Ingresos Hoy"
-              value={`$${(metrics.revenueToday || 0).toFixed(2)}`}
+              value={`$${(metrics.revenueToday || 0).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
               trend={metrics.orderCount > 0 ? `${metrics.orderCount} pedidos` : '-'}
               type={metrics.revenueToday > 0 ? 'positive' : 'neutral'}
               icon="payments"
             />
             <FinanceCard
               label="Ticket Promedio"
-              value={`$${(metrics.avgTicket || 0).toFixed(2)}`}
-              trend="-"
+              value={`$${(metrics.avgTicket || 0).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+              trend={metrics.orderCount > 0 ? `sobre ${metrics.orderCount} pedidos` : '-'}
               type="neutral"
               icon="receipt_long"
             />
             <FinanceCard
-              label="Cargas Wallet (Hoy)"
-              value={`$${(metrics.topupsToday || 0).toFixed(2)}`}
-              trend="Fondos Ingresados"
-              type="positive"
-              icon="account_balance_wallet"
+              label="Gastos del Periodo"
+              value={`$${fixedExpensesList.reduce((s: number, e: any) => s + Number(e.amount), 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })}`}
+              trend={`${fixedExpensesList.length} registros`}
+              type="negative"
+              icon="trending_down"
             />
-            <FinanceCard
-              label="Pasivo: Saldo en Billeteras"
-              value={`$${(metrics.totalLiability || 0).toFixed(2)}`}
-              trend="Dinero en cuentas sin consumir"
-              type="neutral"
-              icon="savings"
-            />
+            {(() => {
+              const revenue = metrics.revenueToday || 0;
+              const expenses = fixedExpensesList.reduce((s: number, e: any) => s + Number(e.amount), 0);
+              const cogs = pnl?.expenses?.cogs_estimated ? Number(pnl.expenses.cogs_estimated) : 0;
+              const net = revenue - cogs - expenses;
+              const margin = revenue > 0 ? (net / revenue) * 100 : 0;
+              return (
+                <FinanceCard
+                  label="Margen Neto Estimado"
+                  value={`${margin.toFixed(1)}%`}
+                  trend={`$${net.toLocaleString('es-AR', { maximumFractionDigits: 0 })} neto`}
+                  type={net >= 0 ? 'positive' : 'negative'}
+                  icon="analytics"
+                />
+              );
+            })()}
+          </div>
+
+          {/* Secondary KPIs row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-white dark:bg-white/[0.02] border border-gray-100 dark:border-white/5 rounded-2xl p-4">
+              <p className="text-[8px] font-black text-[#9B9A97] dark:text-white/30 uppercase tracking-widest mb-1">Cargas Wallet</p>
+              <p className="text-lg font-black text-[#37352F] dark:text-white">${(metrics.topupsToday || 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
+            </div>
+            <div className="bg-white dark:bg-white/[0.02] border border-gray-100 dark:border-white/5 rounded-2xl p-4">
+              <p className="text-[8px] font-black text-[#9B9A97] dark:text-white/30 uppercase tracking-widest mb-1">Pasivo Wallets</p>
+              <p className="text-lg font-black text-[#37352F] dark:text-white">${(metrics.totalLiability || 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
+            </div>
+            <div className="bg-white dark:bg-white/[0.02] border border-gray-100 dark:border-white/5 rounded-2xl p-4">
+              <p className="text-[8px] font-black text-[#9B9A97] dark:text-white/30 uppercase tracking-widest mb-1">COGS Estimado</p>
+              <p className="text-lg font-black text-[#37352F] dark:text-white">${(Number(pnl?.expenses?.cogs_estimated) || 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
+            </div>
+            <div className="bg-white dark:bg-white/[0.02] border border-gray-100 dark:border-white/5 rounded-2xl p-4">
+              <p className="text-[8px] font-black text-[#9B9A97] dark:text-white/30 uppercase tracking-widest mb-1">Costo Loyalty</p>
+              <p className="text-lg font-black text-[#37352F] dark:text-white">${(metrics.loyaltyCost || 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
+            </div>
           </div>
 
           <div className="lg:col-span-12 bg-white dark:bg-[#141714] rounded-3xl border border-gray-200 dark:border-white/5 p-6 shadow-xl dark:shadow-soft mb-8">
@@ -341,7 +520,7 @@ const Finance: React.FC = () => {
                   <button
                     key={filter}
                     onClick={() => setChartFilter(filter as any)}
-                    className={`px-4 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${chartFilter === filter ? 'bg-neon/10 text-neon border border-neon/20 shadow-neon-soft' : 'text-[#71766F] border border-white/5 hover:text-white'}`}
+                    className={`px-4 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${chartFilter === filter ? 'bg-neon/10 text-neon border border-neon/20 shadow-neon-soft' : 'text-[#71766F] border border-border-color/30 dark:border-white/5 hover:text-text-main dark:hover:text-white'}`}
                   >
                     {filter === 'total' ? 'TOTAL' : filter === 'mercadopago' ? 'MERCADO PAGO' : filter === 'cash' ? 'EFECTIVO' : 'WALLET'}
                   </button>
@@ -399,120 +578,240 @@ const Finance: React.FC = () => {
             </div>
           </div>
 
-          {/* FIXED EXPENSES SECTION */}
-          <div className="lg:col-span-12 bg-white dark:bg-[#141714] rounded-3xl border border-gray-200 dark:border-white/5 p-6 shadow-xl dark:shadow-soft mb-8">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h3 className="text-lg font-black italic uppercase text-[#37352F] dark:text-white">GASTOS FIJOS / RECURRENTES</h3>
-                <p className="text-[9px] font-bold text-[#9B9A97] dark:text-white/40 uppercase">ALQUILER, LUZ, SERVICIOS, SUELDOS</p>
+          {/* EXPENSES SECTION */}
+          <div className="bg-white dark:bg-[#141714] rounded-3xl border border-gray-200 dark:border-white/5 shadow-xl dark:shadow-soft overflow-hidden mb-8">
+            {/* Header with totals */}
+            <div className="p-6 border-b border-border-color/30 dark:border-white/5">
+              <div className="flex justify-between items-start mb-5">
+                <div>
+                  <h3 className="text-lg font-black italic uppercase text-[#37352F] dark:text-white">Gastos del Local</h3>
+                  <p className="text-[9px] font-bold text-[#9B9A97] dark:text-white/40 uppercase tracking-widest">Fijos, variables, eventos y operativos</p>
+                </div>
+                <button
+                  onClick={() => setShowExpenseModal(true)}
+                  className="px-5 py-2.5 bg-neon text-black font-black text-[10px] uppercase tracking-wider rounded-xl hover:scale-105 transition-all flex items-center gap-2 shadow-lg shadow-neon/20"
+                >
+                  <span className="material-symbols-outlined text-sm">add</span>
+                  Registrar Gasto
+                </button>
               </div>
-              <button
-                onClick={() => setShowExpenseModal(true)}
-                className="px-4 py-2 bg-white text-black font-black text-[10px] uppercase tracking-wider rounded-xl hover:bg-neon hover:scale-105 transition-all flex items-center gap-2"
-              >
-                <span className="material-symbols-outlined text-sm">add</span>
-                REGISTRAR GASTO
-              </button>
+
+              {/* Category summary cards */}
+              {fixedExpensesList.length > 0 && (() => {
+                const byCategory: Record<string, number> = {};
+                fixedExpensesList.forEach((exp: any) => {
+                  byCategory[exp.category] = (byCategory[exp.category] || 0) + Number(exp.amount);
+                });
+                const totalExpenses = Object.values(byCategory).reduce((s, v) => s + v, 0);
+                const sorted = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
+
+                return (
+                  <div className="space-y-4">
+                    <div className="flex items-baseline justify-between">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-2xl font-black text-red-400">${totalExpenses.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</span>
+                        <span className="text-[9px] font-bold text-text-secondary/60 dark:text-white/30 uppercase">total periodo</span>
+                      </div>
+                      <span className="text-[9px] font-bold text-text-secondary/40 dark:text-white/20 uppercase">{fixedExpensesList.length} gastos</span>
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      {sorted.map(([cat, total]) => (
+                        <div key={cat} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/5 dark:bg-white/5 border border-border-color/30 dark:border-white/5">
+                          <span className={`material-symbols-outlined text-xs ${CATEGORY_COLORS[cat] || 'text-text-secondary dark:text-white/40'}`}>{CATEGORY_ICONS[cat] || 'label'}</span>
+                          <span className="text-[8px] font-black uppercase text-text-secondary dark:text-white/60">{CATEGORY_LABELS[cat] || cat}</span>
+                          <span className="text-[9px] font-black text-text-main dark:text-white">${total.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* List */}
-              <div className="col-span-1 md:col-span-1 lg:col-span-4 space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                {fixedExpensesList.map(exp => (
-                  <div key={exp.id} className="flex justify-between items-center p-3 rounded-xl bg-black/20 border border-white/5 hover:border-white/10 transition-colors group">
-                    <div>
-                      <p className="text-[10px] font-black uppercase text-white group-hover:text-neon transition-colors">{exp.name}</p>
+            {/* Expenses list */}
+            <div className="max-h-[350px] overflow-y-auto">
+              {fixedExpensesList.map((exp: any) => (
+                <div key={exp.id} className="flex items-center justify-between px-6 py-3 border-b border-border-color/30 dark:border-white/[0.03] hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors group">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className={`size-8 rounded-lg bg-black/5 dark:bg-white/5 flex items-center justify-center ${CATEGORY_COLORS[exp.category] || 'text-text-secondary/60 dark:text-white/30'}`}>
+                      <span className="material-symbols-outlined text-sm">{CATEGORY_ICONS[exp.category] || 'label'}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-black uppercase text-text-main dark:text-white truncate">{exp.name}</p>
                       <div className="flex gap-2 items-center">
-                        <span className="text-[8px] font-bold text-white/40 uppercase bg-white/5 px-1.5 py-0.5 rounded">{exp.category}</span>
-                        <span className="text-[8px] font-bold text-white/20 uppercase">{new Date(exp.expense_date).toLocaleDateString()}</span>
+                        <span className="text-[8px] font-bold text-text-secondary dark:text-white/40 uppercase">{CATEGORY_LABELS[exp.category] || exp.category}</span>
+                        <span className="text-[8px] text-text-secondary/40 dark:text-white/20">{new Date(exp.expense_date + 'T12:00:00').toLocaleDateString('es-AR')}</span>
+                        {exp.is_recurring && <span className="text-[7px] font-black text-neon/60 bg-neon/10 px-1.5 py-0.5 rounded">RECURRENTE</span>}
                       </div>
                     </div>
-                    <span className="text-sm font-black text-white">$ {exp.amount.toLocaleString()}</span>
                   </div>
-                ))}
-                {fixedExpensesList.length === 0 && (
-                  <div className="flex items-center justify-center h-full border border-dashed border-white/10 rounded-xl p-4">
-                    <p className="text-[10px] font-bold text-white/20 uppercase">No hay gastos fijos registrados en este periodo</p>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-black text-red-400 font-mono tabular-nums">${Number(exp.amount).toLocaleString('es-AR')}</span>
+                    <button
+                      onClick={() => handleDeleteExpense(exp.id)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-text-secondary/40 dark:text-white/20 hover:text-red-400"
+                    >
+                      <span className="material-symbols-outlined text-sm">delete</span>
+                    </button>
                   </div>
-                )}
-              </div>
+                </div>
+              ))}
+              {fixedExpensesList.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-12 px-6">
+                  <span className="material-symbols-outlined text-3xl text-text-secondary/20 dark:text-white/10 mb-3">receipt_long</span>
+                  <p className="text-[10px] font-black uppercase text-text-secondary/40 dark:text-white/20 tracking-widest">No hay gastos registrados</p>
+                  <p className="text-[9px] text-text-secondary/20 dark:text-white/10 mt-1">Registrá alquiler, sueldos, servicios y más</p>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* MODAL */}
+          {/* EXPENSE MODAL */}
           {showExpenseModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-              <div className="bg-[#141714] border border-white/10 rounded-3xl p-6 w-full max-w-md shadow-2xl relative">
-                <button
-                  onClick={() => setShowExpenseModal(false)}
-                  className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors"
-                >
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in" onClick={() => setExpenseCategoryOpen(false)}>
+              <div className="bg-white dark:bg-[#141714] border border-border-color dark:border-white/10 rounded-3xl p-6 w-full max-w-lg shadow-2xl relative" onClick={e => e.stopPropagation()}>
+                <button onClick={() => setShowExpenseModal(false)} className="absolute top-4 right-4 text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white transition-colors">
                   <span className="material-symbols-outlined">close</span>
                 </button>
 
-                <h3 className="text-xl font-black italic uppercase text-white mb-1">REGISTRAR GASTO FIJO</h3>
-                <p className="text-[10px] text-white/40 font-bold uppercase mb-6">REGISTRO DE SALIDAS DE DINERO RECURRENTES</p>
+                <h3 className="text-xl font-black italic uppercase text-text-main dark:text-white mb-1">Registrar Gasto</h3>
+                <p className="text-[10px] text-text-secondary dark:text-white/40 font-bold uppercase mb-6">Gastos fijos, variables, eventos u operativos</p>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="text-[9px] font-black uppercase text-white/60 mb-1.5 block">CONCEPTO / NOMBRE</label>
+                    <label className="text-[9px] font-black uppercase text-text-secondary dark:text-white/60 mb-1.5 block">Concepto</label>
                     <input
                       type="text"
                       value={expenseForm.name}
                       onChange={e => setExpenseForm({ ...expenseForm, name: e.target.value })}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold outline-none focus:border-neon transition-colors"
-                      placeholder="Ej: Alquiler Local"
+                      className="w-full bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 rounded-xl px-4 py-3 text-text-main dark:text-white font-bold outline-none focus:border-neon transition-colors"
+                      placeholder="Ej: Alquiler Local, Evento Privado, Reparación..."
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <label className="text-[9px] font-black uppercase text-white/60 mb-1.5 block">MONTO</label>
+                      <label className="text-[9px] font-black uppercase text-text-secondary dark:text-white/60 mb-1.5 block">Monto</label>
                       <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 font-bold">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary dark:text-white/40 font-bold text-sm">$</span>
                         <input
                           type="number"
                           value={expenseForm.amount}
                           onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value })}
-                          className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-4 py-3 text-white font-bold outline-none focus:border-neon transition-colors"
-                          placeholder="0.00"
+                          className="w-full bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 rounded-xl pl-7 pr-3 py-3 text-text-main dark:text-white font-bold outline-none focus:border-neon transition-colors"
+                          placeholder="0"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="text-[9px] font-black uppercase text-white/60 mb-1.5 block">CATEGORÍA</label>
-                      <select
-                        value={expenseForm.category}
-                        onChange={e => setExpenseForm({ ...expenseForm, category: e.target.value })}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold outline-none focus:border-neon transition-colors appearance-none"
+                      <label className="text-[9px] font-black uppercase text-text-secondary dark:text-white/60 mb-1.5 block">Fecha</label>
+                      <input
+                        type="date"
+                        value={expenseForm.date}
+                        onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })}
+                        className="w-full bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 rounded-xl px-3 py-3 text-text-main dark:text-white font-bold outline-none focus:border-neon transition-colors dark:[color-scheme:dark]"
+                      />
+                    </div>
+                    <div className="relative">
+                      <label className="text-[9px] font-black uppercase text-text-secondary dark:text-white/60 mb-1.5 block">Categoría</label>
+                      <button
+                        type="button"
+                        onClick={() => setExpenseCategoryOpen(!expenseCategoryOpen)}
+                        className="w-full bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 rounded-xl px-3 py-3 text-left font-bold outline-none focus:border-neon transition-colors flex items-center justify-between gap-1"
                       >
-                        <option value="rent">ALQUILER</option>
-                        <option value="utilities">SERVICIOS</option>
-                        <option value="salaries">SUELDOS</option>
-                        <option value="marketing_fixed">MARKETING FIJO</option>
-                        <option value="software">SOFTWARE</option>
-                        <option value="maintenance">MANTENIMIENTO</option>
-                        <option value="other">OTROS</option>
-                      </select>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`material-symbols-outlined text-xs ${CATEGORY_COLORS[expenseForm.category] || 'text-text-secondary dark:text-white/40'}`}>{CATEGORY_ICONS[expenseForm.category] || 'label'}</span>
+                          <span className="text-[10px] text-text-main dark:text-white truncate">{CATEGORY_LABELS[expenseForm.category] || expenseForm.category}</span>
+                        </div>
+                        <span className={`material-symbols-outlined text-text-secondary/60 dark:text-white/30 text-sm transition-transform ${expenseCategoryOpen ? 'rotate-180' : ''}`}>expand_more</span>
+                      </button>
+                      {expenseCategoryOpen && (
+                        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-[#1a1d1a] border border-border-color dark:border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto">
+                          <div className="px-3 py-2 border-b border-border-color/30 dark:border-white/5">
+                            <span className="text-[8px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest">Fijos</span>
+                          </div>
+                          {(['rent', 'utilities', 'salaries', 'insurance', 'taxes', 'software'] as const).map(cat => (
+                            <button
+                              key={cat}
+                              type="button"
+                              onClick={() => { setExpenseForm({ ...expenseForm, category: cat }); setExpenseCategoryOpen(false); }}
+                              className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-gray-100 dark:hover:bg-white/5 transition-colors ${expenseForm.category === cat ? 'bg-neon/10' : ''}`}
+                            >
+                              <span className={`material-symbols-outlined text-sm ${CATEGORY_COLORS[cat]}`}>{CATEGORY_ICONS[cat]}</span>
+                              <span className={`text-[10px] font-bold ${expenseForm.category === cat ? 'text-neon' : 'text-text-secondary dark:text-white/70'}`}>{CATEGORY_LABELS[cat]}</span>
+                            </button>
+                          ))}
+                          <div className="px-3 py-2 border-t border-b border-border-color/30 dark:border-white/5">
+                            <span className="text-[8px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest">Variables / Operativos</span>
+                          </div>
+                          {(['maintenance', 'supplies', 'marketing_fixed', 'transport', 'events', 'other'] as const).map(cat => (
+                            <button
+                              key={cat}
+                              type="button"
+                              onClick={() => { setExpenseForm({ ...expenseForm, category: cat }); setExpenseCategoryOpen(false); }}
+                              className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-gray-100 dark:hover:bg-white/5 transition-colors ${expenseForm.category === cat ? 'bg-neon/10' : ''}`}
+                            >
+                              <span className={`material-symbols-outlined text-sm ${CATEGORY_COLORS[cat]}`}>{CATEGORY_ICONS[cat]}</span>
+                              <span className={`text-[10px] font-bold ${expenseForm.category === cat ? 'text-neon' : 'text-text-secondary dark:text-white/70'}`}>{CATEGORY_LABELS[cat]}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 
+                  {/* Recurring toggle */}
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-border-color/30 dark:border-white/5">
+                    <button
+                      type="button"
+                      onClick={() => setExpenseForm({ ...expenseForm, is_recurring: !expenseForm.is_recurring })}
+                      className={`relative w-10 h-5 rounded-full transition-all shrink-0 ${expenseForm.is_recurring ? 'bg-neon/30' : 'bg-black/10 dark:bg-white/10'}`}
+                    >
+                      <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${expenseForm.is_recurring ? 'left-[22px] bg-neon' : 'left-0.5 bg-text-secondary dark:bg-white/40'}`}></div>
+                    </button>
+                    <div className="flex-1">
+                      <p className="text-[10px] font-black text-text-main dark:text-white uppercase">Gasto Recurrente</p>
+                      <p className="text-[8px] text-text-secondary/60 dark:text-white/30">Se repite automáticamente cada período</p>
+                    </div>
+                    {expenseForm.is_recurring && (
+                      <div className="flex bg-black/5 dark:bg-white/5 rounded-lg border border-border-color dark:border-white/10 overflow-hidden">
+                        {([['weekly', 'Sem'], ['monthly', 'Mes'], ['yearly', 'Año']] as const).map(([val, label]) => (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => setExpenseForm({ ...expenseForm, recurrence_frequency: val })}
+                            className={`px-3 py-1.5 text-[8px] font-black uppercase transition-all ${expenseForm.recurrence_frequency === val ? 'bg-neon/20 text-neon' : 'text-text-secondary dark:text-white/40 hover:text-text-secondary/80 dark:hover:text-white/60'}`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   <div>
-                    <label className="text-[9px] font-black uppercase text-white/60 mb-1.5 block">DESCRIPCIÓN</label>
+                    <label className="text-[9px] font-black uppercase text-text-secondary dark:text-white/60 mb-1.5 block">Descripción (Opcional)</label>
                     <textarea
                       value={expenseForm.description}
                       onChange={e => setExpenseForm({ ...expenseForm, description: e.target.value })}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold outline-none focus:border-neon transition-colors h-24 resize-none"
-                      placeholder="Detalles adicionales..."
+                      className="w-full bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 rounded-xl px-4 py-3 text-text-main dark:text-white font-bold outline-none focus:border-neon transition-colors h-20 resize-none text-[11px]"
+                      placeholder="Detalles, número de factura, proveedor..."
                     />
                   </div>
 
                   <button
                     onClick={handleRegisterExpense}
-                    disabled={isSubmittingExpense}
-                    className="w-full bg-neon text-black font-black uppercase tracking-widest py-4 rounded-xl mt-4 hover:shadow-neon transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={isSubmittingExpense || !expenseForm.name || !expenseForm.amount}
+                    className="w-full bg-neon text-black font-black uppercase tracking-widest py-4 rounded-xl hover:shadow-neon transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    {isSubmittingExpense ? 'REGISTRANDO...' : 'CONFIRMAR GASTO'}
+                    {isSubmittingExpense ? (
+                      <span className="material-symbols-outlined animate-spin text-base">progress_activity</span>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-base">check</span>
+                        Confirmar Gasto — ${Number(expenseForm.amount || 0).toLocaleString('es-AR')}
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -521,7 +820,7 @@ const Finance: React.FC = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
             {/* Main Chart Section (Takes 8 columns) */}
-            <div className="lg:col-span-8 bg-[#141714] rounded-3xl border border-white/5 p-6 shadow-soft">
+            <div className="lg:col-span-8 bg-white dark:bg-[#141714] rounded-3xl border border-gray-200 dark:border-white/5 p-6 shadow-xl dark:shadow-soft">
               {/* ... (Existing Chart Logic, already rendered above, we just need to wrap it correctly if layout changes) */}
               {/* NOTE: Since I am replacing a specific block below the chart, I will implement Top Products there for now, 
                    but usually this would be a sidebar. Let's put it as a secondary card. */}
@@ -534,12 +833,12 @@ const Finance: React.FC = () => {
             <div className="space-y-3">
               {topProducts.length > 0 ? (
                 topProducts.map((prod, idx) => (
-                  <div key={`top-product-${prod.name}-${idx}`} className="flex justify-between items-center p-3 rounded-xl bg-white/5 border border-white/5">
+                  <div key={`top-product-${prod.name}-${idx}`} className="flex justify-between items-center p-3 rounded-xl bg-black/5 dark:bg-white/5 border border-border-color/30 dark:border-white/5">
                     <div className="flex items-center gap-3">
-                      <span className={`text-lg font-black ${idx === 0 ? 'text-neon' : 'text-white/40'}`}>#{idx + 1}</span>
+                      <span className={`text-lg font-black ${idx === 0 ? 'text-neon' : 'text-text-secondary dark:text-white/40'}`}>#{idx + 1}</span>
                       <div>
-                        <p className="text-xs font-bold text-white uppercase">{prod.name}</p>
-                        <p className="text-[9px] text-white/40 font-bold uppercase">{prod.quantity} unidades</p>
+                        <p className="text-xs font-bold text-text-main dark:text-white uppercase">{prod.name}</p>
+                        <p className="text-[9px] text-text-secondary dark:text-white/40 font-bold uppercase">{prod.quantity} unidades</p>
                       </div>
                     </div>
                     <span className="text-xs font-black text-neon">$ {prod.total_sales.toLocaleString()}</span>
@@ -547,14 +846,255 @@ const Finance: React.FC = () => {
                 ))
               ) : (
                 <div className="flex items-center justify-center py-10 opacity-50">
-                  <p className="text-[10px] uppercase font-bold text-white">Sin datos de ventas</p>
+                  <p className="text-[10px] uppercase font-bold text-text-main dark:text-white">Sin datos de ventas</p>
                 </div>
               )}
             </div>
           </div>
         </>
+      ) : activeTab === 'resultados' ? (
+        <div className="space-y-8 animate-in fade-in duration-500">
+          {/* HEADER + EXPORT */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-black italic uppercase tracking-tighter text-[#37352F] dark:text-white">Estado de Resultados</h2>
+              <p className="text-[9px] font-bold text-[#9B9A97] dark:text-white/40 uppercase tracking-widest mt-1">P&L del periodo seleccionado</p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={handleExportPnL} className="px-4 py-2 bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest text-text-secondary dark:text-white/60 hover:text-neon hover:border-neon/30 transition-all flex items-center gap-2">
+                <span className="material-symbols-outlined text-sm">download</span>
+                Exportar P&L
+              </button>
+              <button onClick={handleExportTransactions} className="px-4 py-2 bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest text-text-secondary dark:text-white/60 hover:text-neon hover:border-neon/30 transition-all flex items-center gap-2">
+                <span className="material-symbols-outlined text-sm">table_chart</span>
+                Exportar Flujo
+              </button>
+            </div>
+          </div>
+
+          {/* P&L CARD */}
+          {pnl ? (() => {
+            const exp = pnl.expenses || {};
+            const prof = pnl.profitability || {};
+            const grossRevenue = Number(pnl.gross_revenue) || 0;
+            const cogs = Number(exp.cogs_estimated) || 0;
+            const grossProfit = Number(prof.gross_profit) || 0;
+            const variableTotal = Number(exp.variable_total) || 0;
+            const fixedTotal = Number(exp.fixed_total) || 0;
+            const netProfit = Number(prof.net_profit) || 0;
+            const margin = Number(prof.margin_percent) || 0;
+            const netCashFlow = Number(pnl.net_cash_flow) || 0;
+
+            const PnlRow = ({ label, value, indent, bold, color, border }: { label: string; value: number; indent?: boolean; bold?: boolean; color?: string; border?: boolean }) => (
+              <div className={`flex justify-between items-center py-3 px-4 ${border ? 'border-t border-border-color dark:border-white/10' : ''} ${bold ? '' : 'opacity-80'}`}>
+                <span className={`text-[11px] font-${bold ? 'black' : 'bold'} uppercase ${indent ? 'pl-6 text-text-secondary dark:text-white/40' : color || 'text-text-main dark:text-white'}`}>{label}</span>
+                <span className={`text-[13px] font-black font-mono tabular-nums ${color || (value >= 0 ? 'text-text-main dark:text-white' : 'text-red-400')}`}>
+                  {value < 0 ? '-' : ''}${Math.abs(value).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            );
+
+            return (
+              <div className="bg-white dark:bg-[#141714] rounded-3xl border border-gray-200 dark:border-white/5 shadow-xl dark:shadow-soft overflow-hidden">
+                {/* Header con margen */}
+                <div className={`p-6 flex justify-between items-center ${netProfit >= 0 ? 'bg-neon/5 border-b border-neon/10' : 'bg-red-500/5 border-b border-red-500/10'}`}>
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary dark:text-white/40">Ganancia Neta</p>
+                    <p className={`text-3xl font-black italic tracking-tighter ${netProfit >= 0 ? 'text-neon' : 'text-red-400'}`}>
+                      ${netProfit.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div className={`px-4 py-2 rounded-xl border ${margin >= 0 ? 'bg-neon/10 border-neon/20' : 'bg-red-500/10 border-red-500/20'}`}>
+                    <p className="text-[8px] font-black uppercase text-text-secondary dark:text-white/40">Margen</p>
+                    <p className={`text-xl font-black ${margin >= 0 ? 'text-neon' : 'text-red-400'}`}>{margin.toFixed(1)}%</p>
+                  </div>
+                </div>
+
+                <div className="divide-y divide-border-color/30 dark:divide-white/[0.03]">
+                  <PnlRow label="Ingresos Brutos" value={grossRevenue} bold color="text-white" />
+                  <PnlRow label="(-) Costo de Mercadería (COGS)" value={-cogs} indent />
+                  <PnlRow label="= Ganancia Bruta" value={grossProfit} bold border color={grossProfit >= 0 ? 'text-neon' : 'text-red-400'} />
+                  <PnlRow label="(-) Gastos Variables" value={-variableTotal} bold />
+                  <PnlRow label="Marketing / Regalos" value={-(Number(exp.marketing) || 0)} indent />
+                  <PnlRow label="Uso Interno" value={-(Number(exp.internal) || 0)} indent />
+                  <PnlRow label="Pérdidas Operativas" value={-(Number(exp.operational_loss) || 0)} indent />
+                  <PnlRow label="(-) Gastos Fijos" value={-fixedTotal} bold />
+                  <PnlRow label="(-) Costo Loyalty (Canjes)" value={-(Number(exp.loyalty_cost) || metrics.loyaltyCost || 0)} />
+                  <PnlRow label="= Ganancia Neta" value={netProfit} bold border color={netProfit >= 0 ? 'text-neon' : 'text-red-400'} />
+                </div>
+
+                {/* Cash Flow footer */}
+                <div className="p-4 bg-black/[0.02] dark:bg-white/[0.02] border-t border-border-color/30 dark:border-white/5 flex justify-between items-center">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary/60 dark:text-white/30">Flujo de Caja Neto (excl. wallet)</span>
+                  <span className="text-sm font-black font-mono text-text-main dark:text-white">${netCashFlow.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+            );
+          })() : (
+            <div className="bg-white dark:bg-[#141714] rounded-3xl border border-gray-200 dark:border-white/5 p-12 text-center shadow-xl dark:shadow-soft">
+              <span className="material-symbols-outlined text-4xl text-text-secondary/20 dark:text-white/10 mb-3 block">analytics</span>
+              <p className="text-[10px] font-black uppercase text-text-secondary/40 dark:text-white/20 tracking-widest">Cargando estado de resultados...</p>
+            </div>
+          )}
+
+          {/* REVENUE BY METHOD */}
+          {pnl?.revenue_by_method && Array.isArray(pnl.revenue_by_method) && (
+            <div className="bg-white dark:bg-[#141714] rounded-3xl border border-gray-200 dark:border-white/5 p-6 shadow-xl dark:shadow-soft">
+              <h3 className="text-lg font-black italic uppercase text-[#37352F] dark:text-white mb-4">Ingresos por Método de Pago</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {pnl.revenue_by_method.map((m: any, idx: number) => {
+                  const methodLabels: Record<string, string> = { cash: 'Efectivo', mercadopago: 'MercadoPago', wallet: 'Wallet', card: 'Tarjeta', transfer: 'Transferencia', efectivo: 'Efectivo' };
+                  const methodColors: Record<string, string> = { cash: 'text-text-main dark:text-white', mercadopago: 'text-blue-400', wallet: 'text-purple-400', card: 'text-yellow-400', transfer: 'text-orange-400', efectivo: 'text-text-main dark:text-white' };
+                  return (
+                    <div key={`method-${m.method}-${idx}`} className="p-4 rounded-xl bg-black/5 dark:bg-white/5 border border-border-color/30 dark:border-white/5">
+                      <p className="text-[8px] font-black uppercase text-text-secondary dark:text-white/40 tracking-widest mb-1">{methodLabels[m.method] || m.method}</p>
+                      <p className={`text-lg font-black ${methodColors[m.method] || 'text-text-main dark:text-white'}`}>${Number(m.total).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* BUDGET VS ACTUAL */}
+          <div className="bg-white dark:bg-[#141714] rounded-3xl border border-gray-200 dark:border-white/5 p-6 shadow-xl dark:shadow-soft">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-lg font-black italic uppercase text-[#37352F] dark:text-white">Presupuesto vs Real</h3>
+                <p className="text-[9px] font-bold text-[#9B9A97] dark:text-white/40 uppercase">
+                  {dateRange.start.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }).toUpperCase()}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowBudgetModal(true)}
+                className="px-4 py-2 bg-white text-black font-black text-[10px] uppercase tracking-wider rounded-xl hover:bg-neon hover:scale-105 transition-all flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-sm">edit</span>
+                Definir Presupuesto
+              </button>
+            </div>
+
+            {(() => {
+              const budget = budgetData?.budget || {};
+              const actual = budgetData?.actual || {};
+              const hasBudget = Object.keys(budget).length > 0;
+
+              const categories = [
+                { key: 'revenue', label: 'Ingresos', actualVal: Number(actual.revenue) || 0, icon: 'trending_up', positive: true },
+                { key: 'cogs', label: 'COGS', actualVal: Number(actual.cogs) || 0, icon: 'inventory_2', positive: false },
+                { key: 'fixed_rent', label: 'Alquiler', actualVal: Number(actual.fixed_by_category?.rent) || 0, icon: 'home', positive: false },
+                { key: 'fixed_utilities', label: 'Servicios', actualVal: Number(actual.fixed_by_category?.utilities) || 0, icon: 'bolt', positive: false },
+                { key: 'fixed_salaries', label: 'Sueldos', actualVal: Number(actual.fixed_by_category?.salaries) || 0, icon: 'group', positive: false },
+              ];
+
+              if (!hasBudget) {
+                return (
+                  <div className="border border-dashed border-border-color dark:border-white/10 rounded-2xl p-8 text-center">
+                    <span className="material-symbols-outlined text-3xl text-text-secondary/20 dark:text-white/10 mb-2 block">savings</span>
+                    <p className="text-[10px] font-black uppercase text-text-secondary/40 dark:text-white/20 tracking-widest">No hay presupuesto definido para este mes</p>
+                    <p className="text-[9px] text-text-secondary/20 dark:text-white/10 mt-1">Hacé click en "Definir Presupuesto" para empezar</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-3">
+                  {categories.map(cat => {
+                    const budgetVal = Number(budget[cat.key]) || 0;
+                    if (budgetVal === 0 && cat.actualVal === 0) return null;
+                    const pct = budgetVal > 0 ? (cat.actualVal / budgetVal) * 100 : 0;
+                    const isOver = cat.positive ? cat.actualVal < budgetVal : cat.actualVal > budgetVal;
+                    const barColor = isOver ? 'bg-red-500' : pct > 80 ? 'bg-yellow-500' : 'bg-neon';
+
+                    return (
+                      <div key={cat.key} className="p-4 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-border-color/30 dark:border-white/5">
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-text-secondary/60 dark:text-white/30 text-sm">{cat.icon}</span>
+                            <span className="text-[10px] font-black uppercase text-text-main dark:text-white">{cat.label}</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-[10px] font-mono tabular-nums">
+                            <span className="text-text-secondary dark:text-white/40">${cat.actualVal.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</span>
+                            <span className="text-text-secondary/40 dark:text-white/20">/</span>
+                            <span className="text-text-secondary dark:text-white/60">${budgetVal.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</span>
+                            <span className={`font-black ${isOver ? 'text-red-400' : 'text-neon'}`}>{pct.toFixed(0)}%</span>
+                          </div>
+                        </div>
+                        <div className="w-full h-1.5 bg-black/5 dark:bg-white/5 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${barColor} transition-all duration-700`} style={{ width: `${Math.min(pct, 100)}%` }}></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
       ) : (
         <FinanceCashManager dateRange={dateRange} />
+      )}
+
+      {/* BUDGET MODAL */}
+      {showBudgetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-[#141714] border border-border-color dark:border-white/10 rounded-3xl p-6 w-full max-w-md shadow-2xl relative">
+            <button onClick={() => setShowBudgetModal(false)} className="absolute top-4 right-4 text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white transition-colors">
+              <span className="material-symbols-outlined">close</span>
+            </button>
+
+            <h3 className="text-xl font-black italic uppercase text-text-main dark:text-white mb-1">Definir Presupuesto</h3>
+            <p className="text-[10px] text-text-secondary dark:text-white/40 font-bold uppercase mb-6">
+              {dateRange.start.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }).toUpperCase()}
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-[9px] font-black uppercase text-text-secondary dark:text-white/60 mb-1.5 block">Categoría</label>
+                <select
+                  value={budgetForm.category}
+                  onChange={e => setBudgetForm({ ...budgetForm, category: e.target.value })}
+                  className="w-full bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 rounded-xl px-4 py-3 text-text-main dark:text-white font-bold outline-none focus:border-neon transition-colors appearance-none"
+                >
+                  <option value="revenue">INGRESOS (Meta)</option>
+                  <option value="cogs">COGS (Límite)</option>
+                  <option value="fixed_rent">ALQUILER</option>
+                  <option value="fixed_utilities">SERVICIOS</option>
+                  <option value="fixed_salaries">SUELDOS</option>
+                  <option value="fixed_marketing">MARKETING</option>
+                  <option value="fixed_software">SOFTWARE</option>
+                  <option value="fixed_maintenance">MANTENIMIENTO</option>
+                  <option value="fixed_other">OTROS FIJOS</option>
+                  <option value="variable_gifts">REGALOS / MARKETING</option>
+                  <option value="variable_internal">USO INTERNO</option>
+                  <option value="variable_losses">PÉRDIDAS</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[9px] font-black uppercase text-text-secondary dark:text-white/60 mb-1.5 block">Monto Presupuestado</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary dark:text-white/40 font-bold">$</span>
+                  <input
+                    type="number"
+                    value={budgetForm.amount}
+                    onChange={e => setBudgetForm({ ...budgetForm, amount: e.target.value })}
+                    className="w-full bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 rounded-xl pl-8 pr-4 py-3 text-text-main dark:text-white font-bold outline-none focus:border-neon transition-colors"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={handleSaveBudget}
+                disabled={isSubmittingBudget || !budgetForm.amount}
+                className="w-full bg-neon text-black font-black uppercase tracking-widest py-4 rounded-xl mt-4 hover:shadow-neon transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmittingBudget ? 'GUARDANDO...' : 'GUARDAR PRESUPUESTO'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -623,32 +1163,32 @@ const OperationalInsights: React.FC<{ dateRange: { start: string | Date; end: st
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <div className="bg-white/5 border border-white/5 p-5 rounded-3xl">
-        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Pedidos Totales</span>
+      <div className="bg-black/5 dark:bg-white/5 border border-border-color/30 dark:border-white/5 p-5 rounded-3xl">
+        <span className="text-[10px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest block mb-2">Pedidos Totales</span>
         <div className="flex items-end gap-2">
-          <span className="text-2xl font-black text-white">{stats.orderCount}</span>
-          <span className="text-[10px] font-bold text-white/20 uppercase mb-1">Items</span>
+          <span className="text-2xl font-black text-text-main dark:text-white">{stats.orderCount}</span>
+          <span className="text-[10px] font-bold text-text-secondary/40 dark:text-white/20 uppercase mb-1">Items</span>
         </div>
       </div>
-      <div className="bg-white/5 border border-white/5 p-5 rounded-3xl">
-        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Ticket Promedio</span>
+      <div className="bg-black/5 dark:bg-white/5 border border-border-color/30 dark:border-white/5 p-5 rounded-3xl">
+        <span className="text-[10px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest block mb-2">Ticket Promedio</span>
         <div className="flex items-end gap-2">
-          <span className="text-2xl font-black text-white">${stats.avgTicket.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</span>
+          <span className="text-2xl font-black text-text-main dark:text-white">${stats.avgTicket.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</span>
         </div>
       </div>
-      <div className="bg-white/5 border border-white/5 p-5 rounded-3xl">
-        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Facturación Periodo</span>
+      <div className="bg-black/5 dark:bg-white/5 border border-border-color/30 dark:border-white/5 p-5 rounded-3xl">
+        <span className="text-[10px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest block mb-2">Facturación Periodo</span>
         <div className="flex items-end gap-2">
-          <span className="text-2xl font-black text-white">${stats.totalRevenue.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</span>
+          <span className="text-2xl font-black text-text-main dark:text-white">${stats.totalRevenue.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</span>
         </div>
       </div>
-      <div className={`border p-5 rounded-3xl ${stats.totalDiscrepancy === 0 ? 'bg-white/5 border-white/5' : stats.totalDiscrepancy > 0 ? 'bg-neon/10 border-neon/30' : 'bg-red-500/10 border-red-500/30'}`}>
-        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-1">Diferencia / Variación</span>
+      <div className={`border p-5 rounded-3xl ${stats.totalDiscrepancy === 0 ? 'bg-black/5 dark:bg-white/5 border-border-color/30 dark:border-white/5' : stats.totalDiscrepancy > 0 ? 'bg-neon/10 border-neon/30' : 'bg-red-500/10 border-red-500/30'}`}>
+        <span className="text-[10px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest block mb-1">Diferencia / Variación</span>
         <div className="flex items-end gap-2">
           <span className={`text-2xl font-black ${stats.totalDiscrepancy >= 0 ? 'text-neon' : 'text-red-500'}`}>
             {stats.totalDiscrepancy > 0 ? '+' : ''}${stats.totalDiscrepancy.toLocaleString('es-AR')}
           </span>
-          <span className="text-[10px] font-bold text-white/20 uppercase mb-1">Acumulado</span>
+          <span className="text-[10px] font-bold text-text-secondary/40 dark:text-white/20 uppercase mb-1">Acumulado</span>
         </div>
       </div>
     </div>
@@ -743,24 +1283,24 @@ const FinanceCashManager: React.FC<{
     }
   };
 
-  if (loading) return <div className="text-white opacity-40 animate-pulse uppercase font-black text-[10px] tracking-widest text-center py-20">Cargando datos operativos...</div>;
+  if (loading) return <div className="text-text-main dark:text-white opacity-40 animate-pulse uppercase font-black text-[10px] tracking-widest text-center py-20">Cargando datos operativos...</div>;
 
   return (
     <div className="space-y-10 animate-in slide-in-from-bottom-4 duration-500">
 
       {/* GLOBAL SUMMARY HEADER */}
-      <div className="bg-[#141714] border border-neon/20 p-8 rounded-3xl shadow-neon-soft flex flex-col md:flex-row justify-between items-center gap-6">
+      <div className="bg-white dark:bg-[#141714] border border-neon/20 p-8 rounded-3xl shadow-neon-soft flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="flex gap-10 items-center">
           <div>
             <h2 className="text-xs font-black text-neon uppercase tracking-[0.3em] mb-1">Total Efectivo Actual</h2>
-            <p className="text-4xl font-black italic-black text-white leading-none">${globalTotal.toLocaleString('es-AR')}</p>
+            <p className="text-4xl font-black italic-black text-text-main dark:text-white leading-none">${globalTotal.toLocaleString('es-AR')}</p>
           </div>
-          <div className="h-12 w-px bg-white/10 hidden md:block" />
+          <div className="h-12 w-px bg-black/10 dark:bg-white/10 hidden md:block" />
           <div className="space-y-1">
-            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest block">Sesiones Activas</span>
+            <span className="text-[9px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest block">Sesiones Activas</span>
             <div className="flex items-center gap-2">
               <span className="size-2 rounded-full bg-neon animate-pulse"></span>
-              <span className="text-sm font-black text-white uppercase">{activeSessions.length} ABIERTAS</span>
+              <span className="text-sm font-black text-text-main dark:text-white uppercase">{activeSessions.length} ABIERTAS</span>
             </div>
           </div>
         </div>
@@ -828,79 +1368,79 @@ const FinanceCashManager: React.FC<{
                     const totalAdjustments = session?.events_summary?.total_adjustments || 0;
 
                     return (
-                      <div key={session.id} className={`space-y-6 ${index > 0 ? 'pt-6 border-t border-white/5' : ''}`}>
+                      <div key={session.id} className={`space-y-6 ${index > 0 ? 'pt-6 border-t border-border-color/30 dark:border-white/5' : ''}`}>
                         {session?.dispatch_station_name && (
-                          <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest block">
+                          <span className="text-[9px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest block">
                             {session.dispatch_station_name}
                           </span>
                         )}
 
                         {/* ADVANCED STATS GRID */}
                         <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-white/5 rounded-2xl p-3 border border-white/5">
-                            <span className="text-[8px] text-white/30 font-black uppercase tracking-[0.2em] block mb-1">Efectivo (Caja)</span>
+                          <div className="bg-black/5 dark:bg-white/5 rounded-2xl p-3 border border-border-color/30 dark:border-white/5">
+                            <span className="text-[8px] text-text-secondary/60 dark:text-white/30 font-black uppercase tracking-[0.2em] block mb-1">Efectivo (Caja)</span>
                             <p className="text-xl font-black text-neon shadow-neon-soft font-mono">
                               ${expectedTotal.toLocaleString('es-AR')}
                             </p>
                           </div>
-                          <div className="bg-white/5 rounded-2xl p-3 border border-white/5">
-                            <span className="text-[8px] text-white/30 font-black uppercase tracking-[0.2em] block mb-1">Facturación Total</span>
-                            <p className="text-xl font-black text-white font-mono">
+                          <div className="bg-black/5 dark:bg-white/5 rounded-2xl p-3 border border-border-color/30 dark:border-white/5">
+                            <span className="text-[8px] text-text-secondary/60 dark:text-white/30 font-black uppercase tracking-[0.2em] block mb-1">Facturación Total</span>
+                            <p className="text-xl font-black text-text-main dark:text-white font-mono">
                               ${totalSales.toLocaleString('es-AR')}
                             </p>
                           </div>
                         </div>
 
                         {/* MINI BREAKDOWN */}
-                        <div className="bg-black/20 rounded-2xl p-4 border border-white/5 space-y-2">
+                        <div className="bg-black/5 dark:bg-black/20 rounded-2xl p-4 border border-border-color/30 dark:border-white/5 space-y-2">
                           <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider">
-                            <span className="text-white/40">Pedidos Activos</span>
-                            <span className="text-white">{liveOrderCount}</span>
+                            <span className="text-text-secondary dark:text-white/40">Pedidos Activos</span>
+                            <span className="text-text-main dark:text-white">{liveOrderCount}</span>
                           </div>
 
-                          <div className="pt-2 border-t border-white/5 space-y-2">
+                          <div className="pt-2 border-t border-border-color/30 dark:border-white/5 space-y-2">
                             <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider">
-                              <span className="text-white/40">Fondo Inicial</span>
-                              <span className="text-white">${Number(session.start_amount || 0).toLocaleString('es-AR')}</span>
+                              <span className="text-text-secondary dark:text-white/40">Fondo Inicial</span>
+                              <span className="text-text-main dark:text-white">${Number(session.start_amount || 0).toLocaleString('es-AR')}</span>
                             </div>
                             <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider">
-                              <span className="text-white/40">Ventas Totales</span>
-                              <span className="text-white">${totalSales.toLocaleString('es-AR')}</span>
+                              <span className="text-text-secondary dark:text-white/40">Ventas Totales</span>
+                              <span className="text-text-main dark:text-white">${totalSales.toLocaleString('es-AR')}</span>
                             </div>
                             {session?.events_summary?.total_cancellations ? (
                               <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider">
-                                <span className="text-white/40">Anulaciones</span>
+                                <span className="text-text-secondary dark:text-white/40">Anulaciones</span>
                                 <span className="text-red-500">-${Math.abs(session.events_summary.total_cancellations).toLocaleString('es-AR')}</span>
                               </div>
                             ) : null}
                             <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider">
-                              <span className="text-white/40">Retiros</span>
+                              <span className="text-text-secondary dark:text-white/40">Retiros</span>
                               <span className="text-red-500">-${Math.abs(totalWithdrawals).toLocaleString('es-AR')}</span>
                             </div>
                             <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider">
-                              <span className="text-white/40">Ajustes</span>
+                              <span className="text-text-secondary dark:text-white/40">Ajustes</span>
                               <span className={totalAdjustments >= 0 ? 'text-neon' : 'text-red-500'}>
                                 {totalAdjustments >= 0 ? '+' : '-'}${Math.abs(totalAdjustments).toLocaleString('es-AR')}
                               </span>
                             </div>
                           </div>
 
-                          <div className="pt-2 border-t border-white/5 flex justify-between items-center text-[9px] font-black uppercase tracking-wider">
-                            <span className="text-white/40">Esperado en Caja</span>
+                          <div className="pt-2 border-t border-border-color/30 dark:border-white/5 flex justify-between items-center text-[9px] font-black uppercase tracking-wider">
+                            <span className="text-text-secondary dark:text-white/40">Esperado en Caja</span>
                             <span className="text-neon">${expectedTotal.toLocaleString('es-AR')}</span>
                           </div>
                         </div>
 
-                        <div className="flex justify-between items-center pb-4 border-b border-white/5 px-1">
+                        <div className="flex justify-between items-center pb-4 border-b border-border-color/30 dark:border-white/5 px-1">
                           <div className="flex flex-col">
-                            <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest mb-1">Operador</span>
+                            <span className="text-[9px] text-text-secondary dark:text-white/40 font-bold uppercase tracking-widest mb-1">Operador</span>
                             <div className="flex items-center gap-2">
                               <span className="material-symbols-outlined text-sm text-neon">verified_user</span>
-                              <span className="text-xs font-bold text-white uppercase">{session?.opener?.full_name || 'Staff'}</span>
+                              <span className="text-xs font-bold text-text-main dark:text-white uppercase">{session?.opener?.full_name || 'Staff'}</span>
                             </div>
                           </div>
                           <div className="text-right">
-                            <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest mb-1">Tiempo</span>
+                            <span className="text-[9px] text-text-secondary dark:text-white/40 font-bold uppercase tracking-widest mb-1">Tiempo</span>
                             <SessionTimer openedAt={session.opened_at} />
                           </div>
                         </div>
@@ -911,32 +1451,32 @@ const FinanceCashManager: React.FC<{
                               <span className="material-symbols-outlined text-red-500">notifications_active</span>
                               <span className="text-xs font-black text-red-500 uppercase tracking-widest">Pedidos Activos</span>
                             </div>
-                            <span className="text-xl font-black text-white">{liveOrderCount}</span>
+                            <span className="text-xl font-black text-text-main dark:text-white">{liveOrderCount}</span>
                           </div>
                         )}
 
                         <div className="grid grid-cols-2 gap-2">
                           <button
                             onClick={() => { setActionType('withdrawal'); setActionSession(session); }}
-                            className="py-3 rounded-xl bg-white/5 hover:bg-red-500/10 text-white/60 hover:text-red-400 border border-white/5 hover:border-red-500/30 text-[9px] font-black uppercase tracking-widest transition-all"
+                            className="py-3 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-red-500/10 text-text-secondary dark:text-white/60 hover:text-red-400 border border-border-color/30 dark:border-white/5 hover:border-red-500/30 text-[9px] font-black uppercase tracking-widest transition-all"
                           >
                             Retiro
                           </button>
                           <button
                             onClick={() => { setActionType('adjustment'); setActionSession(session); }}
-                            className="py-3 rounded-xl bg-white/5 hover:bg-blue-500/10 text-white/60 hover:text-blue-400 border border-white/5 hover:border-blue-500/30 text-[9px] font-black uppercase tracking-widest transition-all"
+                            className="py-3 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-blue-500/10 text-text-secondary dark:text-white/60 hover:text-blue-400 border border-border-color/30 dark:border-white/5 hover:border-blue-500/30 text-[9px] font-black uppercase tracking-widest transition-all"
                           >
                             Ajuste
                           </button>
                           <button
                             onClick={() => setTimelineSession(session)}
-                            className="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white border border-white/5 hover:border-white/20 text-[9px] font-black uppercase tracking-widest transition-all"
+                            className="py-3 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 text-text-secondary dark:text-white/60 hover:text-text-main dark:hover:text-white border border-border-color/30 dark:border-white/5 hover:border-border-color dark:hover:border-white/20 text-[9px] font-black uppercase tracking-widest transition-all"
                           >
                             Timeline
                           </button>
                           <button
                             onClick={() => { setIsClosing(session.id); setCloseResult(null); }}
-                            className="py-3 rounded-xl bg-white/5 hover:bg-red-500/20 text-white/60 hover:text-red-500 border border-white/5 hover:border-red-500/30 text-[9px] font-black uppercase tracking-widest transition-all"
+                            className="py-3 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-red-500/20 text-text-secondary dark:text-white/60 hover:text-red-500 border border-border-color/30 dark:border-white/5 hover:border-red-500/30 text-[9px] font-black uppercase tracking-widest transition-all"
                           >
                             Cerrar Caja
                           </button>
@@ -947,7 +1487,7 @@ const FinanceCashManager: React.FC<{
 
                   <button
                     onClick={() => { setSelectedZone(zone.id); setCloseResult(null); }}
-                    className="w-full py-3 rounded-2xl bg-white/5 hover:bg-neon/10 text-white/50 hover:text-white border border-white/5 hover:border-neon/30 text-[9px] font-black uppercase tracking-widest transition-all"
+                    className="w-full py-3 rounded-2xl bg-black/5 dark:bg-white/5 hover:bg-neon/10 text-text-secondary dark:text-white/50 hover:text-text-main dark:hover:text-white border border-border-color/30 dark:border-white/5 hover:border-neon/30 text-[9px] font-black uppercase tracking-widest transition-all"
                   >
                     Abrir Otra Caja
                   </button>
@@ -1054,7 +1594,7 @@ const SessionTimer: React.FC<{ openedAt: string }> = ({ openedAt }) => {
     return () => clearInterval(interval);
   }, [openedAt]);
 
-  return <span className="text-xs font-bold text-white uppercase tracking-tight">{duration}</span>;
+  return <span className="text-xs font-bold text-text-main dark:text-white uppercase tracking-tight">{duration}</span>;
 };
 
 const FinanceCard: React.FC<{ label: string, value: string, trend: string, type: 'positive' | 'negative' | 'neutral', icon: string }> = ({ label, value, trend, type, icon }) => (
@@ -1124,18 +1664,18 @@ const CashShiftModal: React.FC<{
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in transition-all">
-      <div className="bg-[#141414] border border-white/10 p-8 rounded-3xl w-full max-w-md shadow-2xl relative overflow-hidden">
+      <div className="bg-white dark:bg-[#141414] border border-border-color dark:border-white/10 p-8 rounded-3xl w-full max-w-md shadow-2xl relative overflow-hidden">
         {/* Decorative Background */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-neon/10 blur-[80px] -mr-16 -mt-16 pointer-events-none" />
 
-        <button onClick={onClose} className="absolute top-4 right-4 text-white/20 hover:text-white transition-colors">
+        <button onClick={onClose} className="absolute top-4 right-4 text-text-secondary/40 dark:text-white/20 hover:text-text-main dark:hover:text-white transition-colors">
           <span className="material-symbols-outlined">close</span>
         </button>
 
-        <h3 className="text-xl font-black uppercase italic-black text-white mb-2 tracking-tight">
+        <h3 className="text-xl font-black uppercase italic-black text-text-main dark:text-white mb-2 tracking-tight">
           {isClosing ? 'Arqueo de Caja' : 'Apertura de Turno'}
         </h3>
-        <p className="text-[11px] text-white/50 mb-6 uppercase tracking-wider font-bold">
+        <p className="text-[11px] text-text-secondary dark:text-white/50 mb-6 uppercase tracking-wider font-bold">
           {isClosing ? 'Verifique el efectivo físico contra el sistema.' : 'Ingrese el fondo inicial de la caja.'}
         </p>
 
@@ -1144,45 +1684,45 @@ const CashShiftModal: React.FC<{
           {isClosing && !showCloseSummary && (
             <div className="space-y-4">
               {/* CASH BREAKDOWN */}
-              <div className="bg-white/5 p-5 rounded-2xl border border-white/5 space-y-3">
-                <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Fondo Inicial</span>
-                  <span className="text-sm font-black text-white/80">${(eventSummary?.opening_amount || 0).toLocaleString('es-AR')}</span>
+              <div className="bg-black/5 dark:bg-white/5 p-5 rounded-2xl border border-border-color/30 dark:border-white/5 space-y-3">
+                <div className="flex justify-between items-center border-b border-border-color/30 dark:border-white/5 pb-2">
+                  <span className="text-[10px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest">Fondo Inicial</span>
+                  <span className="text-sm font-black text-text-main/80 dark:text-white/80">${(eventSummary?.opening_amount || 0).toLocaleString('es-AR')}</span>
                 </div>
-                <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Ventas Totales</span>
-                  <span className="text-sm font-black text-white/80">${(eventSummary?.total_sales || 0).toLocaleString('es-AR')}</span>
+                <div className="flex justify-between items-center border-b border-border-color/30 dark:border-white/5 pb-2">
+                  <span className="text-[10px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest">Ventas Totales</span>
+                  <span className="text-sm font-black text-text-main/80 dark:text-white/80">${(eventSummary?.total_sales || 0).toLocaleString('es-AR')}</span>
                 </div>
-                <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Anulaciones</span>
+                <div className="flex justify-between items-center border-b border-border-color/30 dark:border-white/5 pb-2">
+                  <span className="text-[10px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest">Anulaciones</span>
                   <span className="text-sm font-black text-red-500">-${Math.abs(eventSummary?.total_cancellations || 0).toLocaleString('es-AR')}</span>
                 </div>
-                <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Retiros</span>
+                <div className="flex justify-between items-center border-b border-border-color/30 dark:border-white/5 pb-2">
+                  <span className="text-[10px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest">Retiros</span>
                   <span className="text-sm font-black text-red-500">-${Math.abs(eventSummary?.total_withdrawals || 0).toLocaleString('es-AR')}</span>
                 </div>
-                <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Ajustes</span>
+                <div className="flex justify-between items-center border-b border-border-color/30 dark:border-white/5 pb-2">
+                  <span className="text-[10px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest">Ajustes</span>
                   <span className={`text-sm font-black ${eventSummary?.total_adjustments >= 0 ? 'text-neon' : 'text-red-500'}`}>
                     {eventSummary?.total_adjustments >= 0 ? '+' : '-'}${Math.abs(eventSummary?.total_adjustments || 0).toLocaleString('es-AR')}
                   </span>
                 </div>
-                <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Topups</span>
-                  <span className="text-sm font-black text-white/80">${(eventSummary?.total_topups || 0).toLocaleString('es-AR')}</span>
+                <div className="flex justify-between items-center border-b border-border-color/30 dark:border-white/5 pb-2">
+                  <span className="text-[10px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest">Topups</span>
+                  <span className="text-sm font-black text-text-main/80 dark:text-white/80">${(eventSummary?.total_topups || 0).toLocaleString('es-AR')}</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mt-2 pt-2">
                   <div>
                     <span className="text-[9px] font-bold text-neon uppercase tracking-widest block mb-1">Esperado en Caja</span>
                     {loadingExpected ? (
-                      <span className="text-sm text-white/20 animate-pulse uppercase font-black">Calculando...</span>
+                      <span className="text-sm text-text-secondary/40 dark:text-white/20 animate-pulse uppercase font-black">Calculando...</span>
                     ) : (
                       <span className="text-2xl font-black text-neon shadow-neon-soft font-mono">${expected.toLocaleString('es-AR')}</span>
                     )}
                   </div>
                   <div className="text-right">
-                    <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest block mb-1">Diferencia</span>
+                    <span className="text-[9px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest block mb-1">Diferencia</span>
                     <span className={`text-2xl font-black font-mono ${diffColor}`}>
                       {difference > 0 ? '+' : ''}${difference.toLocaleString('es-AR')}
                     </span>
@@ -1194,59 +1734,59 @@ const CashShiftModal: React.FC<{
 
           {showCloseSummary && (
             <div className="space-y-4">
-              <div className="bg-white/5 p-5 rounded-2xl border border-white/5 space-y-3">
+              <div className="bg-black/5 dark:bg-white/5 p-5 rounded-2xl border border-border-color/30 dark:border-white/5 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Pedidos</span>
-                  <span className="text-sm font-black text-white/80">
+                  <span className="text-[10px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest">Pedidos</span>
+                  <span className="text-sm font-black text-text-main/80 dark:text-white/80">
                     {closeResult.statistics?.total_orders || 0} ({closeResult.statistics?.cancelled_orders || 0} anulados)
                   </span>
                 </div>
 
-                <div className="border-t border-white/5 pt-3 space-y-2">
-                  <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Ventas por Metodo</span>
+                <div className="border-t border-border-color/30 dark:border-white/5 pt-3 space-y-2">
+                  <span className="text-[10px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest">Ventas por Metodo</span>
                   <div className="grid grid-cols-2 gap-2">
                     {Object.entries(closeResult.statistics?.by_payment_method || {}).map(([method, total]: [string, any]) => (
-                      <div key={method} className="flex justify-between items-center bg-white/5 px-3 py-2 rounded-xl">
-                        <span className="text-[9px] font-bold text-white/40 uppercase">{method}</span>
-                        <span className="text-[10px] font-black text-white">${Number(total || 0).toLocaleString('es-AR')}</span>
+                      <div key={method} className="flex justify-between items-center bg-black/5 dark:bg-white/5 px-3 py-2 rounded-xl">
+                        <span className="text-[9px] font-bold text-text-secondary dark:text-white/40 uppercase">{method}</span>
+                        <span className="text-[10px] font-black text-text-main dark:text-white">${Number(total || 0).toLocaleString('es-AR')}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="border-t border-white/5 pt-3 space-y-2">
+                <div className="border-t border-border-color/30 dark:border-white/5 pt-3 space-y-2">
                   <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
-                    <span className="text-white/40">Fondo Inicial</span>
-                    <span className="text-white">${Number(closeResult.statistics?.start_amount || 0).toLocaleString('es-AR')}</span>
+                    <span className="text-text-secondary dark:text-white/40">Fondo Inicial</span>
+                    <span className="text-text-main dark:text-white">${Number(closeResult.statistics?.start_amount || 0).toLocaleString('es-AR')}</span>
                   </div>
                   <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
-                    <span className="text-white/40">Ventas Cash</span>
-                    <span className="text-white">${Number(closeResult.statistics?.by_payment_method?.cash || 0).toLocaleString('es-AR')}</span>
+                    <span className="text-text-secondary dark:text-white/40">Ventas Cash</span>
+                    <span className="text-text-main dark:text-white">${Number(closeResult.statistics?.by_payment_method?.cash || 0).toLocaleString('es-AR')}</span>
                   </div>
                   <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
-                    <span className="text-white/40">Topups Cash</span>
-                    <span className="text-white">${Number(closeResult.statistics?.cash_topups || 0).toLocaleString('es-AR')}</span>
+                    <span className="text-text-secondary dark:text-white/40">Topups Cash</span>
+                    <span className="text-text-main dark:text-white">${Number(closeResult.statistics?.cash_topups || 0).toLocaleString('es-AR')}</span>
                   </div>
                   <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
-                    <span className="text-white/40">Retiros</span>
+                    <span className="text-text-secondary dark:text-white/40">Retiros</span>
                     <span className="text-red-500">${Number(closeResult.statistics?.withdrawals || 0).toLocaleString('es-AR')}</span>
                   </div>
                   <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
-                    <span className="text-white/40">Ajustes</span>
+                    <span className="text-text-secondary dark:text-white/40">Ajustes</span>
                     <span className={Number(closeResult.statistics?.adjustments || 0) >= 0 ? 'text-neon' : 'text-red-500'}>
                       {Number(closeResult.statistics?.adjustments || 0) >= 0 ? '+' : '-'}${Math.abs(Number(closeResult.statistics?.adjustments || 0)).toLocaleString('es-AR')}
                     </span>
                   </div>
-                  <div className="border-t border-white/5 pt-2 flex justify-between text-[11px] font-black uppercase tracking-widest">
-                    <span className="text-white/40">Esperado</span>
-                    <span className="text-white">${Number(closeResult.statistics?.expected_cash || 0).toLocaleString('es-AR')}</span>
+                  <div className="border-t border-border-color/30 dark:border-white/5 pt-2 flex justify-between text-[11px] font-black uppercase tracking-widest">
+                    <span className="text-text-secondary dark:text-white/40">Esperado</span>
+                    <span className="text-text-main dark:text-white">${Number(closeResult.statistics?.expected_cash || 0).toLocaleString('es-AR')}</span>
                   </div>
                   <div className="flex justify-between text-[11px] font-black uppercase tracking-widest">
-                    <span className="text-white/40">Real</span>
-                    <span className="text-white">${Number(closeResult.statistics?.real_cash || 0).toLocaleString('es-AR')}</span>
+                    <span className="text-text-secondary dark:text-white/40">Real</span>
+                    <span className="text-text-main dark:text-white">${Number(closeResult.statistics?.real_cash || 0).toLocaleString('es-AR')}</span>
                   </div>
                   <div className="flex justify-between text-[11px] font-black uppercase tracking-widest">
-                    <span className="text-white/40">Diferencia</span>
+                    <span className="text-text-secondary dark:text-white/40">Diferencia</span>
                     <span className={Number(closeResult.statistics?.difference || 0) >= 0 ? 'text-neon' : 'text-red-500'}>
                       {Number(closeResult.statistics?.difference || 0) >= 0 ? '+' : '-'}${Math.abs(Number(closeResult.statistics?.difference || 0)).toLocaleString('es-AR')}
                     </span>
@@ -1263,12 +1803,12 @@ const CashShiftModal: React.FC<{
                   Contaje {isClosing ? 'Real (Físico)' : 'Inicial'}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-white/20 group-focus-within:text-neon transition-colors">$</span>
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-text-secondary/40 dark:text-white/20 group-focus-within:text-neon transition-colors">$</span>
                   <input
                     type="number"
                     value={amount}
                     onChange={e => setAmount(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl pl-10 pr-4 py-6 text-white font-black outline-none focus:border-neon/50 focus:bg-neon/5 text-4xl placeholder:text-white/5 transition-all font-mono"
+                    className="w-full bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 rounded-2xl pl-10 pr-4 py-6 text-text-main dark:text-white font-black outline-none focus:border-neon/50 focus:bg-neon/5 text-4xl placeholder:text-text-secondary/40 dark:placeholder:text-white/5 transition-all font-mono"
                     placeholder="0"
                     autoFocus
                   />
@@ -1277,11 +1817,11 @@ const CashShiftModal: React.FC<{
 
               {!isClosing && dispatchStations.length > 0 && (
                 <div>
-                  <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] block mb-2 leading-none">Estacion de despacho (opcional)</label>
+                  <label className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.2em] block mb-2 leading-none">Estacion de despacho (opcional)</label>
                   <select
                     value={selectedStation}
                     onChange={(e) => setSelectedStation(e.target.value)}
-                    className="w-full bg-[#1a1c1a] border border-white/10 rounded-2xl px-4 py-4 text-white text-xs font-bold outline-none focus:border-neon/30 transition-all appearance-none cursor-pointer"
+                    className="w-full bg-gray-50 dark:bg-[#1a1c1a] border border-border-color dark:border-white/10 rounded-2xl px-4 py-4 text-text-main dark:text-white text-xs font-bold outline-none focus:border-neon/30 transition-all appearance-none cursor-pointer"
                     style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.4)' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 16px center' }}
                   >
                     <option value="" className="bg-[#1a1c1a] text-white/60">Sin estacion especifica</option>
@@ -1294,11 +1834,11 @@ const CashShiftModal: React.FC<{
 
               {isClosing && (
                 <div>
-                  <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] block mb-2 leading-none">Observaciones del Turno</label>
+                  <label className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.2em] block mb-2 leading-none">Observaciones del Turno</label>
                   <textarea
                     value={notes}
                     onChange={e => setNotes(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 text-white text-xs font-bold outline-none focus:border-white/20 min-h-[100px] transition-all"
+                    className="w-full bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 rounded-2xl px-4 py-4 text-text-main dark:text-white text-xs font-bold outline-none focus:border-border-color dark:focus:border-white/20 min-h-[100px] transition-all"
                     placeholder="Ej. Falta cambio, retiro parcial, merma encontrada..."
                   />
                 </div>

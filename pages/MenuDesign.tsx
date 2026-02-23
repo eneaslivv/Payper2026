@@ -299,7 +299,7 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
             manual_override: 'Override'
         };
         return (
-            <span key={rule.id} className={`px-2.5 py-1 ${colors[rule.rule_type] || 'bg-white/10 text-white/40'} text-[10px] rounded-lg flex items-center gap-1.5`}>
+            <span key={rule.id} className={`px-2.5 py-1 ${colors[rule.rule_type] || 'bg-black/5 dark:bg-white/10 text-text-secondary dark:text-white/40'} text-[10px] rounded-lg flex items-center gap-1.5`}>
                 {icons[rule.rule_type]}{labels[rule.rule_type] || rule.rule_type}
             </span>
         );
@@ -317,16 +317,16 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
     return (
         <div className="flex flex-col md:flex-row h-full animate-in fade-in duration-500">
             {/* LEFT: Menu List */}
-            <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-white/10 flex flex-col bg-gradient-to-b from-[#0D0F0D] to-[#141714] max-h-[40vh] md:max-h-none">\
+            <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-border-color dark:border-white/10 flex flex-col bg-gradient-to-b from-background-light to-white dark:from-[#0D0F0D] dark:to-[#141714] max-h-[40vh] md:max-h-none">\
                 {/* Header */}
-                <div className="p-4 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-[#4ADE80]/5 to-transparent">
+                <div className="p-4 border-b border-border-color dark:border-white/10 flex items-center justify-between bg-gradient-to-r from-[#4ADE80]/5 to-transparent">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-[#4ADE80]/20 rounded-xl flex items-center justify-center">
                             <Package size={16} className="text-[#4ADE80]" />
                         </div>
                         <div>
-                            <h3 className="text-sm font-black text-white">Menús</h3>
-                            <p className="text-[9px] text-white/40">{menus.length} configurados</p>
+                            <h3 className="text-sm font-black text-text-main dark:text-white">Menús</h3>
+                            <p className="text-[9px] text-text-secondary dark:text-white/40">{menus.length} configurados</p>
                         </div>
                     </div>
                     <button
@@ -384,7 +384,7 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                                             ? 'bg-green-500/5 border border-green-500/30 hover:bg-green-500/10'
                                             : menu.is_fallback
                                                 ? 'bg-yellow-500/5 border border-yellow-500/30 hover:bg-yellow-500/10'
-                                                : 'bg-white/[0.02] border border-white/5 hover:bg-white/5 hover:border-white/10 hover:scale-[1.01]'}
+                                                : 'bg-black/[0.02] dark:bg-white/[0.02] border border-border-color/30 dark:border-white/5 hover:bg-gray-100 dark:hover:bg-white/5 hover:border-border-color dark:hover:border-white/10 hover:scale-[1.01]'}
                             `}
                                 style={{ animationDelay: `${idx * 50}ms` }}
                             >
@@ -398,18 +398,18 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                                 )}
 
                                 <div className="flex items-center justify-between mb-2">
-                                    <span className="font-bold text-white text-sm truncate group-hover:text-[#4ADE80] transition-colors">{menu.name}</span>
+                                    <span className="font-bold text-text-main dark:text-white text-sm truncate group-hover:text-[#4ADE80] transition-colors">{menu.name}</span>
                                     <div className="flex items-center gap-2">
                                         {menu.is_fallback && (
                                             <span className="px-2 py-0.5 bg-gradient-to-r from-yellow-500/30 to-yellow-500/10 text-yellow-400 text-[8px] font-black rounded-full uppercase tracking-wide">
                                                 Default
                                             </span>
                                         )}
-                                        <span className={`w-3 h-3 rounded-full transition-all duration-300 ${menu.is_active ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-white/20'}`} />
+                                        <span className={`w-3 h-3 rounded-full transition-all duration-300 ${menu.is_active ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-gray-300 dark:bg-white/20'}`} />
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="text-[10px] text-white/50 bg-white/5 px-2 py-0.5 rounded-full">{menu.product_count} productos</span>
+                                    <span className="text-[10px] text-text-secondary dark:text-white/50 bg-black/5 dark:bg-white/5 px-2 py-0.5 rounded-full">{menu.product_count} productos</span>
 
                                     {/* Rule Icons */}
                                     {menu.rules?.some(r => r.rule_type === 'tables' && r.is_active) && (
@@ -423,7 +423,7 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                                     )}
 
                                     {/* Remove detailed badges to simplify sidebar view as requested, keep priority */}
-                                    <span className="text-[10px] text-white/50 bg-white/5 px-2 py-0.5 rounded-full">P:{menu.priority}</span>
+                                    <span className="text-[10px] text-text-secondary dark:text-white/50 bg-black/5 dark:bg-white/5 px-2 py-0.5 rounded-full">P:{menu.priority}</span>
                                     {isLive && <span className="text-[9px] text-green-400 font-bold ml-1 animate-pulse">EN VIVO</span>}
                                 </div>
                             </button>
@@ -432,8 +432,8 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
 
                     {menus.length === 0 && (
                         <div className="text-center py-12">
-                            <Package size={32} className="mx-auto text-white/10 mb-3" />
-                            <p className="text-white/30 text-xs">Sin menús</p>
+                            <Package size={32} className="mx-auto text-gray-300 dark:text-white/10 mb-3" />
+                            <p className="text-text-secondary/60 dark:text-white/30 text-xs">Sin menús</p>
                             <button onClick={handleCreateMenu} className="mt-3 text-[#4ADE80] text-[10px] hover:underline">+ Crear primero</button>
                         </div>
                     )}
@@ -441,27 +441,27 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
             </div>
 
             {/* RIGHT: Detail */}
-            <div className="flex-1 flex flex-col bg-[#0A0B09]">
+            <div className="flex-1 flex flex-col bg-background-light dark:bg-[#0A0B09]">
                 {selectedMenu ? (
                     <div className="animate-in fade-in slide-in-from-right-2 duration-500 flex flex-col h-full">
                         {/* Header */}
-                        <div className="p-3 md:p-6 border-b border-white/10 bg-gradient-to-r from-white/[0.02] to-transparent">\
+                        <div className="p-3 md:p-6 border-b border-border-color dark:border-white/10 bg-gradient-to-r from-black/[0.02] dark:from-white/[0.02] to-transparent">\
                             <div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-3">\
                                 <div className="flex-1">
                                     {isEditing ? (
                                         <input
                                             value={editForm.name}
                                             onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
-                                            className="bg-black/50 border border-[#4ADE80]/30 rounded-xl px-4 py-2 text-white font-black text-lg w-64 focus:outline-none focus:ring-2 focus:ring-[#4ADE80]/50"
+                                            className="bg-white dark:bg-black/50 border border-[#4ADE80]/30 rounded-xl px-4 py-2 text-text-main dark:text-white font-black text-lg w-64 focus:outline-none focus:ring-2 focus:ring-[#4ADE80]/50"
                                             autoFocus
                                         />
                                     ) : (
-                                        <h2 className="text-2xl font-black text-white mb-1 flex items-center gap-2">
+                                        <h2 className="text-2xl font-black text-text-main dark:text-white mb-1 flex items-center gap-2">
                                             {selectedMenu.name}
                                             {selectedMenu.is_active && <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />}
                                         </h2>
                                     )}
-                                    <p className="text-[11px] text-white/40 flex items-center gap-2">
+                                    <p className="text-[11px] text-text-secondary dark:text-white/40 flex items-center gap-2">
                                         {selectedMenu.is_fallback ? (
                                             <span className="text-yellow-400">⭐ Menú fallback (siempre activo)</span>
                                         ) : (
@@ -472,15 +472,15 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                                 <div className="flex gap-2">
                                     {isEditing ? (
                                         <>
-                                            <button onClick={() => setIsEditing(false)} className="p-2.5 text-white/40 hover:text-white rounded-xl hover:bg-white/5 transition-all"><X size={18} /></button>
+                                            <button onClick={() => setIsEditing(false)} className="p-2.5 text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-all"><X size={18} /></button>
                                             <button onClick={handleSaveMenu} className="p-2.5 bg-[#4ADE80]/20 text-[#4ADE80] rounded-xl hover:bg-[#4ADE80]/30 transition-all"><Save size={18} /></button>
                                         </>
                                     ) : (
                                         <>
-                                            <button onClick={() => setIsEditing(true)} className="p-2.5 text-white/40 hover:text-white rounded-xl hover:bg-white/5 transition-all"><Edit2 size={18} /></button>
+                                            <button onClick={() => setIsEditing(true)} className="p-2.5 text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-all"><Edit2 size={18} /></button>
                                             <button
                                                 onClick={() => handleToggleActive(selectedMenu)}
-                                                className={`p-2.5 rounded-xl transition-all duration-300 ${selectedMenu.is_active ? 'bg-green-500/20 text-green-400 shadow-lg shadow-green-500/20' : 'bg-white/5 text-white/40'}`}
+                                                className={`p-2.5 rounded-xl transition-all duration-300 ${selectedMenu.is_active ? 'bg-green-500/20 text-green-400 shadow-lg shadow-green-500/20' : 'bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/40'}`}
                                             >
                                                 {selectedMenu.is_active ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
                                             </button>
@@ -494,12 +494,12 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                         </div>
 
                         {/* Tabs */}
-                        <div className="px-3 md:px-6 py-4 flex gap-2 border-b border-white/5 overflow-x-auto">\
+                        <div className="px-3 md:px-6 py-4 flex gap-2 border-b border-border-color/30 dark:border-white/5 overflow-x-auto">\
                             <button
                                 onClick={() => setActiveSubTab('products')}
                                 className={`px-5 py-2.5 rounded-xl text-[11px] font-bold transition-all duration-300 ${activeSubTab === 'products'
                                     ? 'bg-gradient-to-r from-[#4ADE80]/20 to-[#4ADE80]/10 text-[#4ADE80] shadow-lg shadow-[#4ADE80]/10'
-                                    : 'bg-white/5 text-white/50 hover:text-white hover:bg-white/10'
+                                    : 'bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/50 hover:text-text-main dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10'
                                     }`}
                             >
                                 <span className="flex items-center gap-2">
@@ -511,7 +511,7 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                                 onClick={() => setActiveSubTab('rules')}
                                 className={`px-5 py-2.5 rounded-xl text-[11px] font-bold transition-all duration-300 ${activeSubTab === 'rules'
                                     ? 'bg-gradient-to-r from-[#4ADE80]/20 to-[#4ADE80]/10 text-[#4ADE80] shadow-lg shadow-[#4ADE80]/10'
-                                    : 'bg-white/5 text-white/50 hover:text-white hover:bg-white/10'
+                                    : 'bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/50 hover:text-text-main dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10'
                                     }`}
                             >
                                 <span className="flex items-center gap-2">
@@ -526,15 +526,15 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                             {activeSubTab === 'products' && (
                                 <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-2 duration-300">
                                     {/* 1. Search Bar */}
-                                    <div className="p-4 border-b border-white/5 bg-white/[0.02]">
+                                    <div className="p-4 border-b border-border-color/30 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
                                         <div className="relative">
-                                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+                                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary dark:text-white/40" />
                                             <input
                                                 type="text"
                                                 placeholder="Buscar productos..."
                                                 value={productSearch}
                                                 onChange={e => setProductSearch(e.target.value)}
-                                                className="w-full bg-black/50 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#4ADE80]/50 transition-all placeholder:text-white/20"
+                                                className="w-full bg-white dark:bg-black/50 border border-border-color dark:border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-xs text-text-main dark:text-white focus:outline-none focus:border-[#4ADE80]/50 transition-all placeholder:text-text-secondary/40 dark:placeholder:text-white/20"
                                             />
                                         </div>
                                     </div>
@@ -554,7 +554,7 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                                                             flex items-center gap-3 p-2 rounded-xl border transition-all duration-200
                                                             ${isSelected
                                                                 ? 'bg-[#4ADE80]/10 border-[#4ADE80]/30'
-                                                                : 'bg-transparent border-transparent hover:bg-white/5 hover:border-white/5'}
+                                                                : 'bg-transparent border-transparent hover:bg-gray-100 dark:hover:bg-white/5 hover:border-border-color/30 dark:hover:border-white/5'}
                                                         `}
                                                     >
                                                         {/* Toggle Checkbox */}
@@ -564,7 +564,7 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                                                                 w-10 h-10 rounded-xl flex items-center justify-center transition-all shrink-0
                                                                 ${isSelected
                                                                     ? 'bg-[#4ADE80] text-black shadow-[0_0_10px_rgba(74,222,128,0.3)]'
-                                                                    : 'bg-white/5 text-white/20 hover:bg-white/10'}
+                                                                    : 'bg-black/5 dark:bg-white/5 text-text-secondary/40 dark:text-white/20 hover:bg-gray-100 dark:hover:bg-white/10'}
                                                             `}
                                                         >
                                                             {isSelected ? <Check size={18} strokeWidth={3} /> : <Plus size={18} />}
@@ -572,14 +572,14 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
 
                                                         {/* Product Info */}
                                                         <div className="flex-1 min-w-0">
-                                                            <p className={`text-sm font-bold truncate ${isSelected ? 'text-white' : 'text-white/60'}`}>
+                                                            <p className={`text-sm font-bold truncate ${isSelected ? 'text-text-main dark:text-white' : 'text-text-secondary dark:text-white/60'}`}>
                                                                 {product.name}
                                                             </p>
                                                             <div className="flex items-center gap-2">
-                                                                <span className="text-[10px] text-white/30 bg-white/5 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                                                <span className="text-[10px] text-text-secondary/60 dark:text-white/30 bg-black/5 dark:bg-white/5 px-1.5 py-0.5 rounded uppercase tracking-wider">
                                                                     {product.category}
                                                                 </span>
-                                                                <span className="text-[10px] text-white/40 font-mono">
+                                                                <span className="text-[10px] text-text-secondary dark:text-white/40 font-mono">
                                                                     ${product.base_price}
                                                                 </span>
                                                             </div>
@@ -629,7 +629,7 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                                             })}
 
                                         {allProducts.length === 0 && (
-                                            <div className="text-center py-12 text-white/30">
+                                            <div className="text-center py-12 text-text-secondary/60 dark:text-white/30">
                                                 <p>No hay productos en el sistema.</p>
                                             </div>
                                         )}
@@ -643,12 +643,12 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                                         <div className="w-20 h-20 rounded-full bg-yellow-500/5 border border-yellow-500/20 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(234,179,8,0.1)]">
                                             <Star size={32} className="text-yellow-400 drop-shadow-[0_0_10px_rgba(234,179,8,0.5)]" />
                                         </div>
-                                        <h3 className="text-xl font-black text-white mb-3">Menú por Defecto</h3>
+                                        <h3 className="text-xl font-black text-text-main dark:text-white mb-3">Menú por Defecto</h3>
                                         <div className="max-w-xs space-y-4">
-                                            <p className="text-sm text-white/60 leading-relaxed">
+                                            <p className="text-sm text-text-secondary dark:text-white/60 leading-relaxed">
                                                 Este menú está activo <strong>globalmente</strong> siempre que no haya otra regla específica (Ubicación, Día u Hora) que aplique.
                                             </p>
-                                            <div className="p-3 bg-white/5 rounded-lg border border-white/5 text-xs text-white/40 italic">
+                                            <div className="p-3 bg-black/5 dark:bg-white/5 rounded-lg border border-border-color/30 dark:border-white/5 text-xs text-text-secondary dark:text-white/40 italic">
                                                 "Es el menú de respaldo que nunca falla"
                                             </div>
                                         </div>
@@ -660,7 +660,7 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <Calendar size={16} className="text-blue-400" />
-                                                <h3 className="text-sm font-bold text-white">Días Activo</h3>
+                                                <h3 className="text-sm font-bold text-text-main dark:text-white">Días Activo</h3>
                                             </div>
                                             <div className="flex gap-2">
                                                 {WEEKDAY_LABELS.map((day, idx) => {
@@ -712,7 +712,7 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                                                             flex-1 py-3 rounded-xl text-xs font-black uppercase transition-all
                                                             ${isSelected
                                                                     ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
-                                                                    : 'bg-white/5 text-white/20 hover:bg-white/10'}
+                                                                    : 'bg-black/5 dark:bg-white/5 text-text-secondary/40 dark:text-white/20 hover:bg-gray-100 dark:hover:bg-white/10'}
                                                         `}
                                                         >
                                                             {day}
@@ -720,20 +720,20 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                                                     );
                                                 })}
                                             </div>
-                                            <p className="text-[10px] text-white/30 px-1">
+                                            <p className="text-[10px] text-text-secondary/60 dark:text-white/30 px-1">
                                                 {selectedMenu.rules?.find(r => r.rule_type === 'weekdays')
                                                     ? 'Menú activo solo en los días seleccionados.'
                                                     : 'Menú activo todos los días.'}
                                             </p>
                                         </div>
 
-                                        <div className="h-px bg-white/5" />
+                                        <div className="h-px bg-border-color/30 dark:bg-white/5" />
 
                                         {/* 2. HORARIO */}
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <Clock size={16} className="text-purple-400" />
-                                                <h3 className="text-sm font-bold text-white">Horario Disponibilidad</h3>
+                                                <h3 className="text-sm font-bold text-text-main dark:text-white">Horario Disponibilidad</h3>
                                             </div>
 
                                             {(() => {
@@ -758,40 +758,40 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
 
                                                 return (
                                                     <div className="flex items-center gap-4">
-                                                        <div className="flex-1 bg-white/5 rounded-xl border border-white/10 p-2 flex items-center gap-2">
-                                                            <span className="text-[10px] text-white/40 uppercase font-bold pl-2">Desde</span>
+                                                        <div className="flex-1 bg-black/5 dark:bg-white/5 rounded-xl border border-border-color dark:border-white/10 p-2 flex items-center gap-2">
+                                                            <span className="text-[10px] text-text-secondary dark:text-white/40 uppercase font-bold pl-2">Desde</span>
                                                             <input
                                                                 type="time"
                                                                 value={from}
                                                                 onChange={e => saveTime(e.target.value, to)}
-                                                                className="bg-transparent text-white font-mono text-sm focus:outline-none w-full text-right"
+                                                                className="bg-transparent text-text-main dark:text-white font-mono text-sm focus:outline-none w-full text-right"
                                                             />
                                                         </div>
-                                                        <span className="text-white/20">-</span>
-                                                        <div className="flex-1 bg-white/5 rounded-xl border border-white/10 p-2 flex items-center gap-2">
-                                                            <span className="text-[10px] text-white/40 uppercase font-bold pl-2">Hasta</span>
+                                                        <span className="text-text-secondary/40 dark:text-white/20">-</span>
+                                                        <div className="flex-1 bg-black/5 dark:bg-white/5 rounded-xl border border-border-color dark:border-white/10 p-2 flex items-center gap-2">
+                                                            <span className="text-[10px] text-text-secondary dark:text-white/40 uppercase font-bold pl-2">Hasta</span>
                                                             <input
                                                                 type="time"
                                                                 value={to}
                                                                 onChange={e => saveTime(from, e.target.value)}
-                                                                className="bg-transparent text-white font-mono text-sm focus:outline-none w-full text-right"
+                                                                className="bg-transparent text-text-main dark:text-white font-mono text-sm focus:outline-none w-full text-right"
                                                             />
                                                         </div>
                                                     </div>
                                                 );
                                             })()}
-                                            <p className="text-[10px] text-white/30 px-1">
+                                            <p className="text-[10px] text-text-secondary/60 dark:text-white/30 px-1">
                                                 Si dejás los horarios vacíos, el menú estará activo todo el día.
                                             </p>
                                         </div>
 
-                                        <div className="h-px bg-white/5" />
+                                        <div className="h-px bg-border-color/30 dark:bg-white/5" />
 
                                         {/* 3. UBICACIÓN */}
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <StoreIcon size={16} className="text-orange-400" />
-                                                <h3 className="text-sm font-bold text-white">Ubicaciones</h3>
+                                                <h3 className="text-sm font-bold text-text-main dark:text-white">Ubicaciones</h3>
                                             </div>
 
                                             {(() => {
@@ -802,18 +802,18 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
 
                                                 return (
                                                     <div className="space-y-3">\
-                                                        <div className="flex p-1 bg-white/5 rounded-xl border border-white/5">
+                                                        <div className="flex p-1 bg-black/5 dark:bg-white/5 rounded-xl border border-border-color/30 dark:border-white/5">
                                                             <button
                                                                 onClick={async () => {
                                                                     if (locRule) await handleDeleteRule(locRule.id);
                                                                 }}
-                                                                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${isAllLocations ? 'bg-orange-500 text-black shadow' : 'text-white/40 hover:text-white'}`}
+                                                                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${isAllLocations ? 'bg-orange-500 text-black shadow' : 'text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white'}`}
                                                             >
                                                                 Todo el Local
                                                             </button>
                                                             <button
                                                                 onClick={() => setShowNodeSelector(true)}
-                                                                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${!isAllLocations ? 'bg-orange-500 text-black shadow' : 'text-white/40 hover:text-white'}`}
+                                                                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${!isAllLocations ? 'bg-orange-500 text-black shadow' : 'text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white'}`}
                                                             >
                                                                 Zonas Específicas {activeIds.length > 0 && `(${activeIds.length})`}
                                                             </button>
@@ -837,7 +837,7 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                                                         )}
 
                                                         {/* Explanation */}
-                                                        <p className="text-[10px] text-white/30 px-1">
+                                                        <p className="text-[10px] text-text-secondary/60 dark:text-white/30 px-1">
                                                             {isAllLocations
                                                                 ? '✅ Este menú se mostrará en todas las ubicaciones.'
                                                                 : selectedNodes.length > 0
@@ -848,19 +848,19 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                                                         {/* Node Selector Modal */}
                                                         {showNodeSelector && (
                                                             <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center animate-in fade-in duration-200 p-4" onClick={() => setShowNodeSelector(false)}>
-                                                                <div className="bg-[#141714] border border-white/10 rounded-3xl p-4 md:p-6 max-w-lg w-full shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                                                                <div className="bg-white dark:bg-[#141714] border border-border-color dark:border-white/10 rounded-3xl p-4 md:p-6 max-w-lg w-full shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
                                                                     <div className="mb-4">
-                                                                        <h3 className="text-lg font-black text-white mb-1">🗺️ Seleccionar Ubicaciones</h3>
-                                                                        <p className="text-[11px] text-white/50">Marcá las mesas/barras donde querés que aparezca este menú</p>
+                                                                        <h3 className="text-lg font-black text-text-main dark:text-white mb-1">🗺️ Seleccionar Ubicaciones</h3>
+                                                                        <p className="text-[11px] text-text-secondary dark:text-white/50">Marcá las mesas/barras donde querés que aparezca este menú</p>
                                                                     </div>
 
                                                                     {venueNodes.length === 0 ? (
                                                                         <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
-                                                                            <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-4">
-                                                                                <StoreIcon size={32} className="text-white/20" />
+                                                                            <div className="w-16 h-16 bg-black/5 dark:bg-white/5 rounded-2xl flex items-center justify-center mb-4">
+                                                                                <StoreIcon size={32} className="text-text-secondary/40 dark:text-white/20" />
                                                                             </div>
-                                                                            <p className="text-white/40 text-sm mb-2">No hay mesas ni barras configuradas</p>
-                                                                            <p className="text-white/30 text-xs max-w-[280px]">Primero tenés que crear mesas/barras en "Mesas y Salones"</p>
+                                                                            <p className="text-text-secondary dark:text-white/40 text-sm mb-2">No hay mesas ni barras configuradas</p>
+                                                                            <p className="text-text-secondary/60 dark:text-white/30 text-xs max-w-[280px]">Primero tenés que crear mesas/barras en "Mesas y Salones"</p>
                                                                         </div>
                                                                     ) : (
                                                                         <div className="flex-1 overflow-y-auto grid grid-cols-2 gap-2 mb-4">
@@ -901,16 +901,16 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                                                                                             };
                                                                                             upsert();
                                                                                         }}
-                                                                                        className={`p-3 rounded-xl border text-left flex items-center gap-3 ${isSelected ? 'bg-orange-500/20 border-orange-500/50' : 'bg-white/5 border-white/5'}`}
+                                                                                        className={`p-3 rounded-xl border text-left flex items-center gap-3 ${isSelected ? 'bg-orange-500/20 border-orange-500/50' : 'bg-black/5 dark:bg-white/5 border-border-color/30 dark:border-white/5'}`}
                                                                                     >
                                                                                         {isSelected && <Check size={14} className="text-orange-400" />}
-                                                                                        <span className={isSelected ? 'text-white font-bold' : 'text-white/60'}>{node.label}</span>
+                                                                                        <span className={isSelected ? 'text-text-main dark:text-white font-bold' : 'text-text-secondary dark:text-white/60'}>{node.label}</span>
                                                                                     </button>
                                                                                 );
                                                                             })}
                                                                         </div>
                                                                     )}\
-                                                                    <button onClick={() => setShowNodeSelector(false)} className="w-full py-3 bg-white/10 text-white font-bold rounded-xl">Listo</button>
+                                                                    <button onClick={() => setShowNodeSelector(false)} className="w-full py-3 bg-black/5 dark:bg-white/10 text-text-main dark:text-white font-bold rounded-xl">Listo</button>
                                                                 </div>
                                                             </div>
                                                         )}
@@ -926,11 +926,11 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                     </div>
                 ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-                        <div className="w-20 h-20 bg-white/5 rounded-3xl flex items-center justify-center mb-6">
-                            <Package size={32} className="text-white/20" />
+                        <div className="w-20 h-20 bg-black/5 dark:bg-white/5 rounded-3xl flex items-center justify-center mb-6">
+                            <Package size={32} className="text-text-secondary/40 dark:text-white/20" />
                         </div>
-                        <p className="text-white/40 text-sm mb-2">Seleccioná un menú</p>
-                        <p className="text-white/20 text-xs">o creá uno nuevo con el botón +</p>
+                        <p className="text-text-secondary dark:text-white/40 text-sm mb-2">Seleccioná un menú</p>
+                        <p className="text-text-secondary/40 dark:text-white/20 text-xs">o creá uno nuevo con el botón +</p>
                     </div>
                 )}
             </div>
@@ -1908,19 +1908,19 @@ const MenuDesign: React.FC = () => {
         <div className="min-h-screen bg-[#F8F9F7] dark:bg-[#0D0F0D] text-[#37352F] dark:text-white p-4 md:p-8 font-sans selection:bg-[#4ADE80]/30 transition-colors duration-300">
             {/* Header / Navigation */}
             <div className="max-w-[1600px] mx-auto mb-12">
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/5 pb-8">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-border-color/30 dark:border-white/5 pb-8">
                     <div>
                         <div className="flex items-center gap-2 mb-1.5 text-[#4ADE80] text-[10px] font-mono tracking-widest uppercase opacity-80">
                             <div className="w-1.5 h-1.5 rounded-full bg-[#4ADE80] animate-pulse" />
                             Editor de Experiencia v2.1
                         </div>
-                        <h1 className="text-2xl font-black tracking-tighter text-white mb-0.5">
-                            DISEÑO DE <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/30">EXPERIENCIA</span>
+                        <h1 className="text-2xl font-black tracking-tighter text-text-main dark:text-white mb-0.5">
+                            DISEÑO DE <span className="text-transparent bg-clip-text bg-gradient-to-r from-text-main to-text-main/30 dark:from-white dark:to-white/30">EXPERIENCIA</span>
                         </h1>
                         <p className="text-[#52525B] text-[11px] font-medium uppercase tracking-wider">Identidad Visual & Protocolos de Storefront</p>
                     </div>
 
-                    <div className="flex items-center gap-3 bg-black/40 p-1 rounded-xl border border-white/5 backdrop-blur-xl">
+                    <div className="flex items-center gap-3 bg-white dark:bg-black/40 p-1 rounded-xl border border-border-color/30 dark:border-white/5 backdrop-blur-xl">
                         {(['ESTÉTICA', 'LÓGICA', 'INVENTARIO', 'MENÚS'] as const).map(tab => (
                             <button
                                 key={tab}
@@ -1928,15 +1928,15 @@ const MenuDesign: React.FC = () => {
                                 className={`
                                     px-4 py-2 rounded-lg text-[10px] font-black transition-all duration-300 tracking-[0.15em]
                                     ${activeTab === tab
-                                        ? 'bg-[#141714] text-[#4ADE80] border border-[#4ADE80]/20'
-                                        : 'text-[#52525B] hover:text-white'
+                                        ? 'bg-white dark:bg-[#141714] text-[#4ADE80] border border-[#4ADE80]/20'
+                                        : 'text-[#52525B] hover:text-text-main dark:hover:text-white'
                                     }
                                 `}
                             >
                                 {tab}
                             </button>
                         ))}
-                        <div className="w-px h-5 bg-white/10 mx-1" />
+                        <div className="w-px h-5 bg-border-color dark:bg-white/10 mx-1" />
                         <button
                             onClick={handlePublish}
                             disabled={isSaving}
@@ -1957,7 +1957,7 @@ const MenuDesign: React.FC = () => {
                         <button
                             onClick={() => storeSlug && window.open(`/#/m/${storeSlug}`, '_blank')}
                             disabled={!storeSlug}
-                            className="bg-white/5 hover:bg-white/10 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-[10px] font-black transition-all flex items-center gap-2 border border-white/5"
+                            className="bg-black/5 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 disabled:opacity-50 text-text-main dark:text-white px-5 py-2 rounded-lg text-[10px] font-black transition-all flex items-center gap-2 border border-border-color/30 dark:border-white/5"
                             title={storeSlug ? "Ver menú en vivo" : "Guarda la configuración para generar el link"}
                         >
                             <Monitor className="w-3 h-3" />
@@ -1971,14 +1971,14 @@ const MenuDesign: React.FC = () => {
                 <div className="lg:col-span-5 space-y-4">
                     {/* VISTA: GESTIÓN DE MENÚS DINÁMICOS */}
                     {activeTab === 'MENÚS' && (
-                        <div className="bg-[#141714] border border-white/5 rounded-2xl overflow-hidden shadow-xl h-[calc(100vh-220px)] animate-in fade-in slide-in-from-bottom-4 duration-700">
+                        <div className="bg-white dark:bg-surface-dark border border-border-color/30 dark:border-white/5 rounded-2xl overflow-hidden shadow-xl h-[calc(100vh-220px)] animate-in fade-in slide-in-from-bottom-4 duration-700">
                             <MenusPanel storeId={profile?.store_id} />
                         </div>
                     )}
                     {activeTab === 'ESTÉTICA' && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
                             {/* SECCIÓN: IDENTIDAD */}
-                            <div className="bg-[#141714] border border-white/5 rounded-2xl p-4 shadow-xl">
+                            <div className="bg-white dark:bg-surface-dark border border-border-color/30 dark:border-white/5 rounded-2xl p-4 shadow-xl">
                                 <h3 className="text-[10px] font-black text-[#52525B] tracking-widest uppercase mb-4 flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 bg-[#4ADE80] rounded-full opacity-50" />
                                     Identidad de Marca
@@ -2069,7 +2069,7 @@ const MenuDesign: React.FC = () => {
                             </div>
 
                             {/* SECCIÓN: COLORES */}
-                            <div className="bg-[#141714] border border-white/5 rounded-2xl p-4 shadow-xl">
+                            <div className="bg-white dark:bg-surface-dark border border-border-color/30 dark:border-white/5 rounded-2xl p-4 shadow-xl">
                                 <h3 className="text-[10px] font-black text-[#52525B] tracking-widest uppercase mb-4 flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 bg-[#4ADE80] rounded-full opacity-50" />
                                     Paleta Táctica
@@ -2083,7 +2083,7 @@ const MenuDesign: React.FC = () => {
                             </div>
 
                             {/* SECCIÓN: LAYOUT */}
-                            <div className="bg-[#141714] border border-white/5 rounded-2xl p-4 shadow-xl">
+                            <div className="bg-white dark:bg-surface-dark border border-border-color/30 dark:border-white/5 rounded-2xl p-4 shadow-xl">
                                 <h3 className="text-[10px] font-black text-[#52525B] tracking-widest uppercase mb-4 flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 bg-[#4ADE80] rounded-full opacity-50" />
                                     Estructura
@@ -2114,7 +2114,7 @@ const MenuDesign: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="bg-[#141714] border border-white/5 rounded-2xl p-4 shadow-xl">
+                            <div className="bg-white dark:bg-surface-dark border border-border-color/30 dark:border-white/5 rounded-2xl p-4 shadow-xl">
                                 <h3 className="text-[10px] font-black text-[#52525B] tracking-widest uppercase mb-3 flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 bg-[#4ADE80] rounded-full opacity-50" />
                                     Visibilidad
@@ -2168,7 +2168,7 @@ const MenuDesign: React.FC = () => {
                     {activeTab === 'LÓGICA' && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             {/* 1. OPERACIÓN GENERAL */}
-                            <div className="bg-[#141714] border border-white/5 rounded-2xl p-4 shadow-xl">
+                            <div className="bg-white dark:bg-surface-dark border border-border-color/30 dark:border-white/5 rounded-2xl p-4 shadow-xl">
                                 <h3 className="text-[10px] font-black text-[#52525B] tracking-widest uppercase mb-4 flex items-center gap-2">
                                     <div className={`w-1.5 h-1.5 rounded-full ${logicConfig.operation.isOpen ? 'bg-[#4ADE80]' : 'bg-red-500'}`} />
                                     Operación General
@@ -2194,7 +2194,7 @@ const MenuDesign: React.FC = () => {
                             </div>
 
                             {/* 1.5 HORARIOS DE OPERACIÓN */}
-                            <div className="bg-[#141714] border border-white/5 rounded-2xl p-4 shadow-xl">
+                            <div className="bg-white dark:bg-surface-dark border border-border-color/30 dark:border-white/5 rounded-2xl p-4 shadow-xl">
                                 <h3 className="text-[10px] font-black text-[#52525B] tracking-widest uppercase mb-4 flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 bg-blue-500 rounded-full opacity-50" />
                                     Horarios de Operación
@@ -2264,7 +2264,7 @@ const MenuDesign: React.FC = () => {
                             </div>
 
                             {/* 2. CANALES */}
-                            <div className="bg-[#141714] border border-white/5 rounded-2xl p-4 shadow-xl">
+                            <div className="bg-white dark:bg-surface-dark border border-border-color/30 dark:border-white/5 rounded-2xl p-4 shadow-xl">
                                 <h3 className="text-[10px] font-black text-[#52525B] tracking-widest uppercase mb-4 flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 bg-[#4ADE80] rounded-full opacity-50" />
                                     Canales & Accesos
@@ -2305,7 +2305,7 @@ const MenuDesign: React.FC = () => {
                             </div>
 
                             {/* 3. FEATURES (WALLET & LOYALTY) */}
-                            <div className="bg-[#141714] border border-white/5 rounded-2xl p-4 shadow-xl">
+                            <div className="bg-white dark:bg-surface-dark border border-border-color/30 dark:border-white/5 rounded-2xl p-4 shadow-xl">
                                 <h3 className="text-[10px] font-black text-[#52525B] tracking-widest uppercase mb-4 flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full opacity-50" />
                                     Experiencia & Fidelidad
@@ -2318,7 +2318,7 @@ const MenuDesign: React.FC = () => {
                             </div>
 
                             {/* 4. REGLAS DE MENÚ */}
-                            <div className="bg-[#141714] border border-white/5 rounded-2xl p-4 shadow-xl">
+                            <div className="bg-white dark:bg-surface-dark border border-border-color/30 dark:border-white/5 rounded-2xl p-4 shadow-xl">
                                 <h3 className="text-[10px] font-black text-[#52525B] tracking-widest uppercase mb-4 flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 bg-red-500 rounded-full opacity-50" />
                                     Reglas de Menú
@@ -2338,7 +2338,7 @@ const MenuDesign: React.FC = () => {
                     {/* VISTA: GESTIÓN DE INVENTARIO */}
                     {activeTab === 'INVENTARIO' && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <div className="bg-[#141714] border border-white/5 rounded-2xl p-4 shadow-xl">
+                            <div className="bg-white dark:bg-surface-dark border border-border-color/30 dark:border-white/5 rounded-2xl p-4 shadow-xl">
                                 <h3 className="text-[10px] font-black text-[#52525B] tracking-widest uppercase mb-4 flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 bg-[#4ADE80] rounded-full opacity-50" />
                                     Gestión de Inventario
@@ -2510,7 +2510,7 @@ const MenuDesign: React.FC = () => {
             {
                 showItemSelector && (
                     <div className="fixed inset-0 z-[300] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4">
-                        <div className="bg-[#141714] border border-white/10 rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-[0_0_100px_rgba(74,222,128,0.1)]">
+                        <div className="bg-white dark:bg-surface-dark border border-border-color dark:border-white/10 rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-[0_0_100px_rgba(74,222,128,0.1)]">
                             <div className="p-8 border-b border-white/5 flex items-center justify-between">
                                 <div>
                                     <h3 className="text-xl font-black uppercase tracking-tight">Vincular {linkType === 'addon' ? 'Adicional' : 'Componente'}</h3>
@@ -2557,18 +2557,18 @@ const MenuDesign: React.FC = () => {
             {/* Editor Lateral (Variants, Addons) - Hidden if styling tab active on small screens for clarity */}
             {
                 editingId && (activeTab === 'INVENTARIO' || activeTab === 'LÓGICA') && (
-                    <div className={`fixed inset-y-0 right-0 z-[100] w-full max-w-[650px] bg-[#141714] border-l border-white/[0.04] shadow-2xl transition-transform duration-500 ease-out flex flex-col translate-x-0`}>
+                    <div className={`fixed inset-y-0 right-0 z-[100] w-full max-w-[650px] bg-white dark:bg-surface-dark border-l border-border-color/30 dark:border-white/[0.04] shadow-2xl transition-transform duration-500 ease-out flex flex-col translate-x-0`}>
                         {selectedItem ? (
                             <>
                                 <div className="p-8 flex justify-between items-center border-b border-white/[0.02]">
                                     <div className="flex items-center gap-5">
                                         <img src={selectedItem.image_url || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200'} className="size-16 rounded-2xl object-cover border border-white/10" />
                                         <div>
-                                            <h3 className="text-2xl font-black italic-black text-white uppercase tracking-tighter leading-none">{selectedItem.name}</h3>
+                                            <h3 className="text-2xl font-black italic-black text-text-main dark:text-white uppercase tracking-tighter leading-none">{selectedItem.name}</h3>
                                             <p className="text-[10px] font-bold text-text-secondary uppercase mt-1 opacity-60 tracking-widest">SKU: {selectedItem.sku || 'N/A'}</p>
                                         </div>
                                     </div>
-                                    <button onClick={() => setEditingId(null)} className="size-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-colors">
+                                    <button onClick={() => setEditingId(null)} className="size-12 rounded-2xl bg-black/5 dark:bg-white/5 flex items-center justify-center text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white transition-colors">
                                         <span className="material-symbols-outlined text-2xl font-bold">close</span>
                                     </button>
                                 </div>
@@ -2580,12 +2580,12 @@ const MenuDesign: React.FC = () => {
                                             <span className="material-symbols-outlined text-sm">edit</span> Información Base
                                         </h4>
                                         <div className="space-y-2">
-                                            <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Nombre Público</label>
+                                            <label className="text-[9px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest">Nombre Público</label>
                                             <input
                                                 type="text"
                                                 value={selectedItem.name}
                                                 onChange={(e) => updateItemDebounced(selectedItem.id, { name: e.target.value })}
-                                                className="w-full h-11 px-4 rounded-xl bg-white/5 border border-white/10 text-white font-black text-sm outline-none focus:ring-1 focus:ring-neon/30 uppercase"
+                                                className="w-full h-11 px-4 rounded-xl bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 text-text-main dark:text-white font-black text-sm outline-none focus:ring-1 focus:ring-neon/30 uppercase"
                                                 placeholder="Nombre del producto en el menú..."
                                             />
                                         </div>
@@ -2797,7 +2797,7 @@ const MenuDesign: React.FC = () => {
 
                                                         {/* IMAGE SECTOR (Moved here for better grid balance) */}
                                                         <div className="space-y-2">
-                                                            <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Imagen Cover</label>
+                                                            <label className="text-[9px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest">Imagen Cover</label>
                                                             <div
                                                                 className={`h-16 rounded-xl bg-white/5 border border-dashed border-white/20 flex items-center justify-center cursor-pointer hover:border-neon/40 transition-all overflow-hidden relative group/img ${isDragging ? 'bg-neon/10 border-neon' : ''}`}
                                                                 onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
@@ -2823,7 +2823,7 @@ const MenuDesign: React.FC = () => {
 
                                         <div className="space-y-2">
                                             <div className="flex justify-between">
-                                                <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Descripción Menú</label>
+                                                <label className="text-[9px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest">Descripción Menú</label>
                                                 <button onClick={handleAIDescription} className="text-[8px] font-black text-neon uppercase tracking-widest flex items-center gap-1 hover:text-white transition-colors" disabled={isGeneratingAI}>
                                                     <span className="material-symbols-outlined text-xs">{isGeneratingAI ? 'sync' : 'auto_awesome'}</span>
                                                     {isGeneratingAI ? 'Generando...' : 'Generar con AI'}
@@ -2863,7 +2863,7 @@ const MenuDesign: React.FC = () => {
                                                         <div key={idx} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 group hover:border-white/10 transition-all">
                                                             <div className="grid grid-cols-12 gap-3 items-end">
                                                                 <div className="col-span-8 space-y-1">
-                                                                    <label className="text-[7px] font-bold text-white/30 uppercase tracking-widest block">Item del Inventario</label>
+                                                                    <label className="text-[7px] font-bold text-text-secondary/60 dark:text-white/30 uppercase tracking-widest block">Item del Inventario</label>
                                                                     <button
                                                                         onClick={() => {
                                                                             setEditingComboItemId(idx);
@@ -2883,7 +2883,7 @@ const MenuDesign: React.FC = () => {
                                                                     </button>
                                                                 </div>
                                                                 <div className="col-span-3 space-y-1">
-                                                                    <label className="text-[7px] font-bold text-white/30 uppercase tracking-widest block">Cant.</label>
+                                                                    <label className="text-[7px] font-bold text-text-secondary/60 dark:text-white/30 uppercase tracking-widest block">Cant.</label>
                                                                     <div className="relative">
                                                                         <input
                                                                             type="number"
@@ -3140,7 +3140,7 @@ const MenuDesign: React.FC = () => {
                                                         {/* ENLACE CON INVENTARIO */}
                                                         <div className="p-3 bg-black/20 rounded-lg border border-white/5 grid grid-cols-12 gap-3 items-end">
                                                             <div className="col-span-6 space-y-1">
-                                                                <label className="text-[7px] font-bold text-white/30 uppercase tracking-widest block">Insumo Consumido</label>
+                                                                <label className="text-[7px] font-bold text-text-secondary/60 dark:text-white/30 uppercase tracking-widest block">Insumo Consumido</label>
                                                                 <button
                                                                     onClick={() => {
                                                                         setEditingAddonId(addon.id);
@@ -3156,7 +3156,7 @@ const MenuDesign: React.FC = () => {
                                                                 </button>
                                                             </div>
                                                             <div className="col-span-3 space-y-1">
-                                                                <label className="text-[7px] font-bold text-white/30 uppercase tracking-widest block">Cantidad</label>
+                                                                <label className="text-[7px] font-bold text-text-secondary/60 dark:text-white/30 uppercase tracking-widest block">Cantidad</label>
                                                                 <div className="relative">
                                                                     <input
                                                                         type="number"
@@ -3212,7 +3212,7 @@ const MenuDesign: React.FC = () => {
             {
                 showItemSelector && (
                     <div className="fixed inset-0 z-[300] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300">
-                        <div className="bg-[#141714] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[80vh] animate-in zoom-in-95 duration-300">
+                        <div className="bg-white dark:bg-surface-dark border border-border-color dark:border-white/10 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[80vh] animate-in zoom-in-95 duration-300">
                             <div className="p-6 border-b border-white/5 flex items-center justify-between">
                                 <h3 className="text-sm font-black text-white uppercase tracking-widest">Vincular Insumo</h3>
                                 <button onClick={() => setShowItemSelector(false)} className="text-white/40 hover:text-white transition-colors">
@@ -3319,7 +3319,7 @@ const StyleBtn: React.FC<{ active: boolean, onClick: () => void, children: React
 const TabBtn: React.FC<{ active: boolean, onClick: () => void, icon?: string, children: React.ReactNode }> = ({ active, onClick, children }) => (
     <button
         onClick={onClick}
-        className={`px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${active ? 'bg-[#141714] text-[#4ADE80] border border-[#4ADE80]/20' : 'text-[#52525B] hover:text-white'}`}
+        className={`px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${active ? 'bg-white dark:bg-surface-dark text-[#4ADE80] border border-[#4ADE80]/20' : 'text-[#52525B] hover:text-text-main dark:hover:text-white'}`}
     >
         {children}
     </button>
@@ -3351,7 +3351,7 @@ const ChannelBtn: React.FC<{ icon: React.ReactNode, label: string, active: boole
 );
 
 const Section: React.FC<{ title: string, children: React.ReactNode }> = ({ title, children }) => (
-    <div className="bg-[#141714] border border-white/5 rounded-3xl p-4 shadow-2xl">
+    <div className="bg-white dark:bg-surface-dark border border-border-color/30 dark:border-white/5 rounded-3xl p-4 shadow-2xl">
         <h3 className="text-xs font-black text-[#52525B] tracking-[0.2em] uppercase mb-4 flex items-center gap-2">
             <div className="w-1.5 h-1.5 bg-[#4ADE80] rounded-full" />
             {title}

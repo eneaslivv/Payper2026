@@ -181,46 +181,46 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
             />
 
             {/* Modal Content */}
-            <div className="relative w-full max-w-md bg-[#09090b] border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+            <div className="relative w-full max-w-md bg-white dark:bg-[#09090b] border border-border-color dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
 
                 {/* Header */}
-                <div className="p-6 border-b border-white/5 bg-[#121212]">
+                <div className="p-6 border-b border-border-color/30 dark:border-white/5 bg-gray-50 dark:bg-[#121212]">
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-black text-white uppercase italic tracking-tighter">
+                        <h2 className="text-xl font-black text-text-main dark:text-white uppercase italic tracking-tighter">
                             TRANSFERIR <span className="text-neon">STOCK</span>
                         </h2>
-                        <button onClick={onClose} className="size-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all">
+                        <button onClick={onClose} className="size-8 rounded-full bg-black/5 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 flex items-center justify-center text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white transition-all">
                             <span className="material-symbols-outlined text-lg">close</span>
                         </button>
                     </div>
 
                     {/* Item Context */}
-                    <div className="flex items-center gap-3 bg-black/40 p-3 rounded-xl border border-white/5">
+                    <div className="flex items-center gap-3 bg-gray-50 dark:bg-black/40 p-3 rounded-xl border border-border-color/30 dark:border-white/5">
                         {item ? (
                             <>
-                                <div className="size-10 rounded-lg bg-white/5 flex items-center justify-center border border-white/5">
+                                <div className="size-10 rounded-lg bg-black/5 dark:bg-white/5 flex items-center justify-center border border-border-color/30 dark:border-white/5">
                                     {item.image_url ?
                                         <img src={item.image_url} className="size-full object-cover rounded-lg" /> :
-                                        <span className="material-symbols-outlined text-white/20">inventory_2</span>
+                                        <span className="material-symbols-outlined text-text-secondary/40 dark:text-white/20">inventory_2</span>
                                     }
                                 </div>
                                 <div>
-                                    <p className="text-sm font-bold text-white uppercase">{item.name}</p>
-                                    <p className="text-[10px] text-white/40 uppercase tracking-wider">
+                                    <p className="text-sm font-bold text-text-main dark:text-white uppercase">{item.name}</p>
+                                    <p className="text-[10px] text-text-secondary dark:text-white/40 uppercase tracking-wider">
                                         Total: {item.current_stock?.toFixed(2)} {unitLabel}
                                     </p>
                                 </div>
                             </>
                         ) : (
                             <div className="w-full">
-                                <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-1 block">Producto a Transferir</label>
+                                <label className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.2em] mb-1 block">Producto a Transferir</label>
                                 <select
                                     value={localItem?.id || ''}
                                     onChange={(e) => {
                                         const selected = allItems.find(i => i.id === e.target.value);
                                         setLocalItem(selected);
                                     }}
-                                    className="w-full bg-transparent text-sm font-bold text-white outline-none border-b border-white/10 py-1 focus:border-neon"
+                                    className="w-full bg-transparent text-sm font-bold text-text-main dark:text-white outline-none border-b border-border-color dark:border-white/10 py-1 focus:border-neon"
                                 >
                                     <option value="">Seleccionar Producto...</option>
                                     {allItems.map(i => (
@@ -239,11 +239,11 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
                     <div className="grid grid-cols-2 gap-4">
                         {/* Origin */}
                         <div className="space-y-2">
-                            <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Desde</label>
+                            <label className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.2em] ml-1">Desde</label>
                             <select
                                 value={fromLocation}
                                 onChange={e => setFromLocation(e.target.value)}
-                                className="w-full h-12 bg-[#1a1a1a] border border-white/10 rounded-xl px-3 text-xs font-bold text-white outline-none focus:border-neon/50 appearance-none"
+                                className="w-full h-12 bg-gray-50 dark:bg-[#1a1a1a] border border-border-color dark:border-white/10 rounded-xl px-3 text-xs font-bold text-text-main dark:text-white outline-none focus:border-neon/50 appearance-none"
                             >
                                 <option value="" disabled>Seleccionar...</option>
                                 {locations.filter(l => (stockLevels[l.id] || 0) > 0).map(loc => (
@@ -259,11 +259,11 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
 
                         {/* Destination */}
                         <div className="space-y-2">
-                            <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Hacia</label>
+                            <label className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.2em] ml-1">Hacia</label>
                             <select
                                 value={toLocation}
                                 onChange={e => setToLocation(e.target.value)}
-                                className="w-full h-12 bg-[#1a1a1a] border border-white/10 rounded-xl px-3 text-xs font-bold text-white outline-none focus:border-neon/50 appearance-none"
+                                className="w-full h-12 bg-gray-50 dark:bg-[#1a1a1a] border border-border-color dark:border-white/10 rounded-xl px-3 text-xs font-bold text-text-main dark:text-white outline-none focus:border-neon/50 appearance-none"
                             >
                                 <option value="" disabled>Seleccionar...</option>
                                 {locations.filter(l => l.id !== fromLocation).map(loc => (
@@ -277,16 +277,16 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
 
                     {/* Quantity Input (Big) */}
                     <div className="space-y-3">
-                        <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Cantidad a Transferir</label>
+                        <label className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.2em] ml-1">Cantidad a Transferir</label>
                         <div className="relative group">
                             <input
                                 type="number"
                                 value={quantity}
                                 onChange={e => setQuantity(e.target.value)}
                                 placeholder="0"
-                                className={`w-full h-16 bg-transparent border-b-2 text-4xl font-black text-center outline-none transition-all placeholder:text-white/10 ${quantityExceedsStock ? 'border-red-500 text-red-500' : 'border-white/10 focus:border-neon text-white'}`}
+                                className={`w-full h-16 bg-transparent border-b-2 text-4xl font-black text-center outline-none transition-all placeholder:text-text-secondary/40 dark:placeholder:text-white/10 ${quantityExceedsStock ? 'border-red-500 text-red-500' : 'border-border-color dark:border-white/10 focus:border-neon text-text-main dark:text-white'}`}
                             />
-                            <span className="absolute right-0 bottom-4 text-xs font-bold text-white/20 uppercase">{unitLabel}</span>
+                            <span className="absolute right-0 bottom-4 text-xs font-bold text-text-secondary/40 dark:text-white/20 uppercase">{unitLabel}</span>
                         </div>
                         {quantityExceedsStock && (
                             <p className="text-center text-[10px] text-red-400 font-bold uppercase tracking-wider animate-pulse">
@@ -297,11 +297,11 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
 
                     {/* Notes (Optional) */}
                     <div className="space-y-2">
-                        <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Notas (Opcional)</label>
+                        <label className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.2em] ml-1">Notas (Opcional)</label>
                         <input
                             value={notes}
                             onChange={e => setNotes(e.target.value)}
-                            className="w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-white/30 placeholder:text-white/20"
+                            className="w-full bg-gray-50 dark:bg-[#1a1a1a] border border-border-color dark:border-white/10 rounded-xl px-4 py-3 text-xs text-text-main dark:text-white outline-none focus:border-border-color dark:focus:border-white/30 placeholder:text-text-secondary/40 dark:placeholder:text-white/20"
                             placeholder="Motivo de traslado..."
                         />
                     </div>
@@ -320,7 +320,7 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
                     {fromLocation === '' && locations.every(l => (stockLevels[l.id] || 0) === 0) && (
                         <button
                             onClick={() => { onClose(); onInitialStockClick?.(); }}
-                            className="w-full mt-3 py-3 rounded-xl border border-white/10 text-white/40 font-bold text-[10px] uppercase tracking-widest hover:text-white hover:border-white/30 transition-all"
+                            className="w-full mt-3 py-3 rounded-xl border border-border-color dark:border-white/10 text-text-secondary dark:text-white/40 font-bold text-[10px] uppercase tracking-widest hover:text-text-main dark:hover:text-white hover:border-border-color dark:hover:border-white/30 transition-all"
                         >
                             Cargar Stock Inicial
                         </button>

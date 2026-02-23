@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 
 // Status badge config
 const statusConfig: Record<InvoiceStatus, { label: string; color: string; animate?: boolean }> = {
-    pending: { label: 'Pendiente', color: 'bg-white/10 text-white/50' },
+    pending: { label: 'Pendiente', color: 'bg-black/10 dark:bg-white/10 text-text-secondary dark:text-white/50' },
     processing: { label: 'Procesando...', color: 'bg-neon/20 text-neon', animate: true },
     extracted: { label: 'Listo', color: 'bg-blue-500/20 text-blue-400' },
     confirmed: { label: 'Confirmado', color: 'bg-neon/20 text-neon' },
@@ -391,7 +391,19 @@ const InvoiceProcessor: React.FC<InvoiceProcessorProps> = ({ isOpen = true, onCl
                 { method: 'PATCH', headers: getAuthHeaders(), body: JSON.stringify({ status: 'confirmed', confirmed_at: new Date().toISOString() }) }
             );
 
-            addToast('✅ Importación confirmada y stock actualizado', 'success');
+            // 5. Link stock movements to this invoice for reconciliation
+            const matchedItemIds = selectedInvoice.items
+                .map((it: any) => it.matched_inventory_id)
+                .filter(Boolean);
+            if (matchedItemIds.length > 0) {
+                await (supabase as any).rpc('link_invoice_stock_movements', {
+                    p_invoice_id: selectedInvoice.id,
+                    p_item_ids: matchedItemIds,
+                    p_store_id: storeId
+                });
+            }
+
+            addToast('Importación confirmada y stock actualizado', 'success');
 
             // Optimistic Update: Remove invoice from list and clear selection
             setInvoices(prev => prev.filter(inv => inv.id !== selectedInvoice.id));
@@ -449,22 +461,22 @@ const InvoiceProcessor: React.FC<InvoiceProcessorProps> = ({ isOpen = true, onCl
 
     return (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[5060] flex items-center justify-center p-4 animate-in fade-in duration-300">
-            <div className="bg-[#0D0F0D] border border-white/10 rounded-3xl w-full max-w-6xl h-[85vh] flex flex-col animate-in zoom-in-95 duration-300 shadow-2xl overflow-hidden">
+            <div className="bg-white dark:bg-[#0D0F0D] border border-border-color dark:border-white/10 rounded-3xl w-full max-w-6xl h-[85vh] flex flex-col animate-in zoom-in-95 duration-300 shadow-2xl overflow-hidden">
 
                 {/* HEADER */}
-                <header className="px-6 py-4 border-b border-white/[0.04] flex items-center justify-between">
+                <header className="px-6 py-4 border-b border-border-color/30 dark:border-white/[0.04] flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-black uppercase tracking-tighter">
-                            <span className="text-white">INGESTA</span>{' '}
+                            <span className="text-text-main dark:text-white">INGESTA</span>{' '}
                             <span className="text-neon">SUMINISTRO</span>
                         </h1>
-                        <p className="text-white/30 text-[9px] uppercase tracking-[0.2em] mt-0.5">
+                        <p className="text-text-secondary/60 dark:text-white/30 text-[9px] uppercase tracking-[0.2em] mt-0.5">
                             Procesamiento masivo de facturas
                         </p>
                     </div>
                     <button
                         onClick={onClose || (() => window.history.back())}
-                        className="size-10 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all"
+                        className="size-10 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 flex items-center justify-center text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white transition-all"
                     >
                         <span className="material-symbols-outlined text-xl">close</span>
                     </button>
@@ -474,9 +486,9 @@ const InvoiceProcessor: React.FC<InvoiceProcessorProps> = ({ isOpen = true, onCl
                 <div className="flex-1 flex overflow-hidden">
 
                     {/* LEFT PANEL - Queue */}
-                    <div className="w-80 flex-shrink-0 border-r border-white/[0.04] flex flex-col">
-                        <div className="p-4 border-b border-white/[0.04]">
-                            <h3 className="text-[10px] font-black text-white/40 uppercase tracking-widest">
+                    <div className="w-80 flex-shrink-0 border-r border-border-color/30 dark:border-white/[0.04] flex flex-col">
+                        <div className="p-4 border-b border-border-color/30 dark:border-white/[0.04]">
+                            <h3 className="text-[10px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest">
                                 Documentos en Cola
                             </h3>
                         </div>
@@ -484,11 +496,11 @@ const InvoiceProcessor: React.FC<InvoiceProcessorProps> = ({ isOpen = true, onCl
                         <div className="flex-1 overflow-y-auto p-3 space-y-2">
                             {loading ? (
                                 <div className="flex items-center gap-3 p-4">
-                                    <div className="size-5 border-2 border-t-neon border-white/10 rounded-full animate-spin"></div>
-                                    <span className="text-white/40 text-sm">Cargando...</span>
+                                    <div className="size-5 border-2 border-t-neon border-border-color dark:border-white/10 rounded-full animate-spin"></div>
+                                    <span className="text-text-secondary dark:text-white/40 text-sm">Cargando...</span>
                                 </div>
                             ) : pendingInvoices.length === 0 ? (
-                                <div className="text-center py-8 text-white/20 text-xs">
+                                <div className="text-center py-8 text-text-secondary/40 dark:text-white/20 text-xs">
                                     Sin documentos pendientes
                                 </div>
                             ) : (
@@ -502,28 +514,28 @@ const InvoiceProcessor: React.FC<InvoiceProcessorProps> = ({ isOpen = true, onCl
                                             onClick={() => handleSelectInvoice(invoice)}
                                             className={`p-3 rounded-xl border cursor-pointer transition-all group relative ${isSelected
                                                 ? 'bg-neon/5 border-neon/30'
-                                                : 'bg-black/30 border-white/5 hover:border-white/10'
+                                                : 'bg-gray-50 dark:bg-black/30 border-border-color/30 dark:border-white/5 hover:border-border-color dark:hover:border-white/10'
                                                 }`}
                                         >
                                             {/* Botón eliminar */}
                                             <button
                                                 onClick={(e) => handleDeleteInvoice(invoice.id, e)}
-                                                className="absolute top-2 right-2 size-6 rounded-lg bg-white/5 hover:bg-red-500/20 flex items-center justify-center text-white/20 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100"
+                                                className="absolute top-2 right-2 size-6 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-red-500/20 flex items-center justify-center text-text-secondary/40 dark:text-white/20 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100"
                                             >
                                                 <span className="material-symbols-outlined text-sm">close</span>
                                             </button>
 
                                             <div className="flex items-center gap-3">
                                                 {status.animate ? (
-                                                    <div className="size-4 border-2 border-t-neon border-white/10 rounded-full animate-spin"></div>
+                                                    <div className="size-4 border-2 border-t-neon border-border-color dark:border-white/10 rounded-full animate-spin"></div>
                                                 ) : (
-                                                    <div className={`size-3 rounded-full ${invoice.status === 'extracted' ? 'bg-neon' : invoice.status === 'error' ? 'bg-red-500' : 'bg-white/20'}`}></div>
+                                                    <div className={`size-3 rounded-full ${invoice.status === 'extracted' ? 'bg-neon' : invoice.status === 'error' ? 'bg-red-500' : 'bg-gray-300 dark:bg-white/20'}`}></div>
                                                 )}
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-white font-bold text-sm truncate">
+                                                    <p className="text-text-main dark:text-white font-bold text-sm truncate">
                                                         {invoice.proveedor || 'Sin proveedor'}
                                                     </p>
-                                                    <p className="text-white/30 text-[9px] truncate">
+                                                    <p className="text-text-secondary/60 dark:text-white/30 text-[9px] truncate">
                                                         {invoice.items?.length || 0} items
                                                     </p>
                                                 </div>
@@ -539,7 +551,7 @@ const InvoiceProcessor: React.FC<InvoiceProcessorProps> = ({ isOpen = true, onCl
                     </div>
 
                     {/* Add Button */}
-                    <div className="p-3 border-t border-white/[0.04]">
+                    <div className="p-3 border-t border-border-color/30 dark:border-white/[0.04]">
                         <input
                             ref={fileInputRef}
                             type="file"
@@ -551,7 +563,7 @@ const InvoiceProcessor: React.FC<InvoiceProcessorProps> = ({ isOpen = true, onCl
                         <button
                             onClick={() => fileInputRef.current?.click()}
                             disabled={uploading}
-                            className="w-full py-3 rounded-xl border-2 border-dashed border-white/10 text-white/40 font-bold text-[10px] uppercase tracking-widest hover:border-neon/30 hover:text-neon/60 transition-all disabled:opacity-50"
+                            className="w-full py-3 rounded-xl border-2 border-dashed border-border-color dark:border-white/10 text-text-secondary dark:text-white/40 font-bold text-[10px] uppercase tracking-widest hover:border-neon/30 hover:text-neon/60 transition-all disabled:opacity-50"
                         >
                             {uploading ? (
                                 <span className="flex items-center justify-center gap-2">
@@ -570,13 +582,13 @@ const InvoiceProcessor: React.FC<InvoiceProcessorProps> = ({ isOpen = true, onCl
                     {!selectedInvoice ? (
                         <div className="flex-1 flex items-center justify-center">
                             <div className="text-center">
-                                <div className="size-20 mx-auto mb-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] flex items-center justify-center">
-                                    <span className="material-symbols-outlined text-4xl text-white/10">description</span>
+                                <div className="size-20 mx-auto mb-4 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-border-color/30 dark:border-white/[0.04] flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-4xl text-text-secondary/20 dark:text-white/10">description</span>
                                 </div>
-                                <p className="text-white/20 text-sm font-bold uppercase tracking-widest">
+                                <p className="text-text-secondary/40 dark:text-white/20 text-sm font-bold uppercase tracking-widest">
                                     Selecciona un documento
                                 </p>
-                                <p className="text-white/10 text-xs mt-1">
+                                <p className="text-text-secondary/20 dark:text-white/10 text-xs mt-1">
                                     para editar
                                 </p>
                             </div>
@@ -584,32 +596,32 @@ const InvoiceProcessor: React.FC<InvoiceProcessorProps> = ({ isOpen = true, onCl
                     ) : (
                         <>
                             {/* Invoice Header Cards */}
-                            <div className="grid grid-cols-4 gap-3 p-4 border-b border-white/[0.04]">
-                                <div className="bg-black/30 rounded-xl p-4 border border-white/5">
+                            <div className="grid grid-cols-4 gap-3 p-4 border-b border-border-color/30 dark:border-white/[0.04]">
+                                <div className="bg-gray-50 dark:bg-black/30 rounded-xl p-4 border border-border-color/30 dark:border-white/5">
                                     <label className="text-[8px] font-black text-neon/60 uppercase tracking-widest block mb-1">Proveedor</label>
                                     <input
                                         type="text"
                                         value={selectedInvoice.proveedor || ''}
                                         onChange={(e) => setSelectedInvoice({ ...selectedInvoice, proveedor: e.target.value })}
-                                        className="w-full bg-transparent text-white font-bold text-lg outline-none"
+                                        className="w-full bg-transparent text-text-main dark:text-white font-bold text-lg outline-none"
                                         placeholder="..."
                                     />
                                 </div>
-                                <div className="bg-black/30 rounded-xl p-4 border border-white/5">
-                                    <label className="text-[8px] font-black text-white/30 uppercase tracking-widest block mb-1">Total Factura</label>
-                                    <p className="text-white font-bold text-lg">$ {selectedInvoice.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 }) || '0.00'}</p>
+                                <div className="bg-gray-50 dark:bg-black/30 rounded-xl p-4 border border-border-color/30 dark:border-white/5">
+                                    <label className="text-[8px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest block mb-1">Total Factura</label>
+                                    <p className="text-text-main dark:text-white font-bold text-lg">$ {selectedInvoice.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 }) || '0.00'}</p>
                                 </div>
-                                <div className="bg-black/30 rounded-xl p-4 border border-white/5">
-                                    <label className="text-[8px] font-black text-white/30 uppercase tracking-widest block mb-1">Impuestos (IVA)</label>
-                                    <p className="text-white font-bold text-lg">$ {selectedInvoice.iva_total?.toLocaleString('es-AR', { minimumFractionDigits: 2 }) || '0.00'}</p>
+                                <div className="bg-gray-50 dark:bg-black/30 rounded-xl p-4 border border-border-color/30 dark:border-white/5">
+                                    <label className="text-[8px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest block mb-1">Impuestos (IVA)</label>
+                                    <p className="text-text-main dark:text-white font-bold text-lg">$ {selectedInvoice.iva_total?.toLocaleString('es-AR', { minimumFractionDigits: 2 }) || '0.00'}</p>
                                 </div>
-                                <div className="bg-black/30 rounded-xl p-4 border border-white/5">
-                                    <label className="text-[8px] font-black text-white/30 uppercase tracking-widest block mb-1">Fecha</label>
+                                <div className="bg-gray-50 dark:bg-black/30 rounded-xl p-4 border border-border-color/30 dark:border-white/5">
+                                    <label className="text-[8px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest block mb-1">Fecha</label>
                                     <input
                                         type="date"
                                         value={selectedInvoice.fecha_factura || ''}
                                         onChange={(e) => setSelectedInvoice({ ...selectedInvoice, fecha_factura: e.target.value })}
-                                        className="w-full bg-transparent text-white font-bold text-lg outline-none"
+                                        className="w-full bg-transparent text-text-main dark:text-white font-bold text-lg outline-none"
                                     />
                                 </div>
                             </div>
@@ -620,40 +632,39 @@ const InvoiceProcessor: React.FC<InvoiceProcessorProps> = ({ isOpen = true, onCl
                                     <div className="flex items-center justify-center h-full">
                                         {selectedInvoice.status === 'processing' ? (
                                             <div className="flex items-center gap-3">
-                                                <div className="size-6 border-2 border-t-neon border-white/10 rounded-full animate-spin"></div>
-                                                <span className="text-white/40">Procesando con IA...</span>
+                                                <div className="size-6 border-2 border-t-neon border-border-color dark:border-white/10 rounded-full animate-spin"></div>
+                                                <span className="text-text-secondary dark:text-white/40">Procesando con IA...</span>
                                             </div>
                                         ) : (
-                                            <span className="text-white/20">Sin items</span>
+                                            <span className="text-text-secondary/40 dark:text-white/20">Sin items</span>
                                         )}
                                     </div>
                                 ) : (
                                     <table className="w-full">
                                         <thead>
-                                            <tr className="border-b border-white/[0.04]">
-                                                <th className="text-left text-[8px] font-black text-white/30 uppercase tracking-widest px-3 py-3 w-28">Categoría</th>
-                                                <th className="text-left text-[8px] font-black text-white/30 uppercase tracking-widest px-3 py-3">Producto</th>
-                                                <th className="text-center text-[8px] font-black text-white/30 uppercase tracking-widest px-3 py-3 w-16">Cant.</th>
-                                                <th className="text-center text-[8px] font-black text-white/30 uppercase tracking-widest px-3 py-3 w-16">% Bonif.</th>
-                                                <th className="text-right text-[8px] font-black text-white/30 uppercase tracking-widest px-3 py-3 w-24">P. Unit Neto</th>
+                                            <tr className="border-b border-border-color/30 dark:border-white/[0.04]">
+                                                <th className="text-left text-[8px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest px-3 py-3 w-28">Categoría</th>
+                                                <th className="text-left text-[8px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest px-3 py-3">Producto</th>
+                                                <th className="text-center text-[8px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest px-3 py-3 w-16">Cant.</th>
+                                                <th className="text-center text-[8px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest px-3 py-3 w-16">% Bonif.</th>
+                                                <th className="text-right text-[8px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest px-3 py-3 w-24">P. Unit Neto</th>
                                                 <th className="text-right text-[8px] font-black text-neon/60 uppercase tracking-widest px-3 py-3 w-24">P. Unit c/IVA</th>
-                                                <th className="text-right text-[8px] font-black text-white/30 uppercase tracking-widest px-3 py-3 w-24">Importe ($)</th>
+                                                <th className="text-right text-[8px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest px-3 py-3 w-24">Importe ($)</th>
                                                 <th className="w-10"></th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {selectedInvoice.items.map((item, idx) => (
-                                                <tr key={item.id || idx} className="border-b border-white/[0.02] hover:bg-white/[0.02]">
+                                                <tr key={item.id || idx} className="border-b border-border-color/10 dark:border-white/[0.02] hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
                                                     <td className="px-3 py-3">
                                                         <select
-                                                            className="w-full bg-[#1a1a1a] text-white/60 text-xs outline-none cursor-pointer rounded px-2 py-1 border border-white/10"
+                                                            className="w-full bg-gray-100 dark:bg-[#1a1a1a] text-text-secondary dark:text-white/60 text-xs outline-none cursor-pointer rounded px-2 py-1 border border-border-color dark:border-white/10"
                                                             value={item.category_id || ''}
                                                             onChange={(e) => updateItemField(item.id, 'category_id', e.target.value)}
-                                                            style={{ colorScheme: 'dark' }}
                                                         >
-                                                            <option value="" className="bg-[#1a1a1a] text-white/40">Cat...</option>
+                                                            <option value="" className="bg-white dark:bg-[#1a1a1a] text-text-secondary dark:text-white/40">Cat...</option>
                                                             {categories.map(c => (
-                                                                <option key={c.id} value={c.id} className="bg-[#1a1a1a] text-white">{c.name}</option>
+                                                                <option key={c.id} value={c.id} className="bg-white dark:bg-[#1a1a1a] text-text-main dark:text-white">{c.name}</option>
                                                             ))}
                                                         </select>
                                                     </td>
@@ -662,7 +673,7 @@ const InvoiceProcessor: React.FC<InvoiceProcessorProps> = ({ isOpen = true, onCl
                                                             type="text"
                                                             value={item.name}
                                                             onChange={(e) => updateItemField(item.id, 'name', e.target.value)}
-                                                            className="w-full bg-transparent text-white font-bold text-sm outline-none"
+                                                            className="w-full bg-transparent text-text-main dark:text-white font-bold text-sm outline-none"
                                                         />
                                                     </td>
                                                     <td className="px-3 py-3 text-center">
@@ -670,14 +681,14 @@ const InvoiceProcessor: React.FC<InvoiceProcessorProps> = ({ isOpen = true, onCl
                                                             type="number"
                                                             value={item.quantity}
                                                             onChange={(e) => updateItemField(item.id, 'quantity', parseFloat(e.target.value) || 0)}
-                                                            className="w-14 bg-black/40 border border-white/10 rounded px-2 py-1 text-white text-sm text-center outline-none focus:border-neon/50"
+                                                            className="w-14 bg-gray-100 dark:bg-black/40 border border-border-color dark:border-white/10 rounded px-2 py-1 text-text-main dark:text-white text-sm text-center outline-none focus:border-neon/50"
                                                         />
                                                     </td>
                                                     <td className="px-3 py-3 text-center">
-                                                        <span className="text-white/30 text-sm">{item.bonification || 0}</span>
+                                                        <span className="text-text-secondary/60 dark:text-white/30 text-sm">{item.bonification || 0}</span>
                                                     </td>
                                                     <td className="px-3 py-3 text-right">
-                                                        <span className="text-white/50 text-sm">
+                                                        <span className="text-text-secondary dark:text-white/50 text-sm">
                                                             {item.unit_price?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                                                         </span>
                                                     </td>
@@ -687,14 +698,14 @@ const InvoiceProcessor: React.FC<InvoiceProcessorProps> = ({ isOpen = true, onCl
                                                         </span>
                                                     </td>
                                                     <td className="px-3 py-3 text-right">
-                                                        <span className="text-white font-bold text-sm">
+                                                        <span className="text-text-main dark:text-white font-bold text-sm">
                                                             {item.total_line?.toLocaleString('es-AR', { minimumFractionDigits: 0 })}
                                                         </span>
                                                     </td>
                                                     <td className="px-3 py-3 text-center">
                                                         <button
                                                             onClick={() => removeItem(item.id)}
-                                                            className="text-white/20 hover:text-red-400 transition-all"
+                                                            className="text-text-secondary/40 dark:text-white/20 hover:text-red-400 transition-all"
                                                         >
                                                             <span className="material-symbols-outlined text-base">close</span>
                                                         </button>
@@ -708,10 +719,10 @@ const InvoiceProcessor: React.FC<InvoiceProcessorProps> = ({ isOpen = true, onCl
 
                             {/* Footer Actions */}
                             {selectedInvoice.items && selectedInvoice.items.length > 0 && (
-                                <div className="p-4 border-t border-white/[0.04] flex items-center justify-between">
+                                <div className="p-4 border-t border-border-color/30 dark:border-white/[0.04] flex items-center justify-between">
                                     <button
                                         onClick={handleDiscardAll}
-                                        className="text-white/30 text-[10px] font-bold uppercase tracking-widest hover:text-red-400 transition-all"
+                                        className="text-text-secondary/60 dark:text-white/30 text-[10px] font-bold uppercase tracking-widest hover:text-red-400 transition-all"
                                     >
                                         Descartar Todo
                                     </button>

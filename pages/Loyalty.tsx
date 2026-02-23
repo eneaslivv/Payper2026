@@ -349,7 +349,7 @@ const Loyalty: React.FC = () => {
                </h1>
             </div>
 
-            <div className="flex bg-[#141714] p-1 rounded-xl border border-white/5 shadow-2xl overflow-x-auto no-scrollbar">
+            <div className="flex bg-white dark:bg-surface-dark p-1 rounded-xl border border-border-color/30 dark:border-white/5 shadow-2xl overflow-x-auto no-scrollbar">
                <SubTabBtn active={activeSubTab === 'rewards'} onClick={() => setActiveSubTab('rewards')} icon="redeem">Catálogo Canje</SubTabBtn>
                <SubTabBtn active={activeSubTab === 'products'} onClick={() => setActiveSubTab('products')} icon="format_list_bulleted">Reglas Acumulación</SubTabBtn>
                <SubTabBtn active={activeSubTab === 'config'} onClick={() => setActiveSubTab('config')} icon="settings_suggest">Ajustes</SubTabBtn>
@@ -375,7 +375,7 @@ const Loyalty: React.FC = () => {
                   </div>
                   <button onClick={() => setAiStrategy(null)} className="text-neon/30 hover:text-neon"><span className="material-symbols-outlined text-sm">close</span></button>
                </div>
-               <p className="text-[11px] font-bold text-white/90 leading-relaxed italic">{aiStrategy}</p>
+               <p className="text-[11px] font-bold text-text-main/90 dark:text-white/90 leading-relaxed italic">{aiStrategy}</p>
             </div>
          )}
 
@@ -388,11 +388,11 @@ const Loyalty: React.FC = () => {
                      {/* Header with explanation */}
                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
-                           <h3 className="text-lg font-black uppercase text-white tracking-tight mb-1 flex items-center gap-2">
+                           <h3 className="text-lg font-black uppercase text-text-main dark:text-white tracking-tight mb-1 flex items-center gap-2">
                               <span className="material-symbols-outlined text-neon">redeem</span>
                               Catálogo de Premios
                            </h3>
-                           <p className="text-[11px] text-white/40">¿Qué productos puede canjear el cliente con sus puntos?</p>
+                           <p className="text-[11px] text-text-secondary dark:text-white/40">¿Qué productos puede canjear el cliente con sus puntos?</p>
                         </div>
                         <button
                            onClick={() => setShowRewardModal(true)}
@@ -411,24 +411,24 @@ const Loyalty: React.FC = () => {
                               <p className="text-[10px] font-black uppercase tracking-[0.3em]">Sincronizando Nodo...</p>
                            </div>
                         ) : rewards.length === 0 ? (
-                           <div className="col-span-full py-20 border-2 border-dashed border-white/5 rounded-[2.5rem] flex flex-col items-center justify-center text-center opacity-30">
-                              <span className="material-symbols-outlined text-5xl mb-4 text-white/20">loyalty</span>
-                              <h4 className="text-sm font-black text-white uppercase italic tracking-widest mb-2">Canje Vacío</h4>
+                           <div className="col-span-full py-20 border-2 border-dashed border-border-color/30 dark:border-white/5 rounded-[2.5rem] flex flex-col items-center justify-center text-center opacity-30">
+                              <span className="material-symbols-outlined text-5xl mb-4 text-text-secondary/40 dark:text-white/20">loyalty</span>
+                              <h4 className="text-sm font-black text-text-main dark:text-white uppercase italic tracking-widest mb-2">Canje Vacío</h4>
                               <p className="text-[9px] font-bold text-text-secondary uppercase tracking-[0.2em] max-w-[200px]">Vincula productos de tu inventario para activar recompensas.</p>
                            </div>
                         ) : (
                            rewards.map(reward => (
-                              <div key={reward.id} className={`p-4 rounded-2xl border transition-all flex items-center gap-4 group ${reward.is_active ? 'bg-[#141714] border-white/5 hover:border-neon/30' : 'bg-black/40 border-white/5 opacity-50'}`}>
-                                 <div className="size-16 rounded-xl bg-white/5 border border-white/5 overflow-hidden shrink-0">
+                              <div key={reward.id} className={`p-4 rounded-2xl border transition-all flex items-center gap-4 group ${reward.is_active ? 'bg-white dark:bg-surface-dark border-border-color/30 dark:border-white/5 hover:border-neon/30' : 'bg-gray-50 dark:bg-black/40 border-border-color/30 dark:border-white/5 opacity-50'}`}>
+                                 <div className="size-16 rounded-xl bg-black/5 dark:bg-white/5 border border-border-color/30 dark:border-white/5 overflow-hidden shrink-0">
                                     {reward.image ? (
                                        <img src={reward.image} className="size-full object-cover" />
                                     ) : (
-                                       <div className="size-full flex items-center justify-center text-white/20"><span className="material-symbols-outlined">redeem</span></div>
+                                       <div className="size-full flex items-center justify-center text-text-secondary/40 dark:text-white/20"><span className="material-symbols-outlined">redeem</span></div>
                                     )}
                                  </div>
                                  <div className="flex-1 min-w-0">
                                     <div className="flex justify-between items-start mb-1">
-                                       <h4 className="text-[11px] font-black uppercase text-white italic truncate pr-2">{reward.name}</h4>
+                                       <h4 className="text-[11px] font-black uppercase text-text-main dark:text-white italic truncate pr-2">{reward.name}</h4>
                                        <Toggle active={reward.is_active} onToggle={() => toggleRewardStatus(reward.id)} />
                                     </div>
                                     <div className="flex items-baseline gap-1.5">
@@ -436,7 +436,7 @@ const Loyalty: React.FC = () => {
                                        <span className="text-[8px] font-bold text-neon/50 uppercase tracking-widest">PTS</span>
                                     </div>
                                  </div>
-                                 <button onClick={() => deleteReward(reward.id)} className="size-8 rounded-lg bg-white/5 text-white/20 hover:text-primary hover:bg-primary/10 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
+                                 <button onClick={() => deleteReward(reward.id)} className="size-8 rounded-lg bg-black/5 dark:bg-white/5 text-text-secondary/40 dark:text-white/20 hover:text-primary hover:bg-primary/10 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
                                     <span className="material-symbols-outlined text-sm">delete</span>
                                  </button>
                               </div>
@@ -447,16 +447,16 @@ const Loyalty: React.FC = () => {
                )}
 
                {activeSubTab === 'config' && (
-                  <div className="bg-[#141714] p-8 rounded-3xl border border-white/5 space-y-8 animate-in slide-in-from-left-4">
+                  <div className="bg-white dark:bg-surface-dark p-8 rounded-3xl border border-border-color/30 dark:border-white/5 space-y-8 animate-in slide-in-from-left-4">
                      {/* Header with toggle */}
-                     <div className="flex items-center justify-between border-b border-white/5 pb-6">
+                     <div className="flex items-center justify-between border-b border-border-color/30 dark:border-white/5 pb-6">
                         <div className="flex items-center gap-4">
-                           <div className={`size-12 rounded-2xl flex items-center justify-center border transition-all ${config.isActive ? 'bg-neon/10 text-neon border-neon/20' : 'bg-white/5 text-white/20 border-white/5'}`}>
+                           <div className={`size-12 rounded-2xl flex items-center justify-center border transition-all ${config.isActive ? 'bg-neon/10 text-neon border-neon/20' : 'bg-black/5 dark:bg-white/5 text-text-secondary/40 dark:text-white/20 border-border-color/30 dark:border-white/5'}`}>
                               <span className="material-symbols-outlined text-2xl">loyalty</span>
                            </div>
                            <div>
-                              <h3 className="text-sm font-black uppercase tracking-widest text-white leading-none mb-1.5">Programa de Puntos</h3>
-                              <p className="text-[10px] font-bold text-white/40">{config.isActive ? '✓ Activo - Los clientes ganan puntos con cada compra' : 'Desactivado - No se acumulan puntos'}</p>
+                              <h3 className="text-sm font-black uppercase tracking-widest text-text-main dark:text-white leading-none mb-1.5">Programa de Puntos</h3>
+                              <p className="text-[10px] font-bold text-text-secondary dark:text-white/40">{config.isActive ? '✓ Activo - Los clientes ganan puntos con cada compra' : 'Desactivado - No se acumulan puntos'}</p>
                            </div>
                         </div>
                         <Toggle active={config.isActive} onToggle={() => setConfig({ ...config, isActive: !config.isActive })} />
@@ -466,21 +466,21 @@ const Loyalty: React.FC = () => {
                      <div className={`space-y-6 ${!config.isActive && 'opacity-20 pointer-events-none'}`}>
                         {/* Conversion explanation */}
                         <div className="p-6 bg-gradient-to-r from-neon/5 to-transparent rounded-2xl border border-neon/10">
-                           <h4 className="text-xs font-black uppercase text-white mb-4 flex items-center gap-2">
+                           <h4 className="text-xs font-black uppercase text-text-main dark:text-white mb-4 flex items-center gap-2">
                               <span className="material-symbols-outlined text-neon text-base">calculate</span>
                               ¿Cuántos puntos gana el cliente?
                            </h4>
                            <div className="flex items-center gap-4 mb-4">
                               <div className="flex-1 space-y-2">
-                                 <label className="text-[10px] font-bold text-white/60">Por cada</label>
+                                 <label className="text-[10px] font-bold text-text-secondary dark:text-white/60">Por cada</label>
                                  <div className="flex items-center gap-2">
-                                    <span className="text-white/40 font-bold">$</span>
-                                    <input type="number" value={config.baseAmount} onChange={e => setConfig({ ...config, baseAmount: parseInt(e.target.value) || 0 })} className="w-24 h-12 px-4 rounded-xl bg-black/40 border border-white/10 text-xl font-black text-white outline-none focus:ring-2 focus:ring-neon/30 text-center" />
+                                    <span className="text-text-secondary dark:text-white/40 font-bold">$</span>
+                                    <input type="number" value={config.baseAmount} onChange={e => setConfig({ ...config, baseAmount: parseInt(e.target.value) || 0 })} className="w-24 h-12 px-4 rounded-xl bg-gray-50 dark:bg-black/40 border border-border-color dark:border-white/10 text-xl font-black text-text-main dark:text-white outline-none focus:ring-2 focus:ring-neon/30 text-center" />
                                  </div>
                               </div>
                               <span className="material-symbols-outlined text-neon/50 text-2xl pt-6">arrow_forward</span>
                               <div className="flex-1 space-y-2">
-                                 <label className="text-[10px] font-bold text-white/60">Gana</label>
+                                 <label className="text-[10px] font-bold text-text-secondary dark:text-white/60">Gana</label>
                                  <div className="flex items-center gap-2">
                                     <input type="number" value={config.basePoints} onChange={e => setConfig({ ...config, basePoints: parseInt(e.target.value) || 0 })} className="w-24 h-12 px-4 rounded-xl bg-black/40 border border-neon/30 text-xl font-black text-neon outline-none focus:ring-2 focus:ring-neon/30 text-center" />
                                     <span className="text-neon font-bold">pts</span>
@@ -488,10 +488,10 @@ const Loyalty: React.FC = () => {
                               </div>
                            </div>
                            {/* Visual example */}
-                           <div className="p-4 bg-black/30 rounded-xl flex items-center justify-between">
+                           <div className="p-4 bg-gray-50 dark:bg-black/30 rounded-xl flex items-center justify-between">
                               <div className="flex items-center gap-3">
-                                 <span className="material-symbols-outlined text-white/30">shopping_cart</span>
-                                 <span className="text-sm text-white/60">Ejemplo: Compra de <strong className="text-white">${config.baseAmount * 5}</strong></span>
+                                 <span className="material-symbols-outlined text-text-secondary/60 dark:text-white/30">shopping_cart</span>
+                                 <span className="text-sm text-text-secondary dark:text-white/60">Ejemplo: Compra de <strong className="text-text-main dark:text-white">${config.baseAmount * 5}</strong></span>
                               </div>
                               <div className="flex items-center gap-2">
                                  <span className="text-2xl font-black text-neon">{config.basePoints * 5}</span>
@@ -501,13 +501,13 @@ const Loyalty: React.FC = () => {
                         </div>
 
                         {/* Rounding */}
-                        <div className="p-5 bg-white/[0.02] rounded-2xl border border-white/5">
-                           <h4 className="text-[10px] font-black uppercase text-white/50 mb-3">Redondeo de puntos</h4>
-                           <div className="flex bg-black/40 p-1 rounded-xl">
-                              <button onClick={() => setConfig({ ...config, rounding: 'down' })} className={`flex-1 py-2.5 rounded-lg text-[10px] font-bold transition-all ${config.rounding === 'down' ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/50'}`}>
+                        <div className="p-5 bg-black/[0.02] dark:bg-white/[0.02] rounded-2xl border border-border-color/30 dark:border-white/5">
+                           <h4 className="text-[10px] font-black uppercase text-text-secondary dark:text-white/50 mb-3">Redondeo de puntos</h4>
+                           <div className="flex bg-gray-100 dark:bg-black/40 p-1 rounded-xl">
+                              <button onClick={() => setConfig({ ...config, rounding: 'down' })} className={`flex-1 py-2.5 rounded-lg text-[10px] font-bold transition-all ${config.rounding === 'down' ? 'bg-white dark:bg-white/10 text-text-main dark:text-white shadow-sm' : 'text-text-secondary/60 dark:text-white/30 hover:text-text-secondary dark:hover:text-white/50'}`}>
                                  Hacia abajo (1.9 → 1)
                               </button>
-                              <button onClick={() => setConfig({ ...config, rounding: 'normal' })} className={`flex-1 py-2.5 rounded-lg text-[10px] font-bold transition-all ${config.rounding === 'normal' ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/50'}`}>
+                              <button onClick={() => setConfig({ ...config, rounding: 'normal' })} className={`flex-1 py-2.5 rounded-lg text-[10px] font-bold transition-all ${config.rounding === 'normal' ? 'bg-white dark:bg-white/10 text-text-main dark:text-white shadow-sm' : 'text-text-secondary/60 dark:text-white/30 hover:text-text-secondary dark:hover:text-white/50'}`}>
                                  Al más cercano (1.5 → 2)
                               </button>
                            </div>
@@ -517,19 +517,19 @@ const Loyalty: React.FC = () => {
                )}
 
                {activeSubTab === 'products' && (
-                  <div className="bg-[#141714] rounded-3xl border border-white/5 overflow-hidden animate-in slide-in-from-right-4">
-                     <div className="p-6 border-b border-white/5">
+                  <div className="bg-white dark:bg-surface-dark rounded-3xl border border-border-color/30 dark:border-white/5 overflow-hidden animate-in slide-in-from-right-4">
+                     <div className="p-6 border-b border-border-color/30 dark:border-white/5">
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                            <div>
-                              <h3 className="text-lg font-black uppercase text-white tracking-tight mb-1 flex items-center gap-2">
+                              <h3 className="text-lg font-black uppercase text-text-main dark:text-white tracking-tight mb-1 flex items-center gap-2">
                                  <span className="material-symbols-outlined text-neon">tune</span>
                                  Multiplicadores por Producto
                               </h3>
-                              <p className="text-[11px] text-white/40">Algunos productos pueden dar más puntos que otros (ej: x2 = el doble)</p>
+                              <p className="text-[11px] text-text-secondary dark:text-white/40">Algunos productos pueden dar más puntos que otros (ej: x2 = el doble)</p>
                            </div>
                            <div className="relative">
-                              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">search</span>
-                              <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="h-10 w-52 pl-10 pr-4 rounded-xl bg-black/40 border border-white/10 text-[10px] font-bold text-white outline-none focus:ring-2 focus:ring-neon/20" placeholder="Buscar producto..." />
+                              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary/60 dark:text-white/30 text-sm">search</span>
+                              <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="h-10 w-52 pl-10 pr-4 rounded-xl bg-gray-50 dark:bg-black/40 border border-border-color dark:border-white/10 text-[10px] font-bold text-text-main dark:text-white outline-none focus:ring-2 focus:ring-neon/20" placeholder="Buscar producto..." />
                            </div>
                         </div>
                      </div>
@@ -539,22 +539,22 @@ const Loyalty: React.FC = () => {
                               <p className="text-[10px] font-black uppercase tracking-[0.2em]">Cargando Productos...</p>
                            </div>
                         ) : products.length === 0 ? (
-                           <div className="py-20 flex flex-col items-center justify-center text-center opacity-20 border-t border-white/5">
+                           <div className="py-20 flex flex-col items-center justify-center text-center opacity-20 border-t border-border-color/30 dark:border-white/5">
                               <span className="material-symbols-outlined text-4xl mb-4">inventory_2</span>
                               <p className="text-[10px] font-black uppercase tracking-widest px-10 leading-relaxed">Sin productos detectados para aplicar reglas de acumulación.</p>
                            </div>
                         ) : (
                            <table className="w-full text-left">
-                              <tbody className="divide-y divide-white/[0.02]">
+                              <tbody className="divide-y divide-border-color/20 dark:divide-white/[0.02]">
                                  {filteredProducts.map(p => {
                                     const rule = productRules.find(r => r.productId === p.id) || { type: 'general', multiplier: 1 };
                                     return (
-                                       <tr key={p.id} className="hover:bg-white/[0.01] transition-all group">
+                                       <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.01] transition-all group">
                                           <td className="px-6 py-4">
                                              <div className="flex items-center gap-3">
-                                                <img src={p.image_url || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200'} className="size-8 rounded-lg object-cover grayscale group-hover:grayscale-0 transition-all border border-white/5" />
+                                                <img src={p.image_url || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200'} className="size-8 rounded-lg object-cover grayscale group-hover:grayscale-0 transition-all border border-border-color/30 dark:border-white/5" />
                                                 <div>
-                                                   <p className="text-[10px] font-black text-white uppercase italic leading-none">{p.name}</p>
+                                                   <p className="text-[10px] font-black text-text-main dark:text-white uppercase italic leading-none">{p.name}</p>
                                                    <p className="text-[7px] text-text-secondary font-bold uppercase opacity-30 mt-1">PRODUCTO</p>
                                                 </div>
                                              </div>
@@ -576,8 +576,8 @@ const Loyalty: React.FC = () => {
                )}
 
                {activeSubTab === 'audit' && (
-                  <div className="bg-[#141714] rounded-3xl border border-white/5 p-6 space-y-4 animate-in fade-in">
-                     <h3 className="text-xs font-black uppercase text-white/30 tracking-[0.2em] mb-4">LOG ECONOMÍA INTERNA</h3>
+                  <div className="bg-white dark:bg-surface-dark rounded-3xl border border-border-color/30 dark:border-white/5 p-6 space-y-4 animate-in fade-in">
+                     <h3 className="text-xs font-black uppercase text-text-secondary/60 dark:text-white/30 tracking-[0.2em] mb-4">LOG ECONOMÍA INTERNA</h3>
                      <div className="py-12 flex flex-col items-center justify-center text-center opacity-20 italic">
                         <span className="material-symbols-outlined text-4xl mb-4">history</span>
                         <p className="text-[9px] font-black uppercase tracking-widest">Sin actividad auditada disponible.</p>
@@ -588,15 +588,15 @@ const Loyalty: React.FC = () => {
 
             {/* SIMULADOR LATERAL */}
             <aside className="xl:col-span-4 space-y-6">
-               <div className="bg-[#141714] p-6 rounded-3xl border border-white/5 shadow-2xl space-y-6">
+               <div className="bg-white dark:bg-surface-dark p-6 rounded-3xl border border-border-color/30 dark:border-white/5 shadow-2xl space-y-6">
                   <div className="flex items-center gap-3 mb-2">
                      <span className="material-symbols-outlined text-neon text-lg">calculate</span>
-                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white italic">Puntos Simulator</h3>
+                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-main dark:text-white italic">Puntos Simulator</h3>
                   </div>
                   <div className="space-y-4">
                      <div className="space-y-1.5">
                         <label className="text-[7px] font-black uppercase text-text-secondary ml-1">Producto</label>
-                        <select value={simProduct} onChange={e => setSimProduct(e.target.value)} className="w-full h-9 px-3 rounded-lg bg-black/40 border border-white/10 text-[10px] font-bold text-white uppercase outline-none">
+                        <select value={simProduct} onChange={e => setSimProduct(e.target.value)} className="w-full h-9 px-3 rounded-lg bg-gray-50 dark:bg-black/40 border border-border-color dark:border-white/10 text-[10px] font-bold text-text-main dark:text-white uppercase outline-none">
                            {products.length > 0 ? (
                               products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)
                            ) : (
@@ -606,11 +606,11 @@ const Loyalty: React.FC = () => {
                      </div>
                      <div className="space-y-1.5">
                         <label className="text-[7px] font-black uppercase text-text-secondary ml-1">Monto ($)</label>
-                        <input type="number" value={simAmount} onChange={e => setSimAmount(parseFloat(e.target.value) || 0)} className="w-full h-11 px-4 rounded-xl bg-black/40 border border-white/10 text-xl font-black text-white outline-none" />
+                        <input type="number" value={simAmount} onChange={e => setSimAmount(parseFloat(e.target.value) || 0)} className="w-full h-11 px-4 rounded-xl bg-gray-50 dark:bg-black/40 border border-border-color dark:border-white/10 text-xl font-black text-text-main dark:text-white outline-none" />
                      </div>
                      <div className="py-6 rounded-2xl bg-neon/10 border border-neon/20 flex flex-col items-center justify-center shadow-inner">
                         <p className="text-[8px] font-black uppercase text-neon tracking-widest mb-1">Gana</p>
-                        <h4 className="text-5xl font-black italic-black text-white leading-none tracking-tighter">{calculatedPoints}</h4>
+                        <h4 className="text-5xl font-black italic-black text-text-main dark:text-white leading-none tracking-tighter">{calculatedPoints}</h4>
                         <p className="text-[8px] font-bold text-neon/40 uppercase mt-2">PUNTOS</p>
                      </div>
                   </div>
@@ -627,15 +627,15 @@ const Loyalty: React.FC = () => {
          {showRewardModal && (
             <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
                <div className="absolute inset-0 bg-black/95" onClick={() => setShowRewardModal(false)}></div>
-               <div className="relative bg-[#0D0F0D] rounded-3xl shadow-2xl w-full max-w-sm p-8 border border-white/10 animate-in zoom-in-95">
-                  <h3 className="text-xl font-black italic-black uppercase text-white tracking-tighter mb-6">Nueva <span className="text-neon">Recompensa</span></h3>
+               <div className="relative bg-white dark:bg-[#0D0F0D] rounded-3xl shadow-2xl w-full max-w-sm p-8 border border-border-color dark:border-white/10 animate-in zoom-in-95">
+                  <h3 className="text-xl font-black italic-black uppercase text-text-main dark:text-white tracking-tighter mb-6">Nueva <span className="text-neon">Recompensa</span></h3>
                   <div className="space-y-5">
                      <div className="space-y-1.5">
                         <label className="text-[8px] font-black uppercase text-text-secondary tracking-widest ml-1">Producto a Canjear</label>
                         <select
                            value={newReward.productId}
                            onChange={e => setNewReward({ ...newReward, productId: e.target.value })}
-                           className="w-full h-10 px-4 rounded-xl bg-black/40 border border-white/10 text-[10px] font-bold text-white uppercase outline-none focus:ring-1 focus:ring-neon/20"
+                           className="w-full h-10 px-4 rounded-xl bg-gray-50 dark:bg-black/40 border border-border-color dark:border-white/10 text-[10px] font-bold text-text-main dark:text-white uppercase outline-none focus:ring-1 focus:ring-neon/20"
                         >
                            <option value="">Seleccionar Item...</option>
                            {products.map(p => (
@@ -649,12 +649,12 @@ const Loyalty: React.FC = () => {
                            type="number"
                            value={newReward.points}
                            onChange={e => setNewReward({ ...newReward, points: parseInt(e.target.value) || 0 })}
-                           className="w-full h-10 px-4 rounded-xl bg-black/40 border border-white/10 text-[12px] font-black text-white outline-none focus:ring-1 focus:ring-neon/20"
+                           className="w-full h-10 px-4 rounded-xl bg-gray-50 dark:bg-black/40 border border-border-color dark:border-white/10 text-[12px] font-black text-text-main dark:text-white outline-none focus:ring-1 focus:ring-neon/20"
                            placeholder="0"
                         />
                      </div>
                      <div className="pt-4 flex gap-3">
-                        <button onClick={() => setShowRewardModal(false)} className="flex-1 py-3 text-[9px] font-black uppercase text-white/30 hover:text-white transition-colors">Cancelar</button>
+                        <button onClick={() => setShowRewardModal(false)} className="flex-1 py-3 text-[9px] font-black uppercase text-text-secondary/60 dark:text-white/30 hover:text-text-main dark:hover:text-white transition-colors">Cancelar</button>
                         <button onClick={handleAddReward} className="flex-[2] py-3 bg-neon text-black rounded-xl font-black uppercase text-[9px] tracking-widest shadow-xl active:scale-95 transition-all">Crear Regla</button>
                      </div>
                   </div>
@@ -666,14 +666,14 @@ const Loyalty: React.FC = () => {
          {editingRule && (
             <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
                <div className="absolute inset-0 bg-black/95" onClick={() => setEditingRule(null)}></div>
-               <div className="relative bg-[#0D0F0D] rounded-3xl shadow-2xl w-full max-w-sm p-8 border border-white/10 animate-in zoom-in-95">
-                  <h3 className="text-xl font-black italic-black uppercase text-white tracking-tighter mb-6">Regla <span className="text-neon">Individual</span></h3>
+               <div className="relative bg-white dark:bg-[#0D0F0D] rounded-3xl shadow-2xl w-full max-w-sm p-8 border border-border-color dark:border-white/10 animate-in zoom-in-95">
+                  <h3 className="text-xl font-black italic-black uppercase text-text-main dark:text-white tracking-tighter mb-6">Regla <span className="text-neon">Individual</span></h3>
                   <div className="space-y-6">
                      <div className="space-y-2">
                         <label className="text-[8px] font-black uppercase text-text-secondary tracking-widest">Multiplicador Táctico</label>
                         <div className="grid grid-cols-4 gap-2">
                            {[0.5, 1, 1.5, 2].map(m => (
-                              <button key={m} onClick={() => setEditingRule({ ...editingRule, multiplier: m })} className={`py-2.5 rounded-xl text-[10px] font-black border transition-all ${editingRule.multiplier === m ? 'bg-neon text-black border-neon' : 'bg-white/5 text-white/20 border-white/5'}`}>x{m}</button>
+                              <button key={m} onClick={() => setEditingRule({ ...editingRule, multiplier: m })} className={`py-2.5 rounded-xl text-[10px] font-black border transition-all ${editingRule.multiplier === m ? 'bg-neon text-black border-neon' : 'bg-black/5 dark:bg-white/5 text-text-secondary/40 dark:text-white/20 border-border-color/30 dark:border-white/5'}`}>x{m}</button>
                            ))}
                         </div>
                      </div>
@@ -687,14 +687,14 @@ const Loyalty: React.FC = () => {
 };
 
 const SubTabBtn: React.FC<{ active: boolean, onClick: () => void, icon: string, children: React.ReactNode }> = ({ active, onClick, icon, children }) => (
-   <button onClick={onClick} className={`px-6 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2.5 whitespace-nowrap ${active ? 'bg-white/10 text-white shadow-sm' : 'text-white/20 hover:text-white'}`}>
+   <button onClick={onClick} className={`px-6 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2.5 whitespace-nowrap ${active ? 'bg-black/10 dark:bg-white/10 text-text-main dark:text-white shadow-sm' : 'text-text-secondary/40 dark:text-white/20 hover:text-text-main dark:hover:text-white'}`}>
       <span className="material-symbols-outlined text-base">{icon}</span>
       {children}
    </button>
 );
 
 const Toggle: React.FC<{ active: boolean, onToggle: () => void }> = ({ active, onToggle }) => (
-   <button onClick={onToggle} className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-all ${active ? 'bg-neon shadow-neon-soft' : 'bg-white/10'}`}>
+   <button onClick={onToggle} className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-all ${active ? 'bg-neon shadow-neon-soft' : 'bg-black/10 dark:bg-white/10'}`}>
       <span className={`h-4 w-4 transform rounded-full bg-white transition ${active ? 'translate-x-5' : 'translate-x-0'}`} />
    </button>
 );

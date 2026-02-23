@@ -35,6 +35,8 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
   const [foundCustomers, setFoundCustomers] = useState<any[]>([]);
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [creatingClient, setCreatingClient] = useState(false);
+  const [newClientPhone, setNewClientPhone] = useState('');
 
   // Reservation invite state
   const [inviteToken, setInviteToken] = useState<string | null>(null);
@@ -118,29 +120,32 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
     }
   };
 
-  // Fetch customers for syncing
-  useEffect(() => {
-    if (customerSearch.length < 2) {
-      setFoundCustomers([]);
-      setShowCustomerDropdown(false);
-      return;
+  // Fetch clients for reservation search
+  const fetchClients = async (search: string) => {
+    if (!profile?.store_id) return;
+    let query = supabase
+      .from('clients' as any)
+      .select('id, name, full_name, email, phone')
+      .eq('store_id', profile.store_id)
+      .order('name', { ascending: true })
+      .limit(10);
+
+    if (search.trim()) {
+      query = query.or(`name.ilike.%${search}%,full_name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%`);
     }
 
-    const timer = setTimeout(async () => {
-      const { data } = await supabase
-        .from('profiles' as any)
-        .select('id, full_name, avatar_url')
-        .or(`full_name.ilike.%${customerSearch}%`)
-        .limit(5);
+    const { data } = await query;
+    if (data) {
+      setFoundCustomers(data);
+      setShowCustomerDropdown(true);
+    }
+  };
 
-      if (data) {
-        setFoundCustomers(data);
-        setShowCustomerDropdown(true);
-      }
-    }, 300);
-
+  useEffect(() => {
+    if (!showCustomerDropdown) return;
+    const timer = setTimeout(() => fetchClients(customerSearch), 200);
     return () => clearTimeout(timer);
-  }, [customerSearch]);
+  }, [customerSearch, showCustomerDropdown]);
 
   // Real Data State
   const [orderItems, setOrderItems] = useState<any[]>([]);
@@ -500,7 +505,7 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
         p_node_id: table.id,
         p_customer_name: customerName,
         p_customer_email: customerEmail || null,
-        p_customer_phone: null,
+        p_customer_phone: newClientPhone || null,
         p_client_id: selectedCustomerId || null,
         p_pax: pax,
         p_initial_credit: reservationAmount ? parseFloat(reservationAmount) : 0,
@@ -1333,63 +1338,168 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
               <div className="space-y-4">
                 <label className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] italic">Detalles del Cliente</label>
                 <div className="space-y-4">
-                  <div className="relative group">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-700 group-focus-within:text-indigo-400 transition-colors" size={18} />
-                    <input
-                      autoFocus
-                      type="text"
-                      placeholder="BUSCAR CLIENTE..."
-                      value={customerSearch}
-                      onChange={(e) => {
-                        setCustomerSearch(e.target.value);
-                        setCustomerName(e.target.value);
-                        if (!e.target.value) {
+                  {/* Selected client chip OR search input */}
+                  {selectedCustomerId ? (
+                    <div className="flex items-center gap-3 bg-indigo-500/5 border border-indigo-500/20 rounded-[24px] py-4 px-5">
+                      <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 text-sm font-black uppercase">
+                        {customerName?.[0] || 'C'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-black text-white uppercase italic truncate">{customerName}</p>
+                        {customerEmail && <p className="text-[9px] text-zinc-500 font-medium truncate">{customerEmail}</p>}
+                      </div>
+                      <button
+                        onClick={() => {
                           setSelectedCustomerId(null);
-                          setShowCustomerDropdown(false);
-                        }
-                      }}
-                      className="w-full bg-[#0a0a0a] border border-zinc-900 rounded-[24px] py-5 pl-14 pr-6 text-sm font-black text-white placeholder:text-zinc-800 focus:border-indigo-500/50 outline-none transition-all focus:ring-4 focus:ring-indigo-500/5"
-                    />
+                          setCustomerName('');
+                          setCustomerEmail('');
+                          setCustomerSearch('');
+                        }}
+                        className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center text-zinc-500 hover:text-white transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : creatingClient ? (
+                    /* Inline new client form */
+                    <div className="bg-[#0a0a0a] border border-indigo-500/30 rounded-2xl p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Nuevo Cliente</p>
+                        <button onClick={() => { setCreatingClient(false); setCustomerName(''); setNewClientPhone(''); setCustomerEmail(''); }} className="text-zinc-600 hover:text-white transition-colors">
+                          <X size={14} />
+                        </button>
+                      </div>
+                      <input
+                        autoFocus
+                        type="text"
+                        placeholder="NOMBRE *"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        className="w-full bg-black border border-zinc-800 rounded-xl py-3 px-4 text-sm font-bold text-white placeholder:text-zinc-700 focus:border-indigo-500/50 outline-none transition-all"
+                      />
+                      <input
+                        type="tel"
+                        placeholder="TELÉFONO (OPCIONAL)"
+                        value={newClientPhone}
+                        onChange={(e) => setNewClientPhone(e.target.value)}
+                        className="w-full bg-black border border-zinc-800 rounded-xl py-3 px-4 text-sm font-bold text-white placeholder:text-zinc-700 focus:border-indigo-500/50 outline-none transition-all"
+                      />
+                      <input
+                        type="email"
+                        placeholder="EMAIL (OPCIONAL)"
+                        value={customerEmail}
+                        onChange={(e) => setCustomerEmail(e.target.value)}
+                        className="w-full bg-black border border-zinc-800 rounded-xl py-3 px-4 text-sm font-bold text-white placeholder:text-zinc-700 focus:border-indigo-500/50 outline-none transition-all"
+                      />
+                      <button
+                        disabled={!customerName.trim() || isProcessing}
+                        onClick={async () => {
+                          if (!profile?.store_id || !customerName.trim()) return;
+                          setIsProcessing(true);
+                          try {
+                            const { data, error } = await supabase
+                              .from('clients' as any)
+                              .insert({
+                                name: customerName.trim(),
+                                full_name: customerName.trim(),
+                                phone: newClientPhone.trim() || null,
+                                email: customerEmail.trim() || null,
+                                store_id: profile.store_id,
+                              })
+                              .select('id')
+                              .single();
+                            if (error) throw error;
+                            setSelectedCustomerId(data.id);
+                            setCreatingClient(false);
+                            addToast('Cliente creado', 'success');
+                          } catch (err: any) {
+                            addToast(err.message || 'Error al crear cliente', 'error');
+                          } finally {
+                            setIsProcessing(false);
+                          }
+                        }}
+                        className="w-full py-3 rounded-xl bg-indigo-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {isProcessing ? 'Creando...' : 'Crear Cliente'}
+                      </button>
+                    </div>
+                  ) : (
+                    /* Search input */
+                    <div className="relative group">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-700 group-focus-within:text-indigo-400 transition-colors" size={18} />
+                      <input
+                        autoFocus
+                        type="text"
+                        placeholder="BUSCAR CLIENTE..."
+                        value={customerSearch}
+                        onFocus={() => { setShowCustomerDropdown(true); fetchClients(customerSearch); }}
+                        onChange={(e) => {
+                          setCustomerSearch(e.target.value);
+                          if (!e.target.value) {
+                            setSelectedCustomerId(null);
+                            setCustomerName('');
+                          }
+                        }}
+                        onBlur={() => setTimeout(() => setShowCustomerDropdown(false), 200)}
+                        className="w-full bg-[#0a0a0a] border border-zinc-900 rounded-[24px] py-5 pl-14 pr-6 text-sm font-black text-white placeholder:text-zinc-800 focus:border-indigo-500/50 outline-none transition-all focus:ring-4 focus:ring-indigo-500/5"
+                      />
 
-                    {/* CUSTOMER DROPDOWN */}
-                    {showCustomerDropdown && foundCustomers.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 mt-2 bg-[#0a0a0a] border border-zinc-800 rounded-2xl shadow-2xl z-50 overflow-hidden">
-                        {foundCustomers.map((c) => (
+                      {/* CUSTOMER DROPDOWN */}
+                      {showCustomerDropdown && (
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-[#0a0a0a] border border-zinc-800 rounded-2xl shadow-2xl z-50 overflow-hidden max-h-[300px] overflow-y-auto">
+                          {foundCustomers.length > 0 ? foundCustomers.map((c) => (
+                            <button
+                              key={c.id}
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => {
+                                setSelectedCustomerId(c.id);
+                                setCustomerName(c.name || c.full_name);
+                                setCustomerEmail(c.email || '');
+                                setCustomerSearch('');
+                                setShowCustomerDropdown(false);
+                              }}
+                              className="w-full p-4 flex items-center gap-3 hover:bg-indigo-500/5 transition-all text-left border-b border-zinc-900/50 last:border-0"
+                            >
+                              <div className="w-9 h-9 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 text-xs font-bold uppercase shrink-0">
+                                {(c.name || c.full_name)?.[0] || 'C'}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-black text-white uppercase italic truncate">{c.name || c.full_name}</p>
+                                <p className="text-[8px] text-zinc-600 font-bold truncate">
+                                  {[c.phone, c.email].filter(Boolean).join(' · ') || 'Sin datos de contacto'}
+                                </p>
+                              </div>
+                            </button>
+                          )) : (
+                            <div className="p-4 text-center text-[10px] text-zinc-600 font-bold uppercase tracking-wider">
+                              No se encontraron clientes
+                            </div>
+                          )}
+                          {/* Create new client option */}
                           <button
-                            key={c.id}
+                            onMouseDown={(e) => e.preventDefault()}
                             onClick={() => {
-                              setSelectedCustomerId(c.id);
-                              setCustomerName(c.full_name);
-                              setCustomerSearch(c.full_name);
+                              setCreatingClient(true);
+                              setCustomerName(customerSearch);
                               setShowCustomerDropdown(false);
+                              setCustomerSearch('');
                             }}
-                            className="w-full p-4 flex items-center gap-3 hover:bg-zinc-900 transition-all text-left border-b border-zinc-900/50 last:border-0"
+                            className="w-full p-4 flex items-center gap-3 hover:bg-[#36e27b]/5 transition-all text-left border-t border-zinc-800"
                           >
-                            <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 text-xs font-bold uppercase">
-                              {c.full_name?.[0] || 'C'}
+                            <div className="w-9 h-9 rounded-full bg-[#36e27b]/10 flex items-center justify-center text-[#36e27b] shrink-0">
+                              <Plus size={16} />
                             </div>
                             <div className="flex-1">
-                              <p className="text-xs font-black text-white uppercase italic">{c.full_name}</p>
-                              <p className="text-[8px] text-zinc-600 font-bold uppercase tracking-widest">Cliente Registrado</p>
+                              <p className="text-xs font-black text-[#36e27b] uppercase italic">
+                                {customerSearch.trim() ? `Crear "${customerSearch.trim()}"` : 'Crear nuevo cliente'}
+                              </p>
+                              <p className="text-[8px] text-zinc-600 font-bold uppercase tracking-widest">Registrar cliente nuevo</p>
                             </div>
                           </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="relative group">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-700 group-focus-within:text-indigo-400 transition-colors">
-                      <Receipt size={18} />
+                        </div>
+                      )}
                     </div>
-                    <input
-                      type="email"
-                      placeholder="EMAIL (OPCIONAL)..."
-                      value={customerEmail}
-                      onChange={(e) => setCustomerEmail(e.target.value)}
-                      className="w-full bg-[#0a0a0a] border border-zinc-900 rounded-[24px] py-5 pl-14 pr-6 text-sm font-black text-white placeholder:text-zinc-800 focus:border-indigo-500/50 outline-none transition-all focus:ring-4 focus:ring-indigo-500/5"
-                    />
-                  </div>
+                  )}
                 </div>
               </div>
 

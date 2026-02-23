@@ -136,7 +136,7 @@ const StaffManagement: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-8 py-5">
-                      <span className="text-[9px] font-black bg-white/5 px-2 py-1 rounded text-white uppercase tracking-widest border border-white/5">{roles.find(r => r.id === member.roleId)?.name}</span>
+                      <span className="text-[9px] font-black bg-black/5 dark:bg-white/5 px-2 py-1 rounded text-text-main dark:text-white uppercase tracking-widest border border-border-color/30 dark:border-white/5">{roles.find(r => r.id === member.roleId)?.name}</span>
                     </td>
                     <td className="px-8 py-5 text-[9px] font-bold dark:text-white/40 uppercase tracking-widest">{member.lastActivity}</td>
                     <td className="px-8 py-5 text-center">
@@ -159,29 +159,29 @@ const StaffManagement: React.FC = () => {
         {activeTab === 'roles' && (
           <div className="space-y-8 animate-in slide-in-from-right-4">
              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                <button onClick={handleNewRole} className="min-h-[200px] rounded-[2.5rem] border border-dashed border-white/10 flex flex-col items-center justify-center gap-4 group hover:border-neon/40 hover:bg-neon/[0.02] transition-all">
-                   <div className="size-16 rounded-full bg-white/5 flex items-center justify-center text-white/20 group-hover:text-neon group-hover:scale-110 transition-all">
+                <button onClick={handleNewRole} className="min-h-[200px] rounded-[2.5rem] border border-dashed border-border-color dark:border-white/10 flex flex-col items-center justify-center gap-4 group hover:border-neon/40 hover:bg-neon/[0.02] transition-all">
+                   <div className="size-16 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center text-text-secondary/40 dark:text-white/20 group-hover:text-neon group-hover:scale-110 transition-all">
                       <span className="material-symbols-outlined text-3xl">add</span>
                    </div>
-                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 group-hover:text-neon transition-colors">Crear Nueva Jerarquía</p>
+                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary dark:text-white/40 group-hover:text-neon transition-colors">Crear Nueva Jerarquía</p>
                 </button>
 
                 {roles.map(role => (
-                  <div key={role.id} className="bg-white dark:bg-surface-dark p-8 rounded-[2.5rem] border border-white/5 flex flex-col justify-between group hover:border-white/10 transition-all shadow-soft">
+                  <div key={role.id} className="bg-white dark:bg-surface-dark p-8 rounded-[2.5rem] border border-border-color/30 dark:border-white/5 flex flex-col justify-between group hover:border-border-color dark:hover:border-white/10 transition-all shadow-soft">
                     <div>
                       <div className="flex justify-between items-start mb-6">
-                        <div className="size-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/30 group-hover:text-white transition-colors">
+                        <div className="size-12 rounded-2xl bg-black/5 dark:bg-white/5 flex items-center justify-center text-text-secondary/60 dark:text-white/30 group-hover:text-text-main dark:group-hover:text-white transition-colors">
                             <span className="material-symbols-outlined text-2xl">security</span>
                         </div>
-                        {role.is_system && <span className="text-[7px] bg-white/5 text-white/40 px-2 py-1 rounded-lg font-black uppercase tracking-widest border border-white/5">System Locked</span>}
+                        {role.is_system && <span className="text-[7px] bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/40 px-2 py-1 rounded-lg font-black uppercase tracking-widest border border-border-color/30 dark:border-white/5">System Locked</span>}
                       </div>
                       <h3 className="text-xl font-black italic-black uppercase tracking-tight dark:text-white mb-2">{role.name}</h3>
                       <p className="text-[10px] text-text-secondary font-medium leading-relaxed opacity-60 line-clamp-3">{role.description}</p>
                     </div>
                     
-                    <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between">
-                       <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Permisos Configurados</span>
-                       <button onClick={() => handleEditRole(role)} className="px-5 py-2 rounded-xl bg-white/5 text-white font-black text-[9px] uppercase tracking-widest hover:bg-neon hover:text-black transition-all">
+                    <div className="mt-8 pt-6 border-t border-border-color/30 dark:border-white/5 flex items-center justify-between">
+                       <span className="text-[9px] font-bold text-text-secondary/40 dark:text-white/20 uppercase tracking-widest">Permisos Configurados</span>
+                       <button onClick={() => handleEditRole(role)} className="px-5 py-2 rounded-xl bg-black/5 dark:bg-white/5 text-text-main dark:text-white font-black text-[9px] uppercase tracking-widest hover:bg-neon hover:text-black transition-all">
                           Editar Matriz
                        </button>
                     </div>
@@ -196,15 +196,15 @@ const StaffManagement: React.FC = () => {
       {showRoleModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
           <div className="absolute inset-0 bg-black/95 backdrop-blur-md" onClick={() => setShowRoleModal(false)}></div>
-          <div className="relative bg-[#0D0F0D] rounded-[3rem] shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col border border-white/10 animate-in zoom-in-95 overflow-hidden">
-             
+          <div className="relative bg-white dark:bg-[#0D0F0D] rounded-[3rem] shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col border border-border-color dark:border-white/10 animate-in zoom-in-95 overflow-hidden">
+
              {/* Header Modal */}
-             <div className="px-10 py-8 border-b border-white/5 flex justify-between items-start shrink-0 bg-[#111311]">
+             <div className="px-10 py-8 border-b border-border-color/30 dark:border-white/5 flex justify-between items-start shrink-0 bg-gray-50 dark:bg-[#111311]">
                 <div className="space-y-1">
-                   <h3 className="text-3xl font-black italic-black uppercase tracking-tighter text-white">Configuración de <span className="text-neon">Accesos</span></h3>
+                   <h3 className="text-3xl font-black italic-black uppercase tracking-tighter text-text-main dark:text-white">Configuración de <span className="text-neon">Accesos</span></h3>
                    <p className="text-text-secondary text-[10px] font-bold uppercase tracking-widest opacity-60">Matriz de privilegios por módulo operativo</p>
                 </div>
-                <button onClick={() => setShowRoleModal(false)} className="size-12 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all">
+                <button onClick={() => setShowRoleModal(false)} className="size-12 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-all">
                    <span className="material-symbols-outlined text-xl">close</span>
                 </button>
              </div>
@@ -212,13 +212,13 @@ const StaffManagement: React.FC = () => {
              {/* Body Modal */}
              <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
                 {/* Sidebar del Formulario */}
-                <div className="w-full md:w-80 p-8 border-r border-white/5 bg-[#0D0F0D] overflow-y-auto shrink-0 space-y-6">
+                <div className="w-full md:w-80 p-8 border-r border-border-color/30 dark:border-white/5 bg-white dark:bg-[#0D0F0D] overflow-y-auto shrink-0 space-y-6">
                     <div className="space-y-2">
                         <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest ml-1">Nombre del Rol</label>
                         <input 
                           value={roleForm.name}
                           onChange={e => setRoleForm({...roleForm, name: e.target.value})}
-                          className="w-full h-12 px-5 rounded-2xl bg-white/5 border border-white/10 font-bold text-xs text-white uppercase outline-none focus:ring-1 focus:ring-neon/30 placeholder:text-white/20" 
+                          className="w-full h-12 px-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-border-color dark:border-white/10 font-bold text-xs text-text-main dark:text-white uppercase outline-none focus:ring-1 focus:ring-neon/30 placeholder:text-text-secondary/40 dark:placeholder:text-white/20" 
                           placeholder="EJ: SUPERVISOR NOCTURNO"
                         />
                     </div>
@@ -227,7 +227,7 @@ const StaffManagement: React.FC = () => {
                         <textarea 
                           value={roleForm.description}
                           onChange={e => setRoleForm({...roleForm, description: e.target.value})}
-                          className="w-full h-32 p-5 rounded-2xl bg-white/5 border border-white/10 font-bold text-[10px] text-white outline-none focus:ring-1 focus:ring-neon/30 placeholder:text-white/20 resize-none leading-relaxed" 
+                          className="w-full h-32 p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-border-color dark:border-white/10 font-bold text-[10px] text-text-main dark:text-white outline-none focus:ring-1 focus:ring-neon/30 placeholder:text-text-secondary/40 dark:placeholder:text-white/20 resize-none leading-relaxed" 
                           placeholder="Describe las responsabilidades..."
                         />
                     </div>
@@ -236,32 +236,32 @@ const StaffManagement: React.FC = () => {
                             <span className="material-symbols-outlined text-neon text-lg">info</span>
                             <p className="text-[10px] font-black text-neon uppercase tracking-widest pt-0.5">Nota Táctica</p>
                         </div>
-                        <p className="text-[9px] font-medium text-white/60 leading-relaxed">
+                        <p className="text-[9px] font-medium text-text-secondary dark:text-white/60 leading-relaxed">
                             Los cambios en la matriz de seguridad se aplican inmediatamente. Asegúrate de revisar los privilegios de "Borrar".
                         </p>
                     </div>
                 </div>
 
                 {/* La Matriz */}
-                <div className="flex-1 overflow-y-auto bg-[#0A0C0A] p-8">
-                   <div className="rounded-3xl border border-white/5 overflow-hidden">
+                <div className="flex-1 overflow-y-auto bg-background-light dark:bg-[#0A0C0A] p-8">
+                   <div className="rounded-3xl border border-border-color/30 dark:border-white/5 overflow-hidden">
                        <table className="w-full text-left border-collapse">
-                          <thead className="bg-white/[0.02]">
-                             <tr className="border-b border-white/5">
-                                <th className="px-6 py-4 text-[9px] font-black uppercase text-white/30 tracking-widest">Módulo</th>
-                                <th className="px-2 py-4 text-center text-[9px] font-black uppercase text-white/30 tracking-widest w-24">Lectura</th>
-                                <th className="px-2 py-4 text-center text-[9px] font-black uppercase text-white/30 tracking-widest w-24">Escritura</th>
-                                <th className="px-2 py-4 text-center text-[9px] font-black uppercase text-white/30 tracking-widest w-24">Edición</th>
-                                <th className="px-2 py-4 text-center text-[9px] font-black uppercase text-white/30 tracking-widest w-24">Eliminar</th>
+                          <thead className="bg-black/[0.02] dark:bg-white/[0.02]">
+                             <tr className="border-b border-border-color/30 dark:border-white/5">
+                                <th className="px-6 py-4 text-[9px] font-black uppercase text-text-secondary/60 dark:text-white/30 tracking-widest">Módulo</th>
+                                <th className="px-2 py-4 text-center text-[9px] font-black uppercase text-text-secondary/60 dark:text-white/30 tracking-widest w-24">Lectura</th>
+                                <th className="px-2 py-4 text-center text-[9px] font-black uppercase text-text-secondary/60 dark:text-white/30 tracking-widest w-24">Escritura</th>
+                                <th className="px-2 py-4 text-center text-[9px] font-black uppercase text-text-secondary/60 dark:text-white/30 tracking-widest w-24">Edición</th>
+                                <th className="px-2 py-4 text-center text-[9px] font-black uppercase text-text-secondary/60 dark:text-white/30 tracking-widest w-24">Eliminar</th>
                              </tr>
                           </thead>
-                          <tbody className="divide-y divide-white/5">
+                          <tbody className="divide-y divide-border-color/30 dark:divide-white/5">
                             {SECTIONS.map(s => {
                                 const perms = (roleForm.permissions?.[s.slug] as any) || {};
                                 return (
-                                  <tr key={s.slug} className="hover:bg-white/[0.01] transition-colors group">
+                                  <tr key={s.slug} className="hover:bg-gray-50 dark:hover:bg-white/[0.01] transition-colors group">
                                     <td className="px-6 py-4">
-                                       <p className="text-[11px] font-black text-white uppercase italic tracking-tight">{s.label}</p>
+                                       <p className="text-[11px] font-black text-text-main dark:text-white uppercase italic tracking-tight">{s.label}</p>
                                     </td>
                                     {['view', 'create', 'edit', 'delete'].map(action => (
                                       <td key={action} className="px-2 py-4 text-center">
@@ -270,7 +270,7 @@ const StaffManagement: React.FC = () => {
                                           className={`size-10 rounded-xl border transition-all flex items-center justify-center mx-auto ${
                                               perms[action] 
                                               ? action === 'delete' ? 'bg-red-500 text-white border-red-600' : 'bg-neon text-black border-neon'
-                                              : 'bg-white/5 border-white/5 text-white/10 hover:border-white/20'
+                                              : 'bg-black/5 dark:bg-white/5 border-border-color/30 dark:border-white/5 text-text-secondary/20 dark:text-white/10 hover:border-border-color dark:hover:border-white/20'
                                           }`}
                                         >
                                           <span className="material-symbols-outlined text-lg font-black">
@@ -289,8 +289,8 @@ const StaffManagement: React.FC = () => {
              </div>
 
              {/* Footer Actions */}
-             <div className="p-6 border-t border-white/5 bg-[#111311] flex justify-end gap-4 shrink-0">
-                <button onClick={() => setShowRoleModal(false)} className="px-8 py-4 rounded-2xl border border-white/10 font-black text-[10px] uppercase text-white/40 hover:text-white hover:bg-white/5 transition-all">Cancelar</button>
+             <div className="p-6 border-t border-border-color/30 dark:border-white/5 bg-gray-50 dark:bg-[#111311] flex justify-end gap-4 shrink-0">
+                <button onClick={() => setShowRoleModal(false)} className="px-8 py-4 rounded-2xl border border-border-color dark:border-white/10 font-black text-[10px] uppercase text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-all">Cancelar</button>
                 <button onClick={saveRole} className="px-10 py-4 bg-neon text-black rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-[0_0_20px_rgba(74,222,128,0.3)] hover:scale-105 active:scale-95 transition-all">Guardar Configuración</button>
              </div>
           </div>

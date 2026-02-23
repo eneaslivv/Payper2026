@@ -190,19 +190,19 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
             <div className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose} />
 
             {/* Modal */}
-            <div className="relative z-10 bg-[#0D0F0D] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+            <div className="relative z-10 bg-white dark:bg-[#0D0F0D] border border-border-color dark:border-white/10 rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
                 {/* Header - Fixed */}
-                <div className="flex items-center justify-between p-6 border-b border-white/5 shrink-0">
+                <div className="flex items-center justify-between p-6 border-b border-border-color/30 dark:border-white/5 shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="size-10 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
                             <span className="material-symbols-outlined text-blue-500">swap_horiz</span>
                         </div>
                         <div>
-                            <h2 className="text-lg font-black text-white uppercase tracking-tight">Transferir Stock</h2>
-                            <p className="text-[10px] text-white/40">Mover entre ubicaciones</p>
+                            <h2 className="text-lg font-black text-text-main dark:text-white uppercase tracking-tight">Transferir Stock</h2>
+                            <p className="text-[10px] text-text-secondary dark:text-white/40">Mover entre ubicaciones</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
+                    <button onClick={onClose} className="text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white transition-colors">
                         <span className="material-symbols-outlined">close</span>
                     </button>
                 </div>
@@ -213,11 +213,11 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
                     {!isBulk ? (
                         <>
                             <div className="space-y-2">
-                                <label className="text-[9px] font-black text-white/40 uppercase tracking-widest">Producto</label>
+                                <label className="text-[9px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest">Producto</label>
                                 <select
                                     value={selectedItem}
                                     onChange={(e) => setSelectedItem(e.target.value)}
-                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white focus:border-blue-500 outline-none transition-all"
+                                    className="w-full bg-gray-50 dark:bg-black/40 border border-border-color dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-text-main dark:text-white focus:border-blue-500 outline-none transition-all"
                                 >
                                     <option value="">Seleccionar producto...</option>
                                     {items.map(item => (
@@ -227,8 +227,8 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
                             </div>
                         </>
                     ) : (
-                        <div className="bg-white/5 rounded-xl p-4 max-h-[200px] overflow-y-auto space-y-3">
-                            <p className="text-[10px] uppercase font-black tracking-widest text-white/50 mb-2">
+                        <div className="bg-black/5 dark:bg-white/5 rounded-xl p-4 max-h-[200px] overflow-y-auto space-y-3">
+                            <p className="text-[10px] uppercase font-black tracking-widest text-text-secondary dark:text-white/50 mb-2">
                                 Productos Seleccionados ({preselectedItemIds?.length})
                             </p>
                             {preselectedItemIds?.map(itemId => {
@@ -238,25 +238,25 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
                                 const currentQty = bulkQuantities[itemId] || 1;
 
                                 return (
-                                    <div key={itemId} className="flex items-center justify-between gap-3 bg-black/20 p-2 rounded-lg">
+                                    <div key={itemId} className="flex items-center justify-between gap-3 bg-gray-50 dark:bg-black/20 p-2 rounded-lg">
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-bold text-white truncate">{itemIdx?.name || 'Cargando...'}</p>
-                                            <p className="text-[9px] text-white/40">Disp: {available} ENV</p>
+                                            <p className="text-xs font-bold text-text-main dark:text-white truncate">{itemIdx?.name || 'Cargando...'}</p>
+                                            <p className="text-[9px] text-text-secondary dark:text-white/40">Disp: {available} ENV</p>
                                         </div>
                                         <div className="flex items-center gap-1">
                                             <button
                                                 onClick={() => setBulkQuantities(prev => ({ ...prev, [itemId]: Math.max(0, (prev[itemId] || 1) - 1) }))}
-                                                className="size-6 bg-white/5 rounded hover:bg-white/10 text-white text-xs"
+                                                className="size-6 bg-black/5 dark:bg-white/5 rounded hover:bg-gray-100 dark:hover:bg-white/10 text-text-main dark:text-white text-xs"
                                             >-</button>
                                             <input
                                                 type="number"
                                                 value={currentQty}
                                                 onChange={(e) => setBulkQuantities(prev => ({ ...prev, [itemId]: Math.max(0, parseInt(e.target.value) || 0) }))}
-                                                className="w-10 bg-transparent text-center text-xs font-bold text-white outline-none"
+                                                className="w-10 bg-transparent text-center text-xs font-bold text-text-main dark:text-white outline-none"
                                             />
                                             <button
                                                 onClick={() => setBulkQuantities(prev => ({ ...prev, [itemId]: Math.min(available, (prev[itemId] || 1) + 1) }))}
-                                                className="size-6 bg-white/5 rounded hover:bg-white/10 text-white text-xs"
+                                                className="size-6 bg-black/5 dark:bg-white/5 rounded hover:bg-gray-100 dark:hover:bg-white/10 text-text-main dark:text-white text-xs"
                                             >+</button>
                                         </div>
                                     </div>
@@ -268,11 +268,11 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
                     {/* From/To Locations */}
                     <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-end">
                         <div className="space-y-2">
-                            <label className="text-[9px] font-black text-white/40 uppercase tracking-widest">Origen</label>
+                            <label className="text-[9px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest">Origen</label>
                             <select
                                 value={fromLocation}
                                 onChange={(e) => setFromLocation(e.target.value)}
-                                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-3 text-xs font-bold text-white focus:border-blue-500 outline-none"
+                                className="w-full bg-gray-50 dark:bg-black/40 border border-border-color dark:border-white/10 rounded-xl px-3 py-3 text-xs font-bold text-text-main dark:text-white focus:border-blue-500 outline-none"
                             >
                                 <option value="">Origen...</option>
                                 {locations.map(loc => (
@@ -286,11 +286,11 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-[9px] font-black text-white/40 uppercase tracking-widest">Destino</label>
+                            <label className="text-[9px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest">Destino</label>
                             <select
                                 value={toLocation}
                                 onChange={(e) => setToLocation(e.target.value)}
-                                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-3 text-xs font-bold text-white focus:border-blue-500 outline-none"
+                                className="w-full bg-gray-50 dark:bg-black/40 border border-border-color dark:border-white/10 rounded-xl px-3 py-3 text-xs font-bold text-text-main dark:text-white focus:border-blue-500 outline-none"
                             >
                                 <option value="">Destino...</option>
                                 {locations.filter(l => l.id !== fromLocation).map(loc => (
@@ -304,7 +304,7 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
                     {!isBulk && (
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                                <label className="text-[9px] font-black text-white/40 uppercase tracking-widest">Cantidad (Envases)</label>
+                                <label className="text-[9px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest">Cantidad (Envases)</label>
                                 {fromLocation && selectedItem && (
                                     <span className="text-[9px] font-bold text-neon">
                                         Disponible: {availableStock}
@@ -318,7 +318,7 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
                                         const current = parseInt(quantity) || 1;
                                         setQuantity(String(Math.max(1, current - 1)));
                                     }}
-                                    className="size-12 rounded-xl bg-white/5 border border-white/10 text-white font-black text-lg hover:bg-white/10 transition-all"
+                                    className="size-12 rounded-xl bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 text-text-main dark:text-white font-black text-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-all"
                                 >
                                     -
                                 </button>
@@ -332,7 +332,7 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
                                     }}
                                     min={1}
                                     max={availableStock || undefined}
-                                    className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-center text-xl font-black text-white focus:border-blue-500 outline-none"
+                                    className="flex-1 bg-gray-50 dark:bg-black/40 border border-border-color dark:border-white/10 rounded-xl px-4 py-3 text-center text-xl font-black text-text-main dark:text-white focus:border-blue-500 outline-none"
                                 />
                                 <button
                                     type="button"
@@ -341,7 +341,7 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
                                         const max = availableStock || 999;
                                         setQuantity(String(Math.min(max, current + 1)));
                                     }}
-                                    className="size-12 rounded-xl bg-white/5 border border-white/10 text-white font-black text-lg hover:bg-white/10 transition-all"
+                                    className="size-12 rounded-xl bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 text-text-main dark:text-white font-black text-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-all"
                                 >
                                     +
                                 </button>
@@ -351,7 +351,7 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
 
                     {/* Reason */}
                     <div className="space-y-2">
-                        <label className="text-[9px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1">
+                        <label className="text-[9px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest flex items-center gap-1">
                             Motivo <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -359,7 +359,7 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
                             value={reason}
                             onChange={(e) => setReason(e.target.value)}
                             placeholder="Ej: Reposición para turno noche"
-                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-white focus:border-blue-500 outline-none placeholder:text-white/20"
+                            className="w-full bg-gray-50 dark:bg-black/40 border border-border-color dark:border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-text-main dark:text-white focus:border-blue-500 outline-none placeholder:text-text-secondary/40 dark:placeholder:text-white/20"
                         />
                     </div>
 
@@ -367,10 +367,10 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
                     {!isBulk && selectedItem && fromLocation && toLocation && (
                         <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
                             <p className="text-[10px] text-blue-400 font-bold mb-2">Vista previa:</p>
-                            <p className="text-white text-sm">
+                            <p className="text-text-main dark:text-white text-sm">
                                 <span className="font-black">{quantity}</span> env. de <span className="font-black">{selectedItemData?.name}</span>
                             </p>
-                            <p className="text-white/60 text-xs mt-1">
+                            <p className="text-text-secondary dark:text-white/60 text-xs mt-1">
                                 {fromLocationData?.name} → {toLocationData?.name}
                             </p>
                         </div>
@@ -381,7 +381,7 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
                 <div className="p-6 pt-0 flex gap-3 shrink-0">
                     <button
                         onClick={onClose}
-                        className="flex-1 py-4 rounded-xl border border-white/10 text-white/60 text-[10px] font-black uppercase tracking-widest hover:bg-white/5 transition-all"
+                        className="flex-1 py-4 rounded-xl border border-border-color dark:border-white/10 text-text-secondary dark:text-white/60 text-[10px] font-black uppercase tracking-widest hover:bg-gray-100 dark:hover:bg-white/5 transition-all"
                     >
                         Cancelar
                     </button>

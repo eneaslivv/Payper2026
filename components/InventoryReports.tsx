@@ -58,43 +58,43 @@ export const InventoryReports: React.FC<InventoryReportsProps> = ({ items, categ
             {/* KPI CARDS */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Total Value */}
-                <div className="bg-[#141714] border border-white/5 p-6 rounded-2xl relative overflow-hidden group">
+                <div className="bg-white dark:bg-surface-dark border border-border-color/30 dark:border-white/5 p-6 rounded-2xl relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                         <span className="material-symbols-outlined text-6xl text-neon">payments</span>
                     </div>
-                    <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Valor Total de Inventario</p>
-                    <h3 className="text-3xl font-black text-white tracking-tighter italic-black">{formatCurrency(metrics.totalValue)}</h3>
-                    <p className="text-[10px] text-white/30 mt-2">Costo calculado sobre stock actual</p>
+                    <p className="text-[10px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest mb-1">Valor Total de Inventario</p>
+                    <h3 className="text-3xl font-black text-text-main dark:text-white tracking-tighter italic-black">{formatCurrency(metrics.totalValue)}</h3>
+                    <p className="text-[10px] text-text-secondary/60 dark:text-white/30 mt-2">Costo calculado sobre stock actual</p>
                 </div>
 
                 {/* Low Stock */}
-                <div className="bg-[#141714] border border-white/5 p-6 rounded-2xl relative overflow-hidden group">
+                <div className="bg-white dark:bg-surface-dark border border-border-color/30 dark:border-white/5 p-6 rounded-2xl relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                         <span className="material-symbols-outlined text-6xl text-red-500">warning</span>
                     </div>
-                    <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Alertas de Stock</p>
+                    <p className="text-[10px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest mb-1">Alertas de Stock</p>
                     <h3 className="text-3xl font-black text-red-500 tracking-tighter italic-black">{metrics.lowStockCount}</h3>
-                    <p className="text-[10px] text-white/30 mt-2">Items por debajo del mínimo</p>
+                    <p className="text-[10px] text-text-secondary/60 dark:text-white/30 mt-2">Items por debajo del mínimo</p>
                 </div>
 
                 {/* Total Items */}
-                <div className="bg-[#141714] border border-white/5 p-6 rounded-2xl relative overflow-hidden group">
+                <div className="bg-white dark:bg-surface-dark border border-border-color/30 dark:border-white/5 p-6 rounded-2xl relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <span className="material-symbols-outlined text-6xl text-white">inventory_2</span>
+                        <span className="material-symbols-outlined text-6xl text-text-main dark:text-white">inventory_2</span>
                     </div>
-                    <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Items Totales</p>
-                    <h3 className="text-3xl font-black text-white tracking-tighter italic-black">{metrics.totalItems}</h3>
-                    <p className="text-[10px] text-white/30 mt-2">Productos registrados</p>
+                    <p className="text-[10px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest mb-1">Items Totales</p>
+                    <h3 className="text-3xl font-black text-text-main dark:text-white tracking-tighter italic-black">{metrics.totalItems}</h3>
+                    <p className="text-[10px] text-text-secondary/60 dark:text-white/30 mt-2">Productos registrados</p>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Chart: Value by Category */}
-                <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-6">
-                    <h4 className="text-xs font-black text-white/50 uppercase tracking-widest mb-6">Valor por Categoría</h4>
+                <div className="bg-white dark:bg-[#0a0a0a] border border-border-color/30 dark:border-white/5 rounded-3xl p-6">
+                    <h4 className="text-xs font-black text-text-secondary dark:text-white/50 uppercase tracking-widest mb-6">Valor por Categoría</h4>
                     <div className="h-64">
                         <Suspense fallback={
-                            <div className="h-full w-full flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-white/40">
+                            <div className="h-full w-full flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-text-secondary dark:text-white/40">
                                 Cargando gráfico...
                             </div>
                         }>
@@ -119,11 +119,11 @@ export const InventoryReports: React.FC<InventoryReportsProps> = ({ items, categ
                 </div>
 
                 {/* Chart: Items by Category */}
-                <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-6">
-                    <h4 className="text-xs font-black text-white/50 uppercase tracking-widest mb-6">Distribución de Items</h4>
+                <div className="bg-white dark:bg-[#0a0a0a] border border-border-color/30 dark:border-white/5 rounded-3xl p-6">
+                    <h4 className="text-xs font-black text-text-secondary dark:text-white/50 uppercase tracking-widest mb-6">Distribución de Items</h4>
                     <div className="h-64">
                         <Suspense fallback={
-                            <div className="h-full w-full flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-white/40">
+                            <div className="h-full w-full flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-text-secondary dark:text-white/40">
                                 Cargando gráfico...
                             </div>
                         }>

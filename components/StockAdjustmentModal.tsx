@@ -240,30 +240,30 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
 
     return (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-200" onClick={(e) => e.target === e.currentTarget && onClose()}>
-            <div className="w-full max-w-md bg-[#0a0a0a] border border-white/10 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-                <div className="p-6 border-b border-white/5 bg-gradient-to-r from-white/[0.03] to-transparent">
+            <div className="w-full max-w-md bg-white dark:bg-[#0a0a0a] border border-border-color dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                <div className="p-6 border-b border-border-color/30 dark:border-white/5 bg-gradient-to-r from-black/[0.03] dark:from-white/[0.03] to-transparent">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <span className={`material-symbols-outlined ${accentColor}`}>
                                 {type === 'WASTE' ? 'delete_forever' : type === 'PURCHASE' ? 'shopping_cart' : type === 'RESTOCK' ? 'add_box' : 'tune'}
                             </span>
-                            <h3 className="text-white font-black uppercase tracking-tight italic-black text-lg">{title}</h3>
+                            <h3 className="text-text-main dark:text-white font-black uppercase tracking-tight italic-black text-lg">{title}</h3>
                         </div>
-                        <button onClick={onClose} className="text-white/20 hover:text-white transition-colors">
+                        <button onClick={onClose} className="text-text-secondary/40 dark:text-white/20 hover:text-text-main dark:hover:text-white transition-colors">
                             <span className="material-symbols-outlined">close</span>
                         </button>
                     </div>
-                    <p className="text-[10px] font-black text-white/30 uppercase tracking-widest mt-2">{item.name}</p>
+                    <p className="text-[10px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest mt-2">{item.name}</p>
                 </div>
 
                 <div className="p-6 space-y-5">
                     {/* Location Select */}
                     <div className="space-y-2">
-                        <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Ubicación</label>
+                        <label className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.2em] ml-1">Ubicación</label>
                         <select
                             value={locationId}
                             onChange={(e) => setLocationId(e.target.value)}
-                            className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-white uppercase tracking-widest outline-none focus:border-neon transition-all"
+                            className="w-full bg-white dark:bg-black border border-border-color dark:border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-text-main dark:text-white uppercase tracking-widest outline-none focus:border-neon transition-all"
                         >
                             <option value="" disabled>Seleccionar Ubicación</option>
                             {locations.map(loc => (
@@ -276,12 +276,12 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
 
                     {/* Selector de Tipo de Operación para Ajustes */}
                     {type === 'ADJUSTMENT' && (
-                        <div className="flex gap-2 p-1 bg-white/5 rounded-xl">
+                        <div className="flex gap-2 p-1 bg-black/5 dark:bg-white/5 rounded-xl">
                             <button
                                 onClick={() => setAdjustmentType('ADDR')}
                                 className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${adjustmentType === 'ADDR'
                                     ? 'bg-neon/20 text-neon border border-neon/50'
-                                    : 'text-white/40 hover:bg-white/5'
+                                    : 'text-text-secondary dark:text-white/40 hover:bg-gray-100 dark:hover:bg-white/5'
                                     }`}
                             >
                                 <span className="mr-1">+</span> Agregar Stock
@@ -290,7 +290,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                                 onClick={() => setAdjustmentType('REMOVE')}
                                 className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${adjustmentType === 'REMOVE'
                                     ? 'bg-red-500/20 text-red-500 border border-red-500/50'
-                                    : 'text-white/40 hover:bg-white/5'
+                                    : 'text-text-secondary dark:text-white/40 hover:bg-gray-100 dark:hover:bg-white/5'
                                     }`}
                             >
                                 <span className="mr-1">-</span> Quitar Stock
@@ -300,12 +300,12 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
 
                     {/* Package Mode Toggle */}
                     {item.package_size && item.package_size > 0 && (
-                        <div className="flex gap-2 p-1 bg-white/5 rounded-xl mb-4">
+                        <div className="flex gap-2 p-1 bg-black/5 dark:bg-white/5 rounded-xl mb-4">
                             <button
                                 onClick={() => setUsePackageMode(false)}
                                 className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${!usePackageMode
                                     ? 'bg-neon/20 text-neon border border-neon/50'
-                                    : 'text-white/40 hover:bg-white/5'
+                                    : 'text-text-secondary dark:text-white/40 hover:bg-gray-100 dark:hover:bg-white/5'
                                     }`}
                             >
                                 {item.unit_type} (Base)
@@ -314,7 +314,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                                 onClick={() => setUsePackageMode(true)}
                                 className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${usePackageMode
                                     ? 'bg-neon/20 text-neon border border-neon/50'
-                                    : 'text-white/40 hover:bg-white/5'
+                                    : 'text-text-secondary dark:text-white/40 hover:bg-gray-100 dark:hover:bg-white/5'
                                     }`}
                             >
                                 Unidad Cerrada ({item.package_size} {item.unit_type})
@@ -325,7 +325,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                     <div className="grid grid-cols-2 gap-4">
                         {/* Quantity */}
                         <div className="space-y-2">
-                            <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">
+                            <label className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.2em] ml-1">
                                 Cantidad {usePackageMode ? '(Envases)' : `(${item.unit_type})`}
                             </label>
                             <div className="relative">
@@ -334,7 +334,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                                     value={quantity}
                                     onChange={(e) => setQuantity(e.target.value)}
                                     placeholder="0"
-                                    className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-xs font-black text-white italic-black outline-none focus:border-neon transition-all"
+                                    className="w-full bg-white dark:bg-black border border-border-color dark:border-white/10 rounded-xl px-4 py-3 text-xs font-black text-text-main dark:text-white italic-black outline-none focus:border-neon transition-all"
                                 />
                                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/10 uppercase tracking-widest">
                                     {usePackageMode ? 'UNID' : item.unit_type}
@@ -344,7 +344,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
 
                         {/* Reason */}
                         <div className="space-y-2">
-                            <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Motivo</label>
+                            <label className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.2em] ml-1">Motivo</label>
                             <select
                                 value={reason}
                                 onChange={(e) => setReason(e.target.value)}
@@ -358,7 +358,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
 
                     {/* Notes */}
                     <div className="space-y-2">
-                        <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Observaciones</label>
+                        <label className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.2em] ml-1">Observaciones</label>
                         <input
                             type="text"
                             value={notes}
@@ -373,7 +373,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                         <>
                             {/* Supplier */}
                             <div className="space-y-2">
-                                <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">
+                                <label className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.2em] ml-1">
                                     Proveedor {type === 'PURCHASE' && <span className="text-red-500">*</span>}
                                 </label>
                                 <SupplierSelect
@@ -386,7 +386,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                             <div className="grid grid-cols-2 gap-4">
                                 {/* Unit Cost */}
                                 <div className="space-y-2">
-                                    <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Costo Unit.</label>
+                                    <label className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.2em] ml-1">Costo Unit.</label>
                                     <div className="relative">
                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/20">$</span>
                                         <input
@@ -401,7 +401,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
 
                                 {/* Invoice Ref */}
                                 <div className="space-y-2">
-                                    <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Factura</label>
+                                    <label className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.2em] ml-1">Factura</label>
                                     <input
                                         type="text"
                                         value={invoiceRef}

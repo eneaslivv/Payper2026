@@ -79,7 +79,7 @@ export const StockEffectiveDisplay: React.FC<StockDisplayProps> = ({
                 <span className={`text-xl font-black italic-black ${getStockColor(effectiveStock)}`}>
                     {effectiveStock.toFixed(1)}
                 </span>
-                <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">
+                <span className="text-[9px] font-bold text-text-secondary/60 dark:text-white/30 uppercase tracking-widest">
                     env
                 </span>
                 {openCount > 0 && (
@@ -94,17 +94,17 @@ export const StockEffectiveDisplay: React.FC<StockDisplayProps> = ({
     return (
         <div className={`space-y-4 ${className}`}>
             {/* Stock Efectivo Total */}
-            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+            <div className="p-4 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-border-color/30 dark:border-white/5">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-neon text-sm">inventory_2</span>
-                        <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">Stock Efectivo</span>
+                        <span className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest">Stock Efectivo</span>
                     </div>
                     <div className="flex items-baseline gap-1">
                         <span className={`text-2xl font-black italic-black ${getStockColor(effectiveStock)}`}>
                             {effectiveStock.toFixed(1)}
                         </span>
-                        <span className="text-[10px] font-bold text-white/20 uppercase">envases</span>
+                        <span className="text-[10px] font-bold text-text-secondary/40 dark:text-white/20 uppercase">envases</span>
                     </div>
                 </div>
             </div>
@@ -112,31 +112,31 @@ export const StockEffectiveDisplay: React.FC<StockDisplayProps> = ({
             {/* Desglose */}
             <div className="grid grid-cols-2 gap-3">
                 {/* Cerrados */}
-                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                <div className="p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-border-color/30 dark:border-white/5">
                     <div className="flex items-center gap-2 mb-2">
-                        <span className="material-symbols-outlined text-xs text-white/20">package_2</span>
-                        <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">Cerrados</span>
+                        <span className="material-symbols-outlined text-xs text-text-secondary/40 dark:text-white/20">package_2</span>
+                        <span className="text-[8px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest">Cerrados</span>
                     </div>
                     <div className="flex items-baseline gap-1">
-                        <span className="text-lg font-black italic-black text-white">{closedStock}</span>
-                        <span className="text-[9px] font-bold text-white/20">env</span>
+                        <span className="text-lg font-black italic-black text-text-main dark:text-white">{closedStock}</span>
+                        <span className="text-[9px] font-bold text-text-secondary/40 dark:text-white/20">env</span>
                     </div>
-                    <p className="text-[8px] text-white/20 mt-1">
+                    <p className="text-[8px] text-text-secondary/40 dark:text-white/20 mt-1">
                         {closedStock * packageSize} {contentUnit} total
                     </p>
                 </div>
 
                 {/* Abiertos */}
-                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                <div className="p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-border-color/30 dark:border-white/5">
                     <div className="flex items-center gap-2 mb-2">
                         <span className="material-symbols-outlined text-xs text-amber-500/60">local_drink</span>
-                        <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">Abiertos</span>
+                        <span className="text-[8px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest">Abiertos</span>
                     </div>
                     <div className="flex items-baseline gap-1">
                         <span className="text-lg font-black italic-black text-amber-500">{openCount}</span>
-                        <span className="text-[9px] font-bold text-white/20">env</span>
+                        <span className="text-[9px] font-bold text-text-secondary/40 dark:text-white/20">env</span>
                     </div>
-                    <p className="text-[8px] text-white/20 mt-1">
+                    <p className="text-[8px] text-text-secondary/40 dark:text-white/20 mt-1">
                         {openRemaining.toFixed(0)} {contentUnit} restante
                     </p>
                 </div>

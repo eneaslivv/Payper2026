@@ -68,29 +68,66 @@ const Layout: React.FC<LayoutProps> = ({
           {/* ZONES PILL CONTAINER */}
           <div className="flex items-center bg-[#0a0a0a] border border-white/5 rounded-full p-1 gap-1 h-[42px] select-none">
             {zones.map(zone => (
-              <div key={zone.id} className="relative h-full flex items-center">
+              <div key={zone.id} className="relative h-full flex items-center group/zone">
                 {/* EDIT MODE INPUT */}
                 {isEditingZone && activeZoneId === zone.id ? (
-                  <div className="flex items-center px-3 bg-zinc-900 rounded-full h-8">
+                  <div className="flex items-center px-3 bg-zinc-900 rounded-full h-8 border border-[#36e27b]/30">
                     <input
                       autoFocus
-                      className="bg-transparent text-[10px] font-black text-white outline-none w-24 uppercase tracking-widest"
+                      className="bg-transparent text-[10px] font-black text-white outline-none w-28 uppercase tracking-widest"
                       value={zoneInputName}
                       onChange={(e) => setZoneInputName(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && onUpdateZone()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') onUpdateZone();
+                        if (e.key === 'Escape') setIsEditingZone(false);
+                      }}
                     />
-                    <button onClick={onUpdateZone} className="text-[#36e27b] hover:text-white ml-2"><Check size={12} /></button>
+                    <button onClick={onUpdateZone} className="text-[#36e27b] hover:text-white ml-1"><Check size={12} /></button>
+                    <button onClick={() => setIsEditingZone(false)} className="text-zinc-500 hover:text-white ml-1"><X size={12} /></button>
                   </div>
                 ) : (
                   // TAB BUTTON
                   <button
                     onClick={() => setActiveZoneId(zone.id)}
+                    onDoubleClick={() => {
+                      if (mode === AppMode.EDIT) {
+                        setActiveZoneId(zone.id);
+                        setZoneInputName(zone.name);
+                        setIsEditingZone(true);
+                      }
+                    }}
                     className={`h-[34px] px-6 rounded-full text-[10px] font-black tracking-[0.2em] uppercase transition-all flex items-center justify-center whitespace-nowrap
                              ${activeZoneId === zone.id
                         ? 'bg-[#36e27b] text-black shadow-[0_0_15px_-3px_rgba(54,226,123,0.5)]'
                         : 'text-zinc-500 hover:text-white/80'}`}
                   >
                     {zone.name}
+                    {/* Edit/Delete icons in GESTIÓN mode on active tab */}
+                    {mode === AppMode.EDIT && activeZoneId === zone.id && (
+                      <span className="flex items-center ml-2 gap-0.5">
+                        <span
+                          role="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setZoneInputName(zone.name);
+                            setIsEditingZone(true);
+                          }}
+                          className="w-5 h-5 rounded-full flex items-center justify-center bg-black/20 hover:bg-black/40 transition-colors"
+                        >
+                          <Edit3 size={10} />
+                        </span>
+                        <span
+                          role="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteZone(zone.id);
+                          }}
+                          className="w-5 h-5 rounded-full flex items-center justify-center bg-black/20 hover:bg-red-500/80 hover:text-white transition-colors"
+                        >
+                          <Trash2 size={10} />
+                        </span>
+                      </span>
+                    )}
                   </button>
                 )}
               </div>

@@ -589,10 +589,10 @@ const OrderCreation: React.FC = () => {
 
   const CartContent = () => (
     <div className="flex flex-col h-full">
-      <div className="p-6 border-b border-white/5 shrink-0 space-y-3">
+      <div className="p-6 border-b border-border-color/30 dark:border-white/5 shrink-0 space-y-3">
         <button
           onClick={() => setShowClientPicker(true)}
-          className={`w-full p-4 rounded-2xl border flex items-center justify-between transition-all active:scale-95 ${selectedClient ? 'bg-neon/10 border-neon/30 text-neon shadow-neon-soft' : 'bg-white/5 border-white/5 text-white/60'}`}
+          className={`w-full p-4 rounded-2xl border flex items-center justify-between transition-all active:scale-95 ${selectedClient ? 'bg-neon/10 border-neon/30 text-neon shadow-neon-soft' : 'bg-black/5 dark:bg-white/5 border-border-color/30 dark:border-white/5 text-text-secondary dark:text-white/60'}`}
         >
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-lg">{selectedClient ? 'person_check' : 'person_add'}</span>
@@ -603,7 +603,7 @@ const OrderCreation: React.FC = () => {
 
         <button
           onClick={() => setShowTablePicker(true)}
-          className={`w-full p-4 rounded-2xl border flex items-center justify-between transition-all active:scale-95 ${selectedTable ? 'bg-accent/10 border-accent/30 text-accent shadow-soft' : 'bg-white/5 border-white/5 text-white/60'}`}
+          className={`w-full p-4 rounded-2xl border flex items-center justify-between transition-all active:scale-95 ${selectedTable ? 'bg-accent/10 border-accent/30 text-accent shadow-soft' : 'bg-black/5 dark:bg-white/5 border-border-color/30 dark:border-white/5 text-text-secondary dark:text-white/60'}`}
         >
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-lg">deck</span>
@@ -617,7 +617,7 @@ const OrderCreation: React.FC = () => {
           <button
             type="button"
             onClick={() => { setSelectedClient(null); setSelectedTable(null); }}
-            className={`flex-1 py-3 rounded-xl border text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2 ${!selectedClient && !selectedTable ? 'bg-neon text-black border-neon' : 'bg-white/5 border-white/10 text-white/40 hover:border-white/30'}`}
+            className={`flex-1 py-3 rounded-xl border text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2 ${!selectedClient && !selectedTable ? 'bg-neon text-black border-neon' : 'bg-black/5 dark:bg-white/5 border-border-color dark:border-white/10 text-text-secondary dark:text-white/40 hover:border-border-color dark:hover:border-white/30'}`}
           >
             {!selectedClient && !selectedTable && <span className="material-symbols-outlined text-sm">check</span>}
             ANÓNIMO
@@ -625,7 +625,7 @@ const OrderCreation: React.FC = () => {
           <button
             type="button"
             onClick={() => { setSelectedTable(null); }}
-            className={`flex-1 py-3 rounded-xl border text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2 ${!selectedTable ? 'bg-blue-500 text-white border-blue-500' : 'bg-white/5 border-white/10 text-white/40 hover:border-white/30'}`}
+            className={`flex-1 py-3 rounded-xl border text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2 ${!selectedTable ? 'bg-blue-500 text-white border-blue-500' : 'bg-black/5 dark:bg-white/5 border-border-color dark:border-white/10 text-text-secondary dark:text-white/40 hover:border-border-color dark:hover:border-white/30'}`}
           >
             {!selectedTable && <span className="material-symbols-outlined text-sm">check</span>}
             PARA LLEVAR
@@ -636,21 +636,21 @@ const OrderCreation: React.FC = () => {
         <div className="pt-4 grid grid-cols-4 gap-2">
           <button
             onClick={() => setPaymentMethod('cash')}
-            className={`py-3 rounded-xl border flex flex-col items-center justify-center transition-all ${paymentMethod === 'cash' ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}
+            className={`py-3 rounded-xl border flex flex-col items-center justify-center transition-all ${paymentMethod === 'cash' ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-black/5 dark:bg-white/5 border-border-color dark:border-white/10 text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white'}`}
           >
             <span className="material-symbols-outlined text-lg mb-1">payments</span>
             <span className="text-[8px] font-black uppercase">Efectivo</span>
           </button>
           <button
             onClick={() => setPaymentMethod('card')}
-            className={`py-3 rounded-xl border flex flex-col items-center justify-center transition-all ${paymentMethod === 'card' ? 'bg-blue-500/20 border-blue-500 text-blue-400' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}
+            className={`py-3 rounded-xl border flex flex-col items-center justify-center transition-all ${paymentMethod === 'card' ? 'bg-blue-500/20 border-blue-500 text-blue-400' : 'bg-black/5 dark:bg-white/5 border-border-color dark:border-white/10 text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white'}`}
           >
             <span className="material-symbols-outlined text-lg mb-1">credit_card</span>
             <span className="text-[8px] font-black uppercase">Tarjeta</span>
           </button>
           <button
             onClick={() => setPaymentMethod('qr')}
-            className={`py-3 rounded-xl border flex flex-col items-center justify-center transition-all ${paymentMethod === 'qr' ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}
+            className={`py-3 rounded-xl border flex flex-col items-center justify-center transition-all ${paymentMethod === 'qr' ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400' : 'bg-black/5 dark:bg-white/5 border-border-color dark:border-white/10 text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white'}`}
           >
             <span className="material-symbols-outlined text-lg mb-1">qr_code_2</span>
             <span className="text-[8px] font-black uppercase">QR</span>
@@ -658,7 +658,7 @@ const OrderCreation: React.FC = () => {
           <button
             onClick={() => setPaymentMethod('wallet')}
             disabled={!selectedClient}
-            className={`py-3 rounded-xl border flex flex-col items-center justify-center transition-all ${!selectedClient ? 'opacity-30 cursor-not-allowed bg-white/5 border-white/5' : paymentMethod === 'wallet' ? 'bg-purple-500/20 border-purple-500 text-purple-400' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}
+            className={`py-3 rounded-xl border flex flex-col items-center justify-center transition-all ${!selectedClient ? 'opacity-30 cursor-not-allowed bg-black/5 dark:bg-white/5 border-border-color/30 dark:border-white/5' : paymentMethod === 'wallet' ? 'bg-purple-500/20 border-purple-500 text-purple-400' : 'bg-black/5 dark:bg-white/5 border-border-color dark:border-white/10 text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white'}`}
           >
             <span className="material-symbols-outlined text-lg mb-1">account_balance_wallet</span>
             <span className="text-[8px] font-black uppercase">Saldo</span>
@@ -675,15 +675,15 @@ const OrderCreation: React.FC = () => {
           </div>
         ) : (
           cart.map((item, idx) => (
-            <div key={item.id} className={`p-4 bg-white/[0.02] rounded-2xl border flex justify-between items-center group animate-in slide-in-from-right-4 ${idx === cart.length - 1 ? 'border-neon/30 bg-neon/5' : 'border-white/5'}`}>
+            <div key={item.id} className={`p-4 bg-black/[0.02] dark:bg-white/[0.02] rounded-2xl border flex justify-between items-center group animate-in slide-in-from-right-4 ${idx === cart.length - 1 ? 'border-neon/30 bg-neon/5' : 'border-border-color/30 dark:border-white/5'}`}>
               <div className="flex flex-col">
-                <span className="text-[11px] font-black text-white uppercase italic tracking-tight">{item.name}</span>
-                <span className="text-[9px] font-bold text-white/30 uppercase mt-0.5">${(item.price_unit || 0).toFixed(2)}</span>
+                <span className="text-[11px] font-black text-text-main dark:text-white uppercase italic tracking-tight">{item.name}</span>
+                <span className="text-[9px] font-bold text-text-secondary/60 dark:text-white/30 uppercase mt-0.5">${(item.price_unit || 0).toFixed(2)}</span>
               </div>
               <div className="flex items-center gap-4">
                 <span className="text-sm font-black text-neon italic">${(item.price_unit * item.quantity).toFixed(2)}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-white/50">{item.quantity}x</span>
+                  <span className="text-[10px] font-bold text-text-secondary dark:text-white/50">{item.quantity}x</span>
                   <button onClick={() => removeFromCart(item.id)} className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-colors">
                     <span className="material-symbols-outlined text-lg font-bold">close</span>
                   </button>
@@ -694,10 +694,10 @@ const OrderCreation: React.FC = () => {
         )}
       </div>
 
-      <div className="p-8 border-t border-white/5 bg-black/20 backdrop-blur-xl space-y-6 shrink-0">
+      <div className="p-8 border-t border-border-color/30 dark:border-white/5 bg-black/5 dark:bg-black/20 backdrop-blur-xl space-y-6 shrink-0">
         <div className="flex justify-between items-baseline">
           <div className="space-y-1">
-            <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] block">SUBTOTAL</span>
+            <span className="text-[10px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.2em] block">SUBTOTAL</span>
             {selectedClient && <span className="text-[9px] font-bold text-neon uppercase bg-neon/10 px-2 py-0.5 rounded tracking-widest">FIDELIDAD ACTIVA</span>}
           </div>
           <span className="text-4xl font-black italic-black text-neon leading-none tracking-tighter">${total.toFixed(2)}</span>
@@ -726,16 +726,16 @@ const OrderCreation: React.FC = () => {
   );
 
   return (
-    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-background-dark">
-      <header className="shrink-0 flex items-center justify-between border-b border-white/5 bg-background-dark/80 backdrop-blur-md px-6 py-4 z-[40]">
+    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-background-light dark:bg-background-dark">
+      <header className="shrink-0 flex items-center justify-between border-b border-border-color/30 dark:border-white/5 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-6 py-4 z-[40]">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate(-1)} className="size-10 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-xl transition-all">
-            <span className="material-symbols-outlined font-black text-white">arrow_back</span>
+          <button onClick={() => navigate(-1)} className="size-10 flex items-center justify-center bg-black/5 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-xl transition-all">
+            <span className="material-symbols-outlined font-black text-text-main dark:text-white">arrow_back</span>
           </button>
           <div className="flex flex-col">
-            <h2 className="text-base font-black italic uppercase text-white leading-none tracking-tighter">Despacho <span className="text-neon">Consola</span></h2>
+            <h2 className="text-base font-black italic uppercase text-text-main dark:text-white leading-none tracking-tighter">Despacho <span className="text-neon">Consola</span></h2>
             <div className="flex items-center gap-2 mt-1">
-              <p className="text-[8px] font-bold text-white/30 uppercase tracking-widest">Terminal {selectedTable ? selectedTable.name : 'Alpha'} • ESC: Cancelar</p>
+              <p className="text-[8px] font-bold text-text-secondary/60 dark:text-white/30 uppercase tracking-widest">Terminal {selectedTable ? selectedTable.name : 'Alpha'} • ESC: Cancelar</p>
               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${hasOpenSession ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
                 <span className={`size-1.5 rounded-full ${hasOpenSession ? 'bg-green-400' : 'bg-red-400'}`}></span>
                 {hasOpenSession ? `Caja Abierta (${activeSessions.length})` : 'Sin Caja'}
@@ -748,20 +748,20 @@ const OrderCreation: React.FC = () => {
           className="lg:hidden relative size-10 rounded-xl bg-neon/10 border border-neon/30 text-neon flex items-center justify-center shadow-neon-soft active:scale-95"
         >
           <span className="material-symbols-outlined text-2xl">shopping_cart</span>
-          {cart.length > 0 && <span className="absolute -top-1 -right-1 size-5 bg-primary text-white text-[9px] font-black flex items-center justify-center rounded-full border-2 border-background-dark">{cart.length}</span>}
+          {cart.length > 0 && <span className="absolute -top-1 -right-1 size-5 bg-primary text-white text-[9px] font-black flex items-center justify-center rounded-full border-2 border-background-light dark:border-background-dark">{cart.length}</span>}
         </button>
       </header>
 
       <main className="flex flex-1 overflow-hidden relative">
-        <div className="flex-1 flex flex-col min-w-0 bg-background-dark overflow-hidden">
-          <div className="p-6 space-y-4 bg-black/20">
+        <div className="flex-1 flex flex-col min-w-0 bg-background-light dark:bg-background-dark overflow-hidden">
+          <div className="p-6 space-y-4 bg-black/5 dark:bg-black/20">
             <div className="relative group w-full">
-              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 text-lg">search</span>
+              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary/40 dark:text-white/20 text-lg">search</span>
               <input
                 ref={searchInputRef}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full h-12 pl-12 pr-5 rounded-2xl bg-white/[0.03] border border-white/5 text-[11px] font-bold text-white uppercase outline-none focus:ring-1 focus:ring-neon/30 transition-all placeholder:text-white/10"
+                className="w-full h-12 pl-12 pr-5 rounded-2xl bg-black/[0.03] dark:bg-white/[0.03] border border-border-color/30 dark:border-white/5 text-[11px] font-bold text-text-main dark:text-white uppercase outline-none focus:ring-1 focus:ring-neon/30 transition-all placeholder:text-text-secondary/40 dark:placeholder:text-white/10"
                 placeholder="BUSCAR PRODUCTO (Tipea para filtrar)..."
                 autoComplete="off"
               />
@@ -771,7 +771,7 @@ const OrderCreation: React.FC = () => {
                 <button
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
-                  className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${activeCategory === cat ? 'bg-neon text-black border-neon shadow-neon-soft' : 'bg-white/5 border-white/5 text-white/40'}`}
+                  className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${activeCategory === cat ? 'bg-neon text-black border-neon shadow-neon-soft' : 'bg-black/5 dark:bg-white/5 border-border-color/30 dark:border-white/5 text-text-secondary dark:text-white/40'}`}
                 >
                   {cat}
                 </button>
@@ -786,25 +786,25 @@ const OrderCreation: React.FC = () => {
                 onClick={() => handleAddToCart(p)}
                 className={`group rounded-2xl p-2 border transition-all cursor-pointer active:scale-95 flex flex-col ${activeIndex === idx
                   ? 'bg-neon/10 border-neon ring-1 ring-neon/30'
-                  : 'bg-surface-dark border-white/10 hover:border-neon/30'
+                  : 'bg-white dark:bg-surface-dark border-border-color dark:border-white/10 hover:border-neon/30'
                   }`}
               >
                 <div className="relative aspect-[4/3] rounded-xl overflow-hidden mb-2 bg-black/30">
                   {p.image ? (
                     <img src={p.image} className="size-full object-cover transition-transform group-hover:scale-105 duration-300" alt={p.name} />
                   ) : (
-                    <div className="size-full flex items-center justify-center text-white/20">
+                    <div className="size-full flex items-center justify-center text-text-secondary/40 dark:text-white/20">
                       <span className="material-symbols-outlined text-3xl">inventory_2</span>
                     </div>
                   )}
-                  <div className={`absolute top-1.5 right-1.5 transition-colors ${activeIndex === idx ? 'text-neon' : 'text-white/70'}`}>
+                  <div className={`absolute top-1.5 right-1.5 transition-colors ${activeIndex === idx ? 'text-neon' : 'text-text-main/70 dark:text-white/70'}`}>
                     <div className="size-6 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center">
                       <span className="material-symbols-outlined text-sm font-black">add</span>
                     </div>
                   </div>
                 </div>
                 <div className="px-1 flex-1 flex flex-col justify-between">
-                  <h4 className={`text-[9px] font-bold uppercase tracking-tight leading-tight line-clamp-2 ${activeIndex === idx ? 'text-neon' : 'text-white/80'}`}>{p.name}</h4>
+                  <h4 className={`text-[9px] font-bold uppercase tracking-tight leading-tight line-clamp-2 ${activeIndex === idx ? 'text-neon' : 'text-text-main/80 dark:text-white/80'}`}>{p.name}</h4>
                   <p className="text-sm font-black text-neon mt-1">${(p.price || 0).toFixed(0)}</p>
                 </div>
               </div>
@@ -812,13 +812,13 @@ const OrderCreation: React.FC = () => {
           </div>
         </div>
 
-        <aside className="hidden lg:flex w-[380px] bg-surface-dark border-l border-white/5 flex-col shadow-2xl z-20">
+        <aside className="hidden lg:flex w-[380px] bg-white dark:bg-surface-dark border-l border-border-color/30 dark:border-white/5 flex-col shadow-2xl z-20">
           <CartContent />
         </aside>
 
-        <div className="fixed bottom-0 left-0 right-0 lg:hidden p-6 bg-background-dark/95 backdrop-blur-xl border-t border-white/5 z-[35] flex items-center justify-between">
+        <div className="fixed bottom-0 left-0 right-0 lg:hidden p-6 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-xl border-t border-border-color/30 dark:border-white/5 z-[35] flex items-center justify-between">
           <div className="flex flex-col">
-            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">{cart.length} ÍTEMS</span>
+            <span className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-widest">{cart.length} ÍTEMS</span>
             <span className="text-2xl font-black italic-black text-neon leading-none">${total.toFixed(2)}</span>
           </div>
           <button onClick={() => setIsCartOpenMobile(true)} className="px-8 h-14 bg-neon text-black rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-neon-soft active:scale-95 transition-all flex items-center gap-3">
@@ -831,22 +831,22 @@ const OrderCreation: React.FC = () => {
       {/* SUCCESS OVERLAY */}
       {showOrderSuccess && (
         <div className="fixed inset-0 z-[600] flex items-center justify-center p-6 animate-in fade-in duration-300">
-          <div className="absolute inset-0 bg-background-dark/95 backdrop-blur-xl"></div>
-          <div className="relative w-full max-w-sm bg-surface-dark rounded-[3.5rem] border border-white/10 p-10 text-center shadow-[0_0_100px_rgba(74,222,128,0.1)] animate-in zoom-in-95 duration-300">
+          <div className="absolute inset-0 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-xl"></div>
+          <div className="relative w-full max-w-sm bg-white dark:bg-surface-dark rounded-[3.5rem] border border-border-color dark:border-white/10 p-10 text-center shadow-[0_0_100px_rgba(74,222,128,0.1)] animate-in zoom-in-95 duration-300">
             <div className="size-24 rounded-full bg-neon/10 border border-neon/20 flex items-center justify-center text-neon mx-auto mb-8 shadow-neon-soft animate-bounce">
               <span className="material-symbols-outlined text-5xl">check_circle</span>
             </div>
 
-            <h2 className="text-3xl font-black uppercase italic tracking-tighter text-white mb-2">Misión <span className="text-neon">Cumplida</span></h2>
-            <p className="text-xs font-bold uppercase tracking-widest text-white/50 mb-6">Venta registrada con éxito</p>
+            <h2 className="text-3xl font-black uppercase italic tracking-tighter text-text-main dark:text-white mb-2">Misión <span className="text-neon">Cumplida</span></h2>
+            <p className="text-xs font-bold uppercase tracking-widest text-text-secondary dark:text-white/50 mb-6">Venta registrada con éxito</p>
 
-            <div className="w-full bg-white/5 rounded-xl p-4 mb-6 border border-white/10">
+            <div className="w-full bg-black/5 dark:bg-white/5 rounded-xl p-4 mb-6 border border-border-color dark:border-white/10">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] font-black uppercase text-white/50">Monto Total</span>
-                <span className="text-xl font-black text-white">${lastOrderTotal.toFixed(2)}</span>
+                <span className="text-[10px] font-black uppercase text-text-secondary dark:text-white/50">Monto Total</span>
+                <span className="text-xl font-black text-text-main dark:text-white">${lastOrderTotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-[10px] font-black uppercase text-white/50">Método de Pago</span>
+                <span className="text-[10px] font-black uppercase text-text-secondary dark:text-white/50">Método de Pago</span>
                 <span className="text-xs font-black uppercase text-neon flex items-center gap-1">
                   {paymentMethod === 'cash' && <span className="material-symbols-outlined text-sm">payments</span>}
                   {paymentMethod === 'card' && <span className="material-symbols-outlined text-sm">credit_card</span>}
@@ -865,7 +865,7 @@ const OrderCreation: React.FC = () => {
               <button autoFocus onClick={() => window.location.reload()} className="w-full py-4 bg-neon text-black font-black uppercase tracking-widest rounded-xl hover:bg-neon/90 transition-all shadow-neon-soft active:scale-95">
                 Nueva Operación [ENTER]
               </button>
-              <button onClick={() => navigate('/orders')} className="w-full py-4 border border-white/10 text-white/40 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:text-white transition-all">VER TABLERO DESPACHO</button>
+              <button onClick={() => navigate('/orders')} className="w-full py-4 border border-border-color dark:border-white/10 text-text-secondary dark:text-white/40 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:text-text-main dark:hover:text-white transition-all">VER TABLERO DESPACHO</button>
             </div>
           </div>
         </div>
@@ -875,20 +875,20 @@ const OrderCreation: React.FC = () => {
       {showMultipleOrderWarning && (
         <div className="fixed inset-0 z-[600] flex items-center justify-center p-6 animate-in fade-in duration-200">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowMultipleOrderWarning(false)}></div>
-          <div className="relative w-full max-w-sm bg-[#111] border border-yellow-500/30 rounded-3xl p-8 shadow-2xl transform scale-100 animate-in zoom-in-95 duration-200">
+          <div className="relative w-full max-w-sm bg-white dark:bg-[#111] border border-yellow-500/30 rounded-3xl p-8 shadow-2xl transform scale-100 animate-in zoom-in-95 duration-200">
             <div className="flex flex-col items-center text-center gap-4">
               <div className="size-16 rounded-full bg-yellow-500/10 flex items-center justify-center text-yellow-500 mb-2">
                 <span className="material-symbols-outlined text-3xl">warning</span>
               </div>
               <div>
-                <h3 className="text-xl font-black text-white uppercase italic tracking-tight">Mesa Ocupada</h3>
-                <p className="text-sm text-zinc-400 mt-2 font-medium">Ya existe un pedido activo en la <strong>{selectedTable?.name}</strong>.</p>
-                <p className="text-xs text-zinc-500 mt-1">¿Deseas crear un pedido adicional para esta misma mesa?</p>
+                <h3 className="text-xl font-black text-text-main dark:text-white uppercase italic tracking-tight">Mesa Ocupada</h3>
+                <p className="text-sm text-text-secondary dark:text-zinc-400 mt-2 font-medium">Ya existe un pedido activo en la <strong>{selectedTable?.name}</strong>.</p>
+                <p className="text-xs text-text-secondary dark:text-zinc-500 mt-1">¿Deseas crear un pedido adicional para esta misma mesa?</p>
               </div>
               <div className="w-full grid grid-cols-2 gap-3 mt-4">
                 <button
                   onClick={() => setShowMultipleOrderWarning(false)}
-                  className="py-3 rounded-xl border border-zinc-700 text-zinc-400 font-bold uppercase text-[10px] hover:bg-zinc-800 transition-colors"
+                  className="py-3 rounded-xl border border-gray-200 dark:border-zinc-700 text-text-secondary dark:text-zinc-400 font-bold uppercase text-[10px] hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
                 >
                   Cancelar
                 </button>
@@ -908,18 +908,18 @@ const OrderCreation: React.FC = () => {
       {showClientPicker && (
         <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 animate-in fade-in duration-200">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowClientPicker(false)}></div>
-          <div className="relative w-full max-w-lg bg-surface-dark border border-white/10 rounded-[2.5rem] p-8 shadow-2xl flex flex-col max-h-[80vh] animate-in zoom-in-95">
+          <div className="relative w-full max-w-lg bg-white dark:bg-surface-dark border border-border-color dark:border-white/10 rounded-[2.5rem] p-8 shadow-2xl flex flex-col max-h-[80vh] animate-in zoom-in-95">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-black uppercase italic text-white tracking-tighter">Seleccionar <span className="text-neon">Cliente</span></h3>
-              <button onClick={() => setShowClientPicker(false)} className="size-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10"><span className="material-symbols-outlined">close</span></button>
+              <h3 className="text-xl font-black uppercase italic text-text-main dark:text-white tracking-tighter">Seleccionar <span className="text-neon">Cliente</span></h3>
+              <button onClick={() => setShowClientPicker(false)} className="size-10 rounded-xl bg-black/5 dark:bg-white/5 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/10"><span className="material-symbols-outlined">close</span></button>
             </div>
             <div className="relative mb-4">
-              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20">search</span>
+              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary/40 dark:text-white/20">search</span>
               <input
                 autoFocus
                 value={clientSearch}
                 onChange={e => setClientSearch(e.target.value)}
-                className="w-full h-12 pl-12 pr-4 rounded-xl bg-black/20 border border-white/5 text-white/80 text-sm focus:border-neon/50 outline-none"
+                className="w-full h-12 pl-12 pr-4 rounded-xl bg-black/5 dark:bg-black/20 border border-border-color/30 dark:border-white/5 text-text-main/80 dark:text-white/80 text-sm focus:border-neon/50 outline-none"
                 placeholder="Buscar por nombre o email..."
               />
             </div>
@@ -928,31 +928,31 @@ const OrderCreation: React.FC = () => {
                 <button
                   key={client.id}
                   onClick={() => { setSelectedClient(client); setShowClientPicker(false); }}
-                  className={`w-full p-4 rounded-2xl flex items-center justify-between transition-all ${selectedClient?.id === client.id ? 'bg-neon/10 border border-neon/30' : 'bg-white/5 border border-transparent hover:bg-white/10'}`}
+                  className={`w-full p-4 rounded-2xl flex items-center justify-between transition-all ${selectedClient?.id === client.id ? 'bg-neon/10 border border-neon/30' : 'bg-black/5 dark:bg-white/5 border border-transparent hover:bg-gray-100 dark:hover:bg-white/10'}`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="size-10 rounded-full bg-white/10 flex items-center justify-center text-white/50 font-bold">
+                    <div className="size-10 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-text-secondary dark:text-white/50 font-bold">
                       {client.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="text-left">
-                      <p className={`text-sm font-bold ${selectedClient?.id === client.id ? 'text-neon' : 'text-white'}`}>{client.name}</p>
-                      <p className="text-[10px] text-white/40">{client.email}</p>
+                      <p className={`text-sm font-bold ${selectedClient?.id === client.id ? 'text-neon' : 'text-text-main dark:text-white'}`}>{client.name}</p>
+                      <p className="text-[10px] text-text-secondary dark:text-white/40">{client.email}</p>
                     </div>
                   </div>
                   {selectedClient?.id === client.id && <span className="material-symbols-outlined text-neon">check</span>}
                 </button>
               ))}
               {filteredClients.length === 0 && (
-                <div className="py-10 text-center text-white/20">
+                <div className="py-10 text-center text-text-secondary/40 dark:text-white/20">
                   <span className="material-symbols-outlined text-4xl mb-2">person_off</span>
                   <p className="text-xs uppercase tracking-widest">No se encontraron clientes</p>
                 </div>
               )}
             </div>
-            <div className="pt-4 mt-4 border-t border-white/5">
+            <div className="pt-4 mt-4 border-t border-border-color/30 dark:border-white/5">
               <button
                 onClick={() => { setSelectedClient(null); setShowClientPicker(false); }}
-                className="w-full py-3 rounded-xl border border-white/10 text-white/40 font-bold uppercase text-xs hover:text-white hover:border-white/30 transition-all"
+                className="w-full py-3 rounded-xl border border-border-color dark:border-white/10 text-text-secondary dark:text-white/40 font-bold uppercase text-xs hover:text-text-main dark:hover:text-white hover:border-border-color dark:hover:border-white/30 transition-all"
               >
                 Continuar como Cliente General
               </button>
@@ -965,10 +965,10 @@ const OrderCreation: React.FC = () => {
       {showTablePicker && (
         <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 animate-in fade-in duration-200">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowTablePicker(false)}></div>
-          <div className="relative w-full max-w-4xl bg-surface-dark border border-white/10 rounded-[2.5rem] p-8 shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95">
+          <div className="relative w-full max-w-4xl bg-white dark:bg-surface-dark border border-border-color dark:border-white/10 rounded-[2.5rem] p-8 shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-black uppercase italic text-white tracking-tighter">Asignar <span className="text-accent">Mesa</span></h3>
-              <button onClick={() => setShowTablePicker(false)} className="size-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10"><span className="material-symbols-outlined">close</span></button>
+              <h3 className="text-xl font-black uppercase italic text-text-main dark:text-white tracking-tighter">Asignar <span className="text-accent">Mesa</span></h3>
+              <button onClick={() => setShowTablePicker(false)} className="size-10 rounded-xl bg-black/5 dark:bg-white/5 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/10"><span className="material-symbols-outlined">close</span></button>
             </div>
 
             <div className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 p-1">
@@ -980,7 +980,7 @@ const OrderCreation: React.FC = () => {
                     ? 'bg-neon/20 border-neon text-neon shadow-neon-soft'
                     : table.status === 'occupied'
                       ? 'bg-red-500/10 border-red-500/30 text-red-400'
-                      : 'bg-white/5 border-white/5 text-white/60 hover:bg-white/10 hover:border-neon/30'
+                      : 'bg-black/5 dark:bg-white/5 border-border-color/30 dark:border-white/5 text-text-secondary dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/10 hover:border-neon/30'
                     }`}
                 >
                   <span className="material-symbols-outlined text-3xl mb-2">{table.type === 'bar' ? 'local_bar' : 'table_restaurant'}</span>
@@ -992,10 +992,10 @@ const OrderCreation: React.FC = () => {
               ))}
             </div>
 
-            <div className="pt-4 mt-4 border-t border-white/5">
+            <div className="pt-4 mt-4 border-t border-border-color/30 dark:border-white/5">
               <button
                 onClick={() => { setSelectedTable(null); setShowTablePicker(false); }}
-                className="w-full py-3 rounded-xl border border-white/10 text-white/40 font-bold uppercase text-xs hover:text-white hover:border-white/30 transition-all"
+                className="w-full py-3 rounded-xl border border-border-color dark:border-white/10 text-text-secondary dark:text-white/40 font-bold uppercase text-xs hover:text-text-main dark:hover:text-white hover:border-border-color dark:hover:border-white/30 transition-all"
               >
                 Sin Mesa Asignada (Para Llevar)
               </button>
@@ -1007,10 +1007,10 @@ const OrderCreation: React.FC = () => {
       {/* MOBILE CART OVERLAY */}
       <div className={`fixed inset-0 z-[100] transition-transform duration-500 lg:hidden ${isCartOpenMobile ? 'translate-y-0' : 'translate-y-full'}`}>
         <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" onClick={() => setIsCartOpenMobile(false)}></div>
-        <div className="relative h-full w-full flex flex-col bg-surface-dark pt-10 rounded-t-[3rem] overflow-hidden shadow-2xl border-t border-white/10">
+        <div className="relative h-full w-full flex flex-col bg-white dark:bg-surface-dark pt-10 rounded-t-[3rem] overflow-hidden shadow-2xl border-t border-border-color dark:border-white/10">
           <div className="px-6 flex justify-between items-center mb-2">
-            <h3 className="text-xl font-black uppercase text-white italic-black tracking-tighter">PANEL DE <span className="text-neon">COBRO</span></h3>
-            <button onClick={() => setIsCartOpenMobile(false)} className="size-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40"><span className="material-symbols-outlined text-2xl">close</span></button>
+            <h3 className="text-xl font-black uppercase text-text-main dark:text-white italic-black tracking-tighter">PANEL DE <span className="text-neon">COBRO</span></h3>
+            <button onClick={() => setIsCartOpenMobile(false)} className="size-12 rounded-2xl bg-black/5 dark:bg-white/5 flex items-center justify-center text-text-secondary dark:text-white/40"><span className="material-symbols-outlined text-2xl">close</span></button>
           </div>
           <div className="flex-1 overflow-hidden">
             <CartContent />
