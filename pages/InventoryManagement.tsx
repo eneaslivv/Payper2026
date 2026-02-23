@@ -698,7 +698,8 @@ const InventoryManagement: React.FC = () => {
           const productRecipe = productRecipesMap[p.id] || [];
           const recipeCost = productRecipe.reduce((sum: number, r: any) => {
             const ingredient = transformedInsumos.find(i => i.id === r.inventory_item_id);
-            const costPerBaseUnit = (ingredient?.cost || 0) / (ingredient?.package_size || 1);
+            const ingCost = ingredient?.cost || ingredient?.last_purchase_price || 0;
+            const costPerBaseUnit = ingCost / (ingredient?.package_size || 1);
             const subtotal = costPerBaseUnit * parseFloat(r.quantity_required || '0');
             return sum + subtotal;
           }, 0);
@@ -1196,7 +1197,7 @@ const InventoryManagement: React.FC = () => {
       const newTotalCost = newRecipe.reduce((sum, comp) => {
         const insumo = items.find(i => i.id === comp.ingredientId);
         if (!insumo) return sum;
-        const costPerBaseUnit = insumo.cost / (insumo.package_size || 1);
+        const costPerBaseUnit = (insumo.cost || insumo.last_purchase_price || 0) / (insumo.package_size || 1);
         return sum + costPerBaseUnit * comp.quantity;
       }, 0);
 
@@ -1251,7 +1252,7 @@ const InventoryManagement: React.FC = () => {
       const newTotalCost = newRecipe.reduce((sum, comp) => {
         const insumo = items.find(i => i.id === comp.ingredientId);
         if (!insumo) return sum;
-        const costPerBaseUnit = insumo.cost / (insumo.package_size || 1);
+        const costPerBaseUnit = (insumo.cost || insumo.last_purchase_price || 0) / (insumo.package_size || 1);
         return sum + costPerBaseUnit * comp.quantity;
       }, 0);
 
@@ -2557,7 +2558,7 @@ const InventoryManagement: React.FC = () => {
                         const breakdown = recipeItems.map((r: any) => {
                           const ing = items.find(i => i.id === r.inventory_item_id);
                           const qty = parseFloat(r.quantity_required || '0');
-                          const costPerBase = ing ? ing.cost / (ing.package_size || 1) : 0;
+                          const costPerBase = ing ? (ing.cost || ing.last_purchase_price || 0) / (ing.package_size || 1) : 0;
                           const subtotal = costPerBase * qty;
                           const unitAbbr = ing?.unit_type === 'ml' ? 'ml' : ing?.unit_type === 'gram' ? 'g' : ing?.unit_type === 'liter' ? 'L' : ing?.unit_type === 'kilo' ? 'kg' : 'un';
                           return { name: ing?.name || '?', qty, unit: unitAbbr, subtotal, ingCost: ing?.cost || 0, pkgSize: ing?.package_size || 1 };

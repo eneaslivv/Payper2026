@@ -217,7 +217,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
 
             // Update last_purchase_price so next restock pre-fills the cost
             if ((type === 'PURCHASE' || type === 'RESTOCK') && parsedCost && parsedCost > 0) {
-                const updateFields: any = { last_purchase_price: parsedCost };
+                const updateFields: any = { last_purchase_price: parsedCost, cost: parsedCost };
                 if (supplierId) updateFields.last_supplier_id = supplierId;
                 await supabase.from('inventory_items').update(updateFields).eq('id', item.id);
             }
