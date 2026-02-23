@@ -509,9 +509,10 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     } catch (e) {}
                 }
 
+                // Determine session context for menu resolution (must be in outer scope for logging)
+                const sessionType = qrContext?.node_type || orderChannel || 'generic';
+
                 if (!resolvedMenuId) {
-                    // Determine session context for menu resolution
-                    const sessionType = qrContext?.node_type || orderChannel || 'generic';
                     const tableId = qrContext?.node_id || null;
 
                     // Call resolve_menu RPC

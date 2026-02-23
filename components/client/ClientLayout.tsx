@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, useLocation, useParams, useNavigate } from 'react-router-dom';
-import { ClientProvider, useClient } from '../../contexts/ClientContext';
+import { useClient } from '../../contexts/ClientContext';
 import BottomNav from './BottomNav';
 import ActiveOrderWidget from './ActiveOrderWidget';
 
@@ -100,11 +100,7 @@ const ClientLayoutContent: React.FC = () => {
 }
 
 const ClientLayout: React.FC = () => {
-    return (
-        <ClientProvider>
-            <ClientLayoutContent />
-        </ClientProvider>
-    );
+    return <ClientLayoutContent />;
 };
 
 export default ClientLayout;
