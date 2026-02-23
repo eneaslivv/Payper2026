@@ -1376,15 +1376,16 @@ const InventoryManagement: React.FC = () => {
           if (!hasStock) isResolvable = false;
           if (isCritical) hasCritical = true;
 
-          ingredientsStatus.push({ name: ingredient.name, hasStock, isCritical });
+          ingredientsStatus.push({ name: ingredient.name, hasStock, isCritical, required: qtyRequired });
         }
 
+        const totalQty = ingredientsStatus.reduce((sum, ing) => sum + ing.required, 0);
         variantsStatus.push({
           name: variant.name,
           isResolvable,
           hasCritical,
           portions: minPortions === Infinity ? 0 : minPortions,
-          ingredients: ingredientsStatus
+          ingredients: ingredientsStatus.map(ing => ({ ...ing, percentage: totalQty > 0 ? (ing.required / totalQty) * 100 : 0 }))
         });
       }
     } else {
@@ -1406,14 +1407,15 @@ const InventoryManagement: React.FC = () => {
         if (!hasStock) isResolvable = false;
         if (isCritical) hasCritical = true;
 
-        ingredientsStatus.push({ name: ingredient?.name || 'Unknown', hasStock, isCritical });
+        ingredientsStatus.push({ name: ingredient?.name || 'Unknown', hasStock, isCritical, required: qtyRequired });
       }
+      const totalQty = ingredientsStatus.reduce((sum, ing) => sum + ing.required, 0);
       variantsStatus.push({
         name: 'Receta Base',
         isResolvable,
         hasCritical,
         portions: minPortions === Infinity ? 0 : minPortions,
-        ingredients: ingredientsStatus
+        ingredients: ingredientsStatus.map(ing => ({ ...ing, percentage: totalQty > 0 ? (ing.required / totalQty) * 100 : 0 }))
       });
     }
 
@@ -2283,6 +2285,13 @@ const InventoryManagement: React.FC = () => {
                               onClick={async (e) => {
                                 e.stopPropagation();
                                 const newValue = !item.is_menu_visible;
+
+                                // Block enabling menu visibility if no price set (sellable items)
+                                if (newValue && item.item_type === 'sellable' && (!item.price || item.price <= 0)) {
+                                  addToast('Configurá un precio de venta antes de publicar en el menú', 'error');
+                                  return;
+                                }
+
                                 // Optimistic update
                                 const newItems = items.map(i => i.id === item.id ? { ...i, is_menu_visible: newValue } : i);
                                 setItems(newItems);
@@ -2611,12 +2620,25 @@ const InventoryManagement: React.FC = () => {
                         const hasRecipe = productRecipes.some(pr => pr.product_id === selectedItem.id);
                         // For recipes, cost & margin already shown in breakdown above — just show price
                         if (hasRecipe) {
+                          const noPrice = !selectedItem.price || selectedItem.price <= 0;
                           return (
-                            <div className="pt-2 border-t border-white/5">
-                              <div className="bg-black/40 border border-white/10 rounded-xl h-12 flex items-center px-4 gap-2">
+                            <div className="pt-2 border-t border-white/5 space-y-2">
+                              <div
+                                onClick={() => setShowEditPriceModal(true)}
+                                className="cursor-pointer group bg-black/40 border border-white/10 rounded-xl h-12 flex items-center px-4 gap-2 hover:border-rose-400/30 transition-all"
+                              >
                                 <span className="text-[8px] font-medium uppercase text-white/40 tracking-[0.2em]">Precio Venta</span>
-                                <span className="flex-1 text-right font-light text-lg text-rose-300">${selectedItem.price?.toFixed(2) || '0.00'}</span>
+                                <span className={`flex-1 text-right font-light text-lg ${noPrice ? 'text-white/20' : 'text-rose-300'}`}>
+                                  {noPrice ? 'Sin precio' : `$${selectedItem.price?.toFixed(2)}`}
+                                </span>
+                                <span className="material-symbols-outlined text-white/20 text-xs group-hover:text-rose-400 transition-colors">edit</span>
                               </div>
+                              {noPrice && (
+                                <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                                  <span className="material-symbols-outlined text-amber-400 text-sm">warning</span>
+                                  <span className="text-[8px] font-bold text-amber-400/80">Configurá un precio de venta antes de publicar en el menú</span>
+                                </div>
+                              )}
                             </div>
                           );
                         }
@@ -2933,10 +2955,11 @@ const InventoryManagement: React.FC = () => {
                                 <div className="flex-1">
                                   <p className="text-[10px] font-black text-white uppercase">{variant.name}</p>
                                   <div className="mt-2 space-y-1">
-                                    {variant.ingredients.map((ing) => (
+                                    {variant.ingredients.map((ing: any) => (
                                       <div key={`ingredient-${variant.name}-${ing.name}-${ing.required}`} className="text-[8px] font-medium text-white/60 flex items-center gap-1.5">
                                         <span>{ing.hasStock ? (ing.isCritical ? '⚠️' : '✓') : '❌'}</span>
-                                        <span>{ing.name}</span>
+                                        <span className="flex-1">{ing.name}</span>
+                                        <span className="text-white/30 font-mono tabular-nums">{ing.percentage.toFixed(1)}%</span>
                                         {ing.isCritical && ing.hasStock && (
                                           <span className="text-yellow-500/60">— Crítico</span>
                                         )}
