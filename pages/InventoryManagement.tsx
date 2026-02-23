@@ -697,7 +697,8 @@ const InventoryManagement: React.FC = () => {
           const productRecipe = productRecipesMap[p.id] || [];
           const recipeCost = productRecipe.reduce((sum: number, r: any) => {
             const ingredient = transformedInsumos.find(i => i.id === r.inventory_item_id);
-            const subtotal = (ingredient?.cost || 0) * parseFloat(r.quantity_required || '0');
+            const costPerBaseUnit = (ingredient?.cost || 0) / (ingredient?.package_size || 1);
+            const subtotal = costPerBaseUnit * parseFloat(r.quantity_required || '0');
             return sum + subtotal;
           }, 0);
 
@@ -1190,10 +1191,12 @@ const InventoryManagement: React.FC = () => {
       if (idx >= 0) newRecipe[idx] = newComp;
       else newRecipe.push(newComp);
 
-      // Recalculate total cost locally
+      // Recalculate total cost locally (cost per base unit * quantity)
       const newTotalCost = newRecipe.reduce((sum, comp) => {
         const insumo = items.find(i => i.id === comp.ingredientId);
-        return sum + (insumo ? comp.quantity * insumo.cost : 0);
+        if (!insumo) return sum;
+        const costPerBaseUnit = insumo.cost / (insumo.package_size || 1);
+        return sum + costPerBaseUnit * comp.quantity;
       }, 0);
 
       const updatedItem = { ...selectedItem, recipe: newRecipe, cost: newTotalCost };
@@ -1246,7 +1249,9 @@ const InventoryManagement: React.FC = () => {
       const newRecipe = (selectedItem.recipe || []).filter(r => r.ingredientId !== ingredientId);
       const newTotalCost = newRecipe.reduce((sum, comp) => {
         const insumo = items.find(i => i.id === comp.ingredientId);
-        return sum + (insumo ? comp.quantity * insumo.cost : 0);
+        if (!insumo) return sum;
+        const costPerBaseUnit = insumo.cost / (insumo.package_size || 1);
+        return sum + costPerBaseUnit * comp.quantity;
       }, 0);
 
       const updatedItem = { ...selectedItem, recipe: newRecipe, cost: newTotalCost };
@@ -2534,39 +2539,105 @@ const InventoryManagement: React.FC = () => {
                     </div>
 
                     {/* Cost & Stock Value Row */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div
-                        onClick={() => setShowEditPriceModal(true)}
-                        className="relative cursor-pointer group bg-black border border-white/10 rounded-xl h-10 flex items-center px-3 gap-2 hover:border-amber-500/30 transition-all"
-                      >
-                        <span className="text-[7px] font-black text-white/30 uppercase tracking-widest">Costo</span>
-                        <span className="flex-1 text-right font-black text-white text-sm">${selectedItem.cost || 0}</span>
-                        <span className="material-symbols-outlined text-white/20 text-xs group-hover:text-amber-500 transition-colors">edit</span>
-                      </div>
-                      <div className="bg-white/[0.02] border border-white/5 rounded-xl h-10 flex items-center px-3 gap-2">
-                        <span className="text-[7px] font-black text-white/30 uppercase tracking-widest">Valor</span>
-                        <span className="flex-1 text-right font-black text-white/40 text-sm">
-                          ${(((selectedItem.current_stock || 0) / (selectedItem.package_size || 1)) * (selectedItem.cost || 0)).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                        </span>
-                      </div>
-                    </div>
+                    {(() => {
+                      const hasRecipe = selectedItem.item_type === 'sellable' && productRecipes.some(pr => pr.product_id === selectedItem.id);
+                      if (hasRecipe) {
+                        // Auto-calculated recipe cost with breakdown
+                        const recipeItems = productRecipes.filter(pr => pr.product_id === selectedItem.id);
+                        const breakdown = recipeItems.map((r: any) => {
+                          const ing = items.find(i => i.id === r.inventory_item_id);
+                          const qty = parseFloat(r.quantity_required || '0');
+                          const costPerBase = ing ? ing.cost / (ing.package_size || 1) : 0;
+                          const subtotal = costPerBase * qty;
+                          const unitAbbr = ing?.unit_type === 'ml' ? 'ml' : ing?.unit_type === 'gram' ? 'g' : ing?.unit_type === 'liter' ? 'L' : ing?.unit_type === 'kilo' ? 'kg' : 'un';
+                          return { name: ing?.name || '?', qty, unit: unitAbbr, subtotal, ingCost: ing?.cost || 0, pkgSize: ing?.package_size || 1 };
+                        });
+                        const totalCost = breakdown.reduce((s, b) => s + b.subtotal, 0);
+                        return (
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl h-10 flex items-center px-3 gap-2">
+                                <span className="text-[7px] font-black text-violet-400/70 uppercase tracking-widest">Costo</span>
+                                <span className="flex-1 text-right font-black text-violet-300 text-sm">${totalCost.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                                <span className="material-symbols-outlined text-violet-400/40 text-[10px]">auto_mode</span>
+                              </div>
+                              <div className="bg-white/[0.02] border border-white/5 rounded-xl h-10 flex items-center px-3 gap-2">
+                                <span className="text-[7px] font-black text-white/30 uppercase tracking-widest">Margen</span>
+                                <span className={`flex-1 text-right font-black text-sm ${selectedItem.price && totalCost > 0 && ((selectedItem.price - totalCost) / totalCost) > 0 ? 'text-neon' : 'text-red-400'}`}>
+                                  {selectedItem.price && totalCost > 0 ? `${(((selectedItem.price - totalCost) / totalCost) * 100).toFixed(0)}%` : '--'}
+                                </span>
+                              </div>
+                            </div>
+                            {breakdown.length > 0 && (
+                              <div className="bg-white/[0.02] border border-white/5 rounded-xl p-2.5 space-y-1.5">
+                                <span className="text-[6px] font-black text-white/20 uppercase tracking-widest">Desglose de costo</span>
+                                {breakdown.map((b, idx) => (
+                                  <div key={idx} className="flex items-center justify-between text-[8px]">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-white/60 font-bold truncate max-w-[100px]">{b.name}</span>
+                                      <span className="text-white/25 font-medium">{b.qty}{b.unit}</span>
+                                    </div>
+                                    <span className="text-white/50 font-black">${b.subtotal.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+                      // Default: editable cost for ingredients/products without recipe
+                      return (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div
+                            onClick={() => setShowEditPriceModal(true)}
+                            className="relative cursor-pointer group bg-black border border-white/10 rounded-xl h-10 flex items-center px-3 gap-2 hover:border-amber-500/30 transition-all"
+                          >
+                            <span className="text-[7px] font-black text-white/30 uppercase tracking-widest">Costo</span>
+                            <span className="flex-1 text-right font-black text-white text-sm">${selectedItem.cost || 0}</span>
+                            <span className="material-symbols-outlined text-white/20 text-xs group-hover:text-amber-500 transition-colors">edit</span>
+                          </div>
+                          <div className="bg-white/[0.02] border border-white/5 rounded-xl h-10 flex items-center px-3 gap-2">
+                            <span className="text-[7px] font-black text-white/30 uppercase tracking-widest">Valor</span>
+                            <span className="flex-1 text-right font-black text-white/40 text-sm">
+                              ${(((selectedItem.current_stock || 0) / (selectedItem.package_size || 1)) * (selectedItem.cost || 0)).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {selectedItem.item_type === 'sellable' && (
-                      <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
-                        <div className="space-y-2">
-                          <label className="text-[8px] font-medium uppercase text-white/40 tracking-[0.2em]">Precio Venta</label>
-                          <div className="h-12 bg-black/40 border border-white/10 rounded-xl flex items-center justify-center font-light text-lg text-rose-300">
-                            ${selectedItem.price?.toFixed(2) || '0.00'}
+                      (() => {
+                        const hasRecipe = productRecipes.some(pr => pr.product_id === selectedItem.id);
+                        // For recipes, cost & margin already shown in breakdown above — just show price
+                        if (hasRecipe) {
+                          return (
+                            <div className="pt-2 border-t border-white/5">
+                              <div className="bg-black/40 border border-white/10 rounded-xl h-12 flex items-center px-4 gap-2">
+                                <span className="text-[8px] font-medium uppercase text-white/40 tracking-[0.2em]">Precio Venta</span>
+                                <span className="flex-1 text-right font-light text-lg text-rose-300">${selectedItem.price?.toFixed(2) || '0.00'}</span>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
+                            <div className="space-y-2">
+                              <label className="text-[8px] font-medium uppercase text-white/40 tracking-[0.2em]">Precio Venta</label>
+                              <div className="h-12 bg-black/40 border border-white/10 rounded-xl flex items-center justify-center font-light text-lg text-rose-300">
+                                ${selectedItem.price?.toFixed(2) || '0.00'}
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-[8px] font-medium uppercase text-white/40 tracking-[0.2em]">Margen Neto</label>
+                              <div className={`h-12 bg-black/40 border border-white/10 rounded-xl flex items-center justify-center font-light text-lg ${selectedItem.price && ((selectedItem.price - selectedItem.cost) / selectedItem.cost) > 0.5 ? 'text-green-400' : 'text-rose-300'
+                                }`}>
+                                {selectedItem.price ? `${(((selectedItem.price - selectedItem.cost) / selectedItem.cost) * 100).toFixed(0)}%` : '0%'}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[8px] font-medium uppercase text-white/40 tracking-[0.2em]">Margen Neto</label>
-                          <div className={`h-12 bg-black/40 border border-white/10 rounded-xl flex items-center justify-center font-light text-lg ${selectedItem.price && ((selectedItem.price - selectedItem.cost) / selectedItem.cost) > 0.5 ? 'text-green-400' : 'text-rose-300'
-                            }`}>
-                            {selectedItem.price ? `${(((selectedItem.price - selectedItem.cost) / selectedItem.cost) * 100).toFixed(0)}%` : '0%'}
-                          </div>
-                        </div>
-                      </div>
+                        );
+                      })()
                     )}
                   </div>
 
