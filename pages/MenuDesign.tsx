@@ -2408,7 +2408,7 @@ const MenuDesign: React.FC = () => {
                         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-[#1A1C19] rounded-b-3xl z-50 pointer-events-none" />
 
                         {/* Content Wrapper for MenuRenderer */}
-                        <div className="flex-1 flex flex-col relative overflow-y-auto overflow-x-hidden bg-black">
+                        <div className="flex-1 flex flex-col relative overflow-y-auto overflow-x-hidden transition-colors duration-500" style={{ backgroundColor: theme.backgroundColor }}>
                             {previewTab === 'menu' && (
                                 <MenuRenderer
                                     theme={theme}
