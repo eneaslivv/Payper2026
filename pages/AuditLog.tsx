@@ -22,6 +22,18 @@ const OPERATION_ACTION_MAP: Record<string, string> = {
   'DELETE': 'Eliminación',
 };
 
+// Mapeo de rol a label legible
+const ROLE_LABEL_MAP: Record<string, string> = {
+  'store_owner': 'Dueño',
+  'admin': 'Admin',
+  'manager': 'Gerente',
+  'staff': 'Staff',
+  'cashier': 'Cajero',
+  'barista': 'Barista',
+  'kitchen': 'Cocina',
+  'waiter': 'Mesero',
+};
+
 // Mapeo de tabla a entidad legible
 const TABLE_ENTITY_MAP: Record<string, string> = {
   'products': 'Producto',
@@ -152,9 +164,6 @@ const AuditLog: React.FC = () => {
   const [search, setSearch] = useState('');
   const [dateRange, setDateRange] = useState({ start: new Date(), end: new Date() });
 
-  // Cache de nombres de usuario
-  const [userNames, setUserNames] = useState<Record<string, string>>({});
-
   // Fetch audit logs desde Supabase
   useEffect(() => {
     const fetchAuditLogs = async () => {
@@ -183,22 +192,25 @@ const AuditLog: React.FC = () => {
           return;
         }
 
-        // Obtener IDs de usuarios únicos para buscar nombres
+        // Obtener IDs de usuarios únicos para buscar nombres y roles
         const userIds = [...new Set(data.map(row => row.user_id).filter(Boolean))] as string[];
 
-        // Fetch nombres de usuarios si hay IDs
+        // Fetch perfiles de usuarios (nombre + email + rol)
+        const profilesMap: Record<string, { name: string; email: string; role: string }> = {};
         if (userIds.length > 0) {
           const { data: profilesData } = await supabase
             .from('profiles')
-            .select('id, full_name, email')
+            .select('id, full_name, email, role')
             .in('id', userIds);
 
           if (profilesData) {
-            const namesMap: Record<string, string> = {};
             profilesData.forEach(p => {
-              namesMap[p.id] = p.full_name || p.email || 'Usuario';
+              profilesMap[p.id] = {
+                name: p.full_name || p.email || 'Usuario',
+                email: p.email || '',
+                role: p.role || 'staff',
+              };
             });
-            setUserNames(namesMap);
           }
         }
 
@@ -207,11 +219,13 @@ const AuditLog: React.FC = () => {
           const date = new Date(row.created_at);
           const formattedDate = date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' });
           const formattedTime = date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+          const userProfile = profilesMap[row.user_id || ''];
+          const roleLabel = ROLE_LABEL_MAP[userProfile?.role || ''] || userProfile?.role || 'Sistema';
 
           return {
             id: row.id,
-            userName: userNames[row.user_id || ''] || 'Sistema',
-            userRole: 'staff', // Se podría expandir para obtener el rol real
+            userName: userProfile?.name || 'Sistema',
+            userRole: userProfile?.email ? `${userProfile.email} · ${roleLabel}` : roleLabel,
             category: TABLE_CATEGORY_MAP[row.table_name] || 'system',
             action: OPERATION_ACTION_MAP[row.operation] || row.operation,
             entity: TABLE_ENTITY_MAP[row.table_name] || row.table_name,
@@ -232,16 +246,6 @@ const AuditLog: React.FC = () => {
 
     fetchAuditLogs();
   }, [profile?.store_id]);
-
-  // Actualizar nombres de usuario cuando cambian
-  useEffect(() => {
-    if (Object.keys(userNames).length > 0 && logs.length > 0) {
-      setLogs(prevLogs => prevLogs.map(log => ({
-        ...log,
-        userName: userNames[log.id] || log.userName,
-      })));
-    }
-  }, [userNames]);
 
   const filteredLogs = useMemo(() => {
     return logs.filter(l => {

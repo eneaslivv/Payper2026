@@ -86,8 +86,14 @@ const StoreSettings: React.FC = () => {
             }
 
             if (data) {
-                // Import dynamically to avoid circular deps if any, or just use standard import
-                const formatted = data.map(log => formatAuditLog(log as any));
+                // Enrich with emails from profiles
+                const userIds = [...new Set(data.map(r => r.user_id).filter(Boolean))] as string[];
+                const emailMap: Record<string, string> = {};
+                if (userIds.length > 0) {
+                    const { data: profiles } = await supabase.from('profiles').select('id, email').in('id', userIds);
+                    profiles?.forEach(p => { emailMap[p.id] = p.email || ''; });
+                }
+                const formatted = data.map(log => formatAuditLog({ ...log, user_email: emailMap[log.user_id] || '' } as any));
                 setLogs(formatted);
             }
         };
@@ -902,7 +908,7 @@ const StoreSettings: React.FC = () => {
                                                 </td>
                                                 <td className="px-8 py-6">
                                                     <p className="text-[12px] font-black text-text-main dark:text-white uppercase italic leading-none mb-1.5">{log.userName}</p>
-                                                    <p className="text-[9px] text-text-secondary dark:text-white/30 font-black uppercase opacity-40">{log.userRole}</p>
+                                                    <p className="text-[9px] text-text-secondary dark:text-white/30 font-bold opacity-50 tracking-tight">{log.userRole}</p>
                                                 </td>
                                                 <td className="px-8 py-6">
                                                     <p className="text-[12px] font-black uppercase text-text-main dark:text-white tracking-tight leading-none mb-1.5">{log.action}</p>

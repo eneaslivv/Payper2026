@@ -7,19 +7,24 @@ export interface RawAuditLog {
     user_id: string;
     user_name: string; // From VIEW
     user_role: string; // From VIEW
+    user_email?: string; // Enriched from profiles
     table_name: string;
     operation: 'INSERT' | 'UPDATE' | 'DELETE' | string;
     old_data: any;
     new_data: any;
 }
 
+const ROLE_LABELS: Record<string, string> = {
+    store_owner: 'Dueño', admin: 'Admin', manager: 'Gerente', staff: 'Staff',
+    cashier: 'Cajero', barista: 'Barista', kitchen: 'Cocina', waiter: 'Mesero',
+    super_admin: 'Super Admin', system: 'Sistema',
+};
+
 export const formatAuditLog = (log: RawAuditLog): AuditLogEntry => {
     const userName = log.user_name || 'Sistema';
-    // Map internal roles to human readable
     const rawRole = log.user_role || 'system';
-    const userRole = rawRole === 'store_owner' ? 'Dueño' :
-        rawRole === 'super_admin' ? 'Super Admin' :
-            rawRole === 'staff' ? 'Staff' : 'Sistema';
+    const roleLabel = ROLE_LABELS[rawRole] || rawRole;
+    const userRole = log.user_email ? `${log.user_email} · ${roleLabel}` : roleLabel;
 
     let category: AuditCategory = 'system';
     let action: string = log.operation;

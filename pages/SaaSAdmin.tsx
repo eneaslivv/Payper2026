@@ -8,7 +8,7 @@ import { PaymentSettings } from '../components/PaymentSettings';
 import { getAppUrl } from '../lib/urlUtils';
 import payperLogo from '../src/assets/payper-logo.png';
 
-type SaasTab = 'dashboard' | 'tenants' | 'users' | 'plans' | 'audit' | 'metrics';
+type SaasTab = 'dashboard' | 'tenants' | 'users' | 'plans' | 'audit' | 'metrics' | 'incidents';
 
 export interface ExtendedStore extends Omit<Store, 'is_active'> {
    is_active?: boolean;
@@ -47,6 +47,13 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
    const [globalUsers, setGlobalUsers] = useState<any[]>([]);
 
    const [configTab, setConfigTab] = useState<'negocio' | 'staff' | 'audit' | 'ai' | 'payment'>('negocio');
+
+   // Incidents
+   const [incidents, setIncidents] = useState<any[]>([]);
+   const [incidentsLoading, setIncidentsLoading] = useState(false);
+   const [incidentFilter, setIncidentFilter] = useState<'all' | 'new' | 'seen' | 'resolved' | 'ignored'>('all');
+   const [expandedIncident, setExpandedIncident] = useState<string | null>(null);
+   const [incidentNote, setIncidentNote] = useState('');
 
    const fetchData = useCallback(async () => {
       setIsLoading(true);
@@ -114,11 +121,44 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
       }
    }, [addToast]);
 
+   const fetchIncidents = useCallback(async () => {
+      setIncidentsLoading(true);
+      try {
+         const { data, error } = await supabase
+            .from('app_error_reports')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(200);
+
+         if (error) {
+            console.error('Error fetching incidents:', error);
+         } else {
+            // Enrich with store names from existing stores state
+            const storeMap = new Map(stores.map(s => [s.id, s.name]));
+            const enriched = (data || []).map((r: any) => ({
+               ...r,
+               store_name: r.store_id ? storeMap.get(r.store_id) || null : null
+            }));
+            setIncidents(enriched);
+         }
+      } catch (e) {
+         console.error('Fetch incidents error:', e);
+      } finally {
+         setIncidentsLoading(false);
+      }
+   }, [stores]);
+
    useEffect(() => {
       fetchData();
       const timer = setTimeout(() => setIsLoading(false), 3000);
       return () => clearTimeout(timer);
    }, [fetchData, activeTab]);
+
+   useEffect(() => {
+      if (activeTab === 'incidents') {
+         fetchIncidents();
+      }
+   }, [activeTab, fetchIncidents]);
 
    const handleGenerateAccessLink = async (email: string, storeId?: string, storeName?: string) => {
       if (!email) return;
@@ -302,6 +342,43 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
          setIsSaving(false);
       }
    };
+
+   const updateIncidentStatus = async (id: string, status: string) => {
+      const { error } = await supabase
+         .from('app_error_reports')
+         .update({ status })
+         .eq('id', id);
+      if (error) {
+         addToast('Error', 'error', error.message);
+      } else {
+         setIncidents(prev => prev.map(i => i.id === id ? { ...i, status } : i));
+         addToast('Actualizado', 'success', `Estado cambiado a ${status}`);
+      }
+   };
+
+   const saveIncidentNote = async (id: string) => {
+      const { error } = await supabase
+         .from('app_error_reports')
+         .update({ notes: incidentNote })
+         .eq('id', id);
+      if (error) {
+         addToast('Error', 'error', error.message);
+      } else {
+         setIncidents(prev => prev.map(i => i.id === id ? { ...i, notes: incidentNote } : i));
+         addToast('Nota guardada', 'success');
+         setIncidentNote('');
+      }
+   };
+
+   const filteredIncidents = incidentFilter === 'all'
+      ? incidents
+      : incidents.filter(i => i.status === incidentFilter);
+
+   const newIncidentCount = incidents.filter(i => i.status === 'new').length;
+   const last24h = incidents.filter(i => {
+      const created = new Date(i.created_at);
+      return Date.now() - created.getTime() < 86400000;
+   }).length;
 
    if (isLoading) {
       return (
@@ -958,6 +1035,222 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                         </button>
                      </div>
                   </form>
+               </div>
+            </div>
+         )}
+
+         {/* INCIDENTS TAB */}
+         {activeTab === 'incidents' && (
+            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+               <div className="flex items-center justify-between">
+                  <div>
+                     <h2 className="text-2xl font-black italic text-white uppercase tracking-tighter">Incidentes</h2>
+                     <p className="text-xs text-zinc-500 font-medium mt-1">Errores reportados por usuarios y crashes del sistema.</p>
+                  </div>
+                  <button
+                     onClick={() => fetchIncidents()}
+                     disabled={incidentsLoading}
+                     className="p-2 hover:bg-white/5 rounded-full text-zinc-500 hover:text-white transition-colors"
+                  >
+                     <span className={`material-symbols-outlined ${incidentsLoading ? 'animate-spin' : ''}`}>refresh</span>
+                  </button>
+               </div>
+
+               {/* KPIs */}
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-5 rounded-2xl bg-[#0A0C0A] border border-white/5 flex flex-col gap-1">
+                     <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Últimas 24h</span>
+                     <span className="text-3xl font-black text-white tracking-tighter tabular-nums">{last24h}</span>
+                  </div>
+                  <div className="p-5 rounded-2xl bg-[#0A0C0A] border border-white/5 flex flex-col gap-1">
+                     <span className="text-[10px] font-black text-red-400/60 uppercase tracking-widest">Nuevos sin ver</span>
+                     <span className="text-3xl font-black text-red-400 tracking-tighter tabular-nums">{newIncidentCount}</span>
+                  </div>
+                  <div className="p-5 rounded-2xl bg-[#0A0C0A] border border-white/5 flex flex-col gap-1">
+                     <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Total registros</span>
+                     <span className="text-3xl font-black text-white tracking-tighter tabular-nums">{incidents.length}</span>
+                  </div>
+               </div>
+
+               {/* Filters */}
+               <div className="flex items-center gap-2">
+                  {(['all', 'new', 'seen', 'resolved', 'ignored'] as const).map(f => (
+                     <button
+                        key={f}
+                        onClick={() => setIncidentFilter(f)}
+                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${incidentFilter === f
+                           ? 'bg-accent/10 text-accent border border-accent/20'
+                           : 'bg-white/5 text-zinc-500 border border-white/5 hover:text-white/60'
+                        }`}
+                     >
+                        {f === 'all' ? 'Todos' : f === 'new' ? 'Nuevos' : f === 'seen' ? 'Vistos' : f === 'resolved' ? 'Resueltos' : 'Ignorados'}
+                        {f === 'new' && newIncidentCount > 0 && (
+                           <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[8px]">{newIncidentCount}</span>
+                        )}
+                     </button>
+                  ))}
+               </div>
+
+               {/* Incidents Table */}
+               <div className="rounded-3xl border border-white/5 overflow-hidden bg-[#0A0C0A]">
+                  {incidentsLoading ? (
+                     <div className="p-12 text-center">
+                        <div className="w-8 h-8 border-2 border-accent/20 border-t-accent rounded-full animate-spin mx-auto mb-3"></div>
+                        <p className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Cargando incidentes...</p>
+                     </div>
+                  ) : filteredIncidents.length === 0 ? (
+                     <div className="p-12 text-center text-zinc-600 text-xs uppercase tracking-widest font-bold">
+                        {incidentFilter === 'all' ? 'Sin incidentes registrados' : `Sin incidentes con estado "${incidentFilter}"`}
+                     </div>
+                  ) : (
+                     <div className="divide-y divide-white/5">
+                        {filteredIncidents.map(inc => (
+                           <div key={inc.id}>
+                              {/* Row */}
+                              <div
+                                 className={`flex items-center gap-4 p-4 cursor-pointer transition-colors ${expandedIncident === inc.id ? 'bg-white/[0.04]' : 'hover:bg-white/[0.02]'}`}
+                                 onClick={() => setExpandedIncident(expandedIncident === inc.id ? null : inc.id)}
+                              >
+                                 {/* Status dot */}
+                                 <div className={`size-2.5 rounded-full flex-shrink-0 ${
+                                    inc.status === 'new' ? 'bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]' :
+                                    inc.status === 'seen' ? 'bg-amber-500' :
+                                    inc.status === 'resolved' ? 'bg-emerald-500' : 'bg-zinc-600'
+                                 }`}></div>
+
+                                 {/* Date */}
+                                 <div className="w-32 flex-shrink-0">
+                                    <div className="text-[10px] text-zinc-500 font-mono">
+                                       {new Date(inc.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })}
+                                    </div>
+                                    <div className="text-[9px] text-zinc-700 font-mono">
+                                       {new Date(inc.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                    </div>
+                                 </div>
+
+                                 {/* Store */}
+                                 <div className="w-28 flex-shrink-0">
+                                    {inc.store_name ? (
+                                       <span className="px-2 py-1 rounded-lg bg-accent/10 text-accent text-[9px] font-black uppercase">{inc.store_name}</span>
+                                    ) : (
+                                       <span className="text-[9px] text-zinc-700 italic">Sin tienda</span>
+                                    )}
+                                 </div>
+
+                                 {/* Error message */}
+                                 <div className="flex-1 min-w-0">
+                                    <p className="text-xs text-white/80 font-medium truncate">{inc.error_message}</p>
+                                    <p className="text-[9px] text-zinc-600 truncate">{inc.route || inc.url || '—'}</p>
+                                 </div>
+
+                                 {/* Status badge */}
+                                 <span className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-wider flex-shrink-0 ${
+                                    inc.status === 'new' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                                    inc.status === 'seen' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                                    inc.status === 'resolved' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                                    'bg-zinc-500/10 text-zinc-500 border border-zinc-500/20'
+                                 }`}>
+                                    {inc.status}
+                                 </span>
+
+                                 {/* Expand arrow */}
+                                 <span className={`material-symbols-outlined text-sm text-zinc-600 transition-transform ${expandedIncident === inc.id ? 'rotate-180' : ''}`}>
+                                    expand_more
+                                 </span>
+                              </div>
+
+                              {/* Expanded detail */}
+                              {expandedIncident === inc.id && (
+                                 <div className="px-4 pb-4 space-y-4 animate-in slide-in-from-top-2 duration-300">
+                                    {/* Stack trace */}
+                                    {inc.error_stack && (
+                                       <div className="p-4 rounded-xl bg-black/60 border border-white/5">
+                                          <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2">Stack Trace</p>
+                                          <pre className="text-[10px] text-red-400/70 font-mono whitespace-pre-wrap break-all max-h-48 overflow-y-auto leading-relaxed">
+                                             {inc.error_stack}
+                                          </pre>
+                                       </div>
+                                    )}
+
+                                    {/* Metadata */}
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                       <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5">
+                                          <p className="text-[8px] text-zinc-600 uppercase tracking-widest font-bold">URL</p>
+                                          <p className="text-[10px] text-white/60 font-mono break-all mt-1">{inc.url || '—'}</p>
+                                       </div>
+                                       <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5">
+                                          <p className="text-[8px] text-zinc-600 uppercase tracking-widest font-bold">Ruta</p>
+                                          <p className="text-[10px] text-white/60 font-mono mt-1">{inc.route || '—'}</p>
+                                       </div>
+                                       <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5">
+                                          <p className="text-[8px] text-zinc-600 uppercase tracking-widest font-bold">User Agent</p>
+                                          <p className="text-[10px] text-white/60 font-mono break-all mt-1 line-clamp-2">{inc.user_agent || '—'}</p>
+                                       </div>
+                                       <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5">
+                                          <p className="text-[8px] text-zinc-600 uppercase tracking-widest font-bold">Metadata</p>
+                                          <p className="text-[10px] text-white/60 font-mono break-all mt-1">{inc.metadata ? JSON.stringify(inc.metadata) : '—'}</p>
+                                       </div>
+                                    </div>
+
+                                    {/* Notes */}
+                                    {inc.notes && (
+                                       <div className="p-3 rounded-lg bg-accent/5 border border-accent/10">
+                                          <p className="text-[8px] text-accent uppercase tracking-widest font-bold">Nota</p>
+                                          <p className="text-xs text-white/70 mt-1">{inc.notes}</p>
+                                       </div>
+                                    )}
+
+                                    {/* Actions */}
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                       {inc.status !== 'seen' && (
+                                          <button
+                                             onClick={(e) => { e.stopPropagation(); updateIncidentStatus(inc.id, 'seen'); }}
+                                             className="px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] font-black uppercase tracking-wider hover:bg-amber-500/20 transition-all"
+                                          >
+                                             Marcar visto
+                                          </button>
+                                       )}
+                                       {inc.status !== 'resolved' && (
+                                          <button
+                                             onClick={(e) => { e.stopPropagation(); updateIncidentStatus(inc.id, 'resolved'); }}
+                                             className="px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] font-black uppercase tracking-wider hover:bg-emerald-500/20 transition-all"
+                                          >
+                                             Resolver
+                                          </button>
+                                       )}
+                                       {inc.status !== 'ignored' && (
+                                          <button
+                                             onClick={(e) => { e.stopPropagation(); updateIncidentStatus(inc.id, 'ignored'); }}
+                                             className="px-3 py-1.5 rounded-lg bg-zinc-500/10 text-zinc-500 border border-zinc-500/20 text-[9px] font-black uppercase tracking-wider hover:bg-zinc-500/20 transition-all"
+                                          >
+                                             Ignorar
+                                          </button>
+                                       )}
+
+                                       {/* Add note inline */}
+                                       <div className="flex-1 flex items-center gap-2 ml-2">
+                                          <input
+                                             value={incidentNote}
+                                             onChange={(e) => setIncidentNote(e.target.value)}
+                                             onClick={(e) => e.stopPropagation()}
+                                             placeholder="Agregar nota..."
+                                             className="flex-1 h-8 bg-white/[0.03] border border-white/10 rounded-lg px-3 text-[10px] text-white/70 focus:border-accent outline-none placeholder:text-white/10"
+                                          />
+                                          <button
+                                             onClick={(e) => { e.stopPropagation(); saveIncidentNote(inc.id); }}
+                                             disabled={!incidentNote.trim()}
+                                             className="px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-[9px] font-black uppercase tracking-wider hover:bg-accent/20 transition-all disabled:opacity-30"
+                                          >
+                                             Guardar
+                                          </button>
+                                       </div>
+                                    </div>
+                                 </div>
+                              )}
+                           </div>
+                        ))}
+                     </div>
+                  )}
                </div>
             </div>
          )}

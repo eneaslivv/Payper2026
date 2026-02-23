@@ -119,6 +119,7 @@ const SaaSLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
           <SidebarGroup label="Sistema">
             <SidebarItem to="/audit" icon="policy" label="Auditoría Master" active={location.pathname === '/audit'} />
+            <SidebarItem to="/incidents" icon="bug_report" label="Incidentes" active={location.pathname === '/incidents'} />
             <SidebarItem to="/settings" icon="settings_applications" label="Config. Motor" active={location.pathname === '/settings'} />
           </SidebarGroup>
         </div>
@@ -732,7 +733,7 @@ const MainRouter: React.FC = () => {
             <Route path="/plans" element={<SaaSAdmin initialTab="plans" />} />
             <Route path="/metrics" element={<SaaSAdmin initialTab="metrics" />} />
             <Route path="/audit" element={<SaaSAdmin initialTab="audit" />} />
-            <Route path="/audit" element={<SaaSAdmin initialTab="audit" />} />
+            <Route path="/incidents" element={<SaaSAdmin initialTab="incidents" />} />
             <Route path="/join" element={<JoinTeam />} />
             {/* QR Resolver Fallback */}
             <Route path="/qr/:hash" element={<QRResolver />} />

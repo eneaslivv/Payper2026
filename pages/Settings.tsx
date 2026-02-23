@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ToastSystem';
 import { sendEmailNotification } from '../lib/notifications';
-import { MOCK_STAFF, MOCK_ROLES, MOCK_AUDIT_LOG, DEFAULT_AI_CONFIG } from '../constants';
+import { MOCK_STAFF, MOCK_ROLES, DEFAULT_AI_CONFIG } from '../constants';
 import { StaffMember, CustomRole, SectionSlug, AuditLogEntry, AuditCategory, AIConfig } from '../types';
 
 type SettingsTab = 'general' | 'staff' | 'audit' | 'pagos' | 'ai';
@@ -31,6 +31,57 @@ const AUDIT_CATEGORIES: { slug: AuditCategory | 'all', label: string, icon: stri
   { slug: 'staff', label: 'Staff', icon: 'badge' },
   { slug: 'system', label: 'Sistema', icon: 'settings' },
 ];
+
+// Audit log helpers
+const AUDIT_TABLE_CATEGORY: Record<string, AuditCategory> = {
+  products: 'stock', inventory_items: 'stock', product_recipes: 'stock',
+  orders: 'orders', profiles: 'staff', stores: 'system',
+};
+const AUDIT_OP_LABEL: Record<string, string> = { INSERT: 'Creación', UPDATE: 'Modificación', DELETE: 'Eliminación' };
+const AUDIT_TABLE_LABEL: Record<string, string> = {
+  products: 'Producto', inventory_items: 'Insumo', product_recipes: 'Receta',
+  orders: 'Pedido', profiles: 'Usuario', stores: 'Tienda',
+};
+const AUDIT_ROLE_LABEL: Record<string, string> = {
+  store_owner: 'Dueño', admin: 'Admin', manager: 'Gerente', staff: 'Staff',
+  cashier: 'Cajero', barista: 'Barista', kitchen: 'Cocina', waiter: 'Mesero',
+};
+
+interface AuditLogRow {
+  id: string; created_at: string; store_id: string | null; user_id: string | null;
+  table_name: string; operation: string; old_data: Record<string, any> | null; new_data: Record<string, any> | null;
+}
+
+const auditDetail = (row: AuditLogRow): string => {
+  const { operation, old_data, new_data, table_name } = row;
+  if (operation === 'INSERT' && new_data) return `Nuevo: "${new_data.name || new_data.full_name || 'elemento'}"`;
+  if (operation === 'DELETE' && old_data) return `Eliminado: "${old_data.name || old_data.full_name || 'elemento'}"`;
+  if (operation === 'UPDATE' && old_data && new_data) {
+    const c: string[] = [];
+    if ((table_name === 'products' || table_name === 'inventory_items')) {
+      if (old_data.price !== new_data.price) c.push(`Precio: $${old_data.price} → $${new_data.price}`);
+      if (old_data.cost !== new_data.cost) c.push(`Costo: $${old_data.cost} → $${new_data.cost}`);
+      if (old_data.current_stock !== new_data.current_stock) c.push(`Stock: ${old_data.current_stock} → ${new_data.current_stock}`);
+    }
+    if (table_name === 'orders' && old_data.status !== new_data.status) c.push(`Estado: ${old_data.status} → ${new_data.status}`);
+    if (table_name === 'profiles' && old_data.role !== new_data.role) c.push(`Rol: ${old_data.role} → ${new_data.role}`);
+    if (c.length > 0) return c.join(' | ');
+    return `Actualizado: "${new_data.name || new_data.full_name || 'elemento'}"`;
+  }
+  if (new_data?.name) return `${operation}: "${new_data.name}"`;
+  return 'Cambio registrado';
+};
+
+const auditImpact = (row: AuditLogRow): string => {
+  if (row.operation === 'DELETE') return 'negative';
+  if (row.operation === 'INSERT') return 'positive';
+  if (row.operation === 'UPDATE' && row.old_data && row.new_data) {
+    const t = row.table_name;
+    if ((t === 'products' || t === 'inventory_items') && row.old_data.price !== row.new_data.price) return 'critical';
+    if (t === 'profiles' && row.old_data.role !== row.new_data.role) return 'critical';
+  }
+  return 'neutral';
+};
 
 // --- HELPER COMPONENTS (Moved to top for hoisting) ---
 const TabButton: React.FC<{ active: boolean, onClick: () => void, label: string, icon: string, saas?: boolean }> = ({ active, onClick, label, icon, saas }) => (
@@ -88,7 +139,8 @@ const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [members, setMembers] = useState<StaffMember[]>(MOCK_STAFF);
   const [roles, setRoles] = useState<CustomRole[]>([]);
-  const [logs] = useState<AuditLogEntry[]>(MOCK_AUDIT_LOG);
+  const [logs, setLogs] = useState<AuditLogEntry[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
   const [aiConfig, setAiConfig] = useState<AIConfig>(DEFAULT_AI_CONFIG);
 
   // Staff Sub-tabs
@@ -97,6 +149,56 @@ const Settings: React.FC = () => {
   // Audit States
   const [auditFilter, setAuditFilter] = useState<AuditCategory | 'all'>('all');
   const [auditSearch, setAuditSearch] = useState('');
+
+  // Fetch real audit logs from Supabase
+  useEffect(() => {
+    if (!profile?.store_id || activeTab !== 'audit') return;
+    const fetchAudit = async () => {
+      setAuditLoading(true);
+      try {
+        const { data } = await supabase
+          .from('audit_logs')
+          .select('*')
+          .eq('store_id', profile.store_id)
+          .order('created_at', { ascending: false })
+          .limit(200);
+
+        if (!data) { setLogs([]); return; }
+
+        // Fetch user profiles for names
+        const userIds = [...new Set(data.map(r => r.user_id).filter(Boolean))] as string[];
+        const profilesMap: Record<string, { name: string; email: string; role: string }> = {};
+        if (userIds.length > 0) {
+          const { data: pd } = await supabase.from('profiles').select('id, full_name, email, role').in('id', userIds);
+          pd?.forEach(p => {
+            profilesMap[p.id] = { name: p.full_name || p.email || 'Usuario', email: p.email || '', role: p.role || 'staff' };
+          });
+        }
+
+        setLogs(data.map((row: AuditLogRow) => {
+          const d = new Date(row.created_at);
+          const up = profilesMap[row.user_id || ''];
+          const roleLabel = AUDIT_ROLE_LABEL[up?.role || ''] || up?.role || 'Sistema';
+          return {
+            id: row.id,
+            userName: up?.name || 'Sistema',
+            userRole: up?.email ? `${up.email} · ${roleLabel}` : roleLabel,
+            category: AUDIT_TABLE_CATEGORY[row.table_name] || 'system',
+            action: AUDIT_OP_LABEL[row.operation] || row.operation,
+            entity: AUDIT_TABLE_LABEL[row.table_name] || row.table_name,
+            detail: auditDetail(row),
+            timestamp: `${d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })} ${d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`,
+            impact: auditImpact(row),
+          };
+        }));
+      } catch (e) {
+        console.error('Error fetching audit logs:', e);
+      } finally {
+        setAuditLoading(false);
+      }
+    };
+    fetchAudit();
+  }, [profile?.store_id, activeTab]);
 
   // Modals & Forms
   const [showRoleModal, setShowRoleModal] = useState(false);
@@ -665,6 +767,14 @@ const Settings: React.FC = () => {
               </div>
             </div>
             <div className="bg-white dark:bg-surface-dark rounded-[2rem] border border-black/[0.04] dark:border-white/[0.04] shadow-soft overflow-hidden">
+              {auditLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="size-6 border-2 border-neon/20 border-t-neon rounded-full animate-spin"></div>
+                    <p className="text-[9px] font-black uppercase text-white/40 tracking-[0.3em]">Cargando...</p>
+                  </div>
+                </div>
+              ) : (
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-black/[0.01] dark:bg-white/[0.01] border-b border-black/[0.02] dark:border-white/[0.02]">
@@ -684,7 +794,7 @@ const Settings: React.FC = () => {
                       </td>
                       <td className="px-4 py-3">
                         <p className="text-[10px] font-bold dark:text-white uppercase italic-black">{log.userName}</p>
-                        <p className="text-[8px] text-text-secondary font-black uppercase opacity-40">{log.userRole}</p>
+                        <p className="text-[8px] text-text-secondary font-bold opacity-50 tracking-tight">{log.userRole}</p>
                       </td>
                       <td className="px-4 py-3">
                         <p className="text-[10px] font-black uppercase dark:text-white tracking-tight leading-none mb-1">{log.action}</p>
@@ -698,8 +808,14 @@ const Settings: React.FC = () => {
                       </td>
                     </tr>
                   ))}
+                  {filteredLogs.length === 0 && (
+                    <tr><td colSpan={5} className="px-4 py-16 text-center">
+                      <p className="text-[9px] font-black uppercase text-white/20 tracking-[0.3em]">Sin eventos registrados</p>
+                    </td></tr>
+                  )}
                 </tbody>
               </table>
+              )}
             </div>
           </div>
         )}
