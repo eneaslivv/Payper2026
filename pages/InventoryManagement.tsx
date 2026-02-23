@@ -728,7 +728,7 @@ const InventoryManagement: React.FC = () => {
               ingredientId: r.inventory_item_id,
               quantity: parseFloat(r.quantity_required || '0')
             })),
-            price: p.price || 0,
+            price: p.base_price || p.price || 0,
             category_ids: p.category_id ? [p.category_id] : [],
             description: p.description || '',
             presentations: [],
@@ -2623,15 +2623,39 @@ const InventoryManagement: React.FC = () => {
                           const noPrice = !selectedItem.price || selectedItem.price <= 0;
                           return (
                             <div className="pt-2 border-t border-white/5 space-y-2">
-                              <div
-                                onClick={() => setShowEditPriceModal(true)}
-                                className="cursor-pointer group bg-black/40 border border-white/10 rounded-xl h-12 flex items-center px-4 gap-2 hover:border-rose-400/30 transition-all"
-                              >
-                                <span className="text-[8px] font-medium uppercase text-white/40 tracking-[0.2em]">Precio Venta</span>
-                                <span className={`flex-1 text-right font-light text-lg ${noPrice ? 'text-white/20' : 'text-rose-300'}`}>
-                                  {noPrice ? 'Sin precio' : `$${selectedItem.price?.toFixed(2)}`}
-                                </span>
-                                <span className="material-symbols-outlined text-white/20 text-xs group-hover:text-rose-400 transition-colors">edit</span>
+                              <div className="space-y-1">
+                                <label className="text-[7px] font-black text-white/30 uppercase tracking-widest ml-1">Precio de Venta</label>
+                                <div className="flex items-center gap-2">
+                                  <div className="relative flex-1">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/20">$</span>
+                                    <input
+                                      type="number"
+                                      value={selectedItem.price || ''}
+                                      onChange={(e) => setSelectedItem(prev => prev ? { ...prev, price: parseFloat(e.target.value) || 0 } : null)}
+                                      placeholder="0.00"
+                                      className="w-full bg-black border border-white/10 rounded-xl pl-7 pr-3 py-2.5 text-sm font-bold text-white outline-none focus:border-rose-400/50 transition-all"
+                                    />
+                                  </div>
+                                  <button
+                                    onClick={async () => {
+                                      const newPrice = selectedItem.price || 0;
+                                      try {
+                                        const { error } = await supabase
+                                          .from('products')
+                                          .update({ base_price: newPrice })
+                                          .eq('id', selectedItem.id);
+                                        if (error) throw error;
+                                        setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, price: newPrice } : i));
+                                        addToast('Precio actualizado', 'success');
+                                      } catch (err: any) {
+                                        addToast('Error: ' + err.message, 'error');
+                                      }
+                                    }}
+                                    className="px-3 py-2.5 rounded-xl bg-neon/10 text-neon border border-neon/20 text-[9px] font-black uppercase tracking-widest hover:bg-neon/20 transition-all whitespace-nowrap"
+                                  >
+                                    Guardar
+                                  </button>
+                                </div>
                               </div>
                               {noPrice && (
                                 <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
@@ -2684,126 +2708,221 @@ const InventoryManagement: React.FC = () => {
                   {/* METRICS & DETAILS */}
                   {drawerTab === 'details' && (
                     <div className="bg-white/[0.02] rounded-2xl p-6 border border-white/5 space-y-6">
-                      {/* STOCK TOTAL - Show closed units as primary */}
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="text-[10px] font-medium text-cream/70 uppercase tracking-[0.2em] mb-2">STOCK TOTAL</p>
-                          {(() => {
-                            const closedUnits = Math.floor(selectedItem.closed_stock || 0);
-                            const pkgSize = selectedItem.package_size || 1;
-                            const unitAbbr = selectedItem.unit_type === 'gram' ? 'g' : selectedItem.unit_type === 'ml' ? 'ml' : selectedItem.unit_type === 'kilo' ? 'kg' : selectedItem.unit_type === 'liter' ? 'L' : '';
+                      {/* RECIPE-BASED VIEW for sellable items */}
+                      {selectedItem.item_type === 'sellable' && productRecipes.some(pr => pr.product_id === selectedItem.id) ? (
+                        (() => {
+                          const availability = getRecipeAvailability(selectedItem);
+                          const { portions } = availability;
+                          const baseRecipe = productRecipes.filter(r => r.product_id === selectedItem.id);
+                          const color = portions > 5 ? 'text-neon' : portions > 0 ? 'text-yellow-400' : 'text-red-400';
+                          const statusLabel = portions > 5 ? 'Disponible' : portions > 0 ? 'Stock Crítico' : 'Sin Stock';
+                          const statusColor = portions > 5 ? 'bg-neon/10 border-neon/20 text-neon' : portions > 0 ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400' : 'bg-red-500/10 border-red-500/20 text-red-400';
 
-                            // Format capacity label
-                            let capLabel = '';
-                            if (pkgSize > 1 && unitAbbr) {
-                              let dSize = pkgSize;
-                              let dUnit = unitAbbr;
-                              if ((unitAbbr === 'ml' || unitAbbr === 'g') && dSize >= 1000) {
-                                dSize = dSize / 1000;
-                                dUnit = unitAbbr === 'ml' ? 'L' : 'kg';
-                              }
-                              capLabel = `x ${dSize}${dUnit} c/u`;
-                            }
-
-                            return (
-                              <>
-                                <div className="flex items-baseline gap-3">
-                                  <p className={`text-5xl font-light tracking-tighter ${closedUnits > 0 ? 'text-cream' : 'text-red-400'}`}>
-                                    {closedUnits}
-                                  </p>
-                                  <p className="text-sm font-medium text-white/30">
-                                    {closedUnits === 1 ? 'unidad' : 'unidades'}
-                                  </p>
+                          return (
+                            <>
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <p className="text-[10px] font-medium text-cream/70 uppercase tracking-[0.2em] mb-2">Porciones Disponibles</p>
+                                  <div className="flex items-baseline gap-3">
+                                    <p className={`text-5xl font-light tracking-tighter ${color}`}>
+                                      {portions}
+                                    </p>
+                                    <p className="text-sm font-medium text-white/30">
+                                      {portions === 1 ? 'porción' : 'porciones'}
+                                    </p>
+                                  </div>
                                 </div>
-                                {capLabel && (
-                                  <p className="text-[11px] font-light text-white/30 mt-2">
-                                    {capLabel}
-                                  </p>
-                                )}
-                              </>
-                            );
-                          })()}
-                        </div>
-                        <button
-                          onClick={() => setIsTransferModalOpen(true)}
-                          className="px-5 py-2.5 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-2 hover:bg-rose-500/20 transition-all group"
-                        >
-                          <span className="material-symbols-outlined text-rose-400 text-lg group-hover:scale-110 transition-transform">swap_horiz</span>
-                          <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest">TRANSFERIR</span>
-                        </button>
-                      </div>
-
-                      <div className="h-px bg-white/5 w-full"></div>
-
-                      {/* DESGLOSE: Cerrados + Abiertos */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <p className="text-[9px] font-medium text-white/30 uppercase tracking-widest">Cerrados</p>
-                          {(() => {
-                            const totalClosed = ((selectedItem as any).location_stocks || []).reduce((sum: number, ls: any) => sum + (ls.closed_units || 0), 0);
-                            return (
-                              <p className="text-lg font-light text-white/60 tracking-tight">
-                                {Math.floor(totalClosed)} <span className="text-[9px] text-white/20">un</span>
-                              </p>
-                            );
-                          })()}
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-[9px] font-medium text-white/30 uppercase tracking-widest">Abiertos</p>
-                          {(() => {
-                            const openPkgs = selectedItem.open_packages || [];
-                            const openCount = openPkgs.length;
-                            const unitAbbr = selectedItem.unit_type === 'ml' ? 'ml' : selectedItem.unit_type === 'gram' ? 'g' : selectedItem.unit_type === 'liter' ? 'L' : selectedItem.unit_type === 'kilo' ? 'kg' : selectedItem.unit_type === 'unit' ? 'un' : selectedItem.unit_type || 'un';
-
-                            if (openCount === 0) {
-                              return <p className="text-lg font-light text-white/20 tracking-tight">0</p>;
-                            }
-
-                            const openRemaining = openPkgs.reduce((sum: number, pkg: any) => sum + (pkg.remaining || 0), 0);
-                            return (
-                              <div>
-                                <p className="text-lg font-light text-orange-400 tracking-tight">
-                                  {openCount} <span className="text-[9px] text-white/20">envase{openCount > 1 ? 's' : ''}</span>
-                                </p>
-                                <p className="text-[9px] text-white/30 mt-0.5">
-                                  {Math.round(openRemaining * 100) / 100} {unitAbbr} restantes
-                                </p>
+                                <span className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${statusColor}`}>
+                                  {statusLabel}
+                                </span>
                               </div>
-                            );
-                          })()}
-                        </div>
-                      </div>
 
-                      {/* STOCK POR UBICACIÓN */}
-                      {selectedItem.item_type === 'ingredient' && (
-                        <div className="pt-4 space-y-4">
-                          <div className="flex items-center gap-3">
-                            <span className="material-symbols-outlined text-white/30 text-sm">location_on</span>
-                            <span className="text-[9px] font-medium uppercase text-white/30 tracking-[0.2em]">Ubicaciones</span>
-                            <div className="flex-1 h-px bg-white/5"></div>
+                              <div className="h-px bg-white/5 w-full"></div>
+
+                              {/* INGREDIENT BREAKDOWN */}
+                              <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="material-symbols-outlined text-white/30 text-sm">biotech</span>
+                                  <span className="text-[9px] font-black uppercase text-white/40 tracking-[0.2em]">Composición de la Receta</span>
+                                  <div className="flex-1 h-px bg-white/10"></div>
+                                </div>
+                                {(() => {
+                                  const ingredientDetails = baseRecipe.map(r => {
+                                    const ingredient = items.find(i => i.id === r.inventory_item_id);
+                                    const qtyRequired = parseFloat(r.quantity_required as any) || 0;
+                                    const totalStock = ingredient ? getTotalAvailableStock(ingredient) : 0;
+                                    const ingPortions = qtyRequired > 0 ? Math.floor(totalStock / qtyRequired) : Infinity;
+                                    return { ingredient, qtyRequired, totalStock, portions: ingPortions };
+                                  });
+                                  const totalQty = ingredientDetails.reduce((sum, d) => sum + d.qtyRequired, 0);
+
+                                  return (
+                                    <div className="space-y-2">
+                                      {ingredientDetails.map((d) => {
+                                        if (!d.ingredient) return null;
+                                        const pct = totalQty > 0 ? (d.qtyRequired / totalQty) * 100 : 0;
+                                        const unitAbbr = d.ingredient.unit_type === 'gram' ? 'g' : d.ingredient.unit_type === 'ml' ? 'ml' : d.ingredient.unit_type === 'kilo' ? 'kg' : d.ingredient.unit_type === 'liter' ? 'L' : d.ingredient.unit_type === 'unit' ? 'un' : d.ingredient.unit_type || 'un';
+                                        const isCritical = d.totalStock <= (d.ingredient.min_stock || 0);
+                                        const hasStock = d.qtyRequired > 0 ? d.totalStock >= d.qtyRequired : true;
+                                        const barColor = !hasStock ? 'bg-red-500' : isCritical ? 'bg-yellow-500' : 'bg-neon';
+
+                                        return (
+                                          <div key={d.ingredient.id} className="p-3 rounded-xl bg-white/[0.03] border border-white/5 space-y-2">
+                                            <div className="flex items-center justify-between">
+                                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                <span className={`text-[10px] ${!hasStock ? 'text-red-400' : isCritical ? 'text-yellow-400' : 'text-neon'}`}>
+                                                  {!hasStock ? '❌' : isCritical ? '⚠️' : '✓'}
+                                                </span>
+                                                <span className="text-[10px] font-bold text-white truncate">{d.ingredient.name}</span>
+                                              </div>
+                                              <span className="text-[11px] font-black text-white/70 font-mono tabular-nums ml-2">{pct.toFixed(1)}%</span>
+                                            </div>
+                                            <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                                              <div className={`h-full rounded-full ${barColor} transition-all`} style={{ width: `${Math.min(pct, 100)}%` }}></div>
+                                            </div>
+                                            <div className="flex justify-between text-[8px] text-white/30">
+                                              <span>Usa {d.qtyRequired} {unitAbbr} por porción</span>
+                                              <span className="font-mono tabular-nums">{d.portions === Infinity ? '∞' : d.portions} porciones restantes</span>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+
+                              {/* COSTO TEÓRICO */}
+                              <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/5">
+                                <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Costo Teórico</span>
+                                <span className="text-sm font-black text-white font-mono">${selectedItem.cost.toFixed(2)}</span>
+                              </div>
+                            </>
+                          );
+                        })()
+                      ) : (
+                        <>
+                          {/* STOCK TOTAL - Show closed units as primary */}
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="text-[10px] font-medium text-cream/70 uppercase tracking-[0.2em] mb-2">STOCK TOTAL</p>
+                              {(() => {
+                                const closedUnits = Math.floor(selectedItem.closed_stock || 0);
+                                const pkgSize = selectedItem.package_size || 1;
+                                const unitAbbr = selectedItem.unit_type === 'gram' ? 'g' : selectedItem.unit_type === 'ml' ? 'ml' : selectedItem.unit_type === 'kilo' ? 'kg' : selectedItem.unit_type === 'liter' ? 'L' : '';
+
+                                // Format capacity label
+                                let capLabel = '';
+                                if (pkgSize > 1 && unitAbbr) {
+                                  let dSize = pkgSize;
+                                  let dUnit = unitAbbr;
+                                  if ((unitAbbr === 'ml' || unitAbbr === 'g') && dSize >= 1000) {
+                                    dSize = dSize / 1000;
+                                    dUnit = unitAbbr === 'ml' ? 'L' : 'kg';
+                                  }
+                                  capLabel = `x ${dSize}${dUnit} c/u`;
+                                }
+
+                                return (
+                                  <>
+                                    <div className="flex items-baseline gap-3">
+                                      <p className={`text-5xl font-light tracking-tighter ${closedUnits > 0 ? 'text-cream' : 'text-red-400'}`}>
+                                        {closedUnits}
+                                      </p>
+                                      <p className="text-sm font-medium text-white/30">
+                                        {closedUnits === 1 ? 'unidad' : 'unidades'}
+                                      </p>
+                                    </div>
+                                    {capLabel && (
+                                      <p className="text-[11px] font-light text-white/30 mt-2">
+                                        {capLabel}
+                                      </p>
+                                    )}
+                                  </>
+                                );
+                              })()}
+                            </div>
+                            <button
+                              onClick={() => setIsTransferModalOpen(true)}
+                              className="px-5 py-2.5 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-2 hover:bg-rose-500/20 transition-all group"
+                            >
+                              <span className="material-symbols-outlined text-rose-400 text-lg group-hover:scale-110 transition-transform">swap_horiz</span>
+                              <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest">TRANSFERIR</span>
+                            </button>
                           </div>
-                          <LocationStockBreakdown
-                            itemId={selectedItem.id}
-                            unitType={selectedItem.unit_type}
-                            packageSize={selectedItem.package_size || 1}
-                            currentStock={selectedItem.current_stock || 0}
-                            refreshKey={stockRefreshKey}
-                            onLocationClick={(locName) => {
-                              console.log('📍 Navigating to Logistics:', locName);
-                              setActiveLocationFilter(locName);
-                              setFilter('logistics');
-                              setSelectedItem(null);
-                              addToast(`Navegando a: ${locName}`, 'info');
-                            }}
+
+                          <div className="h-px bg-white/5 w-full"></div>
+
+                          {/* DESGLOSE: Cerrados + Abiertos */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <p className="text-[9px] font-medium text-white/30 uppercase tracking-widest">Cerrados</p>
+                              {(() => {
+                                const totalClosed = ((selectedItem as any).location_stocks || []).reduce((sum: number, ls: any) => sum + (ls.closed_units || 0), 0);
+                                return (
+                                  <p className="text-lg font-light text-white/60 tracking-tight">
+                                    {Math.floor(totalClosed)} <span className="text-[9px] text-white/20">un</span>
+                                  </p>
+                                );
+                              })()}
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-[9px] font-medium text-white/30 uppercase tracking-widest">Abiertos</p>
+                              {(() => {
+                                const openPkgs = selectedItem.open_packages || [];
+                                const openCount = openPkgs.length;
+                                const unitAbbr = selectedItem.unit_type === 'ml' ? 'ml' : selectedItem.unit_type === 'gram' ? 'g' : selectedItem.unit_type === 'liter' ? 'L' : selectedItem.unit_type === 'kilo' ? 'kg' : selectedItem.unit_type === 'unit' ? 'un' : selectedItem.unit_type || 'un';
+
+                                if (openCount === 0) {
+                                  return <p className="text-lg font-light text-white/20 tracking-tight">0</p>;
+                                }
+
+                                const openRemaining = openPkgs.reduce((sum: number, pkg: any) => sum + (pkg.remaining || 0), 0);
+                                return (
+                                  <div>
+                                    <p className="text-lg font-light text-orange-400 tracking-tight">
+                                      {openCount} <span className="text-[9px] text-white/20">envase{openCount > 1 ? 's' : ''}</span>
+                                    </p>
+                                    <p className="text-[9px] text-white/30 mt-0.5">
+                                      {Math.round(openRemaining * 100) / 100} {unitAbbr} restantes
+                                    </p>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          </div>
+
+                          {/* STOCK POR UBICACIÓN */}
+                          {selectedItem.item_type === 'ingredient' && (
+                            <div className="pt-4 space-y-4">
+                              <div className="flex items-center gap-3">
+                                <span className="material-symbols-outlined text-white/30 text-sm">location_on</span>
+                                <span className="text-[9px] font-medium uppercase text-white/30 tracking-[0.2em]">Ubicaciones</span>
+                                <div className="flex-1 h-px bg-white/5"></div>
+                              </div>
+                              <LocationStockBreakdown
+                                itemId={selectedItem.id}
+                                unitType={selectedItem.unit_type}
+                                packageSize={selectedItem.package_size || 1}
+                                currentStock={selectedItem.current_stock || 0}
+                                refreshKey={stockRefreshKey}
+                                onLocationClick={(locName) => {
+                                  console.log('📍 Navigating to Logistics:', locName);
+                                  setActiveLocationFilter(locName);
+                                  setFilter('logistics');
+                                  setSelectedItem(null);
+                                  addToast(`Navegando a: ${locName}`, 'info');
+                                }}
+                              />
+                            </div>
+                          )}
+
+                          <AIStockInsight
+                            currentStock={selectedItem.current_stock}
+                            minStock={selectedItem.min_stock || 0}
                           />
-                        </div>
+                        </>
                       )}
-
-                      <AIStockInsight
-                        currentStock={selectedItem.current_stock}
-                        minStock={selectedItem.min_stock || 0}
-                      />
-
                     </div>
                   )}
 
