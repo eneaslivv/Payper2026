@@ -1323,6 +1323,13 @@ const InventoryManagement: React.FC = () => {
   }, [effectiveItems, searchTerm, filter, activeCategoryFilter]);
 
   // --- RECIPE AVAILABILITY LOGIC (moved before kpis) ---
+  // Helper: total available stock = current_stock (closed base units) + open packages remaining
+  const getTotalAvailableStock = (ingredient: InventoryItem): number => {
+    const closed = ingredient.current_stock || 0;
+    const openRemaining = (ingredient.open_packages || []).reduce((sum: number, pkg: any) => sum + (pkg.remaining || 0), 0);
+    return closed + openRemaining;
+  };
+
   const getRecipeAvailability = (item: InventoryItem) => {
     // 1. Get Variants
     const variants = item.variants && item.variants.length > 0 ? item.variants : [];
@@ -1332,7 +1339,7 @@ const InventoryManagement: React.FC = () => {
 
     // If no recipe and no variants, it's unavailable (or simple product without tracking)
     if (baseRecipe.length === 0 && variants.length === 0) {
-      return { status: 'Unavailable', variantsStatus: [] };
+      return { status: 'Unavailable', variantsStatus: [], portions: 0 };
     }
 
     const variantsStatus = [];
@@ -1342,37 +1349,36 @@ const InventoryManagement: React.FC = () => {
       for (const variant of variants) {
         let isResolvable = true;
         let hasCritical = false;
+        let minPortions = Infinity;
         const ingredientsStatus = [];
 
-        // Using Base Recipe for all variants for now, but checking STOCK
         for (const r of baseRecipe) {
           const ingredient = items.find(i => i.id === r.inventory_item_id);
           if (!ingredient) continue;
 
-          // Check override
-          let qtyRequired = r.quantity_required;
+          let qtyRequired = parseFloat(r.quantity_required as any) || 0;
           if (variant.recipe_overrides) {
             const override = (variant.recipe_overrides as any[]).find((o: any) => o.ingredient_id === r.inventory_item_id);
             if (override) qtyRequired += override.quantity_delta;
           }
 
-          const hasStock = ingredient.current_stock >= qtyRequired;
-          const isCritical = ingredient.current_stock <= ingredient.min_stock;
+          const totalStock = getTotalAvailableStock(ingredient);
+          const hasStock = qtyRequired > 0 ? totalStock >= qtyRequired : true;
+          const isCritical = totalStock <= (ingredient.min_stock || 0);
+          const portions = qtyRequired > 0 ? Math.floor(totalStock / qtyRequired) : Infinity;
+          if (portions < minPortions) minPortions = portions;
 
           if (!hasStock) isResolvable = false;
           if (isCritical) hasCritical = true;
 
-          ingredientsStatus.push({
-            name: ingredient.name,
-            hasStock,
-            isCritical
-          });
+          ingredientsStatus.push({ name: ingredient.name, hasStock, isCritical });
         }
 
         variantsStatus.push({
           name: variant.name,
           isResolvable,
           hasCritical,
+          portions: minPortions === Infinity ? 0 : minPortions,
           ingredients: ingredientsStatus
         });
       }
@@ -1380,26 +1386,28 @@ const InventoryManagement: React.FC = () => {
       // Single "Default" Variant Use Case
       let isResolvable = true;
       let hasCritical = false;
+      let minPortions = Infinity;
       const ingredientsStatus = [];
 
       for (const r of baseRecipe) {
         const ingredient = items.find(i => i.id === r.inventory_item_id);
-        const hasStock = ingredient ? ingredient.current_stock >= r.quantity_required : false;
-        const isCritical = ingredient ? ingredient.current_stock <= ingredient.min_stock : false;
+        const totalStock = ingredient ? getTotalAvailableStock(ingredient) : 0;
+        const qtyRequired = parseFloat(r.quantity_required as any) || 0;
+        const hasStock = qtyRequired > 0 ? totalStock >= qtyRequired : true;
+        const isCritical = ingredient ? totalStock <= (ingredient.min_stock || 0) : false;
+        const portions = qtyRequired > 0 ? Math.floor(totalStock / qtyRequired) : Infinity;
+        if (portions < minPortions) minPortions = portions;
 
         if (!hasStock) isResolvable = false;
         if (isCritical) hasCritical = true;
 
-        ingredientsStatus.push({
-          name: ingredient?.name || 'Unknown',
-          hasStock,
-          isCritical
-        });
+        ingredientsStatus.push({ name: ingredient?.name || 'Unknown', hasStock, isCritical });
       }
       variantsStatus.push({
         name: 'Receta Base',
         isResolvable,
         hasCritical,
+        portions: minPortions === Infinity ? 0 : minPortions,
         ingredients: ingredientsStatus
       });
     }
@@ -1407,13 +1415,14 @@ const InventoryManagement: React.FC = () => {
     // Determine Overall Status
     const anyResolvable = variantsStatus.some(v => v.isResolvable);
     const anyCritical = variantsStatus.some(v => v.hasCritical);
+    const maxPortions = Math.max(...variantsStatus.map(v => v.portions || 0), 0);
 
     let status = 'No disponible';
     if (anyResolvable) {
       status = anyCritical ? 'Critical' : 'Available';
     }
 
-    return { status, variantsStatus, criticalCount: variantsStatus.filter(v => v.hasCritical).length };
+    return { status, variantsStatus, criticalCount: variantsStatus.filter(v => v.hasCritical).length, portions: maxPortions };
   };
 
   const kpis = useMemo(() => {
@@ -2112,41 +2121,23 @@ const InventoryManagement: React.FC = () => {
                             <div className="flex flex-col">
                               {item.item_type === 'sellable' ? (
                                 (() => {
-                                  const { status, variantsStatus } = getRecipeAvailability(item);
-                                  // If no recipe involved, maybe show -- 
+                                  const { portions } = getRecipeAvailability(item);
                                   const hasRecipe = productRecipes.some(pr => pr.product_id === item.id);
                                   if (!hasRecipe) return <span className="text-[14px] font-black text-white/20">--</span>;
 
-                                  if (status === 'Available') {
-                                    return (
-                                      <div className="flex flex-col gap-1">
-                                        <span className="text-[10px] font-black text-neon uppercase bg-neon/10 px-2 py-0.5 rounded w-fit">Disponible</span>
-                                        <span className="text-[7px] text-green-500/60 font-bold uppercase tracking-wide">✓ Sin riesgos</span>
-                                      </div>
-                                    );
-                                  } else if (status === 'Critical') {
-                                    // Count critical/missing ingredients
-                                    const criticalIngredients: Array<{ name: string, hasStock: boolean }> = [];
-                                    variantsStatus.forEach(v => {
-                                      v.ingredients.forEach(ing => {
-                                        if (!ing.hasStock || ing.isCritical) {
-                                          if (!criticalIngredients.find(ci => ci.name === ing.name)) {
-                                            criticalIngredients.push({ name: ing.name, hasStock: ing.hasStock });
-                                          }
-                                        }
-                                      });
-                                    });
-                                    const count = criticalIngredients.length;
+                                  const color = portions > 5 ? 'text-neon' : portions > 0 ? 'text-yellow-400' : 'text-red-400';
 
-                                    return (
-                                      <div className="flex flex-col gap-1">
-                                        <span className="text-[10px] font-black text-yellow-400 uppercase bg-yellow-400/10 px-2 py-0.5 rounded w-fit">Disponible</span>
-                                        <span className="text-[7px] text-yellow-500/80 font-bold uppercase tracking-wide">⚠️ {count} ingrediente{count > 1 ? 's' : ''} crítico{count > 1 ? 's' : ''}</span>
+                                  return (
+                                    <div className="flex flex-col gap-0.5">
+                                      <div className="flex items-baseline gap-1.5">
+                                        <span className={`font-black italic text-[14px] ${color}`}>{portions}</span>
+                                        <span className="text-[7px] font-bold text-white/30 uppercase">porciones</span>
                                       </div>
-                                    );
-                                  } else {
-                                    return <span className="text-[10px] font-black text-red-500 uppercase bg-red-500/10 px-2 py-0.5 rounded w-fit">No Disponible</span>;
-                                  }
+                                      {portions === 0 && (
+                                        <span className="text-[6px] font-black text-red-400/80 uppercase tracking-widest">SIN STOCK</span>
+                                      )}
+                                    </div>
+                                  );
                                 })()
                               ) : (
                                 (() => {
