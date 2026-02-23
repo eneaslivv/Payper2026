@@ -57,6 +57,49 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  // Reusable product refresh (called on init + on reconnect)
+  const refreshProducts = useCallback(async () => {
+    let localProducts = await dbOps.getAllProducts();
+    if (storeId) {
+      localProducts = localProducts.filter((p: any) => !p.store_id || p.store_id === storeId);
+    }
+
+    if (navigator.onLine && storeId) {
+      try {
+        const { data: remoteProducts, error } = await supabase
+          .from('products')
+          .select('*')
+          .eq('store_id', storeId);
+
+        if (!error && remoteProducts && remoteProducts.length > 0) {
+          const mapped: Product[] = (remoteProducts as any as SupabaseProduct[]).map((rp) => ({
+            id: rp.id,
+            name: rp.name,
+            price: rp.price,
+            sku: rp.sku || 'GEN-' + rp.id.substring(0, 8),
+            category: rp.category || 'General',
+            image: rp.image_url || rp.image || '',
+            stock: rp.stock || 100,
+            stockStatus: rp.stock < 10 ? 'Bajo' : 'Alto',
+            available: rp.available,
+            variants: rp.variants || [],
+            addons: rp.addons || []
+          }));
+          localProducts = mapped;
+          await dbOps.saveProducts(localProducts);
+        }
+      } catch (err) {
+        console.error("Error fetching products", err);
+      }
+    }
+
+    if (localProducts.length === 0) {
+      setProducts(MOCK_PRODUCTS);
+    } else {
+      setProducts(localProducts);
+    }
+  }, [storeId]);
+
   // Load initial data
   useEffect(() => {
     const loadData = async () => {
@@ -195,50 +238,8 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       }
 
-      // 2. Load Products (filtered by store_id to prevent cross-store leaks)
-      let localProducts = await dbOps.getAllProducts();
-      if (storeId) {
-        localProducts = localProducts.filter((p: any) => !p.store_id || p.store_id === storeId);
-      }
-
-      // If online and have store_id, Try to fetch latest products from Supabase
-      if (navigator.onLine && storeId) {
-        try {
-          // Fetch products for this store
-          const { data: remoteProducts, error } = await supabase
-            .from('products')
-            .select('*')
-            .eq('store_id', storeId);
-
-          if (!error && remoteProducts && remoteProducts.length > 0) {
-            // Map Supabase 'products' rows back to 'Product' type
-            const mapped: Product[] = (remoteProducts as any as SupabaseProduct[]).map((rp) => ({
-              id: rp.id,
-              name: rp.name,
-              price: rp.price,
-              sku: rp.sku || 'GEN-' + rp.id.substring(0, 8),
-              category: rp.category || 'General',
-              image: rp.image_url || rp.image || '',
-              stock: rp.stock || 100,
-              stockStatus: rp.stock < 10 ? 'Bajo' : 'Alto',
-              available: rp.available,
-              variants: rp.variants || [],
-              addons: rp.addons || []
-            }));
-            localProducts = mapped;
-            await dbOps.saveProducts(localProducts);
-          }
-        } catch (err) {
-          console.error("Error fetching products", err);
-        }
-      }
-
-      if (localProducts.length === 0) {
-        // Fallback to constants if nothing anywhere
-        setProducts(MOCK_PRODUCTS);
-      } else {
-        setProducts(localProducts);
-      }
+      // 2. Load Products
+      await refreshProducts();
 
       updatePendingCount();
     };
@@ -498,7 +499,13 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
             }
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          // F5: On realtime reconnect, refresh orders to catch missed events
+          if (status === 'SUBSCRIBED') {
+            console.log('[OfflineContext] Realtime SUBSCRIBED, refreshing orders');
+            refreshOrders();
+          }
+        });
 
       return () => {
         console.log('[OfflineContext] Cleaning up Realtime subscription');
@@ -511,8 +518,9 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      addToast("CONEXIÓN RESTAURADA", "success", "Iniciando sincronización...");
+      addToast("CONEXIÓN RESTAURADA", "success", "Sincronizando datos...");
       triggerSync();
+      refreshProducts(); // F4: refresh prices/availability on reconnect
     };
 
     const handleOffline = () => {

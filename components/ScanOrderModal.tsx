@@ -14,7 +14,7 @@ interface ScanOrderModalProps {
 
 const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, currentStation }) => {
     const { profile } = useAuth();
-    const { refreshOrders } = useOffline();
+    const { refreshOrders, confirmOrderDelivery } = useOffline();
 
     // Refs
     const inputRef = useRef<HTMLInputElement>(null);
@@ -352,10 +352,10 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
 
         console.log("👤 Staff ID:", staffId);
 
-        // At this point, we're on the 2nd scan (or ALL view) - just deliver
-        const success = await markOrderAsDelivered(scannedOrder.pickup_code || scannedOrder.id, staffId);
+        // Use OfflineContext queue — works offline (queues for sync) and online (RPC direct)
+        const result = await confirmOrderDelivery(scannedOrder.id, staffId);
 
-        if (success) {
+        if (result.success) {
             setStatus('success');
             toast.success(`✅ Orden #${scannedOrder.order_number || '---'} ENTREGADA`);
             await refreshOrders();
@@ -364,7 +364,7 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
             }, 1500);
         } else {
             setStatus('error');
-            setErrorMessage('No se pudo confirmar la entrega. Verifica si ya fue procesada.');
+            setErrorMessage(result.message || 'No se pudo confirmar la entrega. Verifica si ya fue procesada.');
         }
     };
 

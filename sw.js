@@ -12,12 +12,26 @@ const STATIC_ASSETS = [
   'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700&display=swap'
 ];
 
-// Install - cache static assets
+// Install - cache static assets + warm up build chunks
 self.addEventListener('install', (event) => {
   console.log('[SW] Installing...');
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => cache.addAll(STATIC_ASSETS))
+      .then(() => {
+        // Pre-cache Vite build assets by parsing index.html
+        return fetch('./index.html').then(res => res.text()).then(html => {
+          const assetUrls = [];
+          // Extract JS and CSS from <script src="..."> and <link href="...">
+          const scriptMatches = html.matchAll(/src="(\.\/assets\/[^"]+\.js)"/g);
+          const cssMatches = html.matchAll(/href="(\.\/assets\/[^"]+\.css)"/g);
+          for (const m of scriptMatches) assetUrls.push(m[1]);
+          for (const m of cssMatches) assetUrls.push(m[1]);
+          if (assetUrls.length > 0) {
+            return caches.open(DYNAMIC_CACHE).then(cache => cache.addAll(assetUrls));
+          }
+        }).catch(() => { /* non-critical: first install may not have built assets yet */ });
+      })
       .then(() => self.skipWaiting())
   );
 });

@@ -18,7 +18,7 @@ const OrderCreation: React.FC = () => {
   const { createOrder, isOnline } = useOffline();
   const [menuProducts, setMenuProducts] = useState<any[]>([]); // Real menu items from inventory
   const { profile } = useAuth();
-  const { hasOpenSession, getSessionForNode, activeSessions } = useCashShift();
+  const { hasOpenSession, getSessionForNode, getCachedSessionForNode, activeSessions } = useCashShift();
   const [activeCategory, setActiveCategory] = useState('Todos');
   const [search, setSearch] = useState('');
   const [cart, setCart] = useState<OrderItem[]>([]);
@@ -372,6 +372,10 @@ const OrderCreation: React.FC = () => {
           return;
         }
         resolvedSessionId = session.id;
+      } else {
+        // Offline: use cached session so order links to the active cash shift
+        const cached = getCachedSessionForNode(selectedTable?.id);
+        resolvedSessionId = cached?.id || null;
       }
 
       // 0b. QR Interception

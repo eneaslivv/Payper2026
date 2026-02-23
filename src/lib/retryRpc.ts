@@ -1,10 +1,9 @@
 /**
  * RETRY RPC WRAPPER - Fix Riesgo #1
  *
- * Problema: NOWAIT locks en backend pueden fallar con LOCK_TIMEOUT
- * Si el frontend no reintenta, usuario ve error "fantasma" en hora pico
- *
- * Solución: Retry automático con exponential backoff para LOCK_TIMEOUT
+ * Retries automáticos con exponential backoff para:
+ * - LOCK_TIMEOUT (55P03) — hora pico, locks concurrentes
+ * - Network errors (Failed to fetch) — caída de WiFi momentánea
  *
  * Uso:
  * ```typescript
@@ -66,7 +65,7 @@ export async function retryRpc<T>(
       return { data, error: null };
     }
 
-    // 🔒 LOCK_TIMEOUT específico → retry con backoff
+    // 🔒 LOCK_TIMEOUT → retry con backoff
     const isLockTimeout =
       error.code === '55P03' || // PostgreSQL lock_not_available
       error.code === 'PGRST301' || // PostgREST timeout
@@ -74,14 +73,29 @@ export async function retryRpc<T>(
       error.message?.toLowerCase().includes('lock not available') ||
       error.error === 'LOCK_TIMEOUT'; // Custom RPC error
 
-    if (isLockTimeout && attempt < opts.maxRetries - 1) {
+    // 🌐 Network errors → retry con backoff (WiFi drops, DNS failures)
+    const errorMsg = error.message?.toLowerCase() || '';
+    const isNetworkError =
+      errorMsg.includes('failed to fetch') ||
+      errorMsg.includes('networkerror') ||
+      errorMsg.includes('network request failed') ||
+      errorMsg.includes('econnrefused') ||
+      errorMsg.includes('enotfound') ||
+      errorMsg.includes('timeout') ||
+      errorMsg.includes('aborted') ||
+      (error.name === 'TypeError' && errorMsg.includes('fetch'));
+
+    const isRetryable = isLockTimeout || isNetworkError;
+
+    if (isRetryable && attempt < opts.maxRetries - 1) {
       const delay = Math.min(
         opts.baseDelay * Math.pow(2, attempt),
         opts.maxDelay
       );
 
+      const reason = isLockTimeout ? 'LOCK_TIMEOUT' : 'NETWORK_ERROR';
       console.warn(
-        `[retryRpc] 🔒 LOCK_TIMEOUT detected, retry ${attempt + 1}/${opts.maxRetries} in ${delay}ms`
+        `[retryRpc] ${reason} detected, retry ${attempt + 1}/${opts.maxRetries} in ${delay}ms`
       );
 
       opts.onRetry(attempt + 1, error);
@@ -175,10 +189,13 @@ export async function retryStockRpc<T>(
     baseDelay: 300,
     maxDelay: 2000,
     rpcName: rpcName || 'stock_operation',
-    onRetry: (attempt) => {
+    onRetry: (attempt, error) => {
       if (addToast) {
+        const isNetwork = error?.message?.toLowerCase()?.includes('fetch') || error?.name === 'TypeError';
         addToast(
-          `Stock ocupado, reintentando (${attempt}/3)...`,
+          isNetwork
+            ? `Sin conexión, reintentando (${attempt}/3)...`
+            : `Stock ocupado, reintentando (${attempt}/3)...`,
           'info'
         );
       }

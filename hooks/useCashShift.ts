@@ -85,6 +85,11 @@ export const useCashShift = () => {
                 }));
 
                 setActiveSessions(mappedSessions);
+
+                // Cache sessions for offline order creation
+                try {
+                    localStorage.setItem('cached_cash_sessions', JSON.stringify(mappedSessions));
+                } catch { /* quota exceeded — non-critical */ }
             }
 
         } catch (error) {
@@ -163,7 +168,25 @@ export const useCashShift = () => {
         return activeSessions.length > 0 ? activeSessions[0] : null;
     };
 
-    // 5. Check if ANY session is open for this store
+    // 5. Offline-safe session lookup (reads localStorage cache if offline)
+    const getCachedSessionForNode = (nodeId?: string | null): CashSession | null => {
+        // Try live sessions first
+        if (activeSessions.length > 0) {
+            if (nodeId) {
+                const match = activeSessions.find(s => s.dispatch_station_id === nodeId || s.zone_id === nodeId);
+                if (match) return match;
+            }
+            return activeSessions[0];
+        }
+        // Fallback to localStorage cache (works offline)
+        try {
+            const cached = JSON.parse(localStorage.getItem('cached_cash_sessions') || '[]') as CashSession[];
+            if (cached.length > 0) return cached[0];
+        } catch { /* corrupted cache */ }
+        return null;
+    };
+
+    // 6. Check if ANY session is open for this store
     const hasOpenSession = activeSessions.length > 0;
 
     return {
@@ -174,6 +197,7 @@ export const useCashShift = () => {
         refreshData,
         openSession,
         closeSession,
-        getSessionForNode
+        getSessionForNode,
+        getCachedSessionForNode
     };
 };
