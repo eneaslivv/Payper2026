@@ -1336,7 +1336,7 @@ const MenuDesign: React.FC = () => {
         setItems(prev => prev.map(i => i.id === id ? { ...i, ...updates } : i));
     };
 
-    // 2. Persist to Server (Actual API Call)
+    // 2. Persist to Server (uses Supabase client for auto token refresh)
     const persistItem = async (id: string, updates: Partial<InventoryItem>) => {
         console.log(`[MenuDesign] Persisting updates for ${id}...`, updates);
         const storeId = profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
@@ -1345,15 +1345,14 @@ const MenuDesign: React.FC = () => {
             // Find item to identify Target Table
             const item = items.find(i => i.id === id);
 
-            // Use Explicit Source if available, fallback to legacy type check (should not be needed after refresh)
-            const isProduct = (item as any)?.id_source === 'product' || item?.item_type === 'sellable' && !(item as any)?.id_source;
+            // Use Explicit Source if available, fallback to legacy type check
+            const isProduct = (item as any)?.id_source === 'product' || (item?.item_type === 'sellable' && !(item as any)?.id_source);
             const table = isProduct ? 'products' : 'inventory_items';
 
             const dbUpdates: any = {};
             if (updates.name !== undefined) dbUpdates.name = updates.name;
             if (updates.description !== undefined) dbUpdates.description = updates.description;
             if (updates.image_url !== undefined) {
-                // Fix: explicit column mapping for products table (image) vs inventory_items (image_url)
                 if (table === 'products') {
                     dbUpdates.image = updates.image_url;
                 } else {
@@ -1361,67 +1360,45 @@ const MenuDesign: React.FC = () => {
                 }
             }
             if (updates.price !== undefined) {
-                // Fix: Verify target table to map column correctly
                 if (table === 'products') {
                     dbUpdates.base_price = updates.price;
-                    // Ensure 'price' is never sent to products table
-                    if ('price' in dbUpdates) delete dbUpdates.price;
                 } else {
                     dbUpdates.price = updates.price;
                 }
             }
 
-            // Handle Visibility Mapping
             if (updates.is_menu_visible !== undefined) {
                 if (isProduct) {
-                    dbUpdates.is_visible = updates.is_menu_visible; // Products -> is_visible
+                    dbUpdates.is_visible = updates.is_menu_visible;
                 } else {
-                    dbUpdates.is_menu_visible = updates.is_menu_visible; // Inventory -> is_menu_visible
+                    dbUpdates.is_menu_visible = updates.is_menu_visible;
                 }
             }
 
-            // Complex JSONB fields
             if (updates.variants !== undefined) dbUpdates.variants = updates.variants;
             if (updates.addon_links !== undefined) dbUpdates.addons = updates.addon_links;
             if (updates.combo_links !== undefined) dbUpdates.combo_items = updates.combo_links;
 
             if (Object.keys(dbUpdates).length === 0) return;
 
-            // Retrieve token
-            const storageKey = 'sb-yjxjyxhksedwfeueduwl-auth-token';
-            const storedData = localStorage.getItem(storageKey);
-            let token = '';
-            if (storedData) {
-                try {
-                    const parsed = JSON.parse(storedData);
-                    token = parsed.access_token || '';
-                } catch (e) { console.error(e); }
-            }
-            const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+            // Use Supabase client (handles auth token refresh automatically)
+            const { error, count } = await (supabase.from as any)(table)
+                .update(dbUpdates)
+                .eq('id', id)
+                .select('id', { count: 'exact', head: true });
 
-            const response = await fetch(`https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/${table}?id=eq.${id}`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': apiKey,
-                    'Authorization': token ? `Bearer ${token}` : `Bearer ${apiKey}`,
-                    'Prefer': 'return=minimal'
-                },
-                body: JSON.stringify(dbUpdates)
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('[MenuDesign] Update failed:', response.status, errorText);
-                throw new Error(`Failed to update item: ${response.status} ${errorText}`);
+            if (error) throw error;
+            if (count === 0) {
+                console.warn(`[MenuDesign] Update matched 0 rows for ${table}.id=${id}`);
             }
-            // console.log('[MenuDesign] Item persisted successfully');
-            // Optional: Show a subtle "Saved" indicator here if needed, but avoiding toast spam is better
         } catch (err: any) {
             console.error('[MenuDesign] Error saving item:', err);
             addToast(`Error al guardar: ${err.message}`, 'error');
         }
     };
+
+    // Track pending updates so we can flush them before switching items
+    const pendingUpdatesRef = useRef<{ [key: string]: Partial<InventoryItem> }>({});
 
     // 3. Debounced Update Wrapper
     // Use this for text inputs (Name, Price, etc.)
@@ -1429,23 +1406,61 @@ const MenuDesign: React.FC = () => {
         // 1. Update UI immediately
         updateItemLocal(id, updates);
 
-        // 2. Clear pending timeout for this item
+        // 2. Track pending update (merge with any existing pending)
+        pendingUpdatesRef.current[id] = { ...pendingUpdatesRef.current[id], ...updates };
+
+        // 3. Clear pending timeout for this item
         if (updateTimeoutRef.current[id]) {
             clearTimeout(updateTimeoutRef.current[id]);
         }
 
-        // 3. Set new timeout to persist
+        // 4. Set new timeout to persist
         updateTimeoutRef.current[id] = setTimeout(() => {
-            persistItem(id, updates);
-            // Optional: delete ref key? Not strictly necessary
-        }, 1000); // Wait 1 second after last keystroke
+            const pending = pendingUpdatesRef.current[id];
+            delete pendingUpdatesRef.current[id];
+            if (pending) persistItem(id, pending);
+        }, 1000);
     };
 
     // 4. Force Update (For toggles, buttons, critical changes)
     const updateItemImmediate = (id: string, updates: Partial<InventoryItem>) => {
         updateItemLocal(id, updates);
-        persistItem(id, updates);
+        // Clear any pending debounce for this item (we're saving immediately)
+        if (updateTimeoutRef.current[id]) {
+            clearTimeout(updateTimeoutRef.current[id]);
+            delete updateTimeoutRef.current[id];
+        }
+        // Merge pending updates so nothing is lost
+        const pending = pendingUpdatesRef.current[id];
+        delete pendingUpdatesRef.current[id];
+        persistItem(id, { ...pending, ...updates });
     };
+
+    // Flush all pending debounced saves (called on item switch / unmount)
+    const flushPendingSaves = () => {
+        Object.entries(pendingUpdatesRef.current).forEach(([id, updates]) => {
+            if (updateTimeoutRef.current[id]) {
+                clearTimeout(updateTimeoutRef.current[id]);
+                delete updateTimeoutRef.current[id];
+            }
+            persistItem(id, updates);
+        });
+        pendingUpdatesRef.current = {};
+    };
+
+    // Flush pending saves when switching items
+    const prevEditingIdRef = useRef<string | null>(null);
+    useEffect(() => {
+        if (prevEditingIdRef.current && prevEditingIdRef.current !== editingId) {
+            flushPendingSaves();
+        }
+        prevEditingIdRef.current = editingId;
+    }, [editingId]);
+
+    // Flush on unmount
+    useEffect(() => {
+        return () => { flushPendingSaves(); };
+    }, []);
 
     // --- DELETE ITEM ---
     const handleDeleteProduct = async (item: InventoryItem) => {
@@ -2735,7 +2750,16 @@ const MenuDesign: React.FC = () => {
                                                                                 value={activeFinancialInput === 'margin' ? financialBuffer : Math.round(margin)}
                                                                                 onChange={(e) => handleFinancialInput('margin', e.target.value)}
                                                                                 onFocus={() => { setActiveFinancialInput('margin'); setFinancialBuffer(Math.round(margin).toString()); }}
-                                                                                onBlur={() => setActiveFinancialInput(null)}
+                                                                                onBlur={() => {
+                                                                                    setActiveFinancialInput(null);
+                                                                                    if (financialBuffer && currentCost > 0) {
+                                                                                        const val = parseFloat(financialBuffer);
+                                                                                        if (!isNaN(val) && val < 100) {
+                                                                                            const newPrice = currentCost / (1 - val / 100);
+                                                                                            updateItemImmediate(selectedItem.id, { price: Math.round(newPrice * 100) / 100 });
+                                                                                        }
+                                                                                    }
+                                                                                }}
                                                                                 className={`w-14 bg-transparent text-xl font-black text-right focus:outline-none transition-all ${profit > 0 ? 'text-neon' : 'text-red-400'}`}
                                                                                 disabled={currentCost <= 0}
                                                                             />
@@ -2753,7 +2777,18 @@ const MenuDesign: React.FC = () => {
                                                                                 value={activeFinancialInput === 'profit' ? financialBuffer : profit.toFixed(2)}
                                                                                 onChange={(e) => handleFinancialInput('profit', e.target.value)}
                                                                                 onFocus={() => { setActiveFinancialInput('profit'); setFinancialBuffer(profit.toFixed(2)); }}
-                                                                                onBlur={() => setActiveFinancialInput(null)}
+                                                                                onBlur={() => {
+                                                                                    setActiveFinancialInput(null);
+                                                                                    if (financialBuffer) {
+                                                                                        const val = parseFloat(financialBuffer);
+                                                                                        if (!isNaN(val)) {
+                                                                                            const newPrice = currentCost + val;
+                                                                                            if (newPrice >= 0) {
+                                                                                                updateItemImmediate(selectedItem.id, { price: Math.round(newPrice * 100) / 100 });
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                }}
                                                                                 className="w-24 bg-transparent text-xl font-black text-white text-right focus:outline-none transition-all"
                                                                                 disabled={currentCost <= 0}
                                                                             />

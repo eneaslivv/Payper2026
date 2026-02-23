@@ -1620,22 +1620,7 @@ const InventoryManagement: React.FC = () => {
     setIsProcessing(true);
 
     try {
-      const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const storageKey = 'sb-yjxjyxhksedwfeueduwl-auth-token';
-      const storedData = localStorage.getItem(storageKey);
-      let token = '';
-      if (storedData) token = JSON.parse(storedData).access_token;
-
-      const headers = {
-        'Content-Type': 'application/json',
-        'apikey': apiKey,
-        'Authorization': `Bearer ${token || apiKey}`,
-        'Prefer': 'return=minimal'
-      };
-
       // Map UI unit values to DB enum
-      // The UI uses: unit, gram, kilo, ml, liter
-      // DB UnitType: 'u' | 'kg' | 'g' | 'L' | 'ml'
       const unitMap: Record<string, UnitType> = {
         'unit': 'u',
         'gram': 'g',
@@ -1645,8 +1630,6 @@ const InventoryManagement: React.FC = () => {
       };
       let finalUnitType = unitMap[selectedItem.unit_type] || 'u';
 
-      // CRITICAL: Sync content_unit with unit_type to ensure display consistency
-      // Map unit_type to appropriate content_unit abbreviation
       const unitTypeToContentUnit: Record<string, string> = {
         'unit': 'un',
         'gram': 'g',
@@ -1689,33 +1672,32 @@ const InventoryManagement: React.FC = () => {
       }
 
       const table = isProduct ? 'products' : 'inventory_items';
-      const response = await fetch(`https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/${table}?id=eq.${selectedItem.id}`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify(payload)
-      });
 
-      if (!response.ok) throw new Error('Error updating item');
+      // Use Supabase client (handles auth token refresh automatically)
+      const { error } = await (supabase.from as any)(table)
+        .update(payload)
+        .eq('id', selectedItem.id);
+
+      if (error) throw error;
 
       // SYNC IMAGE: If we just updated an image, try to update the matching record in the other table
       const hasImageUpdate = selectedItem.image_url || selectedItem.image;
       if (hasImageUpdate) {
-        const otherTable = selectedItem.item_type === 'sellable' ? 'inventory_items' : 'products';
-        const otherImageColumn = selectedItem.item_type === 'sellable' ? 'image_url' : 'image';
+        const otherTable = isProduct ? 'inventory_items' : 'products';
+        const otherImageColumn = isProduct ? 'image_url' : 'image';
+        const imageValue = selectedItem.image_url || selectedItem.image;
 
-        // Try linking by SKU first, then by name
-        const filter = selectedItem.sku
-          ? `sku=eq.${selectedItem.sku}`
-          : `name=eq.${encodeURIComponent(selectedItem.name)}`;
+        const query = (supabase.from as any)(otherTable)
+          .update({ [otherImageColumn]: imageValue });
 
-        await fetch(`https://yjxjyxhksedwfeueduwl.supabase.co/rest/v1/${otherTable}?${filter}&store_id=eq.${storeId}`, {
-          method: 'PATCH',
-          headers,
-          body: JSON.stringify({ [otherImageColumn]: selectedItem.image_url || selectedItem.image })
-        }).catch(err => console.warn('Non-critical sync error:', err));
+        if (selectedItem.sku) {
+          await query.eq('sku', selectedItem.sku).eq('store_id', storeId).then(() => {});
+        } else {
+          await query.eq('name', selectedItem.name).eq('store_id', storeId).then(() => {});
+        }
       }
 
-      // Update local items state explicitly with calculated values to ensure UI reflects changes immediately
+      // Update local items state
       const updatedItem = {
         ...selectedItem,
         package_size: payload.package_size,
@@ -1727,7 +1709,7 @@ const InventoryManagement: React.FC = () => {
       try { localStorage.removeItem(getInventoryCacheKey()); } catch (_) {}
 
       addToast('Ítem actualizado correctamente', 'success');
-      setSelectedItem(null); // Close drawer on success
+      setSelectedItem(null);
     } catch (err: any) {
       console.error(err);
       addToast('Error al actualizar: ' + err.message, 'error');

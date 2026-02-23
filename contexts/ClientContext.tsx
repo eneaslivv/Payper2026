@@ -654,10 +654,12 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
                 // Helper: Load all products directly (fallback) with RPC availability check
                 async function loadAllProducts() {
-                    // Load inventory items
+                    // Load inventory items (only menu-visible ones)
                     const { data: inventoryData, error: invError } = await (supabase.from('inventory_items') as any)
                         .select('*')
                         .eq('store_id', store.id)
+                        .eq('is_menu_visible', true)
+                        .gt('price', 0)
                         .order('name', { ascending: true });
 
                     if (invError) console.error('[ClientContext] Error loading inventory:', invError);
