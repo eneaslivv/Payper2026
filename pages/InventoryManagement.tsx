@@ -382,6 +382,7 @@ const InventoryManagement: React.FC = () => {
 
   // Edit Price Modal
   const [showEditPriceModal, setShowEditPriceModal] = useState(false);
+  const [editingRecipePrice, setEditingRecipePrice] = useState(false);
 
 
 
@@ -2105,7 +2106,7 @@ const InventoryManagement: React.FC = () => {
                           key={`${item.id}-${item.item_type || idx}`}
                           className="hover:bg-white/[0.01] transition-colors cursor-pointer group"
                         >
-                          <td className="px-6 py-4" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); }}>
+                          <td className="px-6 py-4" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); setEditingRecipePrice(false); }}>
                             <div className="flex items-center gap-4">
                               <div className="size-10 rounded-xl overflow-hidden bg-black/40 border border-white/5 relative">
                                 <img src={item.image_url} className="size-full object-cover group-hover:scale-110 transition-transform duration-500" />
@@ -2123,7 +2124,7 @@ const InventoryManagement: React.FC = () => {
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); }}>
+                          <td className="px-6 py-4" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); setEditingRecipePrice(false); }}>
                             {/* CELDA 1: Stock Sellado */}
                             <div className="flex flex-col">
                               {item.item_type === 'sellable' ? (
@@ -2254,7 +2255,7 @@ const InventoryManagement: React.FC = () => {
                             })()}
                           </td>
 
-                          <td className="px-6 py-4 text-center" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); }}>
+                          <td className="px-6 py-4 text-center" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); setEditingRecipePrice(false); }}>
                             {(() => {
                               // Check both item.recipe AND productRecipes state
                               const hasRecipe = (item.recipe && item.recipe.length > 0) || productRecipes.some(pr => pr.product_id === item.id);
@@ -2355,7 +2356,7 @@ const InventoryManagement: React.FC = () => {
                               />
                             </button>
                           </td>
-                          <td className="px-6 py-4 text-center font-mono text-[10px] text-white/60" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); }}>
+                          <td className="px-6 py-4 text-center font-mono text-[10px] text-white/60" onClick={() => { setSelectedItem(item); setDrawerTab('details'); setIsAddingRecipeItem(false); setEditingRecipePrice(false); }}>
                             ${item.cost.toFixed(2)}
                           </td>
                           <td className="px-6 py-4 text-right">
@@ -2625,37 +2626,66 @@ const InventoryManagement: React.FC = () => {
                             <div className="pt-2 border-t border-white/5 space-y-2">
                               <div className="space-y-1">
                                 <label className="text-[7px] font-black text-white/30 uppercase tracking-widest ml-1">Precio de Venta</label>
-                                <div className="flex items-center gap-2">
-                                  <div className="relative flex-1">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/20">$</span>
-                                    <input
-                                      type="number"
-                                      value={selectedItem.price || ''}
-                                      onChange={(e) => setSelectedItem(prev => prev ? { ...prev, price: parseFloat(e.target.value) || 0 } : null)}
-                                      placeholder="0.00"
-                                      className="w-full bg-black border border-white/10 rounded-xl pl-7 pr-3 py-2.5 text-sm font-bold text-white outline-none focus:border-rose-400/50 transition-all"
-                                    />
+                                {editingRecipePrice || noPrice ? (
+                                  /* EDITING STATE */
+                                  <div className="flex items-center gap-2">
+                                    <div className="relative flex-1">
+                                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-rose-400/50">$</span>
+                                      <input
+                                        autoFocus
+                                        type="number"
+                                        value={selectedItem.price || ''}
+                                        onChange={(e) => setSelectedItem(prev => prev ? { ...prev, price: parseFloat(e.target.value) || 0 } : null)}
+                                        placeholder="0.00"
+                                        className="w-full bg-black border border-rose-400/30 rounded-xl pl-7 pr-3 py-2.5 text-sm font-bold text-white outline-none focus:border-rose-400/50 transition-all ring-1 ring-rose-400/10"
+                                      />
+                                    </div>
+                                    <button
+                                      onClick={async () => {
+                                        const newPrice = selectedItem.price || 0;
+                                        try {
+                                          const { error } = await supabase
+                                            .from('products')
+                                            .update({ base_price: newPrice })
+                                            .eq('id', selectedItem.id);
+                                          if (error) throw error;
+                                          setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, price: newPrice } : i));
+                                          setEditingRecipePrice(false);
+                                          addToast('Precio actualizado', 'success');
+                                        } catch (err: any) {
+                                          addToast('Error: ' + err.message, 'error');
+                                        }
+                                      }}
+                                      className="px-3 py-2.5 rounded-xl bg-neon/10 text-neon border border-neon/20 text-[9px] font-black uppercase tracking-widest hover:bg-neon/20 transition-all whitespace-nowrap"
+                                    >
+                                      Guardar
+                                    </button>
+                                    {!noPrice && (
+                                      <button
+                                        onClick={() => {
+                                          const saved = items.find(i => i.id === selectedItem.id)?.price || 0;
+                                          setSelectedItem(prev => prev ? { ...prev, price: saved } : null);
+                                          setEditingRecipePrice(false);
+                                        }}
+                                        className="p-2 rounded-xl bg-white/5 text-white/30 hover:bg-white/10 transition-all"
+                                      >
+                                        <span className="material-symbols-outlined text-sm">close</span>
+                                      </button>
+                                    )}
                                   </div>
-                                  <button
-                                    onClick={async () => {
-                                      const newPrice = selectedItem.price || 0;
-                                      try {
-                                        const { error } = await supabase
-                                          .from('products')
-                                          .update({ base_price: newPrice })
-                                          .eq('id', selectedItem.id);
-                                        if (error) throw error;
-                                        setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, price: newPrice } : i));
-                                        addToast('Precio actualizado', 'success');
-                                      } catch (err: any) {
-                                        addToast('Error: ' + err.message, 'error');
-                                      }
-                                    }}
-                                    className="px-3 py-2.5 rounded-xl bg-neon/10 text-neon border border-neon/20 text-[9px] font-black uppercase tracking-widest hover:bg-neon/20 transition-all whitespace-nowrap"
+                                ) : (
+                                  /* SAVED STATE — static look, click to edit */
+                                  <div
+                                    onClick={() => setEditingRecipePrice(true)}
+                                    className="cursor-pointer group bg-white/[0.03] border border-white/5 rounded-xl h-11 flex items-center px-4 gap-2 hover:border-white/15 transition-all"
                                   >
-                                    Guardar
-                                  </button>
-                                </div>
+                                    <span className="text-[10px] font-black text-white/20">$</span>
+                                    <span className="flex-1 font-black text-base text-white/70">
+                                      {selectedItem.price?.toLocaleString('es-AR')}
+                                    </span>
+                                    <span className="material-symbols-outlined text-white/10 text-sm group-hover:text-white/30 transition-colors">edit</span>
+                                  </div>
+                                )}
                               </div>
                               {noPrice && (
                                 <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
