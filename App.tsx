@@ -359,24 +359,18 @@ const OperativeLayout: React.FC<{ children: React.ReactNode, activeNode: CafeNod
         {/* MENÚ DE USUARIO */}
         <div className="p-3 border-t border-gray-200 dark:border-white/5 bg-white dark:bg-[#0D0F0D] relative" ref={userMenuRef}>
 
-          {/* THEME TOGGLE */}
-          <button
-            onClick={toggleTheme}
-            className="w-full mb-3 p-2.5 rounded-xl flex items-center gap-2 border border-gray-200 dark:border-white/5 bg-gray-50 dark:bg-white/[0.02] hover:border-emerald-300 dark:hover:border-neon/30 transition-all group"
-          >
-            <div className="size-6 rounded-lg bg-amber-100 dark:bg-white/5 flex items-center justify-center text-amber-600 dark:text-white/60 group-hover:text-amber-500 dark:group-hover:text-neon shrink-0">
-              <span className="material-symbols-outlined text-sm">{isDarkMode ? 'light_mode' : 'dark_mode'}</span>
-            </div>
-            <div className="flex-1 text-left overflow-hidden">
-              <p className="text-[9px] font-black text-[#37352F] dark:text-white truncate uppercase leading-none">{isDarkMode ? 'Modo Claro' : 'Modo Oscuro'}</p>
-              <p className="text-[6px] text-[#9B9A97] dark:text-[#71766F] font-bold uppercase tracking-widest opacity-60 truncate leading-none mt-0.5">Cambiar tema</p>
-            </div>
-            <span className="material-symbols-outlined text-sm text-[#9B9A97] dark:text-[#71766F]">{isDarkMode ? 'wb_sunny' : 'nightlight'}</span>
-          </button>
-
-          {/* PAYPER BRANDING */}
-          <div className="w-full flex justify-center pb-4 pt-1 opacity-40 hover:opacity-100 transition-opacity duration-500">
-            <img src={payperBranding} alt="Payper" className="w-20 object-contain dark:invert-0" />
+          {/* PAYPER BRANDING + THEME TOGGLE */}
+          <div className="w-full flex items-center justify-between mb-3 px-1">
+            <img src={payperBranding} alt="Payper" className="h-8 object-contain dark:invert-0 opacity-50" />
+            <button
+              onClick={toggleTheme}
+              className="relative w-11 h-6 rounded-full border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-white/5 transition-all hover:border-emerald-300 dark:hover:border-neon/30 shrink-0"
+              title={isDarkMode ? 'Modo Claro' : 'Modo Oscuro'}
+            >
+              <div className={`absolute top-0.5 size-5 rounded-full flex items-center justify-center transition-all duration-300 ${isDarkMode ? 'left-[1px] bg-zinc-700' : 'left-[21px] bg-amber-400'}`}>
+                <span className="material-symbols-outlined text-[11px] text-white">{isDarkMode ? 'dark_mode' : 'light_mode'}</span>
+              </div>
+            </button>
           </div>
 
           {isUserMenuOpen && (

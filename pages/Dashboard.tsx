@@ -287,36 +287,36 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="p-6 md:p-8 space-y-8 max-w-[1400px] mx-auto animate-in fade-in duration-500 pb-20 bg-[#F8F9F7] dark:bg-transparent min-h-screen text-[#37352F] dark:text-white transition-colors duration-300">
+    <div className="p-4 sm:p-6 md:p-8 space-y-5 max-w-[1400px] mx-auto animate-in fade-in duration-500 pb-20 bg-[#F8F9F7] dark:bg-transparent min-h-screen text-[#37352F] dark:text-white transition-colors duration-300">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-1.5 text-emerald-600 dark:text-neon font-bold text-[9px] uppercase tracking-[0.2em] opacity-80">
             <span className="size-1 rounded-full bg-emerald-600 dark:bg-neon"></span>
             OPERATIONAL HUB ALPHA
           </div>
-          <h2 className="text-4xl italic-black tracking-tighter text-[#37352F] dark:text-white uppercase leading-none">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl italic-black tracking-tighter text-[#37352F] dark:text-white uppercase leading-none">
             MANDO <span className="text-emerald-600 dark:text-neon">CENTRAL</span>
           </h2>
-          <div className="flex items-center gap-2.5 mt-2">
+          <div className="flex flex-wrap items-center gap-2 mt-2">
             <span className="text-[8px] font-black text-amber-600 dark:text-accent bg-amber-100 dark:bg-accent/10 px-2 py-1 rounded border border-amber-200 dark:border-accent/20 uppercase tracking-[0.15em]">ELITE ACCESS</span>
             <p className="text-[#9B9A97] dark:text-[#71766F] text-[10px] font-bold uppercase tracking-wider opacity-60">SQUAD #4829 • <span className="text-amber-600 dark:text-accent">MESA 05 ACTIVE</span></p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <button
             onClick={handleTestEmail}
-            className="bg-white dark:bg-[#141714] border border-gray-200 dark:border-white/5 hover:border-emerald-500 dark:hover:border-neon px-4 py-2.5 rounded-xl flex items-center gap-3 shadow-sm dark:shadow-soft transition-colors group"
+            className="bg-white dark:bg-[#141714] border border-gray-200 dark:border-white/5 hover:border-emerald-500 dark:hover:border-neon px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center gap-2 sm:gap-3 shadow-sm dark:shadow-soft transition-colors group"
           >
-            <span className="material-symbols-outlined text-gray-400 dark:text-white/40 group-hover:text-emerald-600 dark:group-hover:text-neon transition-colors text-xl">mark_email_read</span>
+            <span className="material-symbols-outlined text-gray-400 dark:text-white/40 group-hover:text-emerald-600 dark:group-hover:text-neon transition-colors text-lg sm:text-xl">mark_email_read</span>
             <div className="flex flex-col text-left hidden sm:flex">
               <span className="text-[8px] font-black uppercase text-[#9B9A97] dark:text-[#71766F] tracking-[0.15em] leading-none mb-1">DEBUG</span>
               <span className="text-[10px] font-black uppercase text-[#37352F] dark:text-white tracking-widest leading-none">TEST EMAIL</span>
             </div>
           </button>
 
-          <div className="bg-white dark:bg-[#141714] border border-gray-200 dark:border-white/5 px-4 py-2.5 rounded-xl flex items-center gap-3 shadow-sm dark:shadow-soft">
-            <span className="material-symbols-outlined text-emerald-600 dark:text-neon text-xl animate-pulse">sensors</span>
+          <div className="bg-white dark:bg-[#141714] border border-gray-200 dark:border-white/5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl flex items-center gap-2 sm:gap-3 shadow-sm dark:shadow-soft">
+            <span className="material-symbols-outlined text-emerald-600 dark:text-neon text-lg sm:text-xl animate-pulse">sensors</span>
             <div className="flex flex-col text-left">
               <span className="text-[8px] font-black uppercase text-[#9B9A97] dark:text-[#71766F] tracking-[0.15em] leading-none mb-1">SISTEMA</span>
               <span className="text-[10px] font-black uppercase text-[#37352F] dark:text-white tracking-widest leading-none">EN LÍNEA</span>
@@ -325,21 +325,21 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="p-6 rounded-3xl bg-white dark:bg-[#141714] border border-gray-200 dark:border-white/5 shadow-xl dark:shadow-2xl relative overflow-hidden group">
-        <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity">
+      <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white dark:bg-[#141714] border border-gray-200 dark:border-white/5 shadow-xl dark:shadow-2xl relative overflow-hidden group">
+        <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity hidden sm:block">
           <span className="material-symbols-outlined text-[80px] text-black dark:text-white">military_tech</span>
         </div>
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6 relative z-10">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6 relative z-10">
           <div className="space-y-2 max-w-2xl">
             <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-emerald-600 dark:text-neon italic">SQUADAI TACTICAL BRIEFING</h3>
-            <p className="text-sm font-bold text-[#37352F]/80 dark:text-white/80 leading-relaxed italic">
+            <p className="text-xs sm:text-sm font-bold text-[#37352F]/80 dark:text-white/80 leading-relaxed italic">
               {briefingText || "Solicita un reporte de inteligencia para optimizar la incursión operativa de hoy."}
             </p>
           </div>
           <button
             onClick={handleGenerateBriefing}
             disabled={isBriefing}
-            className={`px-8 h-11 bg-emerald-500 dark:bg-neon text-white dark:text-black rounded-2xl font-black text-[9px] uppercase tracking-[0.2em] shadow-lg dark:shadow-neon-soft transition-all active:scale-95 flex items-center gap-3 ${isBriefing ? 'animate-pulse' : 'hover:scale-105'}`}
+            className={`px-6 sm:px-8 h-10 sm:h-11 bg-emerald-500 dark:bg-neon text-white dark:text-black rounded-xl sm:rounded-2xl font-black text-[9px] uppercase tracking-[0.2em] shadow-lg dark:shadow-neon-soft transition-all active:scale-95 flex items-center gap-2 sm:gap-3 shrink-0 w-full sm:w-auto justify-center ${isBriefing ? 'animate-pulse' : 'hover:scale-105'}`}
           >
             <span className="material-symbols-outlined text-lg">{isBriefing ? 'sync' : 'auto_awesome'}</span>
             {isBriefing ? 'ANALIZANDO...' : 'GENERAR BRIEFING'}
@@ -348,8 +348,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* FINANCIAL OVERVIEW */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* 1. VENTAS BRUTAS */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatusCard
           label="VENTAS TOTALES"
           value={`$${(financials?.gross_revenue || 0).toLocaleString()}`}
@@ -359,8 +358,6 @@ const Dashboard: React.FC = () => {
           color="text-emerald-600 dark:text-neon"
           barColor="bg-emerald-500 dark:bg-neon"
         />
-
-        {/* 2. FLUJO DE CAJA (WALLET + CASH) */}
         <StatusCard
           label="FLUJO DE CAJA (REAL)"
           value={`$${(financials?.net_cash_flow || 0).toLocaleString()}`}
@@ -370,8 +367,6 @@ const Dashboard: React.FC = () => {
           color="text-[#37352F] dark:text-white"
           barColor="bg-[#37352F] dark:bg-white"
         />
-
-        {/* 3. GANANCIA NETA (PROFIT) */}
         <StatusCard
           label="GANANCIA NETA (EST)"
           value={`$${(financials?.profitability?.net_profit || 0).toLocaleString()}`}
@@ -381,8 +376,6 @@ const Dashboard: React.FC = () => {
           color={(financials?.profitability?.net_profit || 0) >= 0 ? "text-amber-600 dark:text-accent" : "text-red-500"}
           barColor={(financials?.profitability?.net_profit || 0) >= 0 ? "bg-amber-500 dark:bg-accent" : "bg-red-500"}
         />
-
-        {/* 4. GASTOS VARIABLES */}
         <StatusCard
           label="GASTOS / MERMAS"
           value={`$${(financials?.expenses?.variable_total || 0).toLocaleString()}`}
@@ -394,33 +387,31 @@ const Dashboard: React.FC = () => {
         />
       </div>
 
-
-
       {/* DETAILED EXPENSE BREAKDOWN */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white dark:bg-[#141714] rounded-3xl border border-gray-200 dark:border-white/5 p-6 shadow-sm dark:shadow-soft hover:border-red-500/20 transition-colors">
-          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-red-500 dark:text-red-400 mb-4">PÉRDIDAS OPERATIVAS</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="bg-white dark:bg-[#141714] rounded-2xl sm:rounded-3xl border border-gray-200 dark:border-white/5 p-4 sm:p-6 shadow-sm dark:shadow-soft hover:border-red-500/20 transition-colors">
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-red-500 dark:text-red-400 mb-3 sm:mb-4">PÉRDIDAS OPERATIVAS</h3>
           <div className="flex justify-between items-end">
-            <span className="text-3xl font-black italic-black text-[#37352F] dark:text-white">$ {(financials?.expenses?.operational_loss || 0).toLocaleString()}</span>
-            <span className="material-symbols-outlined text-4xl text-gray-200 dark:text-white/5">broken_image</span>
+            <span className="text-2xl sm:text-3xl font-black italic-black text-[#37352F] dark:text-white">$ {(financials?.expenses?.operational_loss || 0).toLocaleString()}</span>
+            <span className="material-symbols-outlined text-3xl sm:text-4xl text-gray-200 dark:text-white/5">broken_image</span>
           </div>
           <p className="text-[9px] text-[#9B9A97] dark:text-white/40 font-bold uppercase mt-2">Vencidos, Rotos, Robos</p>
         </div>
 
-        <div className="bg-white dark:bg-[#141714] rounded-3xl border border-gray-200 dark:border-white/5 p-6 shadow-sm dark:shadow-soft hover:border-amber-500/20 dark:hover:border-accent/20 transition-colors">
-          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600 dark:text-accent mb-4">INVERSIÓN MARKETING</h3>
+        <div className="bg-white dark:bg-[#141714] rounded-2xl sm:rounded-3xl border border-gray-200 dark:border-white/5 p-4 sm:p-6 shadow-sm dark:shadow-soft hover:border-amber-500/20 dark:hover:border-accent/20 transition-colors">
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600 dark:text-accent mb-3 sm:mb-4">INVERSIÓN MARKETING</h3>
           <div className="flex justify-between items-end">
-            <span className="text-3xl font-black italic-black text-[#37352F] dark:text-white">$ {(financials?.expenses?.marketing || 0).toLocaleString()}</span>
-            <span className="material-symbols-outlined text-4xl text-gray-200 dark:text-white/5">card_giftcard</span>
+            <span className="text-2xl sm:text-3xl font-black italic-black text-[#37352F] dark:text-white">$ {(financials?.expenses?.marketing || 0).toLocaleString()}</span>
+            <span className="material-symbols-outlined text-3xl sm:text-4xl text-gray-200 dark:text-white/5">card_giftcard</span>
           </div>
           <p className="text-[9px] text-[#9B9A97] dark:text-white/40 font-bold uppercase mt-2">Regalos y Cortesías</p>
         </div>
 
-        <div className="bg-white dark:bg-[#141714] rounded-3xl border border-gray-200 dark:border-white/5 p-6 shadow-sm dark:shadow-soft hover:border-purple-500/20 transition-colors">
-          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600 dark:text-purple-400 mb-4">CONSUMO INTERNO (PR)</h3>
+        <div className="bg-white dark:bg-[#141714] rounded-2xl sm:rounded-3xl border border-gray-200 dark:border-white/5 p-4 sm:p-6 shadow-sm dark:shadow-soft hover:border-purple-500/20 transition-colors">
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600 dark:text-purple-400 mb-3 sm:mb-4">CONSUMO INTERNO (PR)</h3>
           <div className="flex justify-between items-end">
-            <span className="text-3xl font-black italic-black text-[#37352F] dark:text-white">$ {(financials?.expenses?.internal || 0).toLocaleString()}</span>
-            <span className="material-symbols-outlined text-4xl text-gray-200 dark:text-white/5">group</span>
+            <span className="text-2xl sm:text-3xl font-black italic-black text-[#37352F] dark:text-white">$ {(financials?.expenses?.internal || 0).toLocaleString()}</span>
+            <span className="material-symbols-outlined text-3xl sm:text-4xl text-gray-200 dark:text-white/5">group</span>
           </div>
           <p className="text-[9px] text-[#9B9A97] dark:text-white/40 font-bold uppercase mt-2">Consumo de Staff / Socios</p>
         </div>
@@ -428,16 +419,16 @@ const Dashboard: React.FC = () => {
 
 
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
-        <div className="lg:col-span-8 bg-white dark:bg-[#141714] rounded-3xl border border-gray-200 dark:border-white/5 p-6 shadow-sm dark:shadow-soft">
-          <div className="flex justify-between items-center mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 pt-2">
+        <div className="lg:col-span-8 bg-white dark:bg-[#141714] rounded-2xl sm:rounded-3xl border border-gray-200 dark:border-white/5 p-4 sm:p-6 shadow-sm dark:shadow-soft">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 sm:gap-0 mb-6 sm:mb-8">
             <div>
-              <h3 className="text-lg font-black italic uppercase tracking-tighter text-[#37352F] dark:text-white leading-none">FLUJO DE OPERACIONES</h3>
+              <h3 className="text-base sm:text-lg font-black italic uppercase tracking-tighter text-[#37352F] dark:text-white leading-none">FLUJO DE OPERACIONES</h3>
               <p className="text-[9px] font-black text-[#9B9A97] dark:text-[#71766F] uppercase tracking-[0.2em] mt-1">TIEMPO DE RESPUESTA OPERATIVO</p>
             </div>
             <div className="flex gap-2">
-              <button className="px-4 py-1.5 rounded-lg bg-emerald-50 dark:bg-neon/10 text-emerald-600 dark:text-neon font-black text-[8px] uppercase border border-emerald-100 dark:border-neon/20 shadow-sm dark:shadow-neon-soft">REAL TIME</button>
-              <button className="px-4 py-1.5 rounded-lg text-[8px] font-black uppercase text-[#9B9A97] dark:text-[#71766F] border border-gray-200 dark:border-white/5">HISTORY</button>
+              <button className="px-3 sm:px-4 py-1.5 rounded-lg bg-emerald-50 dark:bg-neon/10 text-emerald-600 dark:text-neon font-black text-[8px] uppercase border border-emerald-100 dark:border-neon/20 shadow-sm dark:shadow-neon-soft">REAL TIME</button>
+              <button className="px-3 sm:px-4 py-1.5 rounded-lg text-[8px] font-black uppercase text-[#9B9A97] dark:text-[#71766F] border border-gray-200 dark:border-white/5">HISTORY</button>
             </div>
           </div>
           <div className="h-64 w-full">
@@ -556,26 +547,26 @@ const Dashboard: React.FC = () => {
 };
 
 const StatusCard: React.FC<{ label: string, value: string, status: string, progress: number, icon: string, isWarning?: boolean, color: string, barColor: string }> = ({ label, value, status, progress, icon, isWarning, color, barColor }) => (
-  <div className={`bg-white dark:bg-[#141714] p-5 rounded-2xl border border-gray-200 dark:border-white/5 space-y-5 transition-all hover:-translate-y-1 group shadow-sm dark:shadow-soft relative overflow-hidden`}>
+  <div className={`bg-white dark:bg-[#141714] p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-gray-200 dark:border-white/5 space-y-3 sm:space-y-5 transition-all hover:-translate-y-1 group shadow-sm dark:shadow-soft relative overflow-hidden`}>
     <div className="flex justify-between items-start">
-      <div className={`size-10 rounded-xl flex items-center justify-center bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/5 ${color} group-hover:scale-105 transition-transform`}>
-        <span className="material-symbols-outlined text-xl">{icon}</span>
+      <div className={`size-8 sm:size-10 rounded-lg sm:rounded-xl flex items-center justify-center bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/5 ${color} group-hover:scale-105 transition-transform`}>
+        <span className="material-symbols-outlined text-base sm:text-xl">{icon}</span>
       </div>
-      <span className={`text-[8px] font-black uppercase tracking-[0.2em] ${color}`}>
+      <span className={`text-[7px] sm:text-[8px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] ${color}`}>
         {status}
       </span>
     </div>
 
     <div>
-      <p className="text-[8px] font-black text-[#9B9A97] dark:text-[#71766F] uppercase tracking-[0.2em] mb-1 leading-none">{label}</p>
-      <h3 className={`text-2xl font-black italic tracking-tighter text-[#37352F] dark:text-white leading-none`}>{value}</h3>
+      <p className="text-[7px] sm:text-[8px] font-black text-[#9B9A97] dark:text-[#71766F] uppercase tracking-[0.15em] sm:tracking-[0.2em] mb-0.5 sm:mb-1 leading-none">{label}</p>
+      <h3 className={`text-lg sm:text-2xl font-black italic tracking-tighter text-[#37352F] dark:text-white leading-none`}>{value}</h3>
     </div>
 
-    <div className="space-y-2">
-      <div className="w-full h-1 bg-gray-200 dark:bg-white/5 rounded-full overflow-hidden">
+    <div className="space-y-1.5 sm:space-y-2">
+      <div className="w-full h-0.5 sm:h-1 bg-gray-200 dark:bg-white/5 rounded-full overflow-hidden">
         <div className={`h-full transition-all duration-1000 ${barColor} shadow-sm dark:shadow-neon-soft`} style={{ width: `${progress}%` }}></div>
       </div>
-      <div className="flex justify-between text-[7px] font-black uppercase tracking-[0.3em] text-[#9B9A97] dark:text-[#71766F] opacity-40 leading-none">
+      <div className="flex justify-between text-[6px] sm:text-[7px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-[#9B9A97] dark:text-[#71766F] opacity-40 leading-none">
         <span>CURRENT</span>
         <span>TARGET</span>
       </div>

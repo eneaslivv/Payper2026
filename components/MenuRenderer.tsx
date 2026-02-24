@@ -122,15 +122,17 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
                         className={`absolute inset-0 p-6 flex flex-col justify-end ${theme.headerAlignment === 'center' ? 'items-center text-center' : 'items-start text-left'}`}
                     >
                         {(logoUrl || theme.logoUrl) && (
-                            <img src={logoUrl || theme.logoUrl} className="w-16 h-16 rounded-xl object-contain bg-black/20 border-2 border-white/10 mb-4 shadow-xl" />
+                            <img src={logoUrl || theme.logoUrl} className="max-h-20 max-w-[60%] object-contain drop-shadow-2xl mb-3" />
                         )}
-                        <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter leading-none mb-1 shadow-black drop-shadow-lg">
-                            {(serviceMode === 'table' && tableLabel) ? (
-                                <>
-                                    MESA <span style={{ color: theme.accentColor }}>{tableLabel}</span>
-                                </>
-                            ) : storeName}
-                        </h1>
+                        {!(logoUrl || theme.logoUrl) && (
+                            <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter leading-none mb-1 shadow-black drop-shadow-lg">
+                                {(serviceMode === 'table' && tableLabel) ? (
+                                    <>
+                                        MESA <span style={{ color: theme.accentColor }}>{tableLabel}</span>
+                                    </>
+                                ) : storeName}
+                            </h1>
+                        )}
                         {theme.showBadges && <PaymentCapabilityBadge canProcessPayments={canProcessPayments} mpNickname={mpNickname} />}
                     </motion.div>
                 </div>
@@ -146,16 +148,18 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
                             animate={{ scale: 1, opacity: 1 }}
                             transition={{ type: "spring", stiffness: 200, damping: 20 }}
                             src={logoUrl || theme.logoUrl}
-                            className="w-16 h-16 rounded-xl object-contain bg-black/20 border-2 border-white/10 mb-4 shadow-xl"
+                            className="max-h-20 max-w-[60%] object-contain drop-shadow-2xl mb-3"
                         />
                     )}
-                    <h1 className="text-4xl font-black uppercase tracking-tighter leading-none mb-2" style={{ color: theme.textColor }}>
-                        {(serviceMode === 'table' && tableLabel) ? (
-                            <>
-                                MESA <span style={{ color: theme.accentColor }}>{tableLabel}</span>
-                            </>
-                        ) : storeName}
-                    </h1>
+                    {!(logoUrl || theme.logoUrl) && (
+                        <h1 className="text-4xl font-black uppercase tracking-tighter leading-none mb-2" style={{ color: theme.textColor }}>
+                            {(serviceMode === 'table' && tableLabel) ? (
+                                <>
+                                    MESA <span style={{ color: theme.accentColor }}>{tableLabel}</span>
+                                </>
+                            ) : storeName}
+                        </h1>
+                    )}
                     {theme.showBadges && <PaymentCapabilityBadge canProcessPayments={canProcessPayments} mpNickname={mpNickname} />}
                 </motion.div>
             )}
