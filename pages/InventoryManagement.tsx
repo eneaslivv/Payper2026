@@ -2260,7 +2260,8 @@ const InventoryManagement: React.FC = () => {
                                 const closedUnits = Math.floor(item.closed_stock || item.current_stock || 0);
                                 const fractional = (item.current_stock || 0) - closedUnits;
                                 if (fractional > 0.01) {
-                                  const pct = Math.round((fractional / (pkgSize || 1)) * 100);
+                                  // fractional is already proportion of 1 unit (0.8 = 80% of one bottle)
+                                  const pct = Math.min(Math.round(fractional * 100), 100);
                                   const barColor = pct > 50 ? 'bg-neon' : pct > 20 ? 'bg-orange-400' : 'bg-red-400';
                                   const txtColor = pct > 50 ? 'text-neon' : pct > 20 ? 'text-orange-400' : 'text-red-400';
                                   return (
@@ -2956,9 +2957,12 @@ const InventoryManagement: React.FC = () => {
                                   const totalStock = selectedItem.current_stock || 0;
                                   const fractional = totalStock - Math.floor(totalClosed);
                                   if (fractional > 0.01) {
-                                    const remaining = Math.round(fractional * pkgSize * 100) / 100;
-                                    const pct = Math.round((fractional / (pkgSize || 1)) * 100);
+                                    // fractional is proportion of 1 unit (0.8 = 80% of one bottle)
+                                    const pct = Math.min(Math.round(fractional * 100), 100);
+                                    const remainingInUnit = Math.round(fractional * pkgSize * 100) / 100;
                                     const barColor = pct > 50 ? 'bg-neon' : pct > 20 ? 'bg-orange-400' : 'bg-red-400';
+                                    // Format remaining display (e.g. "800 ml" or "0.80 un")
+                                    const remainingLabel = pkgSize > 1 ? `${remainingInUnit} ${unitAbbr}` : `${fractional.toFixed(2)} un`;
                                     return (
                                       <div>
                                         <p className="text-lg font-light text-orange-400 tracking-tight">
@@ -2968,7 +2972,7 @@ const InventoryManagement: React.FC = () => {
                                           <div className={`h-full rounded-full ${barColor} transition-all`} style={{ width: `${Math.max(pct, 2)}%` }} />
                                         </div>
                                         <p className="text-[9px] text-white/30 mt-1">
-                                          {pkgSize > 1 ? remaining : fractional.toFixed(2)} {unitAbbr} restantes ({pct}%)
+                                          {remainingLabel} restantes ({pct}%)
                                         </p>
                                       </div>
                                     );
