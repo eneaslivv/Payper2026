@@ -2157,7 +2157,9 @@ const InventoryManagement: React.FC = () => {
                                 })()
                               ) : (
                                 (() => {
-                                  const closedUnits = Math.floor(item.closed_stock || 0);
+                                  // Use location_stocks as source of truth (same as modal)
+                                  const totalFromLocations = ((item as any).location_stocks || []).reduce((sum: number, ls: any) => sum + (ls.closed_units || 0), 0);
+                                  const closedUnits = Math.floor(totalFromLocations > 0 ? totalFromLocations : (item.closed_stock || 0));
                                   const pkgSize = item.package_size || 1;
                                   const unitAbbr = item.unit_type === 'unit' ? 'un' : item.unit_type === 'gram' ? 'g' : item.unit_type === 'kilo' ? 'kg' : item.unit_type === 'liter' ? 'L' : item.unit_type === 'ml' ? 'ml' : item.unit_type || 'un';
                                   const isCritical = (item.current_stock || 0) <= (item.min_stock || 0);
@@ -2256,6 +2258,15 @@ const InventoryManagement: React.FC = () => {
                                   </div>
                                 );
                               } else if (item.current_stock > 0) {
+                                // Check if location_stocks has fractional (e.g. 149.8 → 0.8 open)
+                                const locTotal = ((item as any).location_stocks || []).reduce((s: number, ls: any) => s + (ls.closed_units || 0), 0);
+                                const frac = locTotal - Math.floor(locTotal);
+                                if (frac > 0.01) {
+                                  const pct = Math.min(Math.round(frac * 100), 100);
+                                  const barColor = pct > 50 ? 'bg-neon' : pct > 20 ? 'bg-orange-400' : 'bg-red-400';
+                                  const txtColor = pct > 50 ? 'text-neon' : pct > 20 ? 'text-orange-400' : 'text-red-400';
+                                  return renderBar(pct, `1 abierto`, barColor, txtColor);
+                                }
                                 return renderBar(100, capLabel, 'bg-neon', 'text-neon');
                               } else {
                                 return renderBar(0, capLabel || unitAbbr, 'bg-black/5 dark:bg-white/10', 'text-text-secondary/40 dark:text-white/20');
@@ -2928,6 +2939,28 @@ const InventoryManagement: React.FC = () => {
                                 const unitAbbr = selectedItem.unit_type === 'ml' ? 'ml' : selectedItem.unit_type === 'gram' ? 'g' : selectedItem.unit_type === 'liter' ? 'L' : selectedItem.unit_type === 'kilo' ? 'kg' : selectedItem.unit_type === 'unit' ? 'un' : selectedItem.unit_type || 'un';
 
                                 if (openCount === 0) {
+                                  // Check fractional from location_stocks (e.g. 149.8 → 0.8 open)
+                                  const locTotal = ((selectedItem as any).location_stocks || []).reduce((s: number, ls: any) => s + (ls.closed_units || 0), 0);
+                                  const frac = locTotal - Math.floor(locTotal);
+                                  if (frac > 0.01) {
+                                    const pct = Math.min(Math.round(frac * 100), 100);
+                                    const remainingAmt = Math.round(frac * pkgSize * 100) / 100;
+                                    const displayAmt = pkgSize > 1 ? `${remainingAmt} ${unitAbbr}` : `${frac.toFixed(2)} un`;
+                                    const barColor = pct > 50 ? 'bg-neon' : pct > 20 ? 'bg-orange-400' : 'bg-red-400';
+                                    return (
+                                      <div>
+                                        <p className="text-lg font-light text-orange-400 tracking-tight">
+                                          1 <span className="text-[9px] text-white/20">envase</span>
+                                        </p>
+                                        <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden mt-1.5">
+                                          <div className={`h-full rounded-full ${barColor} transition-all`} style={{ width: `${Math.max(pct, 2)}%` }} />
+                                        </div>
+                                        <p className="text-[9px] text-white/30 mt-1">
+                                          {displayAmt} restantes ({pct}%)
+                                        </p>
+                                      </div>
+                                    );
+                                  }
                                   return <p className="text-lg font-light text-white/20 tracking-tight">0</p>;
                                 }
 
