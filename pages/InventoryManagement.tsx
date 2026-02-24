@@ -232,7 +232,7 @@ const InventoryManagement: React.FC = () => {
   const { pendingDeliveryOrders, orders: offlineOrders } = useOffline();
   const { addToast } = useToast();
   // Use valid tenant ID from DB query if profile is missing it
-  const storeId = profile?.store_id || 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+  const storeId = profile?.store_id || '';
 
   // ARS Currency Formatter
   const formatCurrency = (value: number) => {
@@ -1129,6 +1129,28 @@ const InventoryManagement: React.FC = () => {
     const qty = parseFloat(addQuantity);
 
     try {
+      // Ensure a products entry exists (product_recipes FK requires it)
+      const { data: existingProduct } = await supabase
+        .from('products')
+        .select('id')
+        .eq('id', selectedItem.id)
+        .maybeSingle();
+
+      if (!existingProduct) {
+        const currentStoreId = profile?.store_id || '';
+        if (!currentStoreId) throw new Error('No se detectó tienda');
+        // @ts-ignore
+        await supabase.from('products').insert({
+          id: selectedItem.id,
+          store_id: currentStoreId,
+          name: selectedItem.name,
+          base_price: selectedItem.price || 0,
+          sku: selectedItem.sku || null,
+          active: true,
+          is_visible: true
+        });
+      }
+
       const storageKey = 'sb-yjxjyxhksedwfeueduwl-auth-token';
       const storedData = localStorage.getItem(storageKey);
       let token = '';
@@ -1737,9 +1759,9 @@ const InventoryManagement: React.FC = () => {
 
   const fetchStockHistory = async (itemId: string) => {
     setLoadingMovements(true);
-    const { data } = await (supabase.from as any)('inventory_audit_logs')
-      .select('*, qty_delta:quantity_delta, unit_type:unit')
-      .eq('item_id', itemId)
+    const { data } = await (supabase.from as any)('stock_movements')
+      .select('id, qty_delta, unit_type, reason, created_at, order_id, notes, location_id')
+      .eq('inventory_item_id', itemId)
       .order('created_at', { ascending: false })
       .limit(50);
 
@@ -2836,7 +2858,9 @@ const InventoryManagement: React.FC = () => {
                             <div>
                               <p className="text-[10px] font-medium text-cream/70 uppercase tracking-[0.2em] mb-2">STOCK TOTAL</p>
                               {(() => {
-                                const closedUnits = Math.floor(selectedItem.closed_stock || 0);
+                                const closedUnits = Math.floor(
+                                  ((selectedItem as any).location_stocks || []).reduce((sum: number, ls: any) => sum + (ls.closed_units || 0), 0)
+                                );
                                 const pkgSize = selectedItem.package_size || 1;
                                 const unitAbbr = selectedItem.unit_type === 'gram' ? 'g' : selectedItem.unit_type === 'ml' ? 'ml' : selectedItem.unit_type === 'kilo' ? 'kg' : selectedItem.unit_type === 'liter' ? 'L' : '';
 
@@ -4164,45 +4188,21 @@ const InventoryManagement: React.FC = () => {
                       onClick={async () => {
                         try {
                           let finalProductId = editingProductId;
-                          // Safe store ID retrieval
+                          // Safe store ID retrieval (single robust fallback)
                           let currentStoreId = storeId;
                           if (!currentStoreId) {
                             const { data: { user } } = await supabase.auth.getUser();
                             if (user?.user_metadata?.store_id) {
                               currentStoreId = user.user_metadata.store_id;
-                              // Update state if possible, but use local var for now
                             } else {
-                              // Fallback: try to find a store associated with user profile
-                              const { data: profile } = await supabase.from('profiles').select('store_id').eq('id', user?.id).single();
-                              if (profile?.store_id) currentStoreId = profile.store_id;
+                              const { data: prof } = await supabase.from('profiles').select('store_id').eq('id', user?.id).single();
+                              if (prof?.store_id) currentStoreId = prof.store_id;
                             }
                           }
-
                           if (!currentStoreId) {
-                            addToast('Error Crítico: No se detectó ID de Tienda. Recarga la página.', 'error');
+                            addToast('Error: No se detectó tienda. Recarga la página.', 'error');
                             return;
                           }
-
-                          if (!currentStoreId) {
-                            const { data: userSession } = await supabase.auth.getUser();
-                            if (userSession?.user?.user_metadata?.store_id) {
-                              currentStoreId = userSession.user.user_metadata.store_id;
-                            } else {
-                              const { data: profile } = await supabase.from('profiles').select('store_id').eq('id', userSession?.user?.id).single();
-                              if (profile?.store_id) currentStoreId = profile.store_id;
-                            }
-                          }
-
-                          if (!currentStoreId) {
-                            addToast('Error Crítico: No se detectó ID de Tienda. Recarga la página.', 'error');
-                            return;
-                          }
-
-                          // Fetch Tenant ID logic if needed, or fallback to storeId if schema implies one-to-one
-                          // Critical Fix: Explicitly fetch tenant_id from stores if possible. Using 'as any' to avoid TS errors on dynamic column.
-                          // @ts-ignore
-                          const { data: storeData } = await supabase.from('stores').select('*').eq('id', currentStoreId).single();
-                          const tenantId = (storeData as any)?.tenant_id || (storeData as any)?.organization_id || currentStoreId;
 
                           // Creation Logic
                           if (!finalProductId && customRecipeName.trim()) {
@@ -4242,6 +4242,7 @@ const InventoryManagement: React.FC = () => {
                                 base_price: finalPrice,
                                 category: 'Recetas',
                                 is_available: true,
+                                is_visible: true,
                                 active: true,
                                 store_id: currentStoreId,
                                 tax_rate: 0,
@@ -4273,6 +4274,21 @@ const InventoryManagement: React.FC = () => {
 
                           const { error: insError } = await supabase.from('product_recipes').insert(rows);
                           if (insError) throw insError;
+
+                          // Always sync price when saving recipe (both create AND edit)
+                          if (customPrice) {
+                            const priceVal = parseFloat(customPrice);
+                            if (priceVal > 0) {
+                              await supabase.from('products').update({
+                                base_price: priceVal,
+                                updated_at: new Date().toISOString()
+                              }).eq('id', finalProductId);
+                              await (supabase.from('inventory_items') as any).update({
+                                price: priceVal,
+                                updated_at: new Date().toISOString()
+                              }).eq('id', finalProductId);
+                            }
+                          }
 
                           addToast('Receta guardada exitosamente', 'success');
                           setShowRecipeModal(false);
