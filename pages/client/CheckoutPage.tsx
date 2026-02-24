@@ -348,7 +348,7 @@ const CheckoutPage: React.FC = () => {
         if (!mpResult?.success) throw new Error(mpResult?.message || 'Failed to create order');
 
         // 3.2 Invoke create-checkout Edge Function
-        const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout', {
+        const { data: rawCheckoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout', {
           body: {
             store_id: store.id,
             order_id: mpOrderId,
@@ -386,6 +386,12 @@ const CheckoutPage: React.FC = () => {
           return;
         }
 
+        // Parse response — handle both JSON object and string responses
+        let checkoutData = rawCheckoutData as any;
+        if (typeof checkoutData === 'string') {
+          try { checkoutData = JSON.parse(checkoutData); } catch { /* keep as-is */ }
+        }
+
         if (checkoutData?.error) {
           console.error('MP Application Error:', checkoutData.error);
           addToast(checkoutData.error || 'Error de Mercado Pago', 'error');
@@ -394,18 +400,34 @@ const CheckoutPage: React.FC = () => {
         }
 
         // 3.4 Redirect to Mercado Pago
-        if (checkoutData?.checkout_url) {
+        const checkoutUrl = checkoutData?.checkout_url || checkoutData?.sandbox_url;
+        if (checkoutUrl) {
           clearCart();
-          window.location.href = checkoutData.checkout_url;
+          window.location.href = checkoutUrl;
+          return;
+        }
+
+        // Fallback: try to get URL from payment_intents
+        console.error('No checkout_url in response, raw data:', rawCheckoutData);
+        const { data: piData } = await supabase
+          .from('payment_intents' as any)
+          .select('init_point')
+          .eq('order_id', mpOrderId)
+          .single();
+
+        if ((piData as any)?.init_point) {
+          clearCart();
+          window.location.href = (piData as any).init_point;
           return;
         }
 
         throw new Error('No se recibió URL de checkout');
       }
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('Order Error:', err);
-      addToast('Error al procesar la orden', 'error');
+      const msg = err?.message || err?.error || 'Error desconocido';
+      addToast(`Error al procesar la orden: ${msg}`, 'error');
       setIsProcessingPayment(false);
     }
   };
