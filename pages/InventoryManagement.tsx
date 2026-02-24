@@ -2256,6 +2256,20 @@ const InventoryManagement: React.FC = () => {
                                   </div>
                                 );
                               } else if (item.current_stock > 0) {
+                                // Detect implicit fractional stock (e.g. 19.8 = 19 closed + 0.8 open)
+                                const closedUnits = Math.floor(item.closed_stock || item.current_stock || 0);
+                                const fractional = (item.current_stock || 0) - closedUnits;
+                                if (fractional > 0.01) {
+                                  const pct = Math.round((fractional / (pkgSize || 1)) * 100);
+                                  const barColor = pct > 50 ? 'bg-neon' : pct > 20 ? 'bg-orange-400' : 'bg-red-400';
+                                  const txtColor = pct > 50 ? 'text-neon' : pct > 20 ? 'text-orange-400' : 'text-red-400';
+                                  return (
+                                    <div className="flex flex-col gap-1.5">
+                                      {renderBar(pct, capLabel, barColor, txtColor)}
+                                      <span className="text-[7px] font-bold text-orange-400/70 uppercase tracking-widest">1 abierto</span>
+                                    </div>
+                                  );
+                                }
                                 return renderBar(100, capLabel, 'bg-neon', 'text-neon');
                               } else {
                                 return renderBar(0, capLabel || unitAbbr, 'bg-black/5 dark:bg-white/10', 'text-text-secondary/40 dark:text-white/20');
@@ -2912,10 +2926,19 @@ const InventoryManagement: React.FC = () => {
                               <p className="text-[9px] font-medium text-white/30 uppercase tracking-widest">Cerrados</p>
                               {(() => {
                                 const totalClosed = ((selectedItem as any).location_stocks || []).reduce((sum: number, ls: any) => sum + (ls.closed_units || 0), 0);
+                                const totalStock = selectedItem.current_stock || 0;
+                                const hasFractional = (totalStock - Math.floor(totalClosed)) > 0.01;
                                 return (
-                                  <p className="text-lg font-light text-white/60 tracking-tight">
-                                    {Math.floor(totalClosed)} <span className="text-[9px] text-white/20">un</span>
-                                  </p>
+                                  <div>
+                                    <p className="text-lg font-light text-white/60 tracking-tight">
+                                      {Math.floor(totalClosed)} <span className="text-[9px] text-white/20">un</span>
+                                    </p>
+                                    {hasFractional && (
+                                      <p className="text-[8px] text-white/20 mt-0.5">
+                                        de {Math.round(totalStock * 100) / 100} total
+                                      </p>
+                                    )}
+                                  </div>
                                 );
                               })()}
                             </div>
@@ -2924,9 +2947,32 @@ const InventoryManagement: React.FC = () => {
                               {(() => {
                                 const openPkgs = selectedItem.open_packages || [];
                                 const openCount = openPkgs.length;
+                                const pkgSize = selectedItem.package_size || 1;
                                 const unitAbbr = selectedItem.unit_type === 'ml' ? 'ml' : selectedItem.unit_type === 'gram' ? 'g' : selectedItem.unit_type === 'liter' ? 'L' : selectedItem.unit_type === 'kilo' ? 'kg' : selectedItem.unit_type === 'unit' ? 'un' : selectedItem.unit_type || 'un';
 
                                 if (openCount === 0) {
+                                  // Check implicit fractional stock
+                                  const totalClosed = ((selectedItem as any).location_stocks || []).reduce((sum: number, ls: any) => sum + (ls.closed_units || 0), 0);
+                                  const totalStock = selectedItem.current_stock || 0;
+                                  const fractional = totalStock - Math.floor(totalClosed);
+                                  if (fractional > 0.01) {
+                                    const remaining = Math.round(fractional * pkgSize * 100) / 100;
+                                    const pct = Math.round((fractional / (pkgSize || 1)) * 100);
+                                    const barColor = pct > 50 ? 'bg-neon' : pct > 20 ? 'bg-orange-400' : 'bg-red-400';
+                                    return (
+                                      <div>
+                                        <p className="text-lg font-light text-orange-400 tracking-tight">
+                                          1 <span className="text-[9px] text-white/20">envase</span>
+                                        </p>
+                                        <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden mt-1.5">
+                                          <div className={`h-full rounded-full ${barColor} transition-all`} style={{ width: `${Math.max(pct, 2)}%` }} />
+                                        </div>
+                                        <p className="text-[9px] text-white/30 mt-1">
+                                          {pkgSize > 1 ? remaining : fractional.toFixed(2)} {unitAbbr} restantes ({pct}%)
+                                        </p>
+                                      </div>
+                                    );
+                                  }
                                   return <p className="text-lg font-light text-white/20 tracking-tight">0</p>;
                                 }
 
