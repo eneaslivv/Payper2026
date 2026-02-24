@@ -100,17 +100,14 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
         if (!isValidTransfer) return;
         setLoading(true);
         try {
-            const userId = (await supabase.auth.getUser()).data.user?.id || null;
             const { data, error } = await retryStockRpc(
-                () => supabase.rpc('transfer_stock', {
-                    p_item_id: localItem!.id,
+                () => (supabase as any).rpc('transfer_stock_between_locations', {
+                    p_inventory_item_id: localItem!.id,
                     p_from_location_id: fromLocation,
                     p_to_location_id: toLocation,
                     p_quantity: parsedQuantity,
-                    p_user_id: userId,
-                    p_notes: notes || '',
-                    p_movement_type: 'transfer',
-                    p_reason: 'Transferencia entre ubicaciones'
+                    p_reason: 'stock_transfer',
+                    p_notes: notes || null
                 }),
                 addToast
             );

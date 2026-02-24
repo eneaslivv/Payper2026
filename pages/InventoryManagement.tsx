@@ -23,6 +23,8 @@ interface StockMovement {
   reason: string;
   created_at: string;
   order_id?: string;
+  location_id?: string;
+  notes?: string;
 }
 
 const STOCK_MOVEMENT_REASON_LABELS: Record<string, string> = {
@@ -36,8 +38,15 @@ const STOCK_MOVEMENT_REASON_LABELS: Record<string, string> = {
   restock: 'Reingreso',
   purchase: 'Compra',
   transfer: 'Transferencia',
+  stock_transfer: 'Transferencia',
   loss: 'Pérdida',
-  waste: 'Pérdida'
+  waste: 'Pérdida',
+  addon_consumed: 'Addon',
+  manual_adjustment: 'Ajuste Manual',
+  cancellation_reversal: 'Devolución',
+  order_cancelled_restock: 'Cancelación',
+  order_edit_compensation: 'Edición Pedido',
+  physical_count: 'Conteo Físico'
 };
 
 // Auxiliary Components (Hoisted)
@@ -269,6 +278,7 @@ const InventoryManagement: React.FC = () => {
   // History State
   const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
   const [loadingMovements, setLoadingMovements] = useState(false);
+  const [storageLocations, setStorageLocations] = useState<{id: string, name: string}[]>([]);
 
   // Recipe Builder State
   const [isAddingRecipeItem, setIsAddingRecipeItem] = useState(false);
@@ -643,6 +653,7 @@ const InventoryManagement: React.FC = () => {
         acc[loc.id] = loc.name;
         return acc;
       }, {});
+      setStorageLocations((locationsData || []).map((loc: any) => ({ id: loc.id, name: loc.name })));
 
       // Store recipes - debug log
       console.log('[Inventory] product_recipes loaded:', recipesData?.length || 0, 'recipes');
@@ -676,6 +687,7 @@ const InventoryManagement: React.FC = () => {
           package_size: i.package_size || 1, // ADDED: Map package_size
           content_unit: i.content_unit || i.unit_type || 'un', // ADDED: Map content_unit
           cost: parseFloat(i.cost || '0'),
+          price: parseFloat(i.price || '0'),
           category_ids: i.category_id ? [i.category_id] : [],
           presentations: [],
           closed_packages: [],
@@ -743,8 +755,19 @@ const InventoryManagement: React.FC = () => {
         });
 
 
+      // Deduplicate: if an item exists in both inventory_items and products (same ID),
+      // keep the product version (has correct price/base_price) but merge in stock data from insumo
+      const productIds = new Set(transformedProducts.map(p => p.id));
+      const deduplicatedInsumos = transformedInsumos.filter(i => !productIds.has(i.id));
+      const insumoMap = new Map(transformedInsumos.map(i => [i.id, i]));
+      const mergedProducts = transformedProducts.map(p => {
+        const insumo = insumoMap.get(p.id);
+        if (!insumo) return p;
+        return { ...p, current_stock: insumo.current_stock, closed_stock: insumo.closed_stock, package_size: insumo.package_size, content_unit: insumo.content_unit, open_packages: insumo.open_packages, open_count: insumo.open_count };
+      });
+
       // Map real open_packages to items (merge from separate table OR use JSONB column)
-      const finalItems = [...transformedInsumos, ...transformedProducts].map(item => {
+      const finalItems = [...deduplicatedInsumos, ...mergedProducts].map(item => {
         // Find all open packages from separate table for this item
         const itemPackages = (openPackages || []).filter((pkg: any) => pkg.inventory_item_id === item.id);
 
@@ -3368,25 +3391,39 @@ const InventoryManagement: React.FC = () => {
                       ) : (
                         <table className="w-full text-left border-collapse">
                           <tbody className="divide-y divide-white/5">
-                            {stockMovements.map((mov) => (
+                            {stockMovements.map((mov) => {
+                              const isTransfer = mov.reason === 'transfer' || mov.reason === 'stock_transfer';
+                              const locName = mov.location_id ? storageLocations.find(l => l.id === mov.location_id)?.name : null;
+                              const colorClass = isTransfer ? 'text-blue-400' : mov.qty_delta < 0 ? 'text-red-400' : 'text-neon';
+                              const deltaColorClass = isTransfer ? 'text-blue-400' : 'text-neon';
+
+                              return (
                               <tr key={mov.id} className="hover:bg-white/[0.02] transition-colors">
                                 <td className="p-3">
                                   <div className="flex flex-col">
-                                    <span className={`text-[10px] font-black uppercase tracking-wider ${mov.qty_delta < 0 ? 'text-red-400' : 'text-neon'}`}>
-                                      {STOCK_MOVEMENT_REASON_LABELS[mov.reason] || mov.reason}
+                                    <span className={`text-[10px] font-black uppercase tracking-wider ${colorClass}`}>
+                                      {isTransfer
+                                        ? (mov.qty_delta < 0 ? 'Enviado' : 'Recibido')
+                                        : (STOCK_MOVEMENT_REASON_LABELS[mov.reason] || mov.reason)}
                                     </span>
+                                    {isTransfer && locName && (
+                                      <span className="text-[9px] text-blue-400/60 mt-0.5">
+                                        {mov.qty_delta < 0 ? 'Desde' : 'En'}: {locName}
+                                      </span>
+                                    )}
                                     <span className="text-[9px] text-white/30 font-mono mt-0.5">
                                       {new Date(mov.created_at).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}
                                     </span>
                                   </div>
                                 </td>
                                 <td className="p-3 text-right">
-                                  <span className={`text-[11px] font-bold font-mono ${mov.qty_delta < 0 ? 'text-neon' : 'text-neon'}`}>
+                                  <span className={`text-[11px] font-bold font-mono ${deltaColorClass}`}>
                                     {mov.qty_delta > 0 ? '+' : ''}{Number(mov.qty_delta).toFixed(3)} <span className="text-[8px] text-white/40">{mov.unit_type}</span>
                                   </span>
                                 </td>
                               </tr>
-                            ))}
+                              );
+                            })}
                           </tbody>
                         </table>
                       )}

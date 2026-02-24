@@ -120,34 +120,32 @@ export const TransferStockModal: React.FC<TransferStockModalProps> = ({
                         throw new Error(`Stock insuficiente para ${itemName} (Disp: ${available})`);
                     }
 
-                    const { error } = await (supabase.rpc as any)('transfer_stock', {
-                        p_item_id: itemId,
+                    const { data, error } = await (supabase as any).rpc('transfer_stock_between_locations', {
+                        p_inventory_item_id: itemId,
                         p_from_location_id: fromLocation,
                         p_to_location_id: toLocation,
                         p_quantity: qty,
-                        p_user_id: null,
-                        p_notes: `Transferencia desde ubicaciones: ${reason}`,
-                        p_movement_type: 'transfer',
-                        p_reason: reason
+                        p_reason: 'stock_transfer',
+                        p_notes: reason || null
                     });
                     if (error) throw error;
+                    if (data && data.success === false) throw new Error(data.message || data.error || 'Falló la transferencia');
                 });
 
                 await Promise.all(transfers);
                 addToast(`✓ ${preselectedItemIds.length} productos transferidos`, 'success');
             } else {
-                const { error } = await (supabase.rpc as any)('transfer_stock', {
-                    p_item_id: selectedItem,
+                const { data, error } = await (supabase as any).rpc('transfer_stock_between_locations', {
+                    p_inventory_item_id: selectedItem,
                     p_from_location_id: fromLocation,
                     p_to_location_id: toLocation,
                     p_quantity: parseInt(quantity) || 1,
-                    p_user_id: null,
-                    p_notes: `Transferencia desde ubicaciones: ${reason}`,
-                    p_movement_type: 'transfer',
-                    p_reason: reason
+                    p_reason: 'stock_transfer',
+                    p_notes: reason || null
                 });
 
                 if (error) throw error;
+                if (data && data.success === false) throw new Error(data.message || data.error || 'Falló la transferencia');
                 addToast(`✓ ${quantity} unidades transferidas`, 'success');
             }
 

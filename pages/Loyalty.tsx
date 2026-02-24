@@ -249,7 +249,7 @@ const Loyalty: React.FC = () => {
          }
 
          addToast('Ajustes de lealtad procesados', 'success');
-         await fetchData();
+         await fetchData(true);
       } catch (err: any) {
          console.error('Save error:', err);
          addToast('Error al procesar ajustes de lealtad', 'error');

@@ -157,17 +157,13 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
         const { data: profile } = await supabase.from('profiles').select('store_id').eq('id', user.id).single();
         if (!profile?.store_id) return;
 
-        // Use new audit logs instead of stock_transfers
-        const { data, error } = await (supabase.from('inventory_audit_logs') as any)
+        // Query stock_movements (SSSMA source of truth) — all relevant reasons
+        const { data, error } = await (supabase.from('stock_movements') as any)
             .select(`
-                *,
-                inventory_items (name, unit_type),
-                location_from:storage_locations!inventory_audit_logs_location_from_fkey (name),
-                location_to:storage_locations!inventory_audit_logs_location_to_fkey (name),
-                profiles:profiles!inventory_audit_logs_user_id_profiles_fkey (full_name)
+                id, qty_delta, unit_type, reason, notes, created_at, location_id,
+                inventory_items:inventory_item_id (name, unit_type)
             `)
             .eq('store_id', profile.store_id)
-            .in('action_type', ['transfer', 'purchase', 'loss', 'adjustment'])
             .order('created_at', { ascending: false })
             .limit(50);
 
@@ -645,15 +641,30 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
                                             <p className="text-[9px] text-text-secondary/40 dark:text-white/20">{new Date(tr.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                                         </td>
                                         <td className="px-6 py-3">
-                                            <span className={`text-[9px] font-black uppercase px-2 py-1 rounded ${tr.action_type === 'purchase' ? 'bg-green-500/10 text-green-500' :
-                                                tr.action_type === 'loss' ? 'bg-red-500/10 text-red-500' :
-                                                    tr.action_type === 'transfer' ? 'bg-blue-500/10 text-blue-500' :
-                                                        'bg-orange-500/10 text-orange-500'
-                                                }`}>
-                                                {tr.action_type === 'purchase' ? 'COMPRA' :
-                                                    tr.action_type === 'loss' ? 'PÉRDIDA' :
-                                                        tr.action_type === 'transfer' ? 'TRANSFER' :
-                                                            'AJUSTE'}
+                                            <span className={`text-[9px] font-black uppercase px-2 py-1 rounded ${
+                                                tr.reason === 'restock' ? 'bg-green-500/10 text-green-500' :
+                                                tr.reason === 'loss' || tr.reason === 'waste' ? 'bg-red-500/10 text-red-500' :
+                                                tr.reason === 'transfer' || tr.reason === 'stock_transfer' ? 'bg-blue-500/10 text-blue-500' :
+                                                tr.reason === 'recipe_consumption' || tr.reason === 'direct_sale' || tr.reason === 'variant_override' || tr.reason === 'addon_consumed' ? 'bg-purple-500/10 text-purple-500' :
+                                                tr.reason === 'order_cancelled_restock' ? 'bg-yellow-500/10 text-yellow-500' :
+                                                'bg-orange-500/10 text-orange-500'
+                                            }`}>
+                                                {{
+                                                    restock: 'REINGRESO',
+                                                    loss: 'PÉRDIDA',
+                                                    waste: 'PÉRDIDA',
+                                                    transfer: 'TRANSFERENCIA',
+                                                    stock_transfer: 'TRANSFERENCIA',
+                                                    recipe_consumption: 'CONSUMO RECETA',
+                                                    direct_sale: 'VENTA DIRECTA',
+                                                    variant_override: 'VARIANTE',
+                                                    addon_consumed: 'ADDON',
+                                                    adjustment: 'AJUSTE',
+                                                    physical_count: 'CONTEO FÍSICO',
+                                                    manual_adjustment: 'AJUSTE MANUAL',
+                                                    order_cancelled_restock: 'DEVOLUCIÓN',
+                                                    order_edit_compensation: 'COMPENSACIÓN',
+                                                }[tr.reason] || tr.reason?.toUpperCase()}
                                             </span>
                                         </td>
                                         <td className="px-6 py-3">
@@ -663,33 +674,36 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
                                             )}
                                         </td>
                                         <td className="px-6 py-3">
-                                            <span className={`text-[11px] font-black ${(tr.package_delta || tr.quantity_delta) > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                                {(tr.package_delta || tr.quantity_delta) > 0 ? '+' : ''}{tr.package_delta || tr.quantity_delta} un
+                                            <span className={`text-[11px] font-black ${tr.qty_delta > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                {tr.qty_delta > 0 ? '+' : ''}{Number(tr.qty_delta).toFixed(0)} {tr.unit_type || 'un'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-3">
                                             <p className="text-[9px] text-text-secondary dark:text-white/40 truncate max-w-[250px]">
-                                                {tr.action_type === 'transfer' ? (
-                                                    <span>
-                                                        <span className="text-red-400">{tr.location_from?.name || 'Origen'}</span>
-                                                        <span className="text-text-secondary/40 dark:text-white/20 mx-1">→</span>
-                                                        <span className="text-green-400">{tr.location_to?.name || 'Destino'}</span>
-                                                    </span>
-                                                ) : tr.action_type === 'loss' ? (
-                                                    <span>
-                                                        <span className="text-red-400">{tr.location_from?.name || ''}</span>
-                                                        {tr.location_from?.name && <span className="text-text-secondary/40 dark:text-white/20"> ·</span>}
-                                                        {tr.reason || 'Pérdida'}
-                                                    </span>
-                                                ) : tr.action_type === 'purchase' ? (
-                                                    <span>
-                                                        <span className="text-green-400">{tr.location_to?.name || ''}</span>
-                                                        {tr.location_to?.name && <span className="text-text-secondary/40 dark:text-white/20"> ·</span>}
-                                                        {tr.reason || 'Compra'}
-                                                    </span>
-                                                ) : (
-                                                    tr.reason || '-'
-                                                )}
+                                                {(() => {
+                                                    const locName = locations.find(l => l.id === tr.location_id)?.name;
+                                                    if (tr.reason === 'transfer' || tr.reason === 'stock_transfer') {
+                                                        return tr.qty_delta < 0
+                                                            ? <span><span className="text-red-400">Desde: {locName || '?'}</span>{tr.notes && <span className="text-text-secondary/40 dark:text-white/20"> · {tr.notes}</span>}</span>
+                                                            : <span><span className="text-green-400">Hacia: {locName || '?'}</span>{tr.notes && <span className="text-text-secondary/40 dark:text-white/20"> · {tr.notes}</span>}</span>;
+                                                    }
+                                                    if (tr.reason === 'loss' || tr.reason === 'waste') {
+                                                        return <span>{locName && <><span className="text-red-400">{locName}</span><span className="text-text-secondary/40 dark:text-white/20"> · </span></>}{tr.notes || 'Pérdida'}</span>;
+                                                    }
+                                                    if (tr.reason === 'purchase' || tr.reason === 'restock') {
+                                                        return <span>{locName && <><span className="text-green-400">{locName}</span><span className="text-text-secondary/40 dark:text-white/20"> · </span></>}{tr.notes || 'Reingreso'}</span>;
+                                                    }
+                                                    if (tr.reason === 'recipe_consumption' || tr.reason === 'direct_sale' || tr.reason === 'variant_override' || tr.reason === 'addon_consumed') {
+                                                        return <span>{locName && <><span className="text-orange-400">{locName}</span><span className="text-text-secondary/40 dark:text-white/20"> · </span></>}{tr.notes || 'Consumo por venta'}</span>;
+                                                    }
+                                                    if (tr.reason === 'order_cancelled_restock' || tr.reason === 'order_edit_compensation') {
+                                                        return <span>{locName && <><span className="text-blue-400">{locName}</span><span className="text-text-secondary/40 dark:text-white/20"> · </span></>}{tr.notes || 'Devolución'}</span>;
+                                                    }
+                                                    if (tr.reason === 'adjustment' || tr.reason === 'physical_count' || tr.reason === 'manual_adjustment') {
+                                                        return <span>{locName && <><span className="text-yellow-400">{locName}</span><span className="text-text-secondary/40 dark:text-white/20"> · </span></>}{tr.notes || 'Ajuste'}</span>;
+                                                    }
+                                                    return <span>{locName && <><span className="text-text-secondary/60 dark:text-white/30">{locName}</span><span className="text-text-secondary/40 dark:text-white/20"> · </span></>}{tr.notes || '-'}</span>;
+                                                })()}
                                             </p>
                                         </td>
                                     </tr>
