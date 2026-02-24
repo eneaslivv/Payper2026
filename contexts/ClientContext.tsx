@@ -320,40 +320,72 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
     useEffect(() => {
         if (!slug) return;
-        const fetchStore = async () => {
+        let cancelled = false;
+
+        const fetchStore = async (attempt = 1): Promise<void> => {
             setLoadingStore(true);
             try {
+                // Try sessionStorage cache first (instant on revisit)
+                const cacheKey = `store_cache_${slug}`;
+                const cached = sessionStorage.getItem(cacheKey);
+                if (cached && attempt === 1) {
+                    try {
+                        const parsed = JSON.parse(cached);
+                        if (parsed && parsed.id) {
+                            if (parsed.menu_theme && typeof parsed.menu_theme === 'string') {
+                                parsed.menu_theme = JSON.parse(parsed.menu_theme);
+                            }
+                            setStore(parsed);
+                            setLoadingStore(false);
+                            // Refresh in background (don't block UI)
+                            supabase.from('stores').select('*').eq('slug', slug).maybeSingle()
+                                .then(({ data }) => {
+                                    if (data && !cancelled) {
+                                        if (data.menu_theme && typeof data.menu_theme === 'string') {
+                                            try { (data as any).menu_theme = JSON.parse(data.menu_theme); } catch {}
+                                        }
+                                        sessionStorage.setItem(cacheKey, JSON.stringify(data));
+                                        setStore(data as any);
+                                    }
+                                });
+                            return;
+                        }
+                    } catch {}
+                }
+
                 const { data, error } = await supabase
                     .from('stores')
                     .select('*')
                     .eq('slug', slug)
                     .maybeSingle();
 
+                if (cancelled) return;
                 if (error) throw error;
                 if (!data) throw new Error('Tienda no encontrada');
 
-                if (data && (data as any).menu_theme && typeof (data as any).menu_theme === 'string') {
-                    try {
-                        (data as any).menu_theme = JSON.parse((data as any).menu_theme);
-                    } catch (e) {
-                        console.error('Error parsing menu_theme:', e);
-                    }
+                if (data.menu_theme && typeof data.menu_theme === 'string') {
+                    try { (data as any).menu_theme = JSON.parse(data.menu_theme); } catch {}
                 }
 
+                sessionStorage.setItem(cacheKey, JSON.stringify(data));
                 setStore(data as any);
             } catch (err: any) {
-                // AbortError happens on slow mobile networks or component remounts — not a real error
-                if (err.name === 'AbortError') {
-                    console.warn('[ClientContext] fetchStore aborted, retrying...');
+                if (cancelled) return;
+                // Retry on network/abort errors (up to 3 attempts)
+                if ((err.name === 'AbortError' || err.message?.includes('fetch') || err.message?.includes('network')) && attempt < 3) {
+                    console.warn(`[ClientContext] fetchStore attempt ${attempt} failed, retrying in ${attempt * 800}ms...`);
+                    await new Promise(r => setTimeout(r, attempt * 800));
+                    if (!cancelled) return fetchStore(attempt + 1);
                     return;
                 }
                 console.error('Error fetching store:', err);
                 setError(err.message);
             } finally {
-                setLoadingStore(false);
+                if (!cancelled) setLoadingStore(false);
             }
         };
         fetchStore();
+        return () => { cancelled = true; };
     }, [slug]);
 
     // Load QR Context and Validate Session when store is ready
@@ -457,10 +489,32 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Fetch Categories and Products
     useEffect(() => {
         if (!store?.id) return;
+        let cancelled = false;
 
-        const fetchData = async () => {
+        const fetchData = async (attempt = 1): Promise<void> => {
             setLoadingProducts(true);
             try {
+                // Try sessionStorage cache for instant product display on revisit
+                const prodCacheKey = `products_cache_${store.id}`;
+                const catCacheKey = `categories_cache_${store.id}`;
+                if (attempt === 1) {
+                    try {
+                        const cachedProds = sessionStorage.getItem(prodCacheKey);
+                        const cachedCats = sessionStorage.getItem(catCacheKey);
+                        if (cachedProds) {
+                            const parsed = JSON.parse(cachedProds) as MenuItem[];
+                            if (parsed.length > 0) {
+                                setProducts(parsed);
+                                if (cachedCats) {
+                                    setCategories(JSON.parse(cachedCats));
+                                }
+                                setLoadingProducts(false);
+                                // Continue loading fresh data in background (don't return)
+                            }
+                        }
+                    } catch {}
+                }
+
                 const dedupeMenuItems = (items: MenuItem[]) => {
                     const map = new Map<string, MenuItem>();
 
@@ -485,23 +539,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     return Array.from(map.values());
                 };
 
-                // 1. Fetch Categories
-                const { data: catsData, error: catsError } = await (supabase
-                    .from('categories' as any)
-                    .select('id, name')
-                    .eq('store_id', store.id));
-
-                if (catsError) console.error('[ClientContext] Error fetching categories:', catsError);
-
-                const dbCategories = catsData || [];
-                console.log('[ClientContext] Categories fetched:', dbCategories.length, 'items');
-                const categoryMap: Record<string, string> = {};
-                dbCategories.forEach((c: any) => {
-                    categoryMap[c.id] = c.name;
-                });
-
-                // 2. DYNAMIC MENU RESOLUTION
-                // Check for reservation menu override first
+                // Check for reservation menu override (sync, no network)
                 let resolvedMenuId: string | null = null;
                 const rawRes = localStorage.getItem('reservation_context');
                 if (rawRes) {
@@ -514,44 +552,49 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     } catch (e) {}
                 }
 
-                // Determine session context for menu resolution (must be in outer scope for logging)
                 const sessionType = qrContext?.node_type || orderChannel || 'generic';
+                const tableId = qrContext?.node_id || null;
 
-                if (!resolvedMenuId) {
-                    const tableId = qrContext?.node_id || null;
+                // 1. PARALLEL: Fetch categories + resolve menu at the same time
+                const [catsResult, menuResult] = await Promise.all([
+                    (supabase.from('categories' as any).select('id, name').eq('store_id', store.id)),
+                    resolvedMenuId
+                        ? Promise.resolve({ data: resolvedMenuId, error: null })
+                        : (supabase.rpc as any)('resolve_menu', {
+                            p_store_id: store.id,
+                            p_session_type: sessionType,
+                            p_table_id: tableId,
+                            p_bar_id: null
+                        })
+                ]);
 
-                    // Call resolve_menu RPC
-                    const { data: rpcMenuId, error: menuError } = await (supabase.rpc as any)('resolve_menu', {
-                        p_store_id: store.id,
-                        p_session_type: sessionType,
-                        p_table_id: tableId,
-                        p_bar_id: null
-                    });
+                if (cancelled) return;
 
-                    if (menuError) {
-                        console.error('[ClientContext] Error resolving menu:', menuError);
-                    }
-                    resolvedMenuId = rpcMenuId;
-                }
+                if (catsResult.error) console.error('[ClientContext] Error fetching categories:', catsResult.error);
+                if (menuResult.error) console.error('[ClientContext] Error resolving menu:', menuResult.error);
+
+                const dbCategories = catsResult.data || [];
+                const categoryMap: Record<string, string> = {};
+                dbCategories.forEach((c: any) => { categoryMap[c.id] = c.name; });
+
+                if (!resolvedMenuId) resolvedMenuId = menuResult.data;
+
+                // 2. Load products (from menu or fallback)
+                let finalProducts: MenuItem[] = [];
 
                 if (resolvedMenuId) {
                     console.log('[ClientContext] Resolved menu:', resolvedMenuId, 'for context:', sessionType);
                     setMenuId(resolvedMenuId);
 
-                    // Fetch products from the resolved menu
                     const { data: menuProducts, error: productsError } = await (supabase.rpc as any)('get_menu_products', {
                         p_menu_id: resolvedMenuId
                     });
+                    if (cancelled) return;
 
-                    if (productsError) {
-                        console.error('[ClientContext] Error fetching menu products:', productsError);
-                    }
+                    if (productsError) console.error('[ClientContext] Error fetching menu products:', productsError);
 
                     if (menuProducts && menuProducts.length > 0) {
-                        console.log('[ClientContext] Menu products loaded:', menuProducts.length);
-
-                        // Map menu products to MenuItem interface
-                        const mappedProducts: MenuItem[] = menuProducts.map((item: any) => ({
+                        finalProducts = menuProducts.map((item: any) => ({
                             id: item.product_id,
                             name: item.name,
                             description: item.description || '',
@@ -565,187 +608,119 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                             addons: [],
                             item_type: 'sellable' as const,
                         }));
-
-                        setProducts(dedupeMenuItems(mappedProducts));
                     } else {
-                        // Fallback: menu exists but has no products
                         console.warn('[ClientContext] Menu has no products, loading all inventory');
-                        await loadAllProducts();
+                        finalProducts = await loadAllProducts(categoryMap);
                     }
                 } else {
-                    // No menu resolved, load all products (backward compatibility)
                     console.warn('[ClientContext] No menu resolved, loading all inventory');
-                    await loadAllProducts();
+                    finalProducts = await loadAllProducts(categoryMap);
                 }
 
-                // Helper: Load products using new availability RPC
-                async function loadProductsWithAvailability() {
-                    console.log('[ClientContext] Loading products with real-time availability check...');
+                if (cancelled) return;
 
-                    const { data: productsData, error } = await (supabase.rpc as any)(
-                        'get_products_with_availability',
-                        { p_store_id: store.id }
-                    );
+                const deduped = dedupeMenuItems(finalProducts);
+                setProducts(deduped);
 
-                    if (error) {
-                        console.error('[ClientContext] Error loading products with availability:', error);
-                        // Fallback to regular load
-                        await loadAllProducts();
-                        return;
-                    }
+                // Cache products + categories for instant revisit
+                try {
+                    sessionStorage.setItem(prodCacheKey, JSON.stringify(deduped));
+                } catch {} // ignore quota errors
 
-                    if (productsData && productsData.length > 0) {
-                        const productIds = productsData.map((item: any) => item.id).filter(Boolean);
-                        const { data: imageRows } = await (supabase.from('products') as any)
-                            .select('id, image')
-                            .in('id', productIds);
-                        const productImageMap = new Map<string, string>();
-                        (imageRows || []).forEach((row: any) => {
-                            if (row?.id && row?.image) productImageMap.set(row.id, row.image);
-                        });
-
-                        const mappedProducts: MenuItem[] = productsData.map((item: any) => {
-                            const catName = item.category_id ? categoryMap[item.category_id] : 'General';
-                            return {
-                                id: item.id,
-                                name: item.name,
-                                description: item.description || '',
-                                price: item.price || 0,
-                                image: item.image_url || productImageMap.get(item.id) || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
-                                category: catName,
-                                isPopular: false,
-                                isOutOfStock: !item.is_available,  // ✅ Calculado en tiempo real por RPC
-                                availableStock: getAvailableStock(item),
-                                variants: [],
-                                addons: [],
-                                item_type: 'product' as const,
-                            };
-                        });
-
-                        // Also load sellable inventory items
-                        const { data: inventoryData } = await (supabase.from('inventory_items') as any)
-                            .select('*')
-                            .eq('store_id', store.id)
-                            .eq('is_menu_visible', true)
-                            .gt('price', 0)
-                            .order('name', { ascending: true });
-
-                        const inventoryProducts: MenuItem[] = (inventoryData || [])
-                            .filter((item: any) => item.price > 0)
-                            .map((item: any) => {
-                                const catName = item.category_id ? categoryMap[item.category_id] : 'General';
-                                return {
-                                    id: item.id,
-                                    name: item.name,
-                                    description: item.description || '',
-                                    price: item.price || 0,
-                                    image: item.image_url || item.image || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
-                                    category: catName,
-                                    isPopular: item.is_popular || false,
-                                    isOutOfStock: (item.current_stock !== undefined && item.current_stock <= 0),
-                                    availableStock: getAvailableStock(item),
-                                    variants: item.variants || [],
-                                    addons: item.addons || [],
-                                    item_type: 'sellable' as const,
-                                };
-                            });
-
-                        setProducts(dedupeMenuItems([...mappedProducts, ...inventoryProducts]));
-                        console.log('[ClientContext] Products loaded with availability:', mappedProducts.length, 'products,', inventoryProducts.length, 'inventory items');
-                    } else {
-                        console.warn('[ClientContext] No products found, falling back to loadAllProducts');
-                        await loadAllProducts();
-                    }
-                }
-
-                // Helper: Load all products directly (fallback) with RPC availability check
-                async function loadAllProducts() {
-                    // Load inventory items (only menu-visible ones)
-                    const { data: inventoryData, error: invError } = await (supabase.from('inventory_items') as any)
-                        .select('*')
-                        .eq('store_id', store.id)
-                        .eq('is_menu_visible', true)
-                        .gt('price', 0)
-                        .order('name', { ascending: true });
-
-                    if (invError) console.error('[ClientContext] Error loading inventory:', invError);
-
-                    // Also load products table (recipes/composed items)
-                    const { data: productsData, error: prodError } = await (supabase.from('products') as any)
-                        .select('*, product_variants(*)')
-                        .eq('store_id', store.id)
-                        .eq('active', true)
-                        .eq('is_visible', true)
-                        .order('name', { ascending: true });
-
-                    if (prodError) console.error('[ClientContext] Error loading products:', prodError);
-
-                    // Map inventory items
-                    const inventoryProducts: MenuItem[] = (inventoryData || []).map((item: any) => {
-                        const catName = item.category_id ? categoryMap[item.category_id] : (item.category || 'General');
-                        return {
-                            id: item.id,
-                            name: item.name,
-                            description: item.description || '',
-                            price: item.price || 0,
-                            image: item.image_url || item.image || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
-                            category: catName,
-                            isPopular: item.is_popular || false,
-                            isOutOfStock: (item.current_stock !== undefined && item.current_stock <= 0) || false,
-                            variants: item.variants || [],
-                            addons: item.addons || [],
-                            item_type: 'sellable' as const,
-                        };
-                    });
-
-                    // Map products (recipes) - is_available now comes from DB trigger that validates recipe ingredients
-                    const recipeProducts: MenuItem[] = (productsData || []).map((item: any) => {
-                        const catName = item.category_id ? categoryMap[item.category_id] : (item.category || 'General');
-
-                        // FIX: Ensure variants are mapped correctly with price_adjustment alias
-                        const mappedVariants = (item.product_variants || []).map((v: any) => ({
-                            ...v,
-                            price_adjustment: v.price_delta // Map DB field to Frontend field
-                        }));
-
-                        return {
-                            id: item.id,
-                            name: item.name,
-                            description: item.description || '',
-                            price: item.price || item.base_price || 0,
-                            image: item.image || item.image_url || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
-                            category: catName,
-                            isPopular: item.is_popular || false,
-                            isOutOfStock: !item.is_available,  // ✅ Ahora is_available viene calculado por trigger
-                            availableStock: getAvailableStock(item),
-                            variants: mappedVariants,
-                            addons: item.product_addons || [],
-                            item_type: 'product' as const,
-                        };
-                    });
-
-                    // Combine: Products first (composed items), then inventory items
-                    // Filter inventory to only show items with price > 0 (sellable)
-                    const sellableInventory = inventoryProducts.filter(p => p.price > 0);
-                    setProducts(dedupeMenuItems([...recipeProducts, ...sellableInventory]));
-                }
-
-
-                // Set categories: Filter empty names and normalize
+                // Set categories
                 if (dbCategories.length > 0) {
                     const validCats = dbCategories
                         .filter((c: any) => c.name && c.name.trim() !== '')
                         .map((c: any) => ({ id: c.id, name: c.name }));
-                    setCategories([{ id: 'all', name: 'Todos' }, ...validCats]);
+                    const cats = [{ id: 'all', name: 'Todos' }, ...validCats];
+                    setCategories(cats);
+                    try {
+                        sessionStorage.setItem(catCacheKey, JSON.stringify(cats));
+                    } catch {}
                 }
-                // Note: category fallback from products is handled separately if needed
 
-            } catch (err) {
+            } catch (err: any) {
+                if (cancelled) return;
+                // Retry on network/abort errors (up to 3 attempts)
+                if ((err.name === 'AbortError' || err.message?.includes('fetch') || err.message?.includes('network')) && attempt < 3) {
+                    console.warn(`[ClientContext] fetchData attempt ${attempt} failed, retrying in ${attempt * 800}ms...`);
+                    await new Promise(r => setTimeout(r, attempt * 800));
+                    if (!cancelled) return fetchData(attempt + 1);
+                    return;
+                }
                 console.error('Error fetching data:', err);
             } finally {
-                setLoadingProducts(false);
+                if (!cancelled) setLoadingProducts(false);
             }
         };
+
+        // Helper: Load all products directly (fallback) — PARALLEL queries
+        async function loadAllProducts(categoryMap: Record<string, string>): Promise<MenuItem[]> {
+            // Run both queries in parallel
+            const [invResult, prodResult] = await Promise.all([
+                (supabase.from('inventory_items') as any)
+                    .select('*')
+                    .eq('store_id', store!.id)
+                    .eq('is_menu_visible', true)
+                    .gt('price', 0)
+                    .order('name', { ascending: true }),
+                (supabase.from('products') as any)
+                    .select('*, product_variants(*)')
+                    .eq('store_id', store!.id)
+                    .eq('active', true)
+                    .eq('is_visible', true)
+                    .order('name', { ascending: true })
+            ]);
+
+            if (invResult.error) console.error('[ClientContext] Error loading inventory:', invResult.error);
+            if (prodResult.error) console.error('[ClientContext] Error loading products:', prodResult.error);
+
+            // Map inventory items
+            const inventoryProducts: MenuItem[] = (invResult.data || []).map((item: any) => {
+                const catName = item.category_id ? categoryMap[item.category_id] : (item.category || 'General');
+                return {
+                    id: item.id,
+                    name: item.name,
+                    description: item.description || '',
+                    price: item.price || 0,
+                    image: item.image_url || item.image || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
+                    category: catName,
+                    isPopular: item.is_popular || false,
+                    isOutOfStock: (item.current_stock !== undefined && item.current_stock <= 0) || false,
+                    variants: item.variants || [],
+                    addons: item.addons || [],
+                    item_type: 'sellable' as const,
+                };
+            });
+
+            // Map products (recipes)
+            const recipeProducts: MenuItem[] = (prodResult.data || []).map((item: any) => {
+                const catName = item.category_id ? categoryMap[item.category_id] : (item.category || 'General');
+                const mappedVariants = (item.product_variants || []).map((v: any) => ({
+                    ...v,
+                    price_adjustment: v.price_delta
+                }));
+
+                return {
+                    id: item.id,
+                    name: item.name,
+                    description: item.description || '',
+                    price: item.price || item.base_price || 0,
+                    image: item.image || item.image_url || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
+                    category: catName,
+                    isPopular: item.is_popular || false,
+                    isOutOfStock: !item.is_available,
+                    availableStock: getAvailableStock(item),
+                    variants: mappedVariants,
+                    addons: item.product_addons || [],
+                    item_type: 'product' as const,
+                };
+            });
+
+            const sellableInventory = inventoryProducts.filter(p => p.price > 0);
+            return [...recipeProducts, ...sellableInventory];
+        }
+
         fetchData();
 
         // Subscribe to product availability changes
@@ -772,6 +747,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             .subscribe();
 
         return () => {
+            cancelled = true;
             supabase.removeChannel(productsChannel);
         };
     }, [store?.id]);
