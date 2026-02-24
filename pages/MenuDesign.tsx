@@ -317,124 +317,82 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
     return (
         <div className="flex flex-col md:flex-row h-full animate-in fade-in duration-500">
             {/* LEFT: Menu List */}
-            <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-border-color dark:border-white/10 flex flex-col bg-gradient-to-b from-background-light to-white dark:from-[#0D0F0D] dark:to-[#141714] max-h-[40vh] md:max-h-none">\
+            <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-border-color dark:border-white/10 flex flex-col bg-background-light dark:bg-[#0D0F0D] max-h-[30vh] md:max-h-none">
                 {/* Header */}
-                <div className="p-4 border-b border-border-color dark:border-white/10 flex items-center justify-between bg-gradient-to-r from-[#4ADE80]/5 to-transparent">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-[#4ADE80]/20 rounded-xl flex items-center justify-center">
-                            <Package size={16} className="text-[#4ADE80]" />
-                        </div>
-                        <div>
-                            <h3 className="text-sm font-black text-text-main dark:text-white">Menús</h3>
-                            <p className="text-[9px] text-text-secondary dark:text-white/40">{menus.length} configurados</p>
-                        </div>
-                    </div>
+                <div className="px-3 py-2.5 border-b border-border-color dark:border-white/10 flex items-center justify-between">
+                    <h3 className="text-[10px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest">Menús</h3>
                     <button
                         onClick={handleCreateMenu}
-                        className="p-2 bg-[#4ADE80]/10 text-[#4ADE80] rounded-xl hover:bg-[#4ADE80]/20 hover:scale-110 transition-all duration-300 shadow-lg shadow-[#4ADE80]/10"
+                        className="size-6 bg-[#4ADE80]/10 text-[#4ADE80] rounded-lg flex items-center justify-center hover:bg-[#4ADE80]/20 transition-all"
                     >
-                        <Plus size={16} />
+                        <Plus size={12} />
                     </button>
                 </div>
 
                 {/* Warning: No Fallback */}
                 {!hasFallback && (
-                    <div className="p-3 bg-gradient-to-r from-red-500/20 to-red-500/5 border-b border-red-500/20 flex items-center gap-2 animate-pulse">
-                        <AlertTriangle size={14} className="text-red-400" />
-                        <span className="text-[10px] text-red-400 font-medium">Falta menú fallback</span>
+                    <div className="px-3 py-1.5 bg-red-500/10 border-b border-red-500/20 flex items-center gap-1.5">
+                        <AlertTriangle size={10} className="text-red-400" />
+                        <span className="text-[8px] text-red-400 font-bold">Falta menú fallback</span>
                     </div>
                 )}
 
                 {/* Menu List */}
-                <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                    {menus.map((menu, idx) => {
-                        // Check if currently active (Time/Day)
+                <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                    {menus.map((menu) => {
                         const now = new Date();
-                        const currentDay = now.getDay(); // 0-6
-                        const currentTime = now.getHours() * 60 + now.getMinutes(); // minutes from midnight
-
+                        const currentDay = now.getDay();
+                        const currentTime = now.getHours() * 60 + now.getMinutes();
                         const timeRule = menu.rules?.find(r => r.rule_type === 'time_range');
                         const dayRule = menu.rules?.find(r => r.rule_type === 'weekdays');
-
                         let isTimeMatching = true;
                         if (timeRule?.rule_config?.from && timeRule?.rule_config?.to) {
                             const [fh, fm] = timeRule.rule_config.from.split(':').map(Number);
                             const [th, tm] = timeRule.rule_config.to.split(':').map(Number);
-                            const fromMinutes = fh * 60 + fm;
-                            const toMinutes = th * 60 + tm;
-                            isTimeMatching = currentTime >= fromMinutes && currentTime <= toMinutes;
+                            isTimeMatching = currentTime >= (fh * 60 + fm) && currentTime <= (th * 60 + tm);
                         }
-
                         let isDayMatching = true;
-                        if (dayRule?.rule_config?.days && Array.isArray(dayRule.rule_config.days)) {
-                            isDayMatching = dayRule.rule_config.days.includes(currentDay);
-                        }
-
+                        if (dayRule?.rule_config?.days?.length) isDayMatching = dayRule.rule_config.days.includes(currentDay);
                         const isLive = menu.is_active && isTimeMatching && isDayMatching;
+                        const isSelected = selectedMenu?.id === menu.id;
 
                         return (
                             <button
                                 key={menu.id}
                                 onClick={() => handleSelectMenu(menu)}
-                                className={`
-                                w-full p-4 rounded-2xl text-left transition-all duration-300 group relative overflow-hidden
-                                ${selectedMenu?.id === menu.id
-                                        ? 'bg-gradient-to-r from-[#4ADE80]/15 to-[#4ADE80]/5 border-2 border-[#4ADE80] shadow-lg shadow-[#4ADE80]/20 scale-[1.02]'
-                                        : isLive
-                                            ? 'bg-green-500/5 border border-green-500/30 hover:bg-green-500/10'
-                                            : menu.is_fallback
-                                                ? 'bg-yellow-500/5 border border-yellow-500/30 hover:bg-yellow-500/10'
-                                                : 'bg-black/[0.02] dark:bg-white/[0.02] border border-border-color/30 dark:border-white/5 hover:bg-gray-100 dark:hover:bg-white/5 hover:border-border-color dark:hover:border-white/10 hover:scale-[1.01]'}
-                            `}
-                                style={{ animationDelay: `${idx * 50}ms` }}
+                                className={`w-full px-3 py-2 rounded-xl text-left transition-all flex items-center gap-2.5 group ${isSelected
+                                    ? 'bg-[#4ADE80]/10 border border-[#4ADE80]/40'
+                                    : 'border border-transparent hover:bg-gray-50 dark:hover:bg-white/[0.03] hover:border-border-color/30 dark:hover:border-white/5'
+                                }`}
                             >
-                                {isLive && (
-                                    <div className="absolute top-0 right-0 p-1.5 opacity-50 group-hover:opacity-100 transition-opacity">
-                                        <span className="relative flex h-2 w-2">
-                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                                        </span>
-                                    </div>
-                                )}
+                                {/* Status dot */}
+                                <span className={`size-2 rounded-full shrink-0 ${isLive ? 'bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.5)]' : menu.is_active ? 'bg-green-500/40' : 'bg-gray-300 dark:bg-white/15'}`} />
 
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="font-bold text-text-main dark:text-white text-sm truncate group-hover:text-[#4ADE80] transition-colors">{menu.name}</span>
-                                    <div className="flex items-center gap-2">
-                                        {menu.is_fallback && (
-                                            <span className="px-2 py-0.5 bg-gradient-to-r from-yellow-500/30 to-yellow-500/10 text-yellow-400 text-[8px] font-black rounded-full uppercase tracking-wide">
-                                                Default
-                                            </span>
-                                        )}
-                                        <span className={`w-3 h-3 rounded-full transition-all duration-300 ${menu.is_active ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-gray-300 dark:bg-white/20'}`} />
+                                {/* Info */}
+                                <div className="flex-1 min-w-0">
+                                    <p className={`text-[11px] font-bold truncate ${isSelected ? 'text-[#4ADE80]' : 'text-text-main dark:text-white group-hover:text-[#4ADE80]'} transition-colors`}>{menu.name}</p>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                        <span className="text-[8px] text-text-secondary/60 dark:text-white/30">{menu.product_count} prod</span>
+                                        {menu.is_fallback && <span className="text-[7px] font-black text-amber-400 uppercase">default</span>}
+                                        {isLive && !menu.is_fallback && <span className="text-[7px] font-black text-green-400 uppercase">live</span>}
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="text-[10px] text-text-secondary dark:text-white/50 bg-black/5 dark:bg-white/5 px-2 py-0.5 rounded-full">{menu.product_count} productos</span>
 
-                                    {/* Rule Icons */}
-                                    {menu.rules?.some(r => r.rule_type === 'tables' && r.is_active) && (
-                                        <span className="p-1 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20" title="Ubicaciones específicas"><MapPin size={10} /></span>
-                                    )}
-                                    {menu.rules?.some(r => r.rule_type === 'weekdays' && r.is_active) && (
-                                        <span className="p-1 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20" title="Días específicos"><Calendar size={10} /></span>
-                                    )}
-                                    {menu.rules?.some(r => r.rule_type === 'time_range' && r.is_active) && (
-                                        <span className="p-1 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20" title="Horario específico"><Clock size={10} /></span>
-                                    )}
-
-                                    {/* Remove detailed badges to simplify sidebar view as requested, keep priority */}
-                                    <span className="text-[10px] text-text-secondary dark:text-white/50 bg-black/5 dark:bg-white/5 px-2 py-0.5 rounded-full">P:{menu.priority}</span>
-                                    {isLive && <span className="text-[9px] text-green-400 font-bold ml-1 animate-pulse">EN VIVO</span>}
+                                {/* Rule indicators */}
+                                <div className="flex items-center gap-0.5 shrink-0">
+                                    {menu.rules?.some(r => r.rule_type === 'time_range' && r.is_active) && <Clock size={9} className="text-blue-400/60" />}
+                                    {menu.rules?.some(r => r.rule_type === 'weekdays' && r.is_active) && <Calendar size={9} className="text-purple-400/60" />}
+                                    {menu.rules?.some(r => r.rule_type === 'tables' && r.is_active) && <MapPin size={9} className="text-orange-400/60" />}
                                 </div>
                             </button>
                         );
                     })}
 
                     {menus.length === 0 && (
-                        <div className="text-center py-12">
-                            <Package size={32} className="mx-auto text-gray-300 dark:text-white/10 mb-3" />
-                            <p className="text-text-secondary/60 dark:text-white/30 text-xs">Sin menús</p>
-                            <button onClick={handleCreateMenu} className="mt-3 text-[#4ADE80] text-[10px] hover:underline">+ Crear primero</button>
+                        <div className="text-center py-8">
+                            <Package size={24} className="mx-auto text-gray-300 dark:text-white/10 mb-2" />
+                            <p className="text-text-secondary/60 dark:text-white/30 text-[10px]">Sin menús</p>
+                            <button onClick={handleCreateMenu} className="mt-2 text-[#4ADE80] text-[10px] font-bold hover:underline">+ Crear primero</button>
                         </div>
                     )}
                 </div>
@@ -443,81 +401,73 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
             {/* RIGHT: Detail */}
             <div className="flex-1 flex flex-col bg-background-light dark:bg-[#0A0B09]">
                 {selectedMenu ? (
-                    <div className="animate-in fade-in slide-in-from-right-2 duration-500 flex flex-col h-full">
+                    <div className="animate-in fade-in duration-300 flex flex-col h-full">
                         {/* Header */}
-                        <div className="p-3 md:p-6 border-b border-border-color dark:border-white/10 bg-gradient-to-r from-black/[0.02] dark:from-white/[0.02] to-transparent">\
-                            <div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-3">\
-                                <div className="flex-1">
-                                    {isEditing ? (
-                                        <input
-                                            value={editForm.name}
-                                            onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
-                                            className="bg-white dark:bg-black/50 border border-[#4ADE80]/30 rounded-xl px-4 py-2 text-text-main dark:text-white font-black text-lg w-64 focus:outline-none focus:ring-2 focus:ring-[#4ADE80]/50"
-                                            autoFocus
-                                        />
-                                    ) : (
-                                        <h2 className="text-2xl font-black text-text-main dark:text-white mb-1 flex items-center gap-2">
+                        <div className="px-4 py-3 border-b border-border-color dark:border-white/10 flex items-center justify-between">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                {isEditing ? (
+                                    <input
+                                        value={editForm.name}
+                                        onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                                        className="bg-white dark:bg-black/50 border border-[#4ADE80]/30 rounded-lg px-3 py-1.5 text-text-main dark:text-white font-bold text-sm w-48 focus:outline-none focus:ring-1 focus:ring-[#4ADE80]/50"
+                                        autoFocus
+                                    />
+                                ) : (
+                                    <div className="min-w-0">
+                                        <h2 className="text-sm font-black text-text-main dark:text-white flex items-center gap-2 truncate">
                                             {selectedMenu.name}
-                                            {selectedMenu.is_active && <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />}
+                                            {selectedMenu.is_active && <span className="size-1.5 bg-green-500 rounded-full shrink-0" />}
                                         </h2>
-                                    )}
-                                    <p className="text-[11px] text-text-secondary dark:text-white/40 flex items-center gap-2">
-                                        {selectedMenu.is_fallback ? (
-                                            <span className="text-yellow-400">⭐ Menú fallback (siempre activo)</span>
-                                        ) : (
-                                            <><span>Prioridad: {selectedMenu.priority}</span> • <span>{menuProducts.length} productos</span></>
+                                        <p className="text-[9px] text-text-secondary dark:text-white/40">
+                                            {selectedMenu.is_fallback ? 'Menú fallback' : `P:${selectedMenu.priority} · ${menuProducts.length} productos`}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex gap-1 shrink-0">
+                                {isEditing ? (
+                                    <>
+                                        <button onClick={() => setIsEditing(false)} className="p-1.5 text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-all"><X size={15} /></button>
+                                        <button onClick={handleSaveMenu} className="p-1.5 bg-[#4ADE80]/20 text-[#4ADE80] rounded-lg hover:bg-[#4ADE80]/30 transition-all"><Save size={15} /></button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <button onClick={() => setIsEditing(true)} className="p-1.5 text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-all"><Edit2 size={15} /></button>
+                                        <button
+                                            onClick={() => handleToggleActive(selectedMenu)}
+                                            className={`p-1.5 rounded-lg transition-all ${selectedMenu.is_active ? 'bg-green-500/20 text-green-400' : 'bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/40'}`}
+                                        >
+                                            {selectedMenu.is_active ? <ToggleRight size={15} /> : <ToggleLeft size={15} />}
+                                        </button>
+                                        {!selectedMenu.is_fallback && (
+                                            <button onClick={() => handleDeleteMenu(selectedMenu)} className="p-1.5 text-red-400/60 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"><Trash2 size={15} /></button>
                                         )}
-                                    </p>
-                                </div>
-                                <div className="flex gap-2">
-                                    {isEditing ? (
-                                        <>
-                                            <button onClick={() => setIsEditing(false)} className="p-2.5 text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-all"><X size={18} /></button>
-                                            <button onClick={handleSaveMenu} className="p-2.5 bg-[#4ADE80]/20 text-[#4ADE80] rounded-xl hover:bg-[#4ADE80]/30 transition-all"><Save size={18} /></button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <button onClick={() => setIsEditing(true)} className="p-2.5 text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-all"><Edit2 size={18} /></button>
-                                            <button
-                                                onClick={() => handleToggleActive(selectedMenu)}
-                                                className={`p-2.5 rounded-xl transition-all duration-300 ${selectedMenu.is_active ? 'bg-green-500/20 text-green-400 shadow-lg shadow-green-500/20' : 'bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/40'}`}
-                                            >
-                                                {selectedMenu.is_active ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
-                                            </button>
-                                            {!selectedMenu.is_fallback && (
-                                                <button onClick={() => handleDeleteMenu(selectedMenu)} className="p-2.5 text-red-400/60 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all"><Trash2 size={18} /></button>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
+                                    </>
+                                )}
                             </div>
                         </div>
 
                         {/* Tabs */}
-                        <div className="px-3 md:px-6 py-4 flex gap-2 border-b border-border-color/30 dark:border-white/5 overflow-x-auto">\
+                        <div className="px-4 py-2 flex gap-1.5 border-b border-border-color/30 dark:border-white/5">
                             <button
                                 onClick={() => setActiveSubTab('products')}
-                                className={`px-5 py-2.5 rounded-xl text-[11px] font-bold transition-all duration-300 ${activeSubTab === 'products'
-                                    ? 'bg-gradient-to-r from-[#4ADE80]/20 to-[#4ADE80]/10 text-[#4ADE80] shadow-lg shadow-[#4ADE80]/10'
-                                    : 'bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/50 hover:text-text-main dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10'
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${activeSubTab === 'products'
+                                    ? 'bg-[#4ADE80]/10 text-[#4ADE80]'
+                                    : 'text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'
                                     }`}
                             >
-                                <span className="flex items-center gap-2">
-                                    <Coffee size={14} />
-                                    Productos ({menuProducts.length})
-                                </span>
+                                <Coffee size={12} />
+                                Productos ({menuProducts.length})
                             </button>
                             <button
                                 onClick={() => setActiveSubTab('rules')}
-                                className={`px-5 py-2.5 rounded-xl text-[11px] font-bold transition-all duration-300 ${activeSubTab === 'rules'
-                                    ? 'bg-gradient-to-r from-[#4ADE80]/20 to-[#4ADE80]/10 text-[#4ADE80] shadow-lg shadow-[#4ADE80]/10'
-                                    : 'bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/50 hover:text-text-main dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10'
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${activeSubTab === 'rules'
+                                    ? 'bg-[#4ADE80]/10 text-[#4ADE80]'
+                                    : 'text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'
                                     }`}
                             >
-                                <span className="flex items-center gap-2">
-                                    <Clock size={14} />
-                                    Reglas ({selectedMenu.rules?.filter(r => r.is_active).length || 0})
-                                </span>
+                                <Clock size={12} />
+                                Reglas ({selectedMenu.rules?.filter(r => r.is_active).length || 0})
                             </button>
                         </div>
 
@@ -953,6 +903,9 @@ const MenuDesign: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const [previewTab, setPreviewTab] = useState<'menu' | 'club' | 'profile'>('menu');
+    const [previewCategory, setPreviewCategory] = useState('Todos');
+    const [previewSearch, setPreviewSearch] = useState('');
+    const [inventoryCategoryFilter, setInventoryCategoryFilter] = useState<string | null>(null);
 
     // Financial Input State
     const [activeFinancialInput, setActiveFinancialInput] = useState<'price' | 'margin' | 'profit' | null>(null);
@@ -1342,46 +1295,41 @@ const MenuDesign: React.FC = () => {
         const storeId = profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533';
         localStorage.removeItem(`inventory_cache_v4_${storeId}`);
         try {
-            // Find item to identify Target Table
             const item = items.find(i => i.id === id);
-
-            // Use Explicit Source if available, fallback to legacy type check
             const isProduct = (item as any)?.id_source === 'product' || (item?.item_type === 'sellable' && !(item as any)?.id_source);
             const table = isProduct ? 'products' : 'inventory_items';
 
+            // --- Relational updates for products (product_variants / product_addons) ---
+            if (isProduct && updates.variants !== undefined) {
+                await syncProductVariants(id, storeId, updates.variants);
+            }
+            if (isProduct && updates.addon_links !== undefined) {
+                await syncProductAddons(id, storeId, updates.addon_links);
+            }
+
+            // --- Scalar column updates ---
             const dbUpdates: any = {};
             if (updates.name !== undefined) dbUpdates.name = updates.name;
             if (updates.description !== undefined) dbUpdates.description = updates.description;
             if (updates.image_url !== undefined) {
-                if (table === 'products') {
-                    dbUpdates.image = updates.image_url;
-                } else {
-                    dbUpdates.image_url = updates.image_url;
-                }
+                dbUpdates[table === 'products' ? 'image' : 'image_url'] = updates.image_url;
             }
             if (updates.price !== undefined) {
-                if (table === 'products') {
-                    dbUpdates.base_price = updates.price;
-                } else {
-                    dbUpdates.price = updates.price;
-                }
+                dbUpdates[table === 'products' ? 'base_price' : 'price'] = updates.price;
             }
-
             if (updates.is_menu_visible !== undefined) {
-                if (isProduct) {
-                    dbUpdates.is_visible = updates.is_menu_visible;
-                } else {
-                    dbUpdates.is_menu_visible = updates.is_menu_visible;
-                }
+                dbUpdates[isProduct ? 'is_visible' : 'is_menu_visible'] = updates.is_menu_visible;
             }
 
-            if (updates.variants !== undefined) dbUpdates.variants = updates.variants;
-            if (updates.addon_links !== undefined) dbUpdates.addons = updates.addon_links;
-            if (updates.combo_links !== undefined) dbUpdates.combo_items = updates.combo_links;
+            // JSONB columns only for inventory_items (products use relational tables)
+            if (!isProduct) {
+                if (updates.variants !== undefined) dbUpdates.variants = updates.variants;
+                if (updates.addon_links !== undefined) dbUpdates.addons = updates.addon_links;
+                if (updates.combo_links !== undefined) dbUpdates.combo_items = updates.combo_links;
+            }
 
             if (Object.keys(dbUpdates).length === 0) return;
 
-            // Use Supabase client (handles auth token refresh automatically)
             const { error, count } = await (supabase.from as any)(table)
                 .update(dbUpdates)
                 .eq('id', id)
@@ -1394,6 +1342,70 @@ const MenuDesign: React.FC = () => {
         } catch (err: any) {
             console.error('[MenuDesign] Error saving item:', err);
             addToast(`Error al guardar: ${err.message}`, 'error');
+        }
+    };
+
+    // Sync variants to product_variants table (upsert + delete removed)
+    const syncProductVariants = async (productId: string, storeId: string, variants: any[]) => {
+        const existing = await (supabase.from as any)('product_variants').select('id').eq('product_id', productId);
+        const existingIds = new Set((existing.data || []).map((r: any) => r.id));
+        const currentIds = new Set(variants.map(v => v.id));
+
+        // Delete removed variants
+        const toDelete = [...existingIds].filter(id => !currentIds.has(id));
+        if (toDelete.length > 0) {
+            await (supabase.from as any)('product_variants').delete().in('id', toDelete);
+        }
+
+        // Upsert current variants
+        for (const v of variants) {
+            const row = {
+                id: v.id,
+                product_id: productId,
+                tenant_id: storeId,
+                name: v.name || 'Variante',
+                price_delta: v.price_adjustment ?? v.price_delta ?? 0,
+                active: v.active !== false,
+                recipe_multiplier: v.recipe_multiplier ?? null,
+                recipe_overrides: v.recipe_overrides ?? null,
+            };
+            if (existingIds.has(v.id)) {
+                await (supabase.from as any)('product_variants').update(row).eq('id', v.id);
+            } else {
+                await (supabase.from as any)('product_variants').insert(row);
+            }
+        }
+    };
+
+    // Sync addons to product_addons table (upsert + delete removed)
+    const syncProductAddons = async (productId: string, storeId: string, addons: any[]) => {
+        const existing = await (supabase.from as any)('product_addons').select('id').eq('product_id', productId);
+        const existingIds = new Set((existing.data || []).map((r: any) => r.id));
+        const currentIds = new Set(addons.map(a => a.id));
+
+        // Delete removed addons
+        const toDelete = [...existingIds].filter(id => !currentIds.has(id));
+        if (toDelete.length > 0) {
+            await (supabase.from as any)('product_addons').delete().in('id', toDelete);
+        }
+
+        // Upsert current addons
+        for (const a of addons) {
+            const row = {
+                id: a.id,
+                product_id: productId,
+                tenant_id: storeId,
+                name: a.name || 'Extra',
+                price: a.price ?? 0,
+                inventory_item_id: a.inventory_item_id || null,
+                quantity_consumed: a.quantity_consumed ?? 0,
+                active: a.active !== false,
+            };
+            if (existingIds.has(a.id)) {
+                await (supabase.from as any)('product_addons').update(row).eq('id', a.id);
+            } else {
+                await (supabase.from as any)('product_addons').insert(row);
+            }
         }
     };
 
@@ -2351,69 +2363,101 @@ const MenuDesign: React.FC = () => {
                     )}
 
                     {/* VISTA: GESTIÓN DE INVENTARIO */}
-                    {activeTab === 'INVENTARIO' && (
+                    {activeTab === 'INVENTARIO' && (() => {
+                        const catColors = ['bg-emerald-500', 'bg-violet-500', 'bg-amber-500', 'bg-sky-500', 'bg-rose-500', 'bg-teal-500', 'bg-fuchsia-500', 'bg-lime-500'];
+                        const catColorMap: Record<string, string> = {};
+                        categories.forEach((c: any, i: number) => { catColorMap[c.id] = catColors[i % catColors.length]; });
+                        const catNameMap: Record<string, string> = {};
+                        categories.forEach((c: any) => { catNameMap[c.id] = c.name; });
+                        const filteredItems = inventoryCategoryFilter
+                            ? items.filter(item => item.category_ids?.includes(inventoryCategoryFilter))
+                            : items;
+                        return (
                         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <div className="bg-white dark:bg-surface-dark border border-border-color/30 dark:border-white/5 rounded-2xl p-4 shadow-xl">
-                                <h3 className="text-[10px] font-black text-[#52525B] tracking-widest uppercase mb-4 flex items-center gap-2">
+                                <h3 className="text-[10px] font-black text-[#52525B] tracking-widest uppercase mb-3 flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 bg-[#4ADE80] rounded-full opacity-50" />
                                     Gestión de Inventario
                                 </h3>
-                                <p className="text-[10px] text-[#A1A1AA] italic mb-4">Vincula productos físicos con el catálogo digital.</p>
 
-                                <div className="space-y-3 lg:max-h-[calc(100vh-300px)] overflow-y-auto pr-2 custom-scrollbar">
-                                    {items.map(item => (
-                                        <div
-                                            key={item.id}
-                                            onClick={() => { setEditingId(item.id); setLinkType(null); }}
-                                            className="bg-black/30 border border-white/5 rounded-xl p-3 hover:border-[#4ADE80]/30 transition-all group cursor-pointer"
+                                {/* Category filter chips */}
+                                {categories.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5 mb-3">
+                                        <button
+                                            onClick={() => setInventoryCategoryFilter(null)}
+                                            className={`px-2.5 py-1 rounded-full text-[9px] font-bold transition-all ${!inventoryCategoryFilter ? 'bg-[#4ADE80] text-black' : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/10'}`}
                                         >
-                                            <div className="flex items-start justify-between mb-3">
-                                                <div className="flex gap-3">
-                                                    <div className="w-10 h-10 bg-white/5 rounded-lg overflow-hidden border border-white/10 group-hover:border-[#4ADE80]/50 transition-colors">
-                                                        {item.image_url ? <img src={item.image_url} className="w-full h-full object-cover" /> : <Coffee className="w-5 h-5 m-2 text-[#52525B]" />}
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="text-[10px] font-bold uppercase truncate max-w-[120px]">{item.name}</h4>
-                                                        <span className="text-[9px] text-[#A1A1AA] font-mono tracking-tighter block">{item.sku || 'SIN-SKU'}</span>
-                                                    </div>
-                                                </div>
-                                                <div className={`px-1.5 py-0.5 rounded-full text-[7px] font-black ${item.item_type === 'sellable' ? 'bg-[#4ADE80]/10 text-[#4ADE80]' : 'bg-blue-500/10 text-blue-400'}`}>
-                                                    {item.item_type?.toUpperCase().slice(0, 1)}
-                                                </div>
-                                            </div>
+                                            Todos
+                                        </button>
+                                        {categories.map((cat: any, i: number) => (
+                                            <button
+                                                key={cat.id}
+                                                onClick={() => setInventoryCategoryFilter(inventoryCategoryFilter === cat.id ? null : cat.id)}
+                                                className={`px-2.5 py-1 rounded-full text-[9px] font-bold transition-all flex items-center gap-1.5 ${inventoryCategoryFilter === cat.id ? `${catColors[i % catColors.length]} text-white` : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/10'}`}
+                                            >
+                                                <div className={`w-1.5 h-1.5 rounded-full ${catColors[i % catColors.length]} ${inventoryCategoryFilter === cat.id ? 'bg-white' : ''}`} />
+                                                {cat.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
 
-                                            <div className="space-y-2">
-                                                <div className="flex items-center justify-between p-1.5 bg-white/5 rounded-lg border border-white/5">
-                                                    <span className="text-[8px] font-medium text-white/60">Visible</span>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); updateItemImmediate(item.id, { is_menu_visible: !item.is_menu_visible }); }}
-                                                        className={`w-6 h-3 rounded-full transition-colors relative ${item.is_menu_visible ? 'bg-[#4ADE80]' : 'bg-white/10'}`}
-                                                    >
-                                                        <div className={`absolute top-0.5 left-0.5 w-2 h-2 bg-white rounded-full transition-transform ${item.is_menu_visible ? 'translate-x-3' : ''}`} />
-                                                    </button>
+                                <div className="space-y-1.5 lg:max-h-[calc(100vh-340px)] overflow-y-auto pr-2 custom-scrollbar">
+                                    {filteredItems.map(item => {
+                                        const varCount = item.variants?.length || 0;
+                                        const extCount = item.addon_links?.length || 0;
+                                        const stockVal = item.current_stock ?? 0;
+                                        const itemImg = (item as any).image || item.image_url;
+                                        const itemCatId = item.category_ids?.[0];
+                                        return (
+                                            <div
+                                                key={item.id}
+                                                onClick={() => { setEditingId(item.id); setLinkType(null); }}
+                                                className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all cursor-pointer group ${editingId === item.id ? 'bg-[#4ADE80]/5 border-[#4ADE80]/30 dark:bg-[#4ADE80]/5 dark:border-[#4ADE80]/30' : 'bg-white dark:bg-white/5 border-border-color/20 dark:border-white/5 hover:border-[#4ADE80]/20'}`}
+                                            >
+                                                {/* Thumbnail */}
+                                                <div className="w-10 h-10 rounded-lg overflow-hidden border border-border-color/10 dark:border-white/10 shrink-0 bg-gray-50 dark:bg-white/5">
+                                                    {itemImg && !itemImg.includes('unsplash.com/photo-1559056199') ? (
+                                                        <img src={itemImg} className="w-full h-full object-cover" alt={item.name} />
+                                                    ) : (
+                                                        <Coffee className="w-4 h-4 m-3 text-gray-300 dark:text-[#52525B]" />
+                                                    )}
                                                 </div>
 
-                                                <div className="grid grid-cols-2 gap-1.5">
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); setEditingId(item.id); setLinkType('variant'); }}
-                                                        className={`py-1.5 rounded-lg border ${item.variants && item.variants.length > 0 ? 'bg-purple-500/10 border-purple-500/30 text-purple-400' : 'bg-white/5 border-white/10 text-white/40'} text-[8px] font-black uppercase tracking-widest hover:border-white/30 transition-all text-center`}
-                                                    >
-                                                        {item.variants?.length || 0} VAR
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); setEditingId(item.id); setLinkType('addon'); }}
-                                                        className={`py-1.5 rounded-lg border ${item.addon_links && item.addon_links.length > 0 ? 'bg-orange-500/10 border-orange-500/30 text-orange-400' : 'bg-white/5 border-white/10 text-white/40'} text-[8px] font-black uppercase tracking-widest hover:border-white/30 transition-all text-center`}
-                                                    >
-                                                        {item.addon_links?.length || 0} EXT
-                                                    </button>
+                                                {/* Name + metadata */}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <h4 className="text-[11px] font-bold truncate text-gray-800 dark:text-white">{item.name}</h4>
+                                                        {itemCatId && catColorMap[itemCatId] && (
+                                                            <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${catColorMap[itemCatId]}`} title={catNameMap[itemCatId]} />
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <span className="text-[10px] font-bold text-[#4ADE80]">${item.price || 0}</span>
+                                                        <span className={`text-[10px] font-black ${stockVal === 0 ? 'text-red-400' : stockVal <= (item.min_stock || 3) ? 'text-amber-400' : 'text-gray-400 dark:text-white/40'}`}>
+                                                            {stockVal === 0 ? 'AGOTADO' : `Stock: ${stockVal}`}
+                                                        </span>
+                                                        {varCount > 0 && <span className="text-[8px] text-purple-500 dark:text-purple-400">{varCount} var</span>}
+                                                        {extCount > 0 && <span className="text-[8px] text-orange-500 dark:text-orange-400">{extCount} ext</span>}
+                                                    </div>
                                                 </div>
+
+                                                {/* Visible toggle */}
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); updateItemImmediate(item.id, { is_menu_visible: !item.is_menu_visible }); }}
+                                                    className={`w-8 h-4 rounded-full transition-colors relative shrink-0 ${item.is_menu_visible ? 'bg-[#4ADE80]' : 'bg-gray-200 dark:bg-white/10'}`}
+                                                    title={item.is_menu_visible ? 'Visible en menú' : 'Oculto del menú'}
+                                                >
+                                                    <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform shadow-sm ${item.is_menu_visible ? 'translate-x-4' : ''}`} />
+                                                </button>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>
-                    )}
+                        );
+                    })()}
                 </div>
 
                 {/* Vista Previa: Lógica Real (MenuRenderer) */}
@@ -2425,15 +2469,25 @@ const MenuDesign: React.FC = () => {
                         {/* Content Wrapper for MenuRenderer */}
                         <div className="flex-1 flex flex-col relative overflow-y-auto overflow-x-hidden transition-colors duration-500" style={{ backgroundColor: theme.backgroundColor }}>
                             {previewTab === 'menu' && (
-                                <MenuRenderer
-                                    theme={theme}
-                                    products={items.filter(i => i.is_menu_visible)}
-                                    categories={categories}
-                                    storeName={theme.storeName}
-                                    logoUrl={theme.logoUrl}
-                                    mpNickname="Mercado Pago"
-                                    canProcessPayments={false}
-                                />
+                                <>
+                                    <MenuRenderer
+                                        theme={theme}
+                                        products={items.filter(i => i.is_menu_visible)}
+                                        categories={categories}
+                                        storeName={theme.storeName}
+                                        logoUrl={theme.logoUrl}
+                                        mpNickname="Mercado Pago"
+                                        canProcessPayments={false}
+                                        activeCategory={previewCategory}
+                                        onCategoryChange={setPreviewCategory}
+                                        searchQuery={previewSearch}
+                                        onSearchChange={setPreviewSearch}
+                                        allowOrdering={false}
+                                        isGuest={true}
+                                    />
+                                    {/* Spacer to clear the bottom nav overlay */}
+                                    <div className="h-28 shrink-0" />
+                                </>
                             )}
 
                             {previewTab !== 'menu' && (
@@ -2702,7 +2756,7 @@ const MenuDesign: React.FC = () => {
                                                                                     updateItemImmediate(selectedItem.id, { price: parseFloat(financialBuffer) });
                                                                                 }
                                                                             }}
-                                                                            className="w-full bg-transparent border-b border-dashed border-white/10 text-xl font-black text-white outline-none focus:border-neon/50 transition-all"
+                                                                            className="w-full bg-transparent border-b border-dashed border-white/10 text-lg font-black text-white tabular-nums outline-none focus:border-neon/50 transition-all"
                                                                         />
                                                                         <button
                                                                             onClick={() => {
@@ -2720,7 +2774,7 @@ const MenuDesign: React.FC = () => {
                                                                 <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col justify-center opacity-60">
                                                                     <span className="text-[8px] font-bold text-white/30 uppercase tracking-[0.2em] mb-1">Costo de Producto</span>
                                                                     <div className="flex items-baseline gap-1">
-                                                                        <span className="text-xl font-black text-white">${currentCost.toFixed(2)}</span>
+                                                                        <span className="text-lg font-black text-white tabular-nums">${currentCost.toFixed(2)}</span>
                                                                         <span className="text-[8px] font-bold text-white/20 uppercase">Unitario</span>
                                                                     </div>
                                                                 </div>
@@ -2760,10 +2814,10 @@ const MenuDesign: React.FC = () => {
                                                                                         }
                                                                                     }
                                                                                 }}
-                                                                                className={`w-14 bg-transparent text-xl font-black text-right focus:outline-none transition-all ${profit > 0 ? 'text-neon' : 'text-red-400'}`}
+                                                                                className={`w-20 bg-transparent text-lg font-black text-right tabular-nums focus:outline-none transition-all ${profit > 0 ? 'text-neon' : 'text-red-400'}`}
                                                                                 disabled={currentCost <= 0}
                                                                             />
-                                                                            <span className={`text-sm font-black ${profit > 0 ? 'text-neon' : 'text-red-400'}`}>%</span>
+                                                                            <span className={`text-xs font-black ${profit > 0 ? 'text-neon' : 'text-red-400'}`}>%</span>
                                                                         </div>
                                                                     </div>
 
@@ -2771,7 +2825,7 @@ const MenuDesign: React.FC = () => {
                                                                     <div className="flex items-center justify-between border-b border-white/5 pb-2">
                                                                         <span className="text-[9px] font-bold text-white/40 uppercase">Ganancia $</span>
                                                                         <div className="flex items-center gap-1">
-                                                                            <span className="text-sm font-black text-white/20">$</span>
+                                                                            <span className="text-xs font-black text-white/20">$</span>
                                                                             <input
                                                                                 type="number"
                                                                                 value={activeFinancialInput === 'profit' ? financialBuffer : profit.toFixed(2)}
@@ -2789,7 +2843,7 @@ const MenuDesign: React.FC = () => {
                                                                                         }
                                                                                     }
                                                                                 }}
-                                                                                className="w-24 bg-transparent text-xl font-black text-white text-right focus:outline-none transition-all"
+                                                                                className="w-full bg-transparent text-lg font-black text-white text-right tabular-nums focus:outline-none transition-all"
                                                                                 disabled={currentCost <= 0}
                                                                             />
                                                                         </div>
@@ -2961,151 +3015,112 @@ const MenuDesign: React.FC = () => {
                                                 <span className="material-symbols-outlined text-sm">style</span> Variantes (Tamaños/Tipos)
                                             </h4>
                                             <button onClick={handleAddVariant} className="text-[8px] font-black bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg uppercase tracking-widest text-white transition-all border border-white/5">
-                                                + Agregar Opción
+                                                + Agregar
                                             </button>
                                         </div>
-                                        <div className="space-y-3">
-                                            {selectedItem.variants?.map((variant, idx) => (
-                                                <div key={variant.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex gap-4 items-start group hover:border-white/10 transition-all">
-                                                    <div className="flex-1 space-y-2">
-                                                        <div className="flex gap-2">
+                                        <div className="space-y-2">
+                                            {selectedItem.variants?.map((variant) => {
+                                                const finalPrice = (selectedItem.price || 0) + (variant.price_adjustment || 0);
+                                                return (
+                                                <div key={variant.id} className="rounded-xl bg-white/[0.02] border border-white/5 group hover:border-white/10 transition-all overflow-hidden">
+                                                    {/* Main row: name + price delta + final price + delete */}
+                                                    <div className="flex items-center gap-2 p-3">
+                                                        <input
+                                                            value={variant.name}
+                                                            onChange={(e) => handleUpdateVariant(variant.id, 'name', e.target.value)}
+                                                            className="flex-1 min-w-0 h-8 px-3 rounded-lg bg-black/20 border border-white/10 text-[10px] font-bold text-white uppercase outline-none focus:border-neon/30 placeholder:text-white/20"
+                                                            placeholder="EJ: GRANDE"
+                                                        />
+                                                        <div className="relative w-20 shrink-0">
+                                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[8px] font-bold text-white/30">+$</span>
                                                             <input
-                                                                value={variant.name}
-                                                                onChange={(e) => handleUpdateVariant(variant.id, 'name', e.target.value)}
-                                                                className="flex-1 h-9 px-3 rounded-lg bg-black/20 border border-white/10 text-[10px] font-bold text-white uppercase outline-none focus:border-neon/30 placeholder:text-white/20"
-                                                                placeholder="NOMBRE (EJ: GRANDE)"
+                                                                type="number"
+                                                                value={variant.price_adjustment}
+                                                                onChange={(e) => handleUpdateVariant(variant.id, 'price_adjustment', parseFloat(e.target.value) || 0)}
+                                                                className={`w-full h-8 pl-6 pr-1 rounded-lg bg-black/20 border border-white/10 text-[10px] font-black text-right outline-none focus:border-neon/30 ${variant.price_adjustment > 0 ? 'text-neon' : variant.price_adjustment < 0 ? 'text-red-400' : 'text-white/50'}`}
+                                                                placeholder="0"
                                                             />
-                                                            <div className="relative w-24">
-                                                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-white/30">$</span>
-                                                                <input
-                                                                    type="number"
-                                                                    value={variant.price_adjustment}
-                                                                    onChange={(e) => handleUpdateVariant(variant.id, 'price_adjustment', parseFloat(e.target.value) || 0)}
-                                                                    className={`w-full h-9 pl-5 pr-2 rounded-lg bg-black/20 border border-white/10 text-[10px] font-black text-right outline-none focus:border-neon/30 ${variant.price_adjustment > 0 ? 'text-neon' : variant.price_adjustment < 0 ? 'text-red-400' : 'text-white'}`}
-                                                                    placeholder="0"
-                                                                />
-                                                            </div>
                                                         </div>
-                                                        <div className="flex justify-between items-center px-1">
-                                                            <span className="text-[8px] font-bold text-white/20 uppercase tracking-widest" title="Define qué insumos extra consume esta variante">Impacto en Inventario: {variant.recipe_overrides?.length || 0} ítems</span>
-                                                            <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">
-                                                                Precio Final: <span className="text-white">${((selectedItem.price || 0) + variant.price_adjustment).toFixed(2)}</span>
-                                                            </span>
-                                                        </div>
-
-                                                        {/* GLOBAL RECIPE MULTIPLIER */}
-                                                        <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-transparent border border-purple-500/20">
-                                                            <span className="material-symbols-outlined text-purple-400 text-base">percent</span>
-                                                            <div className="flex-1">
-                                                                <label className="text-[8px] font-bold text-purple-300 uppercase tracking-widest block">Multiplicador Receta Base</label>
-                                                                <span className="text-[7px] text-white/30">Ej: 1.5 = usa 50% más de todos los ingredientes</span>
-                                                            </div>
-                                                            <div className="relative">
+                                                        <span className={`text-[10px] font-black tabular-nums w-16 text-right shrink-0 ${variant.price_adjustment !== 0 ? 'text-white' : 'text-white/40'}`}>
+                                                            ${finalPrice.toFixed(2)}
+                                                        </span>
+                                                        <button onClick={() => handleRemoveVariant(variant.id)} className="size-8 shrink-0 rounded-lg bg-white/5 flex items-center justify-center text-white/20 hover:text-red-500 hover:bg-red-500/10 transition-all">
+                                                            <span className="material-symbols-outlined text-sm">close</span>
+                                                        </button>
+                                                    </div>
+                                                    {/* Collapsible advanced: recipe multiplier + stock overrides */}
+                                                    <details className="group/adv">
+                                                        <summary className="px-3 pb-2 text-[8px] font-bold text-white/20 uppercase tracking-widest cursor-pointer hover:text-white/40 transition-colors flex items-center gap-1 select-none">
+                                                            <span className="material-symbols-outlined text-[10px] group-open/adv:rotate-90 transition-transform">chevron_right</span>
+                                                            Avanzado
+                                                            {(variant.recipe_multiplier && variant.recipe_multiplier !== 1) && <span className="text-purple-400 ml-1">({variant.recipe_multiplier}x)</span>}
+                                                            {(variant.recipe_overrides?.length || 0) > 0 && <span className="text-amber-400 ml-1">({variant.recipe_overrides?.length} override{(variant.recipe_overrides?.length || 0) > 1 ? 's' : ''})</span>}
+                                                        </summary>
+                                                        <div className="px-3 pb-3 space-y-2">
+                                                            {/* Recipe multiplier */}
+                                                            <div className="flex items-center gap-2 p-2 rounded-lg bg-purple-500/5 border border-purple-500/10">
+                                                                <span className="material-symbols-outlined text-purple-400 text-sm">percent</span>
+                                                                <span className="flex-1 text-[8px] font-bold text-purple-300/70 uppercase">Multiplicador receta</span>
                                                                 <input
                                                                     type="number"
                                                                     value={variant.recipe_multiplier ?? 1}
                                                                     onChange={(e) => handleUpdateVariant(variant.id, 'recipe_multiplier', parseFloat(e.target.value) || 1)}
-                                                                    className="w-16 h-8 bg-black/30 border border-purple-500/30 rounded-lg px-2 text-[10px] font-black text-purple-300 text-right outline-none focus:border-purple-500"
+                                                                    className="w-14 h-7 bg-black/30 border border-purple-500/20 rounded px-2 text-[9px] font-black text-purple-300 text-right outline-none focus:border-purple-500"
                                                                     step={0.1}
                                                                     min={0.1}
                                                                 />
-                                                                <span className="absolute right-8 top-1/2 -translate-y-1/2 text-[9px] text-purple-400/50 font-bold pointer-events-none">x</span>
+                                                                <span className="text-[8px] text-purple-400/50 font-bold">x</span>
                                                             </div>
-                                                        </div>
-
-                                                        {/* STOCK OVERRIDES UI */}
-                                                        <div className="pt-2 border-t border-white/5 space-y-2">
+                                                            {/* Stock overrides */}
                                                             {variant.recipe_overrides?.map((ov, ovIdx) => {
                                                                 const ovItem = items.find(i => i.id === ov.ingredient_id);
                                                                 const isMultiplier = ov.consumption_type === 'multiplier';
-
                                                                 return (
-                                                                    <div key={ovIdx} className="flex items-center gap-2 p-2 rounded-lg bg-black/40 border border-white/5 group/ov">
-                                                                        <div className="flex-1 text-[9px] font-bold text-white/60 truncate">
-                                                                            {ovItem?.name || 'Insumo Desconocido'}
-                                                                        </div>
-
-                                                                        {/* TYPE TOGGLE */}
+                                                                    <div key={ovIdx} className="flex items-center gap-2 p-2 rounded-lg bg-black/30 border border-white/5 group/ov">
+                                                                        <span className="flex-1 text-[8px] font-bold text-white/50 truncate">{ovItem?.name || 'Insumo'}</span>
                                                                         <button
                                                                             onClick={() => {
                                                                                 const newOverrides = [...(variant.recipe_overrides || [])];
                                                                                 const newType = isMultiplier ? 'fixed' : 'multiplier';
-                                                                                // Reset value to sensible default when switching
-                                                                                const newValue = newType === 'multiplier' ? 1.5 : 0;
-                                                                                newOverrides[ovIdx] = {
-                                                                                    ...ov,
-                                                                                    consumption_type: newType,
-                                                                                    value: newValue,
-                                                                                    quantity_delta: newType === 'fixed' ? newValue : 0 // Update legacy field
-                                                                                };
+                                                                                newOverrides[ovIdx] = { ...ov, consumption_type: newType, value: newType === 'multiplier' ? 1.5 : 0, quantity_delta: newType === 'fixed' ? 0 : 0 };
                                                                                 handleUpdateVariant(variant.id, 'recipe_overrides', newOverrides);
                                                                             }}
-                                                                            className={`w-6 h-7 rounded border text-[8px] font-black uppercase flex items-center justify-center transition-all ${isMultiplier ? 'bg-purple-500/20 border-purple-500/50 text-purple-400' : 'bg-white/5 border-white/10 text-white/40'}`}
-                                                                            title={isMultiplier ? "Modo Multiplicador (Ej: 1.5x)" : "Modo Cantidad Fija (Ej: +50ml)"}
+                                                                            className={`px-1.5 h-6 rounded text-[7px] font-black uppercase ${isMultiplier ? 'bg-purple-500/20 text-purple-400' : 'bg-white/5 text-white/40'}`}
                                                                         >
-                                                                            {isMultiplier ? 'X' : '+'}
+                                                                            {isMultiplier ? 'x' : '+'}
                                                                         </button>
-
-                                                                        <div className="relative">
-                                                                            <input
-                                                                                type="number"
-                                                                                value={isMultiplier ? (ov.value || 1) : (ov.quantity_delta || 0)}
-                                                                                onChange={(e) => {
-                                                                                    const val = parseFloat(e.target.value) || 0;
-                                                                                    const newOverrides = [...(variant.recipe_overrides || [])];
-                                                                                    newOverrides[ovIdx] = {
-                                                                                        ...ov,
-                                                                                        value: val,
-                                                                                        quantity_delta: isMultiplier ? 0 : val // Only set pure delta if fixed
-                                                                                    };
-                                                                                    handleUpdateVariant(variant.id, 'recipe_overrides', newOverrides);
-                                                                                }}
-                                                                                className={`w-16 h-7 bg-white/5 border border-white/10 rounded px-2 text-[9px] font-black text-right outline-none focus:border-neon/30 ${isMultiplier ? 'text-purple-400' : 'text-white'}`}
-                                                                                step={isMultiplier ? 0.1 : 1}
-                                                                            />
-                                                                            {isMultiplier && <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[8px] text-purple-400/50 pointer-events-none">x</span>}
-                                                                        </div>
-
-                                                                        <span className="text-[8px] font-bold text-white/20 w-6 uppercase">
-                                                                            {isMultiplier ? 'BASE' : (ovItem?.unit_type || 'un')}
-                                                                        </span>
-
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                const newOverrides = variant.recipe_overrides?.filter((_, i) => i !== ovIdx);
+                                                                        <input
+                                                                            type="number"
+                                                                            value={isMultiplier ? (ov.value || 1) : (ov.quantity_delta || 0)}
+                                                                            onChange={(e) => {
+                                                                                const val = parseFloat(e.target.value) || 0;
+                                                                                const newOverrides = [...(variant.recipe_overrides || [])];
+                                                                                newOverrides[ovIdx] = { ...ov, value: val, quantity_delta: isMultiplier ? 0 : val };
                                                                                 handleUpdateVariant(variant.id, 'recipe_overrides', newOverrides);
                                                                             }}
-                                                                            className="size-6 flex items-center justify-center rounded bg-white/5 text-white/20 hover:text-red-400 opacity-0 group-hover/ov:opacity-100 transition-all"
-                                                                        >
+                                                                            className="w-14 h-6 bg-white/5 border border-white/10 rounded px-1 text-[8px] font-black text-right outline-none focus:border-neon/30 text-white"
+                                                                            step={isMultiplier ? 0.1 : 1}
+                                                                        />
+                                                                        <button onClick={() => handleUpdateVariant(variant.id, 'recipe_overrides', variant.recipe_overrides?.filter((_, i) => i !== ovIdx))} className="size-5 flex items-center justify-center text-white/20 hover:text-red-400 transition-all">
                                                                             <span className="material-symbols-outlined text-xs">close</span>
                                                                         </button>
                                                                     </div>
                                                                 );
                                                             })}
                                                             <button
-                                                                onClick={() => {
-                                                                    setEditingId(selectedItem.id);
-                                                                    setEditingAddonId(variant.id);
-                                                                    setLinkType('variant_override' as any);
-                                                                    setShowItemSelector(true);
-                                                                }}
-                                                                className="w-full h-7 border border-dashed border-white/10 rounded-lg text-[8px] font-bold text-white/30 hover:text-white/60 hover:border-white/20 transition-all uppercase tracking-widest"
+                                                                onClick={() => { setEditingId(selectedItem.id); setEditingAddonId(variant.id); setLinkType('variant_override' as any); setShowItemSelector(true); }}
+                                                                className="w-full h-6 border border-dashed border-white/10 rounded text-[7px] font-bold text-white/25 hover:text-white/50 hover:border-white/20 transition-all uppercase tracking-widest"
                                                             >
-                                                                + Añadir Consumo Extra
+                                                                + Override Insumo
                                                             </button>
                                                         </div>
-                                                    </div>
-                                                    <button onClick={() => handleRemoveVariant(variant.id)} className="size-9 rounded-lg bg-white/5 flex items-center justify-center text-white/20 hover:text-red-500 hover:bg-red-500/10 transition-all">
-                                                        <span className="material-symbols-outlined text-base">delete</span>
-                                                    </button>
-                                                    <button onClick={() => handleDeleteProduct(selectedItem)} className="w-full mt-12 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-500 font-bold text-[10px] uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all">
-                                                        Eliminar Producto
-                                                    </button>
+                                                    </details>
                                                 </div>
-                                            ))}
+                                                );
+                                            })}
                                             {(!selectedItem.variants || selectedItem.variants.length === 0) && (
-                                                <div className="text-center py-6 border border-dashed border-white/10 rounded-xl">
-                                                    <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Sin variantes configuradas</span>
+                                                <div className="text-center py-4 border border-dashed border-white/10 rounded-xl">
+                                                    <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Sin variantes</span>
                                                 </div>
                                             )}
                                         </div>
@@ -3121,114 +3136,105 @@ const MenuDesign: React.FC = () => {
                                                 + Crear Extra
                                             </button>
                                         </div>
-                                        <div className="space-y-4">
-                                            {selectedItem.addon_links?.map((addon, idx) => {
-                                                // Cálculo de rentabilidad del addon
+                                        <div className="space-y-2">
+                                            {selectedItem.addon_links?.map((addon) => {
                                                 const linkedItem = items.find(i => i.id === addon.inventory_item_id);
                                                 const cost = linkedItem ? linkedItem.cost * (addon.quantity_consumed || 0) : 0;
                                                 const profit = addon.price - cost;
                                                 const margin = addon.price > 0 ? (profit / addon.price) * 100 : 0;
 
                                                 return (
-                                                    <div key={addon.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 group hover:border-white/10 transition-all">
-                                                        <div className="flex gap-2">
+                                                    <div key={addon.id} className="rounded-xl bg-white/[0.02] border border-white/5 group hover:border-white/10 transition-all overflow-hidden">
+                                                        {/* Main row: name + price + margin badge + delete */}
+                                                        <div className="flex items-center gap-2 p-3">
                                                             <input
                                                                 value={addon.name}
                                                                 onChange={(e) => handleUpdateAddon(addon.id, 'name', e.target.value)}
-                                                                className="flex-1 h-9 px-3 rounded-lg bg-black/20 border border-white/10 text-[10px] font-bold text-white uppercase outline-none focus:border-neon/30 placeholder:text-white/20"
-                                                                placeholder="NOMBRE DEL EXTRA (EJ: LECHE ALMENDRA)"
+                                                                className="flex-1 min-w-0 h-8 px-3 rounded-lg bg-black/20 border border-white/10 text-[10px] font-bold text-white uppercase outline-none focus:border-neon/30 placeholder:text-white/20"
+                                                                placeholder="EJ: LECHE ALMENDRA"
                                                             />
-                                                            <div className="relative w-32 flex items-center gap-1">
-                                                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-neon">$</span>
+                                                            <div className="relative w-20 shrink-0">
+                                                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[8px] font-bold text-neon">$</span>
                                                                 <input
                                                                     type="number"
                                                                     value={addon.price}
                                                                     onChange={(e) => handleUpdateAddon(addon.id, 'price', parseFloat(e.target.value) || 0)}
-                                                                    className="w-full h-9 pl-5 pr-8 rounded-lg bg-black/20 border border-white/10 text-[10px] font-black text-white text-right outline-none focus:border-neon/30"
-                                                                    placeholder="PRECIO"
+                                                                    className="w-full h-8 pl-5 pr-1 rounded-lg bg-black/20 border border-white/10 text-[10px] font-black text-white text-right outline-none focus:border-neon/30"
+                                                                    placeholder="0"
                                                                 />
-                                                                <button
-                                                                    onClick={() => {
-                                                                        const linked = items.find(i => i.id === addon.inventory_item_id);
-                                                                        const cost = linked ? linked.cost * (addon.quantity_consumed || 0) : 0;
-                                                                        const suggestedPrice = cost * 3;
-                                                                        handleUpdateAddon(addon.id, 'price', parseFloat(suggestedPrice.toFixed(2)));
-                                                                    }}
-                                                                    title="Auto-calcular (Costo x 3)"
-                                                                    className="absolute right-1 top-1/2 -translate-y-1/2 size-7 flex items-center justify-center rounded-md bg-white/5 text-neon hover:bg-neon/20 transition-all"
-                                                                >
-                                                                    <span className="material-symbols-outlined text-xs">bolt</span>
-                                                                </button>
                                                             </div>
-                                                            <button
-                                                                onClick={saveItemChanges}
-                                                                title="Guardar Cambios de Extras"
-                                                                className="size-9 rounded-lg bg-neon/10 border border-neon/30 flex items-center justify-center text-neon hover:bg-neon hover:text-black transition-all"
-                                                            >
-                                                                <span className="material-symbols-outlined text-base">save</span>
-                                                            </button>
-                                                            <button onClick={() => handleRemoveAddon(addon.id)} className="size-9 rounded-lg bg-white/5 flex items-center justify-center text-white/20 hover:text-red-500 hover:bg-red-500/10 transition-all">
-                                                                <span className="material-symbols-outlined text-base">delete</span>
+                                                            {linkedItem && (
+                                                                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded shrink-0 ${profit > 0 ? 'bg-neon/10 text-neon' : 'bg-red-500/10 text-red-400'}`}>
+                                                                    {profit > 0 ? `+${margin.toFixed(0)}%` : 'LOSS'}
+                                                                </span>
+                                                            )}
+                                                            <button onClick={() => handleRemoveAddon(addon.id)} className="size-8 shrink-0 rounded-lg bg-white/5 flex items-center justify-center text-white/20 hover:text-red-500 hover:bg-red-500/10 transition-all">
+                                                                <span className="material-symbols-outlined text-sm">close</span>
                                                             </button>
                                                         </div>
-
-                                                        {/* ENLACE CON INVENTARIO */}
-                                                        <div className="p-3 bg-black/20 rounded-lg border border-white/5 grid grid-cols-12 gap-3 items-end">
-                                                            <div className="col-span-6 space-y-1">
-                                                                <label className="text-[7px] font-bold text-text-secondary/60 dark:text-white/30 uppercase tracking-widest block">Insumo Consumido</label>
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setEditingAddonId(addon.id);
-                                                                        setItemSelectorSearch('');
-                                                                        setShowItemSelector(true);
-                                                                    }}
-                                                                    className="w-full h-8 px-2 rounded-md bg-white/5 border border-white/5 flex items-center justify-between text-[9px] font-bold text-white uppercase outline-none hover:border-neon/30 hover:bg-white/10 transition-all text-left truncate"
-                                                                >
-                                                                    <span className="truncate">
-                                                                        {items.find(i => i.id === addon.inventory_item_id)?.name || 'SELECCIONAR INSUMO...'}
-                                                                    </span>
-                                                                    <span className="material-symbols-outlined text-xs opacity-50">search</span>
-                                                                </button>
-                                                            </div>
-                                                            <div className="col-span-3 space-y-1">
-                                                                <label className="text-[7px] font-bold text-text-secondary/60 dark:text-white/30 uppercase tracking-widest block">Cantidad</label>
-                                                                <div className="relative">
-                                                                    <input
-                                                                        type="number"
-                                                                        value={addon.quantity_consumed || 0}
-                                                                        onChange={(e) => handleUpdateAddon(addon.id, 'quantity_consumed', parseFloat(e.target.value) || 0)}
-                                                                        className="w-full h-8 pl-2 pr-8 rounded-md bg-white/5 border border-white/5 text-[9px] font-bold text-white outline-none focus:border-neon/30"
-                                                                        step={0.001}
-                                                                    />
-                                                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[7px] font-bold text-white/30">{linkedItem?.unit_type || 'UN'}</span>
-
-                                                                    {(linkedItem?.unit_type === 'kg' || linkedItem?.unit_type === 'l' || linkedItem?.unit_type === 'liter' || linkedItem?.unit_type === 'lt') && (
-                                                                        <div className="absolute top-full right-0 bg-black/90 text-white text-[9px] px-2 py-1 rounded mt-2 opacity-0 group-hover/qty:opacity-100 transition-opacity pointer-events-none z-10 border border-white/10 w-max font-bold shadow-xl">
-                                                                            {(addon.quantity_consumed * 1000).toFixed(1)} {linkedItem.unit_type === 'kg' ? 'g' : 'ml'}
-                                                                        </div>
-                                                                    )}
+                                                        {/* Collapsible: inventory link + cost details */}
+                                                        <details className="group/adv">
+                                                            <summary className="px-3 pb-2 text-[8px] font-bold text-white/20 uppercase tracking-widest cursor-pointer hover:text-white/40 transition-colors flex items-center gap-1 select-none">
+                                                                <span className="material-symbols-outlined text-[10px] group-open/adv:rotate-90 transition-transform">chevron_right</span>
+                                                                Inventario & Costos
+                                                                {linkedItem && <span className="text-white/30 ml-1 normal-case truncate max-w-[120px]">({linkedItem.name})</span>}
+                                                            </summary>
+                                                            <div className="px-3 pb-3 space-y-2">
+                                                                <div className="flex items-center gap-2">
+                                                                    <button
+                                                                        onClick={() => { setEditingAddonId(addon.id); setItemSelectorSearch(''); setShowItemSelector(true); }}
+                                                                        className="flex-1 h-7 px-2 rounded bg-white/5 border border-white/5 flex items-center justify-between text-[8px] font-bold text-white uppercase hover:border-neon/30 hover:bg-white/10 transition-all text-left truncate"
+                                                                    >
+                                                                        <span className="truncate">{linkedItem?.name || 'SELECCIONAR INSUMO...'}</span>
+                                                                        <span className="material-symbols-outlined text-[10px] opacity-50">search</span>
+                                                                    </button>
+                                                                    <div className="relative w-16 shrink-0">
+                                                                        <input
+                                                                            type="number"
+                                                                            value={addon.quantity_consumed || 0}
+                                                                            onChange={(e) => handleUpdateAddon(addon.id, 'quantity_consumed', parseFloat(e.target.value) || 0)}
+                                                                            className="w-full h-7 pl-1 pr-6 bg-white/5 border border-white/5 rounded text-[8px] font-bold text-white outline-none focus:border-neon/30 text-right"
+                                                                            step={0.001}
+                                                                        />
+                                                                        <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[7px] font-bold text-white/30">{linkedItem?.unit_type || 'UN'}</span>
+                                                                    </div>
                                                                 </div>
+                                                                {linkedItem && (
+                                                                    <div className="flex items-center justify-between text-[8px] text-white/30 px-1">
+                                                                        <span>Costo: <span className="text-white/50 font-bold">${cost.toFixed(2)}</span></span>
+                                                                        <span>Ganancia: <span className={`font-bold ${profit > 0 ? 'text-neon' : 'text-red-400'}`}>${profit.toFixed(2)}</span></span>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                const suggestedPrice = cost * 3;
+                                                                                handleUpdateAddon(addon.id, 'price', parseFloat(suggestedPrice.toFixed(2)));
+                                                                            }}
+                                                                            title="Auto-calcular (Costo x 3)"
+                                                                            className="flex items-center gap-0.5 text-neon hover:text-white transition-all"
+                                                                        >
+                                                                            <span className="material-symbols-outlined text-[10px]">bolt</span>
+                                                                            x3
+                                                                        </button>
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                            <div className="col-span-3">
-                                                                <div className={`h-8 rounded-md flex flex-col justify-center items-center border ${profit > 0 ? 'bg-neon/5 border-neon/20' : 'bg-red-500/5 border-red-500/20'}`}>
-                                                                    <span className={`text-[7px] font-black uppercase tracking-widest ${profit > 0 ? 'text-neon' : 'text-red-400'}`}>
-                                                                        {profit > 0 ? `+${margin.toFixed(0)}%` : 'PERDIDA'}
-                                                                    </span>
-                                                                    <span className="text-[7px] font-bold text-white/40 uppercase">
-                                                                        Costo: ${cost.toFixed(2)}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
+                                                        </details>
                                                     </div>
                                                 );
                                             })}
                                             {(!selectedItem.addon_links || selectedItem.addon_links.length === 0) && (
-                                                <div className="text-center py-6 border border-dashed border-white/10 rounded-xl">
-                                                    <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Sin extras configurados</span>
+                                                <div className="text-center py-4 border border-dashed border-white/10 rounded-xl">
+                                                    <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Sin extras</span>
                                                 </div>
                                             )}
                                         </div>
+                                    </div>
+
+                                    {/* ELIMINAR PRODUCTO */}
+                                    <div className="pt-4 border-t border-white/5">
+                                        <button onClick={() => handleDeleteProduct(selectedItem)} className="w-full py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-500 font-bold text-[10px] uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2">
+                                            <span className="material-symbols-outlined text-sm">delete_forever</span>
+                                            Eliminar Producto
+                                        </button>
                                     </div>
                                 </div>
                             </>
