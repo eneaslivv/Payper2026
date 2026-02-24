@@ -2,14 +2,13 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MenuTheme } from '../types';
 import { supabase } from '../lib/supabase';
-import { retryRpc } from '../src/lib/retryRpc';
 
 interface WalletTransferModalProps {
     isOpen: boolean;
     onClose: () => void;
     userBalance: number;
     theme: MenuTheme;
-    onSuccess?: () => void;
+    onSuccess?: (newBalance: number) => void;
 }
 
 export const WalletTransferModal: React.FC<WalletTransferModalProps> = ({
@@ -23,6 +22,7 @@ export const WalletTransferModal: React.FC<WalletTransferModalProps> = ({
     const [amount, setAmount] = useState('');
     const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const [errorMessage, setErrorMessage] = useState('');
+    const [transferredAmount, setTransferredAmount] = useState(0);
 
     const accentColor = theme.accentColor || '#4ADE80';
     const bgColor = theme.backgroundColor || '#0D0F0D';
@@ -51,29 +51,35 @@ export const WalletTransferModal: React.FC<WalletTransferModalProps> = ({
         setStatus('loading');
 
         try {
-            const { error } = await retryRpc(() =>
-                supabase.rpc('p2p_wallet_transfer', {
-                    p_recipient_email: email,
-                    p_amount: amountNum
-                })
-            );
+            const { data, error } = await (supabase.rpc as any)('p2p_wallet_transfer', {
+                p_recipient_email: email.trim().toLowerCase(),
+                p_amount: amountNum
+            });
 
             if (error) throw error;
 
-            setStatus('success');
-            if (onSuccess) onSuccess();
+            // RPC returns JSONB {success, message, new_balance}
+            if (data && !data.success) {
+                throw new Error(data.message || 'Error en la transferencia');
+            }
 
-            // Auto close after 2 seconds
+            setTransferredAmount(amountNum);
+            setStatus('success');
+            if (onSuccess && data?.new_balance !== undefined) {
+                onSuccess(data.new_balance);
+            }
+
+            // Auto close after 2.5 seconds
             setTimeout(() => {
                 onClose();
                 setStatus('idle');
                 setEmail('');
                 setAmount('');
-            }, 2000);
+                setTransferredAmount(0);
+            }, 2500);
 
         } catch (err: any) {
             console.error('Transfer Error:', err);
-            // Handle specific error messages from RPC if needed
             setErrorMessage(err.message || 'Error al procesar la transferencia');
             setStatus('error');
         }
@@ -124,12 +130,12 @@ export const WalletTransferModal: React.FC<WalletTransferModalProps> = ({
 
                             {status === 'success' ? (
                                 <div className="flex flex-col items-center py-8">
-                                    <div className="w-16 h-16 rounded-full bg-[#4ADE80]/20 flex items-center justify-center mb-4 text-[#4ADE80]">
+                                    <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: `${accentColor}20`, color: accentColor }}>
                                         <span className="material-symbols-outlined text-3xl">check</span>
                                     </div>
                                     <h3 className="font-bold text-lg mb-2">¡Transferencia Exitosa!</h3>
                                     <p className="text-sm opacity-60 text-center">
-                                        Hemos enviado ${amount} a {email}
+                                        Enviaste <span style={{ color: accentColor }}>${transferredAmount.toLocaleString()}</span> a {email}
                                     </p>
                                 </div>
                             ) : (

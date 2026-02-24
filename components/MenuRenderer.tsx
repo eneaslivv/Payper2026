@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { MenuTheme, InventoryItem, Product } from '../types';
 import { PaymentCapabilityBadge } from './PaymentCapabilityBadge';
-import { WalletTransferModal } from './WalletTransferModal';
 
 // Helper to unify Product and InventoryItem for display
 type DisplayItem = Partial<Product> & Partial<InventoryItem> & {
@@ -41,6 +40,8 @@ interface MenuRendererProps {
     tableLabel?: string | null;
     isGuest?: boolean;
     userBalance?: number;
+    onTopUp?: () => void;
+    onTransfer?: () => void;
 }
 
 export const MenuRenderer: React.FC<MenuRendererProps> = ({
@@ -65,9 +66,10 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
     serviceMode,
     tableLabel,
     isGuest = true,
-    userBalance
+    userBalance,
+    onTopUp,
+    onTransfer
 }) => {
-    const [showTransferModal, setShowTransferModal] = useState(false);
 
     // Derived State
     const hasProducts = products.length > 0;
@@ -219,14 +221,14 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
 
                             <div className="flex gap-2">
                                 <button
-                                    onClick={() => alert('Acércate a la caja para cargar saldo')}
+                                    onClick={onTopUp}
                                     className="flex-1 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-2"
                                 >
                                     <span className="material-symbols-outlined text-sm">add</span>
                                     Cargar
                                 </button>
                                 <button
-                                    onClick={() => setShowTransferModal(true)}
+                                    onClick={onTransfer}
                                     className="flex-1 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-2"
                                 >
                                     <span className="material-symbols-outlined text-sm">send</span>

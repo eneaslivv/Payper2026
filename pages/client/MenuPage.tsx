@@ -4,12 +4,14 @@ import { MenuItem } from '../../components/client/types';
 import { useClient } from '../../contexts/ClientContext';
 import { MenuRenderer } from '../../components/MenuRenderer';
 import SessionSelector from '../../components/client/SessionSelector';
+import { WalletTransferModal } from '../../components/WalletTransferModal';
+import { supabase } from '../../lib/supabase';
 
 const MenuPage: React.FC = () => {
   const navigate = useNavigate();
   const { slug } = useParams();
   const {
-    store, products, user, hasActiveOrder, setIsHubOpen, cart,
+    store, products, user, hasActiveOrder, setIsHubOpen, cart, setUser,
     getMenuRule, isOrderingAllowed, serviceMode, tableLabel,
     showSessionSelector, setShowSessionSelector, onSessionCreated,
     disconnectTable, addToCart, updateQuantity, removeFromCart,
@@ -18,6 +20,19 @@ const MenuPage: React.FC = () => {
 
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Wallet modals
+  const [showTopUp, setShowTopUp] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+  const [customAmount, setCustomAmount] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const triggerToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
 
   // Get ALL theme values from store or use defaults
   const theme = store?.menu_theme || {};
@@ -183,6 +198,8 @@ const MenuPage: React.FC = () => {
         tableLabel={tableLabel}
         isGuest={!user}
         userBalance={user?.balance}
+        onTopUp={() => user ? setShowTopUp(true) : navigate(`/m/${slug}/auth`)}
+        onTransfer={() => user ? setShowTransfer(true) : navigate(`/m/${slug}/auth`)}
       />
 
       {/* CONTEXT BANNER (Always visible to clarify state) */}
@@ -300,6 +317,170 @@ const MenuPage: React.FC = () => {
           onClose={() => setShowSessionSelector(false)}
         />
       )}
+      {/* ═══════════════════ WALLET TOP-UP MODAL ═══════════════════ */}
+      {showTopUp && user && store && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-2xl animate-in fade-in duration-500" style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}>
+          <div
+            className="w-full max-w-sm rounded-[2rem] p-8 shadow-[0_40px_100px_rgba(0,0,0,1)] animate-in zoom-in-95 duration-300 border"
+            style={{ backgroundColor: cardColor, borderColor: `${textColor}10`, color: textColor }}
+          >
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-[22px] font-black uppercase tracking-tighter italic leading-none">
+                Cargar <span style={{ color: accentColor }}>Saldo</span>
+              </h2>
+              <button
+                onClick={() => { setShowTopUp(false); setSelectedAmount(null); setCustomAmount(''); }}
+                className="h-10 w-10 rounded-xl flex items-center justify-center active:scale-90"
+                style={{ backgroundColor: `${textColor}08` }}
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Quick amounts */}
+              <div>
+                <label className="text-[8px] font-black uppercase tracking-[0.3em] ml-1 mb-3 block opacity-40">Montos Rápidos</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[500, 1000, 2000, 5000].map(amt => (
+                    <button
+                      key={amt}
+                      onClick={() => { setSelectedAmount(amt); setCustomAmount(''); }}
+                      className="h-14 rounded-xl font-black text-[13px] italic transition-all duration-300 border"
+                      style={selectedAmount === amt
+                        ? { backgroundColor: accentColor, borderColor: accentColor, color: '#000' }
+                        : { backgroundColor: `${textColor}05`, borderColor: `${textColor}10`, color: textColor }}
+                    >
+                      ${amt >= 1000 ? `${amt / 1000}k` : amt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom amount */}
+              <div>
+                <label className="text-[8px] font-black uppercase tracking-[0.3em] ml-1 mb-2 block opacity-40">Otro Monto</label>
+                <div className="flex items-center h-14 px-5 rounded-xl border" style={{ backgroundColor: `${textColor}05`, borderColor: `${textColor}10` }}>
+                  <span className="text-lg font-black italic mr-2 opacity-30">$</span>
+                  <input
+                    type="number"
+                    value={customAmount}
+                    onChange={(e) => { setCustomAmount(e.target.value); setSelectedAmount(null); }}
+                    placeholder="0"
+                    className="bg-transparent border-none p-0 text-xl font-black italic placeholder:opacity-20 focus:ring-0 w-full tracking-tighter outline-none"
+                    style={{ color: textColor }}
+                  />
+                </div>
+              </div>
+
+              {/* Selected total */}
+              {(selectedAmount || customAmount) && (
+                <div className="text-center py-4 border-t border-b" style={{ borderColor: `${textColor}10` }}>
+                  <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Total a cargar</span>
+                  <p className="text-[36px] font-black italic tracking-tighter leading-none mt-1" style={{ color: accentColor }}>
+                    ${customAmount ? parseFloat(customAmount || '0').toLocaleString() : selectedAmount?.toLocaleString()}
+                  </p>
+                </div>
+              )}
+
+              {/* Payment buttons */}
+              <div className="space-y-3">
+                {/* MercadoPago */}
+                <button
+                  onClick={async () => {
+                    const amount = customAmount ? parseFloat(customAmount) : (selectedAmount || 0);
+                    if (!amount || amount <= 0) { triggerToast('Seleccioná un monto'); return; }
+                    setIsProcessing(true);
+                    try {
+                      const { data, error } = await supabase.functions.invoke('create-mp-preference', {
+                        body: {
+                          amount,
+                          description: `Recarga de saldo - ${store.name}`,
+                          client_id: user.id,
+                          store_id: store.id,
+                          type: 'balance_topup'
+                        }
+                      });
+                      if (error) throw error;
+                      if (data?.init_point) {
+                        window.location.href = data.init_point;
+                      } else {
+                        throw new Error('No se pudo crear el pago');
+                      }
+                    } catch (err: any) {
+                      console.error('MP Error:', err);
+                      triggerToast('Error: ' + err.message);
+                    } finally {
+                      setIsProcessing(false);
+                    }
+                  }}
+                  disabled={isProcessing || (!selectedAmount && !customAmount)}
+                  className="w-full h-16 rounded-2xl font-black uppercase text-[11px] tracking-widest active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: '#009ee3', color: '#fff' }}
+                >
+                  {isProcessing ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-lg">credit_card</span>
+                      Pagar con MercadoPago
+                    </>
+                  )}
+                </button>
+
+                {/* Cash */}
+                <button
+                  onClick={() => {
+                    const amount = customAmount ? parseFloat(customAmount) : (selectedAmount || 0);
+                    if (!amount || amount <= 0) { triggerToast('Seleccioná un monto'); return; }
+                    setShowTopUp(false);
+                    setSelectedAmount(null);
+                    setCustomAmount('');
+                    triggerToast(`Acercate a la caja para cargar $${amount.toLocaleString()}`);
+                  }}
+                  disabled={!selectedAmount && !customAmount}
+                  className="w-full h-14 rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-[0.98] transition-all flex items-center justify-center gap-3 border disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: 'transparent', borderColor: `${textColor}15`, color: textColor }}
+                >
+                  <span className="material-symbols-outlined text-lg">payments</span>
+                  Pagar en Efectivo
+                </button>
+              </div>
+
+              <p className="text-center text-[9px] opacity-30">
+                Para pagos en efectivo, acercate a la caja
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════ WALLET TRANSFER MODAL ═══════════════════ */}
+      {store && user && (
+        <WalletTransferModal
+          isOpen={showTransfer}
+          onClose={() => setShowTransfer(false)}
+          userBalance={user.balance || 0}
+          theme={store.menu_theme || { accentColor, backgroundColor, textColor } as any}
+          onSuccess={(newBalance) => {
+            if (user && setUser) {
+              setUser({ ...user, balance: newBalance });
+            }
+            triggerToast('¡Transferencia exitosa!');
+          }}
+        />
+      )}
+
+      {/* ═══════════════════ TOAST ═══════════════════ */}
+      {toast && (
+        <div className="fixed top-[calc(5rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-[110] animate-in slide-in-from-top-4 fade-in duration-300">
+          <div className="px-6 py-3 rounded-2xl shadow-2xl border backdrop-blur-xl text-sm font-bold"
+            style={{ backgroundColor: `${cardColor}F0`, borderColor: `${textColor}10`, color: textColor }}>
+            {toast}
+          </div>
+        </div>
+      )}
+
       {/* EXPLICIT SPACER FOR SCROLL CLEARANCE */}
       <div className="h-64 w-full shrink-0" />
     </div>
