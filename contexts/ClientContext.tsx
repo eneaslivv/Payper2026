@@ -342,6 +342,11 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
                 setStore(data as any);
             } catch (err: any) {
+                // AbortError happens on slow mobile networks or component remounts — not a real error
+                if (err.name === 'AbortError') {
+                    console.warn('[ClientContext] fetchStore aborted, retrying...');
+                    return;
+                }
                 console.error('Error fetching store:', err);
                 setError(err.message);
             } finally {
