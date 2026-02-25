@@ -61,14 +61,33 @@ const JoinTeam = () => {
 
             setStoreName(storeData?.name || 'la tienda');
 
-            // Fetch role name from store_roles
-            const { data: roleData } = await supabase
-                .from('store_roles')
-                .select('name')
-                .eq('id', (data as any).role)
-                .single();
+            // Fetch role name from store_roles (role column may be UUID or name string)
+            const roleValue = (data as any).role;
+            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(roleValue);
 
-            setRoleName(roleData?.name || 'Operador');
+            let roleData: any = null;
+            if (isUUID) {
+                const { data: rd } = await supabase
+                    .from('store_roles')
+                    .select('id, name')
+                    .eq('id', roleValue)
+                    .single();
+                roleData = rd;
+            }
+            if (!roleData && roleValue) {
+                // Fallback: try matching by name (legacy invitations)
+                const { data: rd } = await supabase
+                    .from('store_roles')
+                    .select('id, name')
+                    .eq('name', roleValue)
+                    .eq('store_id', (data as any).store_id)
+                    .single();
+                roleData = rd;
+            }
+
+            setRoleName(roleData?.name || roleValue || 'Operador');
+            // Store resolved role_id for registration
+            (data as any)._resolved_role_id = roleData?.id || (isUUID ? roleValue : null);
 
         } catch (e: any) {
             console.error(e);
@@ -91,6 +110,8 @@ const JoinTeam = () => {
 
         setIsRegistering(true);
         try {
+            const resolvedRoleId = invitation._resolved_role_id;
+
             // Register user with Supabase Auth
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email: invitation.email,
@@ -99,8 +120,8 @@ const JoinTeam = () => {
                     data: {
                         full_name: fullName || invitation.email.split('@')[0],
                         store_id: invitation.store_id,
-                        role: 'staff', // Securely passed to trigger
-                        role_id: invitation.role
+                        role: 'staff',
+                        role_id: resolvedRoleId
                     }
                 }
             });
@@ -110,32 +131,21 @@ const JoinTeam = () => {
                 throw authError;
             }
 
-            // User created (Trigger created profile automatically)
+            // User created — activate profile via SECURITY DEFINER RPC (bypasses trigger)
             if (authData?.user) {
-                // FORCE PROFILE ACTIVATION
-                // The trigger might default is_active to false. We override it here since they have a valid token.
-                const { error: activateError } = await supabase
-                    .from('profiles')
-                    .update({
-                        is_active: true,
-                        role: 'staff',
-                        role_id: invitation.role,
-                        store_id: invitation.store_id
-                    })
-                    .eq('id', authData.user.id);
+                const { error: activateError } = await (supabase as any).rpc('activate_invited_user', {
+                    p_user_id: authData.user.id,
+                    p_store_id: invitation.store_id,
+                    p_role_id: resolvedRoleId,
+                    p_invitation_token: token
+                });
 
                 if (activateError) {
-                    console.error('Error activating profile:', activateError);
-                    // We don't block flow, but we warn (AuthContext auto-heal might pick it up later)
+                    console.error('Error activating profile via RPC:', activateError);
+                    // Fallback: auto-heal in AuthContext will pick up user_metadata
                 } else {
-                    console.log('Profile explicitly activated via JoinTeam');
+                    console.log('Profile activated via activate_invited_user RPC');
                 }
-
-                // Update invitation status
-                await supabase
-                    .from('team_invitations' as any)
-                    .update({ status: 'accepted' })
-                    .eq('token', token);
 
                 addToast('¡Cuenta creada y activada! Redirigiendo...', 'success');
 
@@ -146,12 +156,6 @@ const JoinTeam = () => {
             } else {
                 // User created but needs email confirmation
                 addToast('Cuenta creada. Por favor revisa tu email para confirmar o intenta iniciar sesión.', 'warning');
-
-                // Mark invitation as accepted anyway
-                await supabase
-                    .from('team_invitations' as any)
-                    .update({ status: 'accepted' })
-                    .eq('token', token);
 
                 setTimeout(() => {
                     navigate('/login');

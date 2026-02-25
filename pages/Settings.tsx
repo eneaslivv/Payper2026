@@ -216,7 +216,7 @@ const Settings: React.FC = () => {
   const { addToast } = useToast();
   const [invitations, setInvitations] = useState<any[]>([]);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ email: '', role: 'barista' });
+  const [inviteForm, setInviteForm] = useState({ email: '', fullName: '', roleId: '' });
   const [isInviting, setIsInviting] = useState(false);
 
   // STORE SETTINGS STATE
@@ -394,45 +394,39 @@ const Settings: React.FC = () => {
   };
 
   const handleSendInvite = async () => {
-    if (!inviteForm.email) return;
+    if (!inviteForm.email || !inviteForm.roleId) {
+      addToast('Email y rol son obligatorios', 'error');
+      return;
+    }
+    if (!profile?.store_id) {
+      addToast('No se detecta la tienda en tu perfil', 'error');
+      return;
+    }
     setIsInviting(true);
     try {
-      // 1. Create Invite in DB via Edge Function
-      const { data, error } = await supabase.functions.invoke('invite-user', {
-        body: { email: inviteForm.email, role: inviteForm.role }
+      // Use invite-member (creates auth user + profile + sends email)
+      const { data, error } = await supabase.functions.invoke('invite-member', {
+        body: {
+          email: inviteForm.email,
+          fullName: inviteForm.fullName,
+          roleId: inviteForm.roleId,
+          storeId: profile.store_id,
+          storeName: storeForm.name
+        }
       });
 
       if (error) throw error;
-      if (data.error) throw new Error(data.error);
 
-      // 2. Send Email via Resend (New System)
-      const emailRes = await sendEmailNotification({
-        to: inviteForm.email,
-        subject: 'Te han invitado a unirte al Equipo - CoffeeSquad',
-        html: `
-          <div style="font-family: sans-serif; background: #111; color: white; padding: 20px; border-radius: 10px;">
-            <h2 style="color: #00ff9d; margin-top: 0;">CoffeeSquad</h2>
-            <p>Has sido invitado para unirte al equipo.</p>
-            <p><strong>Rol:</strong> ${inviteForm.role}</p>
-            <br/>
-            <a href="${data.link}" style="background:#00ff9d; color:black; padding:12px 24px; text-decoration:none; border-radius:6px; font-weight:bold; display: inline-block;">ACEPTAR INVITACIÓN</a>
-            <br/><br/>
-            <p style="font-size: 12px; color: #666;">Si no esperabas esto, ignora este correo.</p>
-          </div>
-        `
-      });
+      // Parse response (may be Blob/string)
+      let resData: any = data;
+      if (typeof resData === 'string') { try { resData = JSON.parse(resData); } catch {} }
+      else if (resData instanceof Blob) { try { resData = JSON.parse(await resData.text()); } catch {} }
 
-      if (!emailRes.success) {
-        addToast('Invitación creada, pero falló el envío del email.', 'warning');
-        console.error('Email sending failed:', emailRes.error);
-      } else {
-        addToast('Invitación enviada por correo exitosamente', 'success');
-      }
+      if (resData?.error) throw new Error(resData.error);
 
-      console.log('Invite Link:', data.link);
-
+      addToast(resData?.message || 'Invitación enviada exitosamente', 'success');
       setShowInviteModal(false);
-      setInviteForm({ email: '', role: 'barista' });
+      setInviteForm({ email: '', fullName: '', roleId: '' });
       loadInvitations();
     } catch (e: any) {
       console.error('Invite Error:', e);
@@ -1175,6 +1169,68 @@ const Settings: React.FC = () => {
               >
                 <span className="material-symbols-outlined text-base">save</span>
                 GUARDAR JERARQUÍA
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* INVITE MEMBER MODAL */}
+      {showInviteModal && (
+        <div className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-[#111311] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl animate-in slide-in-from-bottom-4 duration-300">
+            <div className="p-5 border-b border-white/5">
+              <h3 className="text-sm font-black italic uppercase tracking-tight text-white">Invitar Miembro</h3>
+              <p className="text-[9px] text-white/40 mt-1">Se enviará un email con el enlace de invitación</p>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black uppercase text-white/30 tracking-widest">Email</label>
+                <input
+                  type="email"
+                  value={inviteForm.email}
+                  onChange={e => setInviteForm(f => ({ ...f, email: e.target.value }))}
+                  placeholder="email@ejemplo.com"
+                  className="w-full h-10 px-3 rounded-lg bg-white/5 border border-white/10 text-white text-xs font-bold outline-none focus:border-neon/40 transition-colors"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black uppercase text-white/30 tracking-widest">Nombre Completo</label>
+                <input
+                  type="text"
+                  value={inviteForm.fullName}
+                  onChange={e => setInviteForm(f => ({ ...f, fullName: e.target.value }))}
+                  placeholder="Nombre del nuevo miembro"
+                  className="w-full h-10 px-3 rounded-lg bg-white/5 border border-white/10 text-white text-xs font-bold outline-none focus:border-neon/40 transition-colors"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black uppercase text-white/30 tracking-widest">Rol</label>
+                <select
+                  value={inviteForm.roleId}
+                  onChange={e => setInviteForm(f => ({ ...f, roleId: e.target.value }))}
+                  className="w-full h-10 px-3 rounded-lg bg-white/5 border border-white/10 text-white text-xs font-bold outline-none focus:border-neon/40 transition-colors appearance-none"
+                >
+                  <option value="" className="bg-[#111]">Seleccionar rol...</option>
+                  {roles.map(r => (
+                    <option key={r.id} value={r.id} className="bg-[#111]">{r.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="p-4 border-t border-white/5 flex justify-end gap-3">
+              <button
+                onClick={() => { setShowInviteModal(false); setInviteForm({ email: '', fullName: '', roleId: '' }); }}
+                className="px-4 py-2 rounded-lg border border-white/10 text-[9px] font-black uppercase text-white/40 hover:text-white hover:bg-white/5 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSendInvite}
+                disabled={isInviting || !inviteForm.email || !inviteForm.roleId}
+                className="px-5 py-2 bg-neon text-black rounded-lg text-[9px] font-black uppercase tracking-widest shadow-neon-soft hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+              >
+                {isInviting ? 'Enviando...' : 'Enviar Invitación'}
               </button>
             </div>
           </div>

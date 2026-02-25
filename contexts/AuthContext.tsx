@@ -336,13 +336,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const userEmail = session?.user?.email || user?.email || emailArg;
             console.warn(`[AUTH] ⚠️ Profile missing for ${userEmail}. Initiating AUTO-HEALING...`);
 
+            // Respect user_metadata set by invite-member (role, role_id, store_id)
+            const meta = session?.user?.user_metadata || user?.user_metadata || {};
             const autoHealProfile: any = {
                 id: userId,
                 email: userEmail || `user_${userId.substr(0, 8)}@temp.livv`,
-                full_name: session?.user?.user_metadata?.full_name || 'Nuevo Usuario',
-                role: 'customer',
+                full_name: meta.full_name || 'Nuevo Usuario',
+                role: getSafeRole(meta.role as UserRole | undefined),
                 is_active: true,
-                store_id: session?.user?.user_metadata?.store_id || undefined,
+                store_id: meta.store_id || undefined,
+                role_id: meta.role_id || undefined,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             };

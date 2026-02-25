@@ -117,7 +117,7 @@ serve(async (req) => {
                 .insert({
                     store_id: storeId,
                     email,
-                    role: roleNameForEmail, // Store readable name or ID? Let's use Name for now.
+                    role: targetRoleId || roleNameForEmail, // Store UUID when available, name as fallback
                     status: 'pending'
                 })
                 .select('id, token')

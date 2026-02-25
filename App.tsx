@@ -334,31 +334,31 @@ const OperativeLayout: React.FC<{ children: React.ReactNode, activeNode: CafeNod
           )}
 
           <SidebarGroup label="OPERACIONES">
-            {(hasPermission('orders') || !profile?.role_id) && (
+            {hasPermission('orders') && (
               <SidebarItem to="/orders" icon="list_alt" label="Despacho [G]" active={location.pathname === '/orders'} onClick={() => setIsSidebarOpen(false)} />
             )}
-            {(hasPermission('tables') || !profile?.role_id) && (
+            {hasPermission('tables') && (
               <SidebarItem to="/tables" icon="deck" label="Mesas y Salón" active={location.pathname === '/tables'} onClick={() => setIsSidebarOpen(false)} />
             )}
           </SidebarGroup>
 
           <SidebarGroup label="LOGÍSTICA">
-            {(hasPermission('inventory') || !profile?.role_id) && (
+            {hasPermission('inventory') && (
               <SidebarItem to="/inventory" icon="package_2" label="Inventario" active={location.pathname === '/inventory'} onClick={() => setIsSidebarOpen(false)} />
             )}
-            {(hasPermission('design') || !profile?.role_id) && (
+            {hasPermission('design') && (
               <SidebarItem to="/design" icon="architecture" label="Diseño Menú" active={location.pathname === '/design'} onClick={() => setIsSidebarOpen(false)} />
             )}
           </SidebarGroup>
 
           <SidebarGroup label="NEGOCIO">
-            {(hasPermission('clients') || !profile?.role_id) && (
+            {hasPermission('clients') && (
               <SidebarItem to="/clients" icon="group" label="Clientes" active={location.pathname === '/clients'} onClick={() => setIsSidebarOpen(false)} />
             )}
-            {(hasPermission('loyalty') || !profile?.role_id) && (
+            {hasPermission('loyalty') && (
               <SidebarItem to="/loyalty" icon="military_tech" label="Fidelidad" active={location.pathname === '/loyalty'} onClick={() => setIsSidebarOpen(false)} />
             )}
-            {(hasPermission('finance') || !profile?.role_id) && (
+            {hasPermission('finance') && (
               <SidebarItem to="/finance" icon="bar_chart_4_bars" label="Finanzas" active={location.pathname === '/finance'} onClick={() => setIsSidebarOpen(false)} />
             )}
           </SidebarGroup>
