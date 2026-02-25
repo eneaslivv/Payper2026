@@ -390,26 +390,50 @@ const MenuPage: React.FC = () => {
                   onClick={async () => {
                     const amount = customAmount ? parseFloat(customAmount) : (selectedAmount || 0);
                     if (!amount || amount <= 0) { triggerToast('Seleccioná un monto'); return; }
+                    if (!store?.id || !user?.id) { triggerToast('Sesión no válida'); return; }
                     setIsProcessing(true);
                     try {
-                      const { data, error } = await supabase.functions.invoke('create-mp-preference', {
-                        body: {
-                          amount,
-                          description: `Recarga de saldo - ${store.name}`,
-                          client_id: user.id,
-                          store_id: store.id,
-                          type: 'balance_topup'
-                        }
-                      });
-                      if (error) throw error;
-                      if (data?.init_point) {
-                        window.location.href = data.init_point;
+                      let resData: any = null;
+                      let resError: any = null;
+                      try {
+                        const result = await supabase.functions.invoke('create-mp-preference', {
+                          body: {
+                            amount,
+                            description: `Recarga de saldo - ${store.name}`,
+                            client_id: user.id,
+                            store_id: store.id,
+                            type: 'balance_topup'
+                          }
+                        });
+                        resData = result.data;
+                        resError = result.error;
+                      } catch (invokeErr) {
+                        resError = invokeErr;
+                      }
+
+                      if (resError) {
+                        let msg = 'Error al conectar con Mercado Pago';
+                        try { const body = await resError?.context?.json(); if (body?.error) msg = body.error; } catch {}
+                        throw new Error(msg);
+                      }
+
+                      // Parse response — handle string, Blob, and object
+                      if (typeof resData === 'string') {
+                        try { resData = JSON.parse(resData); } catch {}
+                      } else if (resData instanceof Blob) {
+                        try { resData = JSON.parse(await resData.text()); } catch {}
+                      }
+
+                      const checkoutUrl = resData?.init_point || resData?.sandbox_init_point;
+                      if (checkoutUrl) {
+                        window.location.href = checkoutUrl;
                       } else {
-                        throw new Error('No se pudo crear el pago');
+                        console.error('[MP TopUp] No init_point. Response:', typeof resData, resData);
+                        throw new Error('No se recibió URL de pago');
                       }
                     } catch (err: any) {
-                      console.error('MP Error:', err);
-                      triggerToast('Error: ' + err.message);
+                      console.error('MP TopUp Error:', err);
+                      triggerToast(err.message || 'Error al procesar pago');
                     } finally {
                       setIsProcessing(false);
                     }

@@ -63,7 +63,7 @@ serve(async (req) => {
 
         // Generate unique transaction ID for wallet topup
         let externalReference = '';
-        let backUrl = `https://www.payperapp.io/m/${store.slug}/profile`;
+        let backUrl = `https://www.payperapp.io/#/m/${store.slug}/profile`;
 
         if (type === 'balance_topup') {
             // Create a pending wallet transaction
