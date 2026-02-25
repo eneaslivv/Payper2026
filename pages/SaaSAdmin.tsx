@@ -55,6 +55,27 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
    const [expandedIncident, setExpandedIncident] = useState<string | null>(null);
    const [incidentNote, setIncidentNote] = useState('');
 
+   // Metrics tab
+   const [metricsData, setMetricsData] = useState<{ storeMetrics: any[]; totalRevenue: number; totalOrders: number; totalClients: number; recentOrders: any[] }>({ storeMetrics: [], totalRevenue: 0, totalOrders: 0, totalClients: 0, recentOrders: [] });
+   const [metricsLoading, setMetricsLoading] = useState(false);
+   const [metricsPeriod, setMetricsPeriod] = useState<'today' | 'week' | 'month' | 'all'>('month');
+
+   // Audit tab
+   const [auditLogs, setAuditLogs] = useState<any[]>([]);
+   const [auditLoading, setAuditLoading] = useState(false);
+   const [auditStoreFilter, setAuditStoreFilter] = useState<string>('all');
+   const [auditTableFilter, setAuditTableFilter] = useState<string>('all');
+
+   // Users tab enhancements
+   const [userSearch, setUserSearch] = useState('');
+   const [userRoleFilter, setUserRoleFilter] = useState<string>('all');
+   const [editingUserId, setEditingUserId] = useState<string | null>(null);
+   const [editingRole, setEditingRole] = useState<string>('');
+
+   // Tenants tab enhancements
+   const [tenantSearch, setTenantSearch] = useState('');
+   const [storeStats, setStoreStats] = useState<Record<string, { orders: number; revenue: number; clients: number }>>({});
+
    const fetchData = useCallback(async () => {
       setIsLoading(true);
       try {
@@ -159,6 +180,18 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
          fetchIncidents();
       }
    }, [activeTab, fetchIncidents]);
+
+   useEffect(() => {
+      if (stores.length > 0 && (activeTab === 'tenants' || activeTab === 'dashboard')) fetchStoreStats();
+   }, [activeTab, stores.length, fetchStoreStats]);
+
+   useEffect(() => {
+      if (activeTab === 'metrics' && stores.length > 0) fetchMetricsData();
+   }, [activeTab, fetchMetricsData]);
+
+   useEffect(() => {
+      if (activeTab === 'audit') fetchAuditData();
+   }, [activeTab, fetchAuditData]);
 
    const handleGenerateAccessLink = async (email: string, storeId?: string, storeName?: string) => {
       if (!email) return;
@@ -370,6 +403,103 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
       }
    };
 
+   const fetchStoreStats = useCallback(async () => {
+      try {
+         const { data: allOrders } = await supabase.from('orders').select('store_id, total_amount, status').not('status', 'eq', 'cancelled');
+         const { data: allClients } = await supabase.from('clients').select('id, store_id');
+         const statsMap: Record<string, { orders: number; revenue: number; clients: number }> = {};
+         for (const store of stores) {
+            const storeOrders = (allOrders || []).filter((o: any) => o.store_id === store.id);
+            const storeClients = (allClients || []).filter((c: any) => c.store_id === store.id);
+            statsMap[store.id] = {
+               orders: storeOrders.length,
+               revenue: storeOrders.reduce((s: number, o: any) => s + (Number(o.total_amount) || 0), 0),
+               clients: storeClients.length
+            };
+         }
+         setStoreStats(statsMap);
+      } catch (e) { console.error('Store stats error:', e); }
+   }, [stores]);
+
+   const fetchMetricsData = useCallback(async () => {
+      setMetricsLoading(true);
+      try {
+         const now = new Date();
+         let startDate: Date;
+         if (metricsPeriod === 'today') { startDate = new Date(now); startDate.setHours(0,0,0,0); }
+         else if (metricsPeriod === 'week') { startDate = new Date(now); startDate.setDate(now.getDate() - 7); }
+         else if (metricsPeriod === 'month') { startDate = new Date(now); startDate.setMonth(now.getMonth() - 1); }
+         else { startDate = new Date('2020-01-01'); }
+
+         const { data: allOrders } = await supabase.from('orders').select('id, store_id, total_amount, status, payment_method, channel, created_at').gte('created_at', startDate.toISOString()).not('status', 'eq', 'cancelled').order('created_at', { ascending: false }).limit(500);
+         const { data: allClients } = await supabase.from('clients').select('id, store_id');
+
+         const storeMetricsArr: any[] = [];
+         for (const store of stores) {
+            const storeOrders = (allOrders || []).filter((o: any) => o.store_id === store.id);
+            const storeClients = (allClients || []).filter((c: any) => c.store_id === store.id);
+            const revenue = storeOrders.reduce((s: number, o: any) => s + (Number(o.total_amount) || 0), 0);
+            storeMetricsArr.push({
+               store_id: store.id, store_name: store.name || 'Sin nombre',
+               order_count: storeOrders.length, total_revenue: revenue,
+               client_count: storeClients.length,
+               avg_ticket: storeOrders.length > 0 ? revenue / storeOrders.length : 0
+            });
+         }
+
+         setMetricsData({
+            storeMetrics: storeMetricsArr,
+            totalRevenue: storeMetricsArr.reduce((s, m) => s + m.total_revenue, 0),
+            totalOrders: storeMetricsArr.reduce((s, m) => s + m.order_count, 0),
+            totalClients: (allClients || []).length,
+            recentOrders: (allOrders || []).slice(0, 10)
+         });
+      } catch (e) { console.error('Metrics fetch error:', e); }
+      finally { setMetricsLoading(false); }
+   }, [stores, metricsPeriod]);
+
+   const fetchAuditData = useCallback(async () => {
+      setAuditLoading(true);
+      try {
+         let query = (supabase as any).from('audit_logs').select('*').order('created_at', { ascending: false }).limit(200);
+         if (auditStoreFilter !== 'all') query = query.eq('store_id', auditStoreFilter);
+         if (auditTableFilter !== 'all') query = query.eq('table_name', auditTableFilter);
+         const { data, error } = await query;
+         if (!error) {
+            const storeMap = new Map(stores.map(s => [s.id, s.name]));
+            setAuditLogs((data || []).map((row: any) => ({ ...row, store_name: row.store_id ? storeMap.get(row.store_id) || 'Desconocido' : 'Global' })));
+         }
+      } catch (e) { console.error('Audit error:', e); }
+      finally { setAuditLoading(false); }
+   }, [stores, auditStoreFilter, auditTableFilter]);
+
+   const handleRoleChange = async (userId: string, newRole: string) => {
+      if (userId === user?.id && newRole !== 'super_admin') {
+         addToast('Error', 'error', 'No puedes cambiar tu propio rol de super_admin');
+         setEditingUserId(null);
+         return;
+      }
+      try {
+         const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
+         if (error) throw error;
+         setGlobalUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+         setEditingUserId(null);
+         addToast('Rol Actualizado', 'success');
+      } catch (error: any) { addToast('Error', 'error', error.message); }
+   };
+
+   const filteredUsers = globalUsers.filter(u => {
+      const matchesSearch = !userSearch || (u.email || '').toLowerCase().includes(userSearch.toLowerCase()) || (u.full_name || '').toLowerCase().includes(userSearch.toLowerCase());
+      const matchesRole = userRoleFilter === 'all' || u.role === userRoleFilter;
+      return matchesSearch && matchesRole;
+   });
+
+   const filteredStores = stores.filter(s =>
+      !tenantSearch || (s.name || '').toLowerCase().includes(tenantSearch.toLowerCase()) || (s.owner_email || '').toLowerCase().includes(tenantSearch.toLowerCase())
+   );
+
+   const aggStats = Object.values(storeStats).reduce((acc, s) => ({ orders: acc.orders + s.orders, revenue: acc.revenue + s.revenue, clients: acc.clients + s.clients }), { orders: 0, revenue: 0, clients: 0 });
+
    const filteredIncidents = incidentFilter === 'all'
       ? incidents
       : incidents.filter(i => i.status === incidentFilter);
@@ -427,52 +557,60 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                <div className="flex items-center justify-between">
                   <div>
                      <h2 className="text-3xl font-black italic text-white uppercase tracking-tighter">Command Center</h2>
-                     <p className="text-sm text-zinc-500 font-medium mt-1">Visión global del ecosistema Payper.</p>
+                     <p className="text-sm text-zinc-500 font-medium mt-1">Vision global del ecosistema Payper.</p>
                   </div>
                   <button onClick={() => fetchData()} className="p-2 hover:bg-white/5 rounded-full text-zinc-500 hover:text-white transition-colors">
                      <span className="material-symbols-outlined">refresh</span>
                   </button>
                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Col 1: Quick Actions */}
-                  <div className="p-6 rounded-3xl bg-[#0A0C0A] border border-white/5 space-y-4">
-                     <h3 className="text-xs font-black text-white/40 uppercase tracking-widest">Acciones Rápidas</h3>
-                     <div className="grid grid-cols-2 gap-3">
-                        <button onClick={() => setShowNewStoreModal(true)} className="p-4 rounded-xl bg-accent/10 border border-accent/20 hover:bg-accent/20 transition-all text-left group">
-                           <span className="material-symbols-outlined text-2xl text-accent mb-2 group-hover:scale-110 transition-transform">add_business</span>
-                           <div className="text-xs font-black text-white uppercase">Nuevo Local</div>
-                        </button>
-                        <button onClick={() => { document.getElementById('roles-tab')?.click() }} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-left group">
-                           <span className="material-symbols-outlined text-2xl text-purple-400 mb-2 group-hover:scale-110 transition-transform">group_add</span>
-                           <div className="text-xs font-black text-white uppercase">Gestionar Usuarios</div>
-                        </button>
-                     </div>
-                  </div>
-
-                  {/* Col 2: Recent Activity / Status */}
-                  <div className="p-6 rounded-3xl bg-[#0A0C0A] border border-white/5 space-y-4">
-                     <h3 className="text-xs font-black text-white/40 uppercase tracking-widest">Actividad Reciente</h3>
-                     <div className="space-y-3">
-                        {(globalUsers.length > 0 ? globalUsers : []).slice(0, 3).map(u => (
-                           <div key={u.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02]">
-                              <div className="size-8 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-bold">
-                                 {u.email?.charAt(0).toUpperCase()}
+               {/* Per-store summary cards */}
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {stores.map(store => (
+                     <div key={store.id} className="p-5 rounded-2xl bg-[#0A0C0A] border border-white/5 space-y-4 hover:border-white/10 transition-all">
+                        <div className="flex items-center justify-between">
+                           <div className="flex items-center gap-3">
+                              <div className="size-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center font-black italic text-sm">
+                                 {store.name?.charAt(0)?.toUpperCase() || '?'}
                               </div>
                               <div>
-                                 <div className="text-xs font-bold text-white">Usuario Registrado</div>
-                                 <div className="text-[10px] text-zinc-500">{u.email}</div>
-                              </div>
-                              <div className="ml-auto text-[10px] text-zinc-600">
-                                 {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'Hoy'}
+                                 <span className="text-sm font-bold text-white">{store.name}</span>
+                                 <div className="text-[9px] text-zinc-600 font-mono">{store.slug}</div>
                               </div>
                            </div>
-                        ))}
-                        {globalUsers.length === 0 && (
-                           <div className="text-center text-zinc-600 text-[10px] py-4">Sin actividad reciente</div>
-                        )}
+                           <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${store.plan === 'PRO' ? 'text-accent bg-accent/10 border border-accent/20' : 'text-zinc-500 bg-white/5 border border-white/5'}`}>
+                              {store.plan || 'FREE'}
+                           </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                           <div className="text-center p-2 rounded-lg bg-white/[0.02]">
+                              <div className="text-lg font-black text-white tabular-nums">{storeStats[store.id]?.orders ?? '—'}</div>
+                              <div className="text-[8px] text-zinc-600 uppercase font-bold tracking-wider">Pedidos</div>
+                           </div>
+                           <div className="text-center p-2 rounded-lg bg-white/[0.02]">
+                              <div className="text-lg font-black text-accent tabular-nums">${(storeStats[store.id]?.revenue ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })}</div>
+                              <div className="text-[8px] text-zinc-600 uppercase font-bold tracking-wider">Revenue</div>
+                           </div>
+                           <div className="text-center p-2 rounded-lg bg-white/[0.02]">
+                              <div className="text-lg font-black text-white tabular-nums">{storeStats[store.id]?.clients ?? '—'}</div>
+                              <div className="text-[8px] text-zinc-600 uppercase font-bold tracking-wider">Clientes</div>
+                           </div>
+                        </div>
+                        <div className="flex gap-2">
+                           <button onClick={() => handleImpersonate(store)} className="flex-1 py-2.5 rounded-xl bg-white/5 text-[9px] font-black text-white/60 uppercase tracking-wider hover:bg-neon/10 hover:text-neon transition-all flex items-center justify-center gap-1.5">
+                              <span className="material-symbols-outlined text-xs">login</span> Entrar
+                           </button>
+                           <button onClick={() => setSelectedStore(store)} className="flex-1 py-2.5 rounded-xl bg-white/5 text-[9px] font-black text-white/60 uppercase tracking-wider hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-1.5">
+                              <span className="material-symbols-outlined text-xs">settings</span> Config
+                           </button>
+                        </div>
                      </div>
-                  </div>
+                  ))}
+                  {/* New Store Card */}
+                  <button onClick={() => setShowNewStoreModal(true)} className="p-5 rounded-2xl border border-dashed border-white/10 hover:border-accent/30 hover:bg-accent/5 transition-all flex flex-col items-center justify-center gap-3 min-h-[200px] group">
+                     <span className="material-symbols-outlined text-3xl text-zinc-600 group-hover:text-accent transition-colors">add_business</span>
+                     <span className="text-xs font-black text-zinc-600 group-hover:text-accent uppercase tracking-widest transition-colors">Nuevo Local</span>
+                  </button>
                </div>
             </div>
          )}
@@ -490,6 +628,12 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                      <span className="material-symbols-outlined text-lg">add_business</span>
                      Nuevo Local
                   </button>
+               </div>
+
+               <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 text-sm">search</span>
+                  <input value={tenantSearch} onChange={(e) => setTenantSearch(e.target.value)} placeholder="Buscar local por nombre o email..."
+                     className="w-full h-10 bg-white/[0.03] border border-white/10 rounded-xl pl-10 pr-4 text-xs text-white focus:border-accent/50 outline-none placeholder:text-white/20 transition-colors" />
                </div>
 
                {/* GENERATED LINK DISPLAY - ARRIBA */}
@@ -527,11 +671,14 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                            <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Creado</th>
                            <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Estado</th>
                            <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Plan</th>
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 text-right">Pedidos</th>
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 text-right">Revenue</th>
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 text-right">Clientes</th>
                            <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 text-right">Acciones</th>
                         </tr>
                      </thead>
                      <tbody className="divide-y divide-white/5">
-                        {stores.map(store => (
+                        {filteredStores.map(store => (
                            <tr key={store.id} className="hover:bg-white/[0.02] transition-colors group">
                               <td className="p-4">
                                  <div className="flex items-center gap-3">
@@ -577,6 +724,9 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                                     {store.plan || 'FREE'}
                                  </button>
                               </td>
+                              <td className="p-4 text-right"><span className="text-xs text-white/60 tabular-nums font-bold">{storeStats[store.id]?.orders ?? '—'}</span></td>
+                              <td className="p-4 text-right"><span className="text-xs text-accent/80 tabular-nums font-bold">${(storeStats[store.id]?.revenue ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })}</span></td>
+                              <td className="p-4 text-right"><span className="text-xs text-white/60 tabular-nums font-bold">{storeStats[store.id]?.clients ?? '—'}</span></td>
                               <td className="p-4 text-right">
                                  <div className="flex items-center justify-end gap-1.5">
                                     <button
@@ -630,10 +780,24 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                      <h2 className="text-2xl font-black italic text-white uppercase tracking-tighter">Usuarios Globales</h2>
                      <p className="text-xs text-zinc-500 font-medium mt-1">Todos los registros de la plataforma con sus locales asociados.</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                     <div className="px-4 py-2 bg-white/5 rounded-xl text-[10px] font-black text-white/60 uppercase tracking-widest">
-                        {globalUsers.length} Usuarios
-                     </div>
+               </div>
+
+               <div className="flex items-center gap-3">
+                  <div className="relative flex-1">
+                     <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 text-sm">search</span>
+                     <input value={userSearch} onChange={(e) => setUserSearch(e.target.value)} placeholder="Buscar por email o nombre..."
+                        className="w-full h-10 bg-white/[0.03] border border-white/10 rounded-xl pl-10 pr-4 text-xs text-white focus:border-accent/50 outline-none placeholder:text-white/20 transition-colors" />
+                  </div>
+                  <select value={userRoleFilter} onChange={(e) => setUserRoleFilter(e.target.value)}
+                     className="h-10 bg-[#1a1a1a] border border-white/10 rounded-xl px-3 text-xs text-white/70 focus:border-accent/50 outline-none">
+                     <option value="all" className="bg-[#1a1a1a]">Todos los Roles</option>
+                     <option value="super_admin" className="bg-[#1a1a1a]">Super Admin</option>
+                     <option value="store_owner" className="bg-[#1a1a1a]">Dueno</option>
+                     <option value="staff" className="bg-[#1a1a1a]">Staff</option>
+                     <option value="customer" className="bg-[#1a1a1a]">Cliente</option>
+                  </select>
+                  <div className="px-3 py-2 bg-white/5 rounded-xl text-[10px] font-black text-white/40 uppercase tracking-widest whitespace-nowrap">
+                     {filteredUsers.length} usuarios
                   </div>
                </div>
 
@@ -650,7 +814,7 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                         </tr>
                      </thead>
                      <tbody className="divide-y divide-white/5">
-                        {globalUsers.map(user => (
+                        {filteredUsers.map(user => (
                            <tr key={user.id} className="hover:bg-white/[0.02] transition-colors">
                               <td className="p-4">
                                  <div className="flex items-center gap-3">
@@ -675,14 +839,32 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
                                  )}
                               </td>
                               <td className="p-4">
-                                 <span className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-wider ${user.role === 'super_admin' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
-                                    user.role === 'store_owner' ? 'bg-accent/10 text-accent border border-accent/20' :
-                                       'bg-white/5 text-zinc-500 border border-white/10'
-                                    }`}>
-                                    {user.role === 'super_admin' ? 'Super Admin' :
-                                       user.role === 'store_owner' ? 'Dueño' :
-                                          user.role || 'Staff'}
-                                 </span>
+                                 {editingUserId === user.id ? (
+                                    <div className="flex items-center gap-1">
+                                       <select value={editingRole} onChange={(e) => setEditingRole(e.target.value)}
+                                          className="h-7 bg-[#1a1a1a] border border-accent/30 rounded px-2 text-[10px] text-white outline-none">
+                                          <option value="super_admin" className="bg-[#1a1a1a]">Super Admin</option>
+                                          <option value="store_owner" className="bg-[#1a1a1a]">Dueno</option>
+                                          <option value="staff" className="bg-[#1a1a1a]">Staff</option>
+                                          <option value="customer" className="bg-[#1a1a1a]">Cliente</option>
+                                       </select>
+                                       <button onClick={() => handleRoleChange(user.id, editingRole)} className="size-6 rounded bg-accent/20 text-accent flex items-center justify-center hover:bg-accent/30 transition-colors">
+                                          <span className="material-symbols-outlined text-xs">check</span>
+                                       </button>
+                                       <button onClick={() => setEditingUserId(null)} className="size-6 rounded bg-white/5 text-zinc-500 flex items-center justify-center hover:bg-white/10 transition-colors">
+                                          <span className="material-symbols-outlined text-xs">close</span>
+                                       </button>
+                                    </div>
+                                 ) : (
+                                    <button onClick={() => { setEditingUserId(user.id); setEditingRole(user.role || 'customer'); }}
+                                       className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-wider cursor-pointer hover:opacity-80 transition-opacity inline-flex items-center gap-1 ${user.role === 'super_admin' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
+                                          user.role === 'store_owner' ? 'bg-accent/10 text-accent border border-accent/20' :
+                                             'bg-white/5 text-zinc-500 border border-white/10'}`}
+                                       title="Click para editar rol">
+                                       {user.role === 'super_admin' ? 'Super Admin' : user.role === 'store_owner' ? 'Dueno' : user.role === 'staff' ? 'Staff' : user.role === 'customer' ? 'Cliente' : user.role || 'Staff'}
+                                       <span className="material-symbols-outlined text-[8px] opacity-40">edit</span>
+                                    </button>
+                                 )}
                               </td>
                               <td className="p-4">
                                  <span className="text-[10px] text-zinc-500">
@@ -716,8 +898,233 @@ const SaasAdmin: React.FC<{ initialTab?: SaasTab }> = ({ initialTab = 'dashboard
             </div>
          )}
 
+         {/* METRICS TAB */}
+         {activeTab === 'metrics' && (
+            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+               <div className="flex items-center justify-between">
+                  <div>
+                     <h2 className="text-2xl font-black italic text-white uppercase tracking-tighter">Metricas de Plataforma</h2>
+                     <p className="text-xs text-zinc-500 font-medium mt-1">Revenue, clientes y operaciones de todos los locales.</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                     {(['today','week','month','all'] as const).map(p => (
+                        <button key={p} onClick={() => setMetricsPeriod(p)}
+                           className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${metricsPeriod === p ? 'bg-accent/10 text-accent border border-accent/20' : 'bg-white/5 text-zinc-500 border border-white/5 hover:bg-white/10'}`}>
+                           {p === 'today' ? 'Hoy' : p === 'week' ? '7 Dias' : p === 'month' ? '30 Dias' : 'Todo'}
+                        </button>
+                     ))}
+                     <button onClick={() => fetchMetricsData()} className="p-2 hover:bg-white/5 rounded-full text-zinc-500 hover:text-white transition-colors ml-2">
+                        <span className={`material-symbols-outlined ${metricsLoading ? 'animate-spin' : ''}`}>refresh</span>
+                     </button>
+                  </div>
+               </div>
 
-         {/* MODAL CONFIG (EDICIÓN PREMIUM) */}
+               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="p-5 rounded-2xl bg-[#0A0C0A] border border-accent/20 relative overflow-hidden">
+                     <div className="absolute top-0 right-0 w-20 h-20 bg-accent/10 blur-3xl -mr-10 -mt-10"></div>
+                     <span className="text-[10px] font-black text-accent uppercase tracking-widest">Revenue Total</span>
+                     <div className="text-3xl font-black text-white mt-1 tabular-nums">${metricsData.totalRevenue.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</div>
+                  </div>
+                  <div className="p-5 rounded-2xl bg-[#0A0C0A] border border-white/5">
+                     <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Pedidos</span>
+                     <div className="text-3xl font-black text-white mt-1 tabular-nums">{metricsData.totalOrders}</div>
+                  </div>
+                  <div className="p-5 rounded-2xl bg-[#0A0C0A] border border-white/5">
+                     <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Clientes Totales</span>
+                     <div className="text-3xl font-black text-white mt-1 tabular-nums">{metricsData.totalClients}</div>
+                  </div>
+                  <div className="p-5 rounded-2xl bg-[#0A0C0A] border border-white/5">
+                     <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Ticket Promedio</span>
+                     <div className="text-3xl font-black text-white mt-1 tabular-nums">${metricsData.totalOrders > 0 ? (metricsData.totalRevenue / metricsData.totalOrders).toFixed(0) : '0'}</div>
+                  </div>
+               </div>
+
+               <div className="rounded-3xl border border-white/5 overflow-hidden bg-[#0A0C0A]">
+                  <div className="p-4 border-b border-white/5"><h3 className="text-xs font-black text-white/40 uppercase tracking-widest">Desglose por Local</h3></div>
+                  {metricsLoading ? (
+                     <div className="p-12 text-center"><div className="w-8 h-8 border-2 border-accent/20 border-t-accent rounded-full animate-spin mx-auto mb-3"></div><p className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Calculando metricas...</p></div>
+                  ) : (
+                     <table className="w-full text-left">
+                        <thead><tr className="border-b border-white/5 bg-white/[0.02]">
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Local</th>
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 text-right">Pedidos</th>
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 text-right">Revenue</th>
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 text-right">Clientes</th>
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 text-right">Ticket Prom.</th>
+                        </tr></thead>
+                        <tbody className="divide-y divide-white/5">
+                           {metricsData.storeMetrics.map(sm => (
+                              <tr key={sm.store_id} className="hover:bg-white/[0.02] transition-colors">
+                                 <td className="p-4"><div className="flex items-center gap-2"><div className="size-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center font-black text-xs">{sm.store_name?.charAt(0)?.toUpperCase()}</div><span className="text-sm font-bold text-white">{sm.store_name}</span></div></td>
+                                 <td className="p-4 text-sm text-white/70 text-right tabular-nums font-bold">{sm.order_count}</td>
+                                 <td className="p-4 text-sm text-accent text-right tabular-nums font-bold">${sm.total_revenue.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</td>
+                                 <td className="p-4 text-sm text-white/70 text-right tabular-nums font-bold">{sm.client_count}</td>
+                                 <td className="p-4 text-sm text-white/70 text-right tabular-nums font-bold">${sm.avg_ticket.toFixed(0)}</td>
+                              </tr>
+                           ))}
+                        </tbody>
+                     </table>
+                  )}
+               </div>
+
+               <div className="rounded-3xl border border-white/5 overflow-hidden bg-[#0A0C0A]">
+                  <div className="p-4 border-b border-white/5"><h3 className="text-xs font-black text-white/40 uppercase tracking-widest">Ultimos Pedidos (Global)</h3></div>
+                  <div className="divide-y divide-white/5">
+                     {metricsData.recentOrders.map((order: any) => {
+                        const storeName = stores.find(s => s.id === order.store_id)?.name || '—';
+                        return (
+                           <div key={order.id} className="flex items-center gap-4 p-4 hover:bg-white/[0.02] transition-colors">
+                              <span className="px-2 py-1 rounded-lg bg-accent/10 text-accent text-[9px] font-black uppercase whitespace-nowrap">{storeName}</span>
+                              <span className="text-sm font-bold text-white flex-1 tabular-nums">${Number(order.total_amount).toLocaleString('es-AR', { maximumFractionDigits: 0 })}</span>
+                              <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${order.status === 'completed' || order.status === 'served' || order.status === 'delivered' ? 'text-neon bg-neon/10' : order.status === 'cancelled' ? 'text-red-400 bg-red-400/10' : 'text-amber-400 bg-amber-400/10'}`}>{order.status}</span>
+                              <span className="text-[10px] text-zinc-600 tabular-nums">{new Date(order.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })}</span>
+                           </div>
+                        );
+                     })}
+                     {metricsData.recentOrders.length === 0 && !metricsLoading && (
+                        <div className="p-8 text-center text-zinc-600 text-xs font-bold uppercase tracking-widest">Sin pedidos en el periodo</div>
+                     )}
+                  </div>
+               </div>
+            </div>
+         )}
+
+         {/* PLANS TAB */}
+         {activeTab === 'plans' && (
+            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+               <div>
+                  <h2 className="text-2xl font-black italic text-white uppercase tracking-tighter">Planes y Billing</h2>
+                  <p className="text-xs text-zinc-500 font-medium mt-1">Distribucion de planes y gestion de suscripciones.</p>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {(['FREE', 'PRO', 'DEMO'] as const).map(plan => {
+                     const count = stores.filter(s => (s.plan || 'FREE').toUpperCase() === plan).length;
+                     const price = plan === 'PRO' ? 50 : 0;
+                     const icon = plan === 'PRO' ? 'military_tech' : plan === 'DEMO' ? 'timer' : 'lock_open';
+                     return (
+                        <div key={plan} className={`p-6 rounded-2xl bg-[#0A0C0A] border ${plan === 'PRO' ? 'border-accent/30' : 'border-white/5'} space-y-3`}>
+                           <div className="flex items-center gap-3">
+                              <span className={`material-symbols-outlined text-2xl ${plan === 'PRO' ? 'text-accent' : plan === 'DEMO' ? 'text-purple-400' : 'text-zinc-500'}`}>{icon}</span>
+                              <span className={`text-lg font-black uppercase ${plan === 'PRO' ? 'text-accent' : plan === 'DEMO' ? 'text-purple-400' : 'text-zinc-500'}`}>{plan}</span>
+                           </div>
+                           <div className="text-4xl font-black text-white tabular-nums">{count}</div>
+                           <div className="text-[10px] text-zinc-600 font-bold uppercase">{count === 1 ? 'local' : 'locales'} {price > 0 ? `· $${price}/mes c/u` : '· Gratis'}</div>
+                           {price > 0 && <div className="text-sm font-black text-accent">MRR: ${count * price}/mes</div>}
+                        </div>
+                     );
+                  })}
+               </div>
+
+               <div className="rounded-3xl border border-white/5 overflow-hidden bg-[#0A0C0A]">
+                  <table className="w-full text-left">
+                     <thead><tr className="border-b border-white/5 bg-white/[0.02]">
+                        <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Local</th>
+                        <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Plan Actual</th>
+                        <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Creado</th>
+                        <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Estado</th>
+                        <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 text-right">Accion</th>
+                     </tr></thead>
+                     <tbody className="divide-y divide-white/5">
+                        {stores.map(store => (
+                           <tr key={store.id} className="hover:bg-white/[0.02] transition-colors">
+                              <td className="p-4"><div className="flex items-center gap-2"><div className="size-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center font-black text-xs">{store.name?.charAt(0)?.toUpperCase()}</div><span className="text-sm font-bold text-white">{store.name}</span></div></td>
+                              <td className="p-4"><span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase border ${store.plan === 'PRO' ? 'text-accent border-accent/30 bg-accent/10' : store.plan === 'DEMO' ? 'text-purple-400 border-purple-400/30 bg-purple-400/10' : 'text-zinc-500 border-white/10 bg-white/5'}`}>{store.plan || 'FREE'}</span></td>
+                              <td className="p-4 text-[10px] text-zinc-500">{store.created_at ? new Date(store.created_at).toLocaleDateString('es-AR') : '—'}</td>
+                              <td className="p-4"><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${store.onboarding_status === 'COMPLETED' ? 'bg-neon/10 text-neon' : 'bg-amber-500/10 text-amber-500'}`}><div className={`size-1.5 rounded-full ${store.onboarding_status === 'COMPLETED' ? 'bg-neon' : 'bg-amber-500'}`}></div>{store.onboarding_status === 'COMPLETED' ? 'Activo' : 'Pendiente'}</span></td>
+                              <td className="p-4 text-right"><button onClick={() => { setPlanModalStore(store); setShowPlanModal(true); }} className="px-4 py-2 rounded-lg bg-white/5 text-[9px] font-black text-white/60 uppercase border border-white/10 hover:bg-white/10 hover:text-white transition-all">Cambiar Plan</button></td>
+                           </tr>
+                        ))}
+                     </tbody>
+                  </table>
+               </div>
+
+               <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-center">
+                  <p className="text-[9px] text-white/30 font-bold uppercase tracking-widest">FREE = $0/mes (limitado) · PRO = $50/mes (completo) · DEMO = Trial temporal</p>
+               </div>
+            </div>
+         )}
+
+         {/* AUDIT TAB */}
+         {activeTab === 'audit' && (
+            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+               <div className="flex items-center justify-between">
+                  <div>
+                     <h2 className="text-2xl font-black italic text-white uppercase tracking-tighter">Auditoria Master</h2>
+                     <p className="text-xs text-zinc-500 font-medium mt-1">Registro de cambios en todos los locales.</p>
+                  </div>
+                  <button onClick={() => fetchAuditData()} className="p-2 hover:bg-white/5 rounded-full text-zinc-500 hover:text-white transition-colors">
+                     <span className={`material-symbols-outlined ${auditLoading ? 'animate-spin' : ''}`}>refresh</span>
+                  </button>
+               </div>
+
+               <div className="flex items-center gap-3">
+                  <select value={auditStoreFilter} onChange={(e) => setAuditStoreFilter(e.target.value)}
+                     className="h-10 bg-[#1a1a1a] border border-white/10 rounded-xl px-3 text-xs text-white/70 focus:border-accent/50 outline-none">
+                     <option value="all" className="bg-[#1a1a1a]">Todos los Locales</option>
+                     {stores.map(s => <option key={s.id} value={s.id} className="bg-[#1a1a1a]">{s.name}</option>)}
+                  </select>
+                  <select value={auditTableFilter} onChange={(e) => setAuditTableFilter(e.target.value)}
+                     className="h-10 bg-[#1a1a1a] border border-white/10 rounded-xl px-3 text-xs text-white/70 focus:border-accent/50 outline-none">
+                     <option value="all" className="bg-[#1a1a1a]">Todas las Tablas</option>
+                     <option value="products" className="bg-[#1a1a1a]">Productos</option>
+                     <option value="inventory_items" className="bg-[#1a1a1a]">Inventario</option>
+                     <option value="orders" className="bg-[#1a1a1a]">Pedidos</option>
+                     <option value="profiles" className="bg-[#1a1a1a]">Usuarios</option>
+                     <option value="stores" className="bg-[#1a1a1a]">Tiendas</option>
+                     <option value="clients" className="bg-[#1a1a1a]">Clientes</option>
+                  </select>
+                  <span className="text-[10px] text-zinc-600 font-bold uppercase ml-auto">{auditLogs.length} registros</span>
+               </div>
+
+               <div className="rounded-3xl border border-white/5 overflow-hidden bg-[#0A0C0A]">
+                  {auditLoading ? (
+                     <div className="p-12 text-center"><div className="w-8 h-8 border-2 border-accent/20 border-t-accent rounded-full animate-spin mx-auto mb-3"></div><p className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Cargando audit logs...</p></div>
+                  ) : auditLogs.length === 0 ? (
+                     <div className="p-12 text-center text-zinc-600 text-xs uppercase tracking-widest font-bold">Sin registros de auditoria</div>
+                  ) : (
+                     <table className="w-full text-left">
+                        <thead><tr className="border-b border-white/5 bg-white/[0.02]">
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Fecha</th>
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Local</th>
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Tabla</th>
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Operacion</th>
+                           <th className="p-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Detalle</th>
+                        </tr></thead>
+                        <tbody className="divide-y divide-white/5">
+                           {auditLogs.map((log: any) => {
+                              const opColor = log.operation === 'INSERT' ? 'text-neon bg-neon/10' : log.operation === 'DELETE' ? 'text-red-400 bg-red-400/10' : 'text-amber-400 bg-amber-400/10';
+                              const opLabel = log.operation === 'INSERT' ? 'Creacion' : log.operation === 'DELETE' ? 'Eliminacion' : 'Modificacion';
+                              let detail = '';
+                              if (log.operation === 'INSERT' && log.new_data) detail = `Nuevo: "${log.new_data.name || log.new_data.full_name || log.new_data.email || 'elemento'}"`;
+                              else if (log.operation === 'DELETE' && log.old_data) detail = `Eliminado: "${log.old_data.name || log.old_data.full_name || 'elemento'}"`;
+                              else if (log.operation === 'UPDATE' && log.old_data && log.new_data) {
+                                 const changes: string[] = [];
+                                 for (const key of Object.keys(log.new_data)) {
+                                    if (JSON.stringify(log.old_data[key]) !== JSON.stringify(log.new_data[key]) && !['updated_at', 'created_at'].includes(key)) {
+                                       changes.push(key); if (changes.length >= 3) break;
+                                    }
+                                 }
+                                 detail = changes.length > 0 ? `Campos: ${changes.join(', ')}` : 'Cambio registrado';
+                              }
+                              return (
+                                 <tr key={log.id} className="hover:bg-white/[0.02] transition-colors">
+                                    <td className="p-4 text-[10px] text-zinc-500 font-mono whitespace-nowrap">{log.created_at ? new Date(log.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' }) : '—'} {log.created_at ? new Date(log.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : ''}</td>
+                                    <td className="p-4"><span className="px-2 py-0.5 rounded bg-accent/10 text-accent text-[9px] font-black uppercase">{log.store_name}</span></td>
+                                    <td className="p-4 text-[10px] text-white/50 font-mono">{log.table_name}</td>
+                                    <td className="p-4"><span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${opColor}`}>{opLabel}</span></td>
+                                    <td className="p-4 text-[10px] text-white/40 max-w-xs truncate">{detail}</td>
+                                 </tr>
+                              );
+                           })}
+                        </tbody>
+                     </table>
+                  )}
+               </div>
+            </div>
+         )}
+
+         {/* MODAL CONFIG (EDICION PREMIUM) */}
          {selectedStore && (
             <div className="fixed inset-0 z-[500] flex items-center justify-center p-6">
                <div className="absolute inset-0 bg-black/98 backdrop-blur-3xl" onClick={() => setSelectedStore(null)}></div>
