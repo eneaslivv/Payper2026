@@ -348,80 +348,77 @@ const CheckoutPage: React.FC = () => {
         if (!mpResult?.success) throw new Error(mpResult?.message || 'Failed to create order');
 
         // 3.2 Invoke create-checkout Edge Function
-        const { data: rawCheckoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout', {
-          body: {
-            store_id: store.id,
-            order_id: mpOrderId,
-            items: cart.map(item => ({
-              title: item.name,
-              unit_price: item.price,
-              quantity: item.quantity
-            })),
-            back_urls: {
-              success: `${window.location.origin}/#/m/${slug}/order/${mpOrderId}`,
-              failure: `${window.location.origin}/#/m/${slug}/checkout`,
-              pending: `${window.location.origin}/#/m/${slug}/order/${mpOrderId}`
-            },
-            external_reference: mpOrderId
-          }
-        });
+        let checkoutData: any = null;
+        let checkoutError: any = null;
+
+        try {
+          const result = await supabase.functions.invoke('create-checkout', {
+            body: {
+              store_id: store.id,
+              order_id: mpOrderId,
+              items: cart.map(item => ({
+                title: item.name,
+                unit_price: item.price,
+                quantity: item.quantity
+              })),
+              back_urls: {
+                success: `${window.location.origin}/#/m/${slug}/order/${mpOrderId}`,
+                failure: `${window.location.origin}/#/m/${slug}/checkout`,
+                pending: `${window.location.origin}/#/m/${slug}/order/${mpOrderId}`
+              },
+              external_reference: mpOrderId
+            }
+          });
+          checkoutData = result.data;
+          checkoutError = result.error;
+        } catch (invokeErr: any) {
+          // functions.invoke can throw on network/CORS errors
+          console.error('[MP] functions.invoke threw:', invokeErr);
+          checkoutError = invokeErr;
+        }
 
         if (checkoutError) {
-          console.error('Checkout Error:', checkoutError);
-
-          // Try to extract error message from the response body if it's a 400
+          console.error('[MP] Checkout Error:', checkoutError);
           try {
             const body = await (checkoutError as any).context?.json();
-            if (body?.error) {
-              console.error('Detailed Edge Function Error:', body.error);
-              addToast(body.error, 'error');
-            } else {
-              addToast('Error al conectar con Mercado Pago', 'error');
-            }
-          } catch (e) {
+            addToast(body?.error || 'Error al conectar con Mercado Pago', 'error');
+          } catch {
             addToast('Error al conectar con Mercado Pago', 'error');
           }
-
           setIsProcessingPayment(false);
           return;
         }
 
-        // Parse response — handle both JSON object and string responses
-        let checkoutData = rawCheckoutData as any;
+        // Parse response — handle string, Blob, and object responses
         if (typeof checkoutData === 'string') {
           try { checkoutData = JSON.parse(checkoutData); } catch { /* keep as-is */ }
+        } else if (checkoutData instanceof Blob) {
+          try {
+            const text = await checkoutData.text();
+            checkoutData = JSON.parse(text);
+          } catch { /* keep as-is */ }
         }
 
+        console.log('[MP] Checkout response:', typeof checkoutData, checkoutData);
+
         if (checkoutData?.error) {
-          console.error('MP Application Error:', checkoutData.error);
+          console.error('[MP] Application Error:', checkoutData.error);
           addToast(checkoutData.error || 'Error de Mercado Pago', 'error');
           setIsProcessingPayment(false);
           return;
         }
 
         // 3.4 Redirect to Mercado Pago
-        const checkoutUrl = checkoutData?.checkout_url || checkoutData?.sandbox_url;
+        const checkoutUrl = checkoutData?.checkout_url || checkoutData?.sandbox_url || checkoutData?.init_point;
         if (checkoutUrl) {
           clearCart();
           window.location.href = checkoutUrl;
           return;
         }
 
-        // Fallback: try to get URL from payment_intents
-        console.error('No checkout_url in response, raw data:', rawCheckoutData);
-        const { data: piData } = await supabase
-          .from('payment_intents' as any)
-          .select('init_point')
-          .eq('order_id', mpOrderId)
-          .single();
-
-        if ((piData as any)?.init_point) {
-          clearCart();
-          window.location.href = (piData as any).init_point;
-          return;
-        }
-
-        throw new Error('No se recibió URL de checkout');
+        // No URL found — log everything for debugging
+        console.error('[MP] No checkout_url found. Response type:', typeof checkoutData, 'Keys:', checkoutData ? Object.keys(checkoutData) : 'null');
+        throw new Error('No se recibió URL de pago de Mercado Pago');
       }
 
     } catch (err: any) {
