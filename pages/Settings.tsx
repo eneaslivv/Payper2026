@@ -1051,124 +1051,114 @@ const Settings: React.FC = () => {
 
       {/* MODAL: Editor de Matriz de Permisos (ROBUSTO) */}
       {showRoleModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/95 backdrop-blur-md" onClick={() => setShowRoleModal(false)}></div>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-3">
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" onClick={() => setShowRoleModal(false)}></div>
 
-          {/* MODAL REFACTORIZADO: Columna Única (Ancho Controlado) */}
-          <div className="relative bg-[#0D0F0D] rounded-xl shadow-2xl flex flex-col border border-white/10 overflow-hidden w-full max-w-lg max-h-[90vh]">
+          <div className="relative bg-[#0D0F0D] rounded-xl shadow-2xl flex flex-col border border-white/10 overflow-hidden w-full max-w-md max-h-[85vh]">
 
             {/* Header */}
-            <div className="px-5 py-4 border-b border-white/5 flex justify-between items-center shrink-0 bg-[#111311]">
-              <h3 className="text-base font-black italic-black uppercase tracking-tighter text-white">Configurar <span className="text-neon">Rol</span></h3>
-              <button onClick={() => setShowRoleModal(false)} className="size-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all">
-                <span className="material-symbols-outlined text-sm">close</span>
+            <div className="px-4 py-2.5 border-b border-white/5 flex justify-between items-center shrink-0 bg-[#111311]">
+              <h3 className="text-xs font-black italic uppercase tracking-tight text-white">Configurar <span className="text-neon">Rol</span></h3>
+              <button onClick={() => setShowRoleModal(false)} className="size-6 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all">
+                <span className="material-symbols-outlined text-xs">close</span>
               </button>
             </div>
 
-            {/* Body: Scrollable Vertical Stack */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-6">
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-3">
 
-              {/* Sección 1: Datos Básicos */}
-              <div className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest ml-1">Nombre del Rol</label>
+              {/* Nombre + Descripción en fila */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-0.5">
+                  <label className="text-[7px] font-black uppercase text-white/30 tracking-widest ml-0.5">Nombre</label>
                   <input
                     value={roleForm.name}
                     onChange={e => setRoleForm({ ...roleForm, name: e.target.value })}
-                    className="w-full h-10 px-4 rounded-lg bg-white/5 border border-white/10 font-bold text-[10px] text-white uppercase outline-none focus:ring-1 focus:ring-neon/30 placeholder:text-white/20"
-                    placeholder="EJ: SUPERVISOR"
+                    className="w-full h-8 px-2.5 rounded-md bg-white/5 border border-white/10 font-bold text-[9px] text-white uppercase outline-none focus:border-neon/40 placeholder:text-white/15"
+                    placeholder="Ej: Mozo"
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest ml-1">Descripción</label>
-                  <textarea
+                <div className="space-y-0.5">
+                  <label className="text-[7px] font-black uppercase text-white/30 tracking-widest ml-0.5">Descripción</label>
+                  <input
                     value={roleForm.description}
                     onChange={e => setRoleForm({ ...roleForm, description: e.target.value })}
-                    className="w-full h-20 p-3 rounded-xl bg-white/5 border border-white/10 font-bold text-[10px] text-white outline-none focus:ring-1 focus:ring-neon/30 placeholder:text-white/20 resize-none leading-relaxed"
-                    placeholder="Describe las responsabilidades..."
+                    className="w-full h-8 px-2.5 rounded-md bg-white/5 border border-white/10 font-bold text-[9px] text-white outline-none focus:border-neon/40 placeholder:text-white/15"
+                    placeholder="Opcional..."
                   />
                 </div>
               </div>
 
-              {/* Sección 2: Matriz Compacta */}
-              <div className="space-y-2">
-                <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest ml-1">Permisos Operativos</label>
-                <div className="rounded-xl border border-white/5 overflow-hidden bg-[#0A0C0A]">
-                  <table className="w-full text-left border-collapse">
-                    <thead className="bg-white/[0.02]">
-                      <tr className="border-b border-white/5">
-                        <th className="px-3 py-2 text-[8px] font-black uppercase text-white/30 tracking-widest">Módulo</th>
-                        <th className="px-1 py-2 text-center text-[7px] font-black uppercase text-white/30 tracking-widest w-10">Ver</th>
-                        <th className="px-1 py-2 text-center text-[7px] font-black uppercase text-white/30 tracking-widest w-10">Crear</th>
-                        <th className="px-1 py-2 text-center text-[7px] font-black uppercase text-white/30 tracking-widest w-10">Edit</th>
-                        <th className="px-1 py-2 text-center text-[7px] font-black uppercase text-white/30 tracking-widest w-10">Del</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {SECTIONS.map(s => {
-                        const perms = (roleForm.permissions?.[s.slug] as any) || {};
-                        return (
-                          <tr key={s.slug} className="hover:bg-white/[0.01] transition-colors group">
-                            <td className="px-3 py-2">
-                              <p className="text-[9px] font-black text-white uppercase italic tracking-tight">{s.label}</p>
+              {/* Matriz de permisos ultra compacta */}
+              <div className="rounded-lg border border-white/5 overflow-hidden bg-[#0A0C0A]">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/5 bg-white/[0.02]">
+                      <th className="px-2 py-1 text-left text-[7px] font-black uppercase text-white/25 tracking-widest">Módulo</th>
+                      {['Ver', 'Crear', 'Edit', 'Del'].map(h => (
+                        <th key={h} className="px-0 py-1 text-center text-[6px] font-black uppercase text-white/25 tracking-wider w-8">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {SECTIONS.map((s, i) => {
+                      const perms = (roleForm.permissions?.[s.slug] as any) || {};
+                      return (
+                        <tr key={s.slug} className={`${i % 2 === 0 ? '' : 'bg-white/[0.01]'} hover:bg-white/[0.03] transition-colors`}>
+                          <td className="px-2 py-[3px]">
+                            <span className="text-[8px] font-bold text-white/70 uppercase tracking-tight">{s.label}</span>
+                          </td>
+                          {['view', 'create', 'edit', 'delete'].map(action => (
+                            <td key={action} className="px-0 py-[3px] text-center">
+                              <button
+                                onClick={() => togglePermission(s.slug, action)}
+                                className={`size-5 rounded transition-all flex items-center justify-center mx-auto ${perms[action]
+                                  ? action === 'delete' ? 'bg-red-500/80 text-white' : 'bg-neon/90 text-black'
+                                  : 'bg-white/[0.04] text-white/10 hover:bg-white/[0.08]'
+                                  }`}
+                              >
+                                <span className="material-symbols-outlined text-[9px]">
+                                  {perms[action] ? 'check' : 'remove'}
+                                </span>
+                              </button>
                             </td>
-                            {['view', 'create', 'edit', 'delete'].map(action => (
-                              <td key={action} className="px-1 py-2 text-center">
-                                <button
-                                  onClick={() => togglePermission(s.slug, action)}
-                                  className={`size-6 rounded border transition-all flex items-center justify-center mx-auto ${perms[action]
-                                    ? action === 'delete' ? 'bg-red-500 text-white border-red-600' : 'bg-neon text-black border-neon'
-                                    : 'bg-white/5 border-white/5 text-white/10 hover:border-white/20'
-                                    }`}
-                                >
-                                  <span className="material-symbols-outlined text-[10px] font-black">
-                                    {perms[action] ? 'check' : 'remove'}
-                                  </span>
-                                </button>
-                              </td>
-                            ))}
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                          ))}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
-
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-white/5 bg-[#111311] flex justify-end gap-3 shrink-0">
+            <div className="px-3 py-2 border-t border-white/5 bg-[#111311] flex justify-end gap-2 shrink-0">
               <button
                 onClick={() => setShowRoleModal(false)}
-                className="px-5 py-3 rounded-xl border border-white/10 font-black text-[9px] uppercase text-white/40 hover:text-white hover:bg-white/5 transition-all"
+                className="px-3 py-1.5 rounded-lg border border-white/10 font-black text-[8px] uppercase text-white/40 hover:text-white hover:bg-white/5 transition-all"
               >
                 Cancelar
               </button>
               <button
                 onClick={async () => {
-                  const debugInfo = profile ? `ID: ${profile.id}, Store: ${profile.store_id || 'N/A'}` : 'SIN PERFIL';
-                  alert("DEBUG SISTEMA:\n" + debugInfo);
-
                   if (!roleForm.name) {
-                    alert('⚠️ Faltan datos: Escribe un nombre para el rol');
+                    addToast('Escribe un nombre para el rol', 'error');
                     return;
                   }
                   if (!profile?.store_id) {
-                    alert('⛔ ERROR CRÍTICO: No se detecta la tienda (store_id) en tu perfil. Recarga la página.');
+                    addToast('No se detecta la tienda. Recarga la página.', 'error');
                     return;
                   }
-
                   try {
                     await saveRole();
                   } catch (e: any) {
-                    alert('Error al guardar: ' + e.message);
+                    addToast('Error al guardar: ' + e.message, 'error');
                   }
                 }}
-                className="px-6 py-3 bg-neon text-black rounded-xl font-black text-[9px] uppercase tracking-widest shadow-neon-soft hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                className="px-4 py-1.5 bg-neon text-black rounded-lg font-black text-[8px] uppercase tracking-widest shadow-neon-soft hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5"
               >
-                <span className="material-symbols-outlined text-base">save</span>
-                GUARDAR JERARQUÍA
+                <span className="material-symbols-outlined text-sm">save</span>
+                Guardar
               </button>
             </div>
           </div>
