@@ -56,7 +56,7 @@ const QRDetail: React.FC<QRDetailProps> = ({ qr, bars = [], mode, storeSlug = 'd
   const isOperativeMode = mode === AppMode.VIEW;
 
   // Generate QR URL
-  const qrUrl = `${window.location.origin}/m/${storeSlug}?table=${qr.name}`;
+  const qrUrl = `${window.location.origin}/#/m/${storeSlug}?table=${qr.name}`;
 
   // Fetch real stats and orders
   const fetchStats = async () => {

@@ -426,7 +426,6 @@ const Clients: React.FC = () => {
 
     setIsLoadingWallet(true);
     try {
-      // Use V2: Handles Ledger + Client Balance Update atomically
       const { data, error } = await (supabase.rpc as any)('admin_add_balance_v2', {
         p_user_id: walletClient.id,
         p_amount: parseFloat(walletAmount),
@@ -435,35 +434,19 @@ const Clients: React.FC = () => {
       });
 
       if (error) throw error;
+      if (data && data.success === false) throw new Error(data.message || data.error || 'Error al cargar saldo');
 
-      const newBalance = data.new_balance;
+      const newBalance = data?.new_balance ?? 0;
 
-      // Update UI state with new balance (Optimistic-like)
       setClients(prev => prev.map(c =>
         c.id === walletClient.id ? { ...c, wallet_balance: newBalance } : c
       ));
-
-      // Reset modal state
       setWalletClient(prev => prev ? { ...prev, wallet_balance: newBalance } : null);
       setWalletAmount('');
       setWalletDescription('');
 
-      // Refresh transactions log
       await fetchWalletInfo(walletClient.id);
-
-      // Notify success (using existing addToast or alert)
-      // Assuming addToast is available or falling back to simple alert if not visible in this scope
-      // The viewed code showed 'addToast', so I'll try to use it, else generic alert.
-      // Looking at lines 402, setWalletTransactions and addToast are used.
-      // So fetchWalletInfo should update transactions. 
-      // I'll assume fetchWalletInfo handles transaction fetching as seen in original code?
-      // Wait, original code had explicit fetch after comments.
-      // I should verify if fetchWalletInfo exists and what it does.
-      // Line 379 calls fetchWalletInfo(walletClient.id).
-
-      // Re-adding the explicit fetch if fetchWalletInfo is not enough?
-      // Actually line 412 is // Points Functions.
-      // I'll stick to the cleanest logic: RPC -> State -> fetchWalletInfo.
+      addToast(`Saldo cargado: $${parseFloat(walletAmount).toFixed(2)}`, 'success');
 
     } catch (e: any) {
       console.error('Error adding balance:', e);
@@ -911,21 +894,21 @@ const Clients: React.FC = () => {
                   <select
                     value={walletSource}
                     onChange={(e) => setWalletSource(e.target.value as any)}
-                    className="h-12 px-4 rounded-xl bg-white/[0.03] border border-white/10 text-[10px] font-bold text-white uppercase outline-none focus:ring-1 focus:ring-accent/30"
+                    className="h-12 px-4 rounded-xl bg-[#1a1a1a] border border-white/10 text-[10px] font-bold text-white uppercase outline-none focus:ring-1 focus:ring-accent/30"
                   >
-                    <option value="cash">Efectivo (Local)</option>
-                    <option value="digital">Digital (App)</option>
-                    <option value="system">Sistema (Ajuste)</option>
+                    <option value="cash" className="bg-[#1a1a1a] text-white">Efectivo (Local)</option>
+                    <option value="digital" className="bg-[#1a1a1a] text-white">Digital (App)</option>
+                    <option value="system" className="bg-[#1a1a1a] text-white">Sistema (Ajuste)</option>
                   </select>
                   <select
                     value={walletPaymentMethod}
                     onChange={(e) => setWalletPaymentMethod(e.target.value)}
-                    className="h-12 px-4 rounded-xl bg-white/[0.03] border border-white/10 text-[10px] font-bold text-white uppercase outline-none focus:ring-1 focus:ring-accent/30"
+                    className="h-12 px-4 rounded-xl bg-[#1a1a1a] border border-white/10 text-[10px] font-bold text-white uppercase outline-none focus:ring-1 focus:ring-accent/30"
                   >
-                    <option value="cash">Cash</option>
-                    <option value="card">Tarjeta</option>
-                    <option value="qr">QR</option>
-                    <option value="transfer">Transferencia</option>
+                    <option value="cash" className="bg-[#1a1a1a] text-white">Cash</option>
+                    <option value="card" className="bg-[#1a1a1a] text-white">Tarjeta</option>
+                    <option value="qr" className="bg-[#1a1a1a] text-white">QR</option>
+                    <option value="transfer" className="bg-[#1a1a1a] text-white">Transferencia</option>
                   </select>
                 </div>
               </div>

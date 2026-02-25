@@ -188,7 +188,7 @@ const BarDetail: React.FC<BarDetailProps> = ({
                 <div className="bg-white p-6 rounded-3xl border-4 border-[#36e27b] shadow-[0_0_50px_rgba(54,226,123,0.3)]">
                   {qrHash && (
                     <QRCode
-                      value={`${getAppUrl()}/qr/${qrHash}`}
+                      value={`${getAppUrl()}/#/qr/${qrHash}`}
                       size={200}
                       viewBox={`0 0 256 256`}
                     />
@@ -198,13 +198,13 @@ const BarDetail: React.FC<BarDetailProps> = ({
                 <div className="space-y-2">
                   <p className="text-zinc-500 text-[9px] font-black uppercase tracking-[0.2em]">Enlace Permanente</p>
                   <div className="p-3 bg-zinc-900 rounded-xl border border-zinc-800 text-[10px] font-mono text-zinc-400 break-all max-w-[280px]">
-                    {getAppUrl()}/qr/{qrHash}
+                    {getAppUrl()}/#/qr/{qrHash}
                   </div>
                 </div>
 
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(`${getAppUrl()}/qr/${qrHash}`);
+                    navigator.clipboard.writeText(`${getAppUrl()}/#/qr/${qrHash}`);
                     addToast('Enlace Copiado', 'success');
                   }}
                   className="px-6 py-3 bg-[#36e27b] text-black font-black text-[10px] uppercase tracking-widest rounded-xl hover:scale-105 transition-all shadow-lg shadow-[#36e27b]/20"

@@ -4,6 +4,14 @@ import payperLogo from './src/assets/payper-logo.png';
 import payperBranding from './src/assets/payper-branding.png';
 import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
 
+// Auto-redirect non-hash URLs to hash URLs (for QR codes generated without #)
+(() => {
+  const path = window.location.pathname;
+  if (path.startsWith('/qr/') || path.startsWith('/m/') || path.startsWith('/reserve/')) {
+    window.location.replace(`${window.location.origin}/#${path}${window.location.search}`);
+  }
+})();
+
 import DebugPayment from './pages/DebugPayment';
 import Dashboard from './pages/Dashboard';
 import InventoryManagement from './pages/InventoryManagement';

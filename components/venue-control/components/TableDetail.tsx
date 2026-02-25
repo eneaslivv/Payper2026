@@ -842,7 +842,7 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
         pdf.text('Escanea para ordenar', pdfWidth / 2, 40, { align: 'center' });
         pdf.addImage(imgData, 'PNG', x, 50, qrSize, qrSize);
         pdf.setFontSize(10);
-        pdf.text(`${getAppUrl()}/qr/${qrHash}`, pdfWidth / 2, 140, { align: 'center' });
+        pdf.text(`${getAppUrl()}/#/qr/${qrHash}`, pdfWidth / 2, 140, { align: 'center' });
         pdf.save(`QR-${table.name}.pdf`);
         URL.revokeObjectURL(url);
       };
@@ -877,7 +877,7 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
               <div className="bg-white p-4 rounded-2xl border-4 border-[#36e27b] shadow-[0_0_50px_rgba(54,226,123,0.3)]" id="table-qr-svg">
                 {qrHash && (
                   <QRCode
-                    value={`${getAppUrl()}/qr/${qrHash}`}
+                    value={`${getAppUrl()}/#/qr/${qrHash}`}
                     size={180}
                     viewBox={`0 0 256 256`}
                   />
@@ -911,7 +911,7 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
               <div className="space-y-2">
                 <p className="text-zinc-500 text-[9px] font-black uppercase tracking-[0.2em]">Enlace Permanente</p>
                 <div className="p-3 bg-zinc-900 rounded-xl border border-zinc-800 text-[9px] font-mono text-zinc-400 break-all max-w-[280px]">
-                  {getAppUrl()}/qr/{qrHash}
+                  {getAppUrl()}/#/qr/{qrHash}
                 </div>
               </div>
 
@@ -936,7 +936,7 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
 
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(`${getAppUrl()}/qr/${qrHash}`);
+                  navigator.clipboard.writeText(`${getAppUrl()}/#/qr/${qrHash}`);
                   addToast('Enlace Copiado', 'success');
                 }}
                 className="px-6 py-3 bg-[#36e27b] text-black font-black text-[10px] uppercase tracking-widest rounded-xl hover:scale-105 transition-all shadow-lg shadow-[#36e27b]/20"

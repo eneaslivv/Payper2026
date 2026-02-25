@@ -126,9 +126,11 @@ const ReservationResolver: React.FC = () => {
       // Claim reservation if logged in
       if (isLoggedIn && token) {
         await (supabase.rpc as any)('claim_reservation', { p_token: token });
+        navigate(`/m/${storeData.slug}`, { replace: true });
+      } else {
+        // Not logged in: redirect to auth so they can order from their table
+        navigate(`/m/${storeData.slug}/auth`, { replace: true });
       }
-
-      navigate(`/m/${storeData.slug}`, { replace: true });
     } catch (e) {
       console.error('Error entering reservation:', e);
       navigate(`/m/${storeData?.slug}`, { replace: true });
@@ -216,19 +218,12 @@ const ReservationResolver: React.FC = () => {
               disabled={isEntering}
               className="w-full h-16 bg-indigo-500 hover:bg-indigo-400 text-white font-black text-xs uppercase tracking-[0.3em] rounded-full active:scale-[0.97] transition-all shadow-[0_20px_60px_rgba(99,102,241,0.3)] disabled:opacity-50"
             >
-              {isEntering ? 'Entrando...' : 'Entrar al Menú'}
+              {isEntering ? 'Entrando...' : isLoggedIn ? 'Entrar al Menú' : 'Iniciar Sesión y Entrar'}
             </button>
 
-            {/* Login suggestion for guests */}
             {!isLoggedIn && (
               <p className="text-white/20 text-[10px]">
-                ¿Ya tenés cuenta?{' '}
-                <button
-                  onClick={() => navigate(`/m/${storeData?.slug}/auth`)}
-                  className="text-indigo-400/60 underline underline-offset-2 hover:text-indigo-400"
-                >
-                  Iniciá sesión
-                </button>
+                Necesitás una cuenta para ordenar desde tu mesa
               </p>
             )}
           </div>
