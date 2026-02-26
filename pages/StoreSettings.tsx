@@ -1394,98 +1394,93 @@ const RoleModal: React.FC<{
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
-            <div className="absolute inset-0 bg-black/95 backdrop-blur-xl" onClick={onClose}></div>
-            <div className="relative bg-white dark:bg-[#080908] rounded-[4rem] shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col border border-border-color dark:border-white/10 animate-in zoom-in-95 overflow-hidden">
-                <div className="px-12 py-10 border-b border-border-color/30 dark:border-white/5 flex justify-between items-start shrink-0 bg-black/[0.02] dark:bg-white/[0.02]">
-                    <div className="space-y-2">
-                        <h3 className="text-4xl font-black italic uppercase tracking-tighter text-text-main dark:text-white">Configuración de <span className="text-neon">Accesos</span></h3>
-                        <p className="text-text-secondary dark:text-white/30 text-[11px] font-bold uppercase tracking-[0.4em]">Matriz de privilegios por módulo operativo</p>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-3">
+            <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" onClick={onClose}></div>
+            <div className="relative bg-[#0D0F0D] rounded-xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col border border-white/10 animate-in zoom-in-95 overflow-hidden">
+
+                {/* Header compacto */}
+                <div className="px-4 py-2.5 border-b border-white/5 flex justify-between items-center shrink-0 bg-[#111311]">
+                    <div>
+                        <h3 className="text-xs font-black italic uppercase tracking-tight text-white">Configurar <span className="text-neon">Accesos</span></h3>
                     </div>
-                    <button onClick={onClose} className="size-14 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center text-text-secondary dark:text-white/30 hover:text-text-main dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-all border border-border-color/30 dark:border-white/5">
-                        <span className="material-symbols-outlined text-2xl">close</span>
+                    <button onClick={onClose} className="size-6 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all">
+                        <span className="material-symbols-outlined text-xs">close</span>
                     </button>
                 </div>
 
-                <div className="flex-1 flex overflow-hidden">
-                    <div className="w-96 p-12 border-r border-border-color/30 dark:border-white/5 bg-gray-50 dark:bg-black/40 overflow-y-auto shrink-0 space-y-10">
-                        <div className="space-y-4">
-                            <label className="text-[10px] font-black uppercase text-text-secondary/40 dark:text-white/20 tracking-widest ml-1">Nombre del Rol</label>
+                {/* Body scrollable */}
+                <div className="flex-1 overflow-y-auto p-3 space-y-3">
+
+                    {/* Nombre + Descripción en fila */}
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-0.5">
+                            <label className="text-[7px] font-black uppercase text-white/30 tracking-widest ml-0.5">Nombre</label>
                             <input
                                 value={roleForm.name || ''}
                                 onChange={e => setRoleForm({ ...roleForm, name: e.target.value })}
-                                className="w-full h-14 px-6 rounded-2xl bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 font-bold text-xs text-text-main dark:text-white uppercase outline-none focus:border-neon/30 placeholder:text-text-secondary/40 dark:placeholder:text-white/10"
-                                placeholder="EJ: SUPERVISOR NOCTURNO"
+                                className="w-full h-8 px-2.5 rounded-md bg-white/5 border border-white/10 font-bold text-[9px] text-white uppercase outline-none focus:border-neon/40 placeholder:text-white/15"
+                                placeholder="Ej: Mozo"
                             />
                         </div>
-                        <div className="space-y-4">
-                            <label className="text-[10px] font-black uppercase text-text-secondary/40 dark:text-white/20 tracking-widest ml-1">Descripción Funcional</label>
-                            <textarea
+                        <div className="space-y-0.5">
+                            <label className="text-[7px] font-black uppercase text-white/30 tracking-widest ml-0.5">Descripción</label>
+                            <input
                                 value={roleForm.description || ''}
                                 onChange={e => setRoleForm({ ...roleForm, description: e.target.value })}
-                                className="w-full h-40 p-6 rounded-[2rem] bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 font-bold text-[11px] text-text-secondary dark:text-white/60 outline-none focus:border-neon/30 placeholder:text-text-secondary/40 dark:placeholder:text-white/10 resize-none leading-relaxed"
-                                placeholder="Describe el alcance del rol..."
+                                className="w-full h-8 px-2.5 rounded-md bg-white/5 border border-white/10 font-bold text-[9px] text-white outline-none focus:border-neon/40 placeholder:text-white/15"
+                                placeholder="Opcional..."
                             />
-                        </div>
-                        <div className="p-8 rounded-[2.5rem] bg-neon/5 border border-neon/10 space-y-4">
-                            <div className="flex gap-4">
-                                <span className="material-symbols-outlined text-neon text-2xl">info</span>
-                                <p className="text-[10px] font-black text-neon uppercase tracking-widest pt-1 leading-none">Protocolo de Seguridad</p>
-                            </div>
-                            <p className="text-[10px] font-medium text-white/40 leading-relaxed italic">
-                                La matriz de roles es jerárquica. Asegúrate de que los privilegios de "Borrado" estén limitados a personal de confianza.
-                            </p>
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto bg-black p-12">
-                        <div className="rounded-[3rem] border border-white/5 overflow-hidden">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="bg-white/[0.02]">
-                                    <tr className="border-b border-white/5">
-                                        <th className="px-10 py-6 text-[10px] font-black uppercase text-white/30 tracking-widest italic">Módulo Operativo</th>
-                                        <th className="px-4 py-6 text-center text-[10px] font-black uppercase text-white/30 tracking-widest w-28">Ver</th>
-                                        <th className="px-4 py-6 text-center text-[10px] font-black uppercase text-white/30 tracking-widest w-28">Crear</th>
-                                        <th className="px-4 py-6 text-center text-[10px] font-black uppercase text-white/30 tracking-widest w-28">Editar</th>
-                                        <th className="px-4 py-6 text-center text-[10px] font-black uppercase text-white/30 tracking-widest w-28">Borrar</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-white/5">
-                                    {SECTIONS.map(s => {
-                                        const perms = (roleForm.permissions?.[s.slug] as any) || { view: false, create: false, edit: false, delete: false };
-                                        return (
-                                            <tr key={s.slug} className="hover:bg-white/[0.01] transition-colors group">
-                                                <td className="px-10 py-5">
-                                                    <p className="text-xs font-black text-white uppercase italic tracking-tighter">{s.label}</p>
+                    {/* Matriz de permisos compacta */}
+                    <div className="rounded-lg border border-white/5 overflow-hidden bg-[#0A0C0A]">
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr className="border-b border-white/5 bg-white/[0.02]">
+                                    <th className="px-2 py-1 text-left text-[7px] font-black uppercase text-white/25 tracking-widest">Módulo</th>
+                                    {['Ver', 'Crear', 'Edit', 'Del'].map(h => (
+                                        <th key={h} className="px-0 py-1 text-center text-[6px] font-black uppercase text-white/25 tracking-wider w-8">{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {SECTIONS.map((s, i) => {
+                                    const perms = (roleForm.permissions?.[s.slug] as any) || { view: false, create: false, edit: false, delete: false };
+                                    return (
+                                        <tr key={s.slug} className={`${i % 2 === 0 ? '' : 'bg-white/[0.01]'} hover:bg-white/[0.03] transition-colors`}>
+                                            <td className="px-2 py-[3px]">
+                                                <span className="text-[8px] font-bold text-white/70 uppercase tracking-tight">{s.label}</span>
+                                            </td>
+                                            {['view', 'create', 'edit', 'delete'].map(action => (
+                                                <td key={action} className="px-0 py-[3px] text-center">
+                                                    <button
+                                                        onClick={() => onTogglePermission(s.slug, action)}
+                                                        className={`size-5 rounded transition-all flex items-center justify-center mx-auto ${perms[action]
+                                                            ? action === 'delete' ? 'bg-red-500/80 text-white' : 'bg-neon/90 text-black'
+                                                            : 'bg-white/[0.04] text-white/10 hover:bg-white/[0.08]'
+                                                            }`}
+                                                    >
+                                                        <span className="material-symbols-outlined text-[9px]">
+                                                            {perms[action] ? 'check' : 'remove'}
+                                                        </span>
+                                                    </button>
                                                 </td>
-                                                {['view', 'create', 'edit', 'delete'].map(action => (
-                                                    <td key={action} className="px-4 py-5 text-center">
-                                                        <button
-                                                            onClick={() => onTogglePermission(s.slug, action)}
-                                                            className={`size-11 rounded-2xl border transition-all flex items-center justify-center mx-auto ${perms[action]
-                                                                ? action === 'delete' ? 'bg-red-500 text-white border-red-600 shadow-[0_0_15px_rgba(239,68,68,0.3)]' : 'bg-neon text-black border-neon shadow-[0_0_15px_rgba(74,222,128,0.3)]'
-                                                                : 'bg-white/5 border-white/5 text-white/10 hover:border-white/20'
-                                                                }`}
-                                                        >
-                                                            <span className="material-symbols-outlined text-xl font-black">
-                                                                {perms[action] ? 'check' : 'remove'}
-                                                            </span>
-                                                        </button>
-                                                    </td>
-                                                ))}
-                                            </tr>
-                                        )
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
+                                            ))}
+                                        </tr>
+                                    )
+                                })}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
-                <div className="p-10 border-t border-white/5 bg-white/[0.01] flex justify-end gap-6 shrink-0">
-                    <button onClick={onClose} className="px-10 py-5 rounded-[1.5rem] border border-white/10 font-black text-[11px] uppercase text-white/30 hover:text-white hover:bg-white/5 transition-all">Cancelar</button>
-                    <button onClick={onSave} disabled={isSaving} className="px-14 py-5 bg-neon text-black rounded-[1.5rem] font-black text-[11px] uppercase tracking-[0.2em] shadow-neon-soft hover:scale-105 active:scale-95 transition-all disabled:opacity-50">
-                        {isSaving ? 'Sincronizando...' : 'Sincronizar Jerarquía'}
+                {/* Footer compacto */}
+                <div className="px-3 py-2 border-t border-white/5 bg-[#111311] flex justify-end gap-2 shrink-0">
+                    <button onClick={onClose} className="px-3 py-1.5 rounded-lg border border-white/10 font-black text-[8px] uppercase text-white/40 hover:text-white hover:bg-white/5 transition-all">Cancelar</button>
+                    <button onClick={onSave} disabled={isSaving} className="px-4 py-1.5 bg-neon text-black rounded-lg font-black text-[8px] uppercase tracking-widest shadow-neon-soft hover:scale-105 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-sm">save</span>
+                        {isSaving ? 'Guardando...' : 'Guardar'}
                     </button>
                 </div>
             </div>
