@@ -1,8 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useToast } from './ToastSystem';
 import { TransferStockModal } from './TransferStockModal';
 import type { StorageLocation } from '../types';
+
+interface LinkedStation {
+    id: string;
+    name: string;
+    is_visible: boolean;
+}
 
 interface LocationWithMetrics extends StorageLocation {
     metrics?: {
@@ -31,6 +37,10 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
     const [transferItemId, setTransferItemId] = useState<string | undefined>(undefined);
     const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
     const [itemsVisibility, setItemsVisibility] = useState<Record<string, { is_visible: boolean, type: string }>>({});
+    const [stationsByLocation, setStationsByLocation] = useState<Record<string, LinkedStation[]>>({});
+    const [allStations, setAllStations] = useState<LinkedStation[]>([]);
+    const [stationDropdownLocId, setStationDropdownLocId] = useState<string | null>(null);
+    const stationDropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (locationStock.length > 0) {
@@ -82,6 +92,18 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
     useEffect(() => {
         fetchLocations();
         fetchHistory();
+        fetchStations();
+    }, []);
+
+    // Close station dropdown on outside click
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (stationDropdownRef.current && !stationDropdownRef.current.contains(e.target as Node)) {
+                setStationDropdownLocId(null);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
     }, []);
 
     // Effect to handle preselection
@@ -193,6 +215,50 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
             }));
             setLocationStock(formatted);
         }
+    };
+
+    const fetchStations = async () => {
+        const { data, error } = await supabase
+            .from('dispatch_stations')
+            .select('id, name, is_visible, storage_location_id')
+            .order('sort_order');
+
+        if (error) { console.error(error); return; }
+
+        const all: LinkedStation[] = (data || []).map((s: any) => ({ id: s.id, name: s.name, is_visible: s.is_visible }));
+        setAllStations(all);
+
+        const byLoc: Record<string, LinkedStation[]> = {};
+        (data || []).forEach((s: any) => {
+            if (s.storage_location_id) {
+                if (!byLoc[s.storage_location_id]) byLoc[s.storage_location_id] = [];
+                byLoc[s.storage_location_id].push({ id: s.id, name: s.name, is_visible: s.is_visible });
+            }
+        });
+        setStationsByLocation(byLoc);
+    };
+
+    const handleLinkStation = async (stationId: string, locationId: string) => {
+        const { error } = await supabase
+            .from('dispatch_stations')
+            .update({ storage_location_id: locationId })
+            .eq('id', stationId);
+
+        if (error) { addToast('Error al vincular despacho', 'error'); return; }
+        addToast('Despacho vinculado', 'success');
+        setStationDropdownLocId(null);
+        fetchStations();
+    };
+
+    const handleUnlinkStation = async (stationId: string) => {
+        const { error } = await supabase
+            .from('dispatch_stations')
+            .update({ storage_location_id: null })
+            .eq('id', stationId);
+
+        if (error) { addToast('Error al desvincular', 'error'); return; }
+        addToast('Despacho desvinculado', 'success');
+        fetchStations();
     };
 
     const handleSelectLocation = async (loc: LocationWithMetrics) => {
@@ -554,6 +620,58 @@ export const LogisticsView: React.FC<LogisticsViewProps> = ({ preselectedLocatio
                                     )}
                                     <div className="ml-auto text-[9px] font-bold text-text-secondary/60 dark:text-white/30">
                                         {formatCurrency(loc.metrics?.estimated_value || 0)}
+                                    </div>
+                                </div>
+
+                                {/* Linked Stations (Despachos) */}
+                                <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-border-color/30 dark:border-white/5 flex-wrap" onClick={e => e.stopPropagation()}>
+                                    {(stationsByLocation[loc.id] || []).map(st => (
+                                        <span key={st.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 text-[8px] font-bold uppercase tracking-wider border border-indigo-500/20">
+                                            <span className="material-symbols-outlined text-[10px]">point_of_sale</span>
+                                            {st.name}
+                                            <button
+                                                onClick={() => handleUnlinkStation(st.id)}
+                                                className="ml-0.5 hover:text-red-400 transition-colors"
+                                                title="Desvincular despacho"
+                                            >
+                                                <span className="material-symbols-outlined text-[10px]">close</span>
+                                            </button>
+                                        </span>
+                                    ))}
+                                    <div ref={stationDropdownLocId === loc.id ? stationDropdownRef : undefined} className="relative">
+                                        <button
+                                            onClick={() => setStationDropdownLocId(prev => prev === loc.id ? null : loc.id)}
+                                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/20 hover:text-indigo-400 hover:bg-indigo-500/10 border border-transparent hover:border-indigo-500/20 transition-all"
+                                            title="Vincular despacho"
+                                        >
+                                            <span className="material-symbols-outlined text-[10px]">add</span>
+                                            Despacho
+                                        </button>
+                                        {stationDropdownLocId === loc.id && (() => {
+                                            const linkedIds = new Set((stationsByLocation[loc.id] || []).map(s => s.id));
+                                            const available = allStations.filter(s => !linkedIds.has(s.id));
+                                            return available.length > 0 ? (
+                                                <div className="absolute top-full left-0 mt-1 z-50 min-w-[150px] bg-white dark:bg-surface-dark border border-gray-200 dark:border-white/[0.08] rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                                                    {available.map(st => (
+                                                        <button
+                                                            key={st.id}
+                                                            onClick={() => handleLinkStation(st.id, loc.id)}
+                                                            className="w-full flex items-center gap-2 px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-gray-600 dark:text-white/50 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-500 transition-all"
+                                                        >
+                                                            <span className="material-symbols-outlined text-[12px]">point_of_sale</span>
+                                                            {st.name}
+                                                            {Object.entries(stationsByLocation).some(([lid, sts]) => lid !== loc.id && sts.some(s => s.id === st.id)) && (
+                                                                <span className="ml-auto text-[7px] text-amber-400" title="Ya vinculado a otra ubicación">EN USO</span>
+                                                            )}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="absolute top-full left-0 mt-1 z-50 min-w-[150px] bg-white dark:bg-surface-dark border border-gray-200 dark:border-white/[0.08] rounded-xl shadow-lg p-3 animate-in fade-in slide-in-from-top-2 duration-150">
+                                                    <p className="text-[8px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-wider text-center">Todos vinculados</p>
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                             </div>

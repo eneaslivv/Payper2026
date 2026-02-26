@@ -756,6 +756,23 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
           }
         }
 
+        // Fallback: resolve source_location_id from dispatch_stations if not set by node
+        if (!(orderData as any).source_location_id && orderData.dispatch_station) {
+          try {
+            const { data: stationData } = await supabase
+              .from('dispatch_stations' as any)
+              .select('storage_location_id')
+              .eq('store_id', storeId || orderData.store_id)
+              .eq('name', orderData.dispatch_station)
+              .not('storage_location_id', 'is', null)
+              .single();
+            if ((stationData as any)?.storage_location_id) {
+              (orderData as any).source_location_id = (stationData as any).storage_location_id;
+              console.log(`[createOrder] Resolved source_location_id from dispatch station: ${(stationData as any).storage_location_id}`);
+            }
+          } catch { /* no match — backend will use default */ }
+        }
+
         // P0 FIX: Use atomic RPC instead of separate INSERT + wallet calls
         const itemsPayload = newOrder.items
           .filter((item: any) => item.productId)
@@ -788,6 +805,8 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
             delivery_mode: (orderData as any).delivery_mode || null,
             delivery_status: (orderData as any).delivery_status || 'pending',
             session_id: (orderData as any).session_id || null,
+            dispatch_station: orderData.dispatch_station || null,
+            source_location_id: (orderData as any).source_location_id || null,
             created_at: orderData.created_at || new Date().toISOString()
           },
           p_items: itemsPayload
@@ -1111,7 +1130,9 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 is_paid: orderData.is_paid,
                 created_at: orderData.created_at,
                 node_id: orderData.node_id,
-                table_number: orderData.table_number
+                table_number: orderData.table_number,
+                dispatch_station: order.dispatch_station || null,
+                source_location_id: (order as any).source_location_id || null
               },
               p_allow_negative_stock: false
             })

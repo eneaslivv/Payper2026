@@ -253,6 +253,8 @@ const InventoryManagement: React.FC = () => {
     return localStorage.getItem('inventory_location_filter_v1') || null;
   });
   const [searchTerm, setSearchTerm] = useState('');
+  const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
+  const typeDropdownRef = useRef<HTMLDivElement>(null);
 
   // History State
   const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
@@ -394,6 +396,17 @@ const InventoryManagement: React.FC = () => {
       }
     } catch (_) { /* quota */ }
   }, [activeLocationFilter]);
+
+  // Close type dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (typeDropdownRef.current && !typeDropdownRef.current.contains(e.target as Node)) {
+        setTypeDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   // REALTIME: Suscripción para actualización automática de inventario
   useEffect(() => {
@@ -1839,18 +1852,67 @@ const InventoryManagement: React.FC = () => {
       </div>
 
       <div className="flex flex-col gap-3">
-        {/* Type Filters */}
+        {/* Main Tabs: Productos | Ubicaciones */}
         <TabGroup className="overflow-x-auto no-scrollbar max-w-full md:max-w-fit">
-          <Tab active={filter === 'all'} onClick={() => setFilter('all')}>GLOBAL</Tab>
-          <Tab active={filter === 'ingredient'} onClick={() => setFilter('ingredient')}>INSUMOS</Tab>
-          <Tab active={filter === 'sellable'} onClick={() => setFilter('sellable')}>PRODUCTOS</Tab>
-          <Tab active={filter === 'recipes'} onClick={() => setFilter('recipes')}>RECETAS</Tab>
+          <Tab active={filter !== 'logistics'} onClick={() => { if (filter === 'logistics') setFilter('all'); }}>
+            <span className="material-symbols-outlined text-[11px]">inventory_2</span>
+            PRODUCTOS
+          </Tab>
+          <Tab active={filter === 'logistics'} onClick={() => setFilter('logistics')}>
+            <span className="material-symbols-outlined text-[11px]">store</span>
+            UBICACIONES
+          </Tab>
         </TabGroup>
 
+        {/* Type Filter Dropdown + Category Filters + Search — inline row */}
+        {filter !== 'logistics' && (
+        <div className="flex items-center gap-2 max-w-full">
+          {/* Type filter dropdown — outside scroll container so menu isn't clipped */}
+          <div ref={typeDropdownRef} className="relative shrink-0 z-50">
+            <button
+              onClick={() => setTypeDropdownOpen(o => !o)}
+              className={`px-2.5 py-1 rounded-full text-[8px] font-bold uppercase tracking-wider whitespace-nowrap flex items-center gap-1.5 transition-all border ${
+                filter !== 'all'
+                  ? 'bg-violet-500/10 text-violet-400 border-violet-500/30'
+                  : 'bg-gray-100 dark:bg-white/[0.04] text-gray-500 dark:text-white/40 border-transparent hover:bg-gray-200 dark:hover:bg-white/[0.08]'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[11px]">filter_list</span>
+              {filter === 'all' ? 'Tipo' : filter === 'ingredient' ? 'Insumos' : filter === 'sellable' ? 'Productos' : 'Recetas'}
+              <span className={`material-symbols-outlined text-[10px] transition-transform ${typeDropdownOpen ? 'rotate-180' : ''}`}>expand_more</span>
+            </button>
+            {typeDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 min-w-[140px] bg-white dark:bg-surface-dark border border-gray-200 dark:border-white/[0.08] rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                {([
+                  { value: 'all' as InventoryFilter, label: 'Todos', icon: 'apps' },
+                  { value: 'ingredient' as InventoryFilter, label: 'Insumos', icon: 'water_drop' },
+                  { value: 'sellable' as InventoryFilter, label: 'Productos', icon: 'local_cafe' },
+                  { value: 'recipes' as InventoryFilter, label: 'Recetas', icon: 'menu_book' },
+                ]).map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => { setFilter(opt.value); setTypeDropdownOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-[9px] font-bold uppercase tracking-wider transition-all ${
+                      filter === opt.value
+                        ? 'bg-neon/10 text-neon'
+                        : 'text-gray-600 dark:text-white/50 hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[13px]">{opt.icon}</span>
+                    {opt.label}
+                    {filter === opt.value && <span className="material-symbols-outlined text-[11px] ml-auto">check</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
-        {/* Category Filters + Search — inline row */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-full">
-          <div className="flex items-center gap-1.5 shrink-0">
+          {/* Divider */}
+          <div className="w-px h-4 bg-gray-200 dark:bg-white/[0.06] shrink-0" />
+
+          {/* Scrollable category pills + search */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar min-w-0 flex-1">
+            {/* Category pills */}
             <button
               onClick={() => setActiveCategoryFilter(null)}
               className={`px-2.5 py-1 rounded-full text-[8px] font-bold uppercase tracking-wider whitespace-nowrap transition-all ${activeCategoryFilter === null
@@ -1903,7 +1965,7 @@ const InventoryManagement: React.FC = () => {
             </button>
           </div>
 
-          {/* Search + Ubicaciones — right side */}
+          {/* Search — right side */}
           <div className="flex items-center gap-1.5 ml-auto shrink-0">
             <div className="relative group">
               <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/20 group-focus-within:text-neon transition-colors text-[13px]">search</span>
@@ -1914,15 +1976,9 @@ const InventoryManagement: React.FC = () => {
                 className="w-36 bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.06] rounded-full h-7 pl-7 pr-2 text-[8px] font-bold text-gray-700 dark:text-white/70 uppercase tracking-wider outline-none focus:border-neon/40 focus:w-48 transition-all placeholder:text-gray-400 dark:placeholder:text-white/15"
               />
             </div>
-            <button
-              onClick={() => setFilter('logistics')}
-              className={`hidden md:flex items-center gap-1 px-2 py-1 rounded-full transition-all text-[8px] font-bold uppercase tracking-wider border ${filter === 'logistics' ? 'bg-white border-white text-black' : 'bg-gray-100 dark:bg-white/[0.04] border-transparent text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/[0.08]'}`}
-            >
-              <span className="material-symbols-outlined text-[11px]">store</span>
-              Ubic.
-            </button>
           </div>
         </div>
+        )}
 
         {/* Active Location Filter Pill */}
         {activeLocationFilter && (
