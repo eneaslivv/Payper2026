@@ -1869,46 +1869,71 @@ const InventoryManagement: React.FC = () => {
         </div>
 
 
-        {/* Category Filters */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-full py-1">
-          <button
-            onClick={() => setActiveCategoryFilter(null)}
-            className={`px-4 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest whitespace-nowrap transition-all border ${activeCategoryFilter === null
-              ? 'border-border-color dark:border-white/60 text-neon bg-black/5 dark:bg-white/5'
-              : 'border-border-color/30 dark:border-white/10 text-text-secondary dark:text-white/50 hover:text-text-main dark:hover:text-white/70 hover:border-border-color dark:hover:border-white/20'
-              }`}
-          >
-            TODAS
-          </button>
-          {categories.map(cat => (
+        {/* Category Filters + Search — inline row */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-full">
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
-              key={cat.id}
-              onClick={() => setActiveCategoryFilter(cat.id)}
-              className={`px-4 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest whitespace-nowrap transition-all border ${activeCategoryFilter === cat.id
-                ? 'border-border-color dark:border-white/60 text-neon bg-black/5 dark:bg-white/5'
-                : 'border-border-color/30 dark:border-white/10 text-text-secondary dark:text-white/50 hover:text-text-main dark:hover:text-white/70 hover:border-border-color dark:hover:border-white/20'
+              onClick={() => setActiveCategoryFilter(null)}
+              className={`px-2.5 py-1 rounded-full text-[8px] font-bold uppercase tracking-wider whitespace-nowrap transition-all ${activeCategoryFilter === null
+                ? 'bg-neon/15 text-neon border border-neon/30'
+                : 'bg-gray-100 dark:bg-white/[0.04] text-gray-500 dark:text-white/40 border border-transparent hover:bg-gray-200 dark:hover:bg-white/[0.08]'
                 }`}
             >
-              {cat.name}
+              Todas
             </button>
-          ))}
-          <button
-            onClick={() => setActiveCategoryFilter('special-open')}
-            className={`px-4 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest whitespace-nowrap flex items-center gap-1.5 transition-all border ${activeCategoryFilter === 'special-open'
-              ? 'border-border-color dark:border-white/60 text-neon bg-black/5 dark:bg-white/5'
-              : 'border-border-color/30 dark:border-white/10 text-text-secondary dark:text-white/50 hover:text-text-main dark:hover:text-white/70 hover:border-border-color dark:hover:border-white/20'
-              }`}
-          >
-            <span className="material-symbols-outlined text-sm">lock_open</span>
-            ABIERTOS
-          </button>
-          <button
-            onClick={() => setShowCategoryModal(true)}
-            className="ml-auto px-2 py-2 rounded-lg text-text-secondary/60 dark:text-white/30 hover:text-neon border border-transparent hover:border-border-color dark:hover:border-white/20 transition-all"
-            title="Crear nueva categoría"
-          >
-            <span className="material-symbols-outlined text-base">add_circle</span>
-          </button>
+            {categories.map((cat, i) => {
+              const colors = [
+                { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/25' },
+                { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/25' },
+                { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/25' },
+                { bg: 'bg-cyan-500/10', text: 'text-cyan-400', border: 'border-cyan-500/25' },
+                { bg: 'bg-rose-500/10', text: 'text-rose-400', border: 'border-rose-500/25' },
+                { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/25' },
+              ];
+              const c = colors[i % colors.length];
+              const isActive = activeCategoryFilter === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveCategoryFilter(cat.id)}
+                  className={`px-2.5 py-1 rounded-full text-[8px] font-bold uppercase tracking-wider whitespace-nowrap transition-all border ${isActive
+                    ? `${c.bg} ${c.text} ${c.border}`
+                    : 'bg-gray-100 dark:bg-white/[0.04] text-gray-500 dark:text-white/40 border-transparent hover:bg-gray-200 dark:hover:bg-white/[0.08]'
+                    }`}
+                >
+                  {cat.name}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setActiveCategoryFilter('special-open')}
+              className={`px-2.5 py-1 rounded-full text-[8px] font-bold uppercase tracking-wider whitespace-nowrap flex items-center gap-1 transition-all border ${activeCategoryFilter === 'special-open'
+                ? 'bg-orange-500/10 text-orange-400 border-orange-500/25'
+                : 'bg-gray-100 dark:bg-white/[0.04] text-gray-500 dark:text-white/40 border-transparent hover:bg-gray-200 dark:hover:bg-white/[0.08]'
+                }`}
+            >
+              <span className="material-symbols-outlined text-[11px]">lock_open</span>
+              Abiertos
+            </button>
+            <button
+              onClick={() => setShowCategoryModal(true)}
+              className="size-6 rounded-full text-gray-400 dark:text-white/20 hover:text-neon hover:bg-neon/10 flex items-center justify-center transition-all"
+              title="Crear categoría"
+            >
+              <span className="material-symbols-outlined text-sm">add</span>
+            </button>
+          </div>
+
+          {/* Search inline */}
+          <div className="relative group flex-1 min-w-[160px]">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/20 group-focus-within:text-neon transition-colors text-sm">search</span>
+            <input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por SKU o nombre..."
+              className="w-full bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.06] rounded-full h-7 pl-8 pr-3 text-[9px] font-bold text-gray-700 dark:text-white/70 uppercase tracking-wider outline-none focus:border-neon/40 transition-all placeholder:text-gray-400 dark:placeholder:text-white/15"
+            />
+          </div>
         </div>
 
         {/* Active Location Filter Pill */}
@@ -2066,26 +2091,15 @@ const InventoryManagement: React.FC = () => {
         </div>
       ) : (
         <>
-          {/* ACTIONS */}
-          <div className="flex gap-3 relative z-[100]">
+          {/* UBICACIONES toggle (search is now inline with categories above) */}
+          <div className="flex gap-2 relative z-[100]">
             <button
               onClick={() => setFilter('logistics')}
-              className={`hidden md:flex items-center gap-2 px-4 py-2 border rounded-xl transition-all group ${filter === 'logistics' ? 'bg-white border-white' : 'bg-black/5 dark:bg-white/5 border-border-color/30 dark:border-white/5 hover:bg-gray-100 dark:hover:bg-white/10'}`}
+              className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 border rounded-lg transition-all group text-[9px] font-bold uppercase tracking-wider ${filter === 'logistics' ? 'bg-white border-white text-black' : 'bg-gray-50 dark:bg-white/[0.04] border-gray-200 dark:border-white/[0.06] text-gray-500 dark:text-white/40 hover:bg-gray-100 dark:hover:bg-white/[0.08]'}`}
             >
-              <span className={`material-symbols-outlined text-lg ${filter === 'logistics' ? 'text-black' : 'text-text-secondary dark:text-white/60 group-hover:text-text-main dark:group-hover:text-white'}`}>store</span>
-              <span className={`text-[10px] font-black uppercase tracking-widest ${filter === 'logistics' ? 'text-black' : 'text-text-secondary dark:text-white/60 group-hover:text-text-main dark:group-hover:text-white'}`}>UBICACIONES</span>
+              <span className="material-symbols-outlined text-sm">store</span>
+              Ubicaciones
             </button>
-
-            {/* BUSCADOR */}
-            <div className="relative group">
-              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary/40 dark:text-white/20 group-focus-within:text-neon transition-colors">search</span>
-              <input
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Rastrear ítem por SKU o nombre..."
-                className="w-full bg-white dark:bg-surface-dark border border-border-color/30 dark:border-white/[0.04] rounded-2xl h-12 pl-12 pr-4 text-[10px] font-bold text-text-main dark:text-white uppercase tracking-widest outline-none focus:border-border-color dark:focus:border-white/30 transition-all placeholder:text-text-secondary/40 dark:placeholder:text-white/10"
-              />
-            </div>
           </div>
 
           {/* TABLA PRINCIPAL / LOGISTICS VIEW */}
