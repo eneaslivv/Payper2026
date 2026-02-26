@@ -1924,15 +1924,24 @@ const InventoryManagement: React.FC = () => {
             </button>
           </div>
 
-          {/* Search inline */}
-          <div className="relative group flex-1 min-w-[160px]">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/20 group-focus-within:text-neon transition-colors text-sm">search</span>
-            <input
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por SKU o nombre..."
-              className="w-full bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.06] rounded-full h-7 pl-8 pr-3 text-[9px] font-bold text-gray-700 dark:text-white/70 uppercase tracking-wider outline-none focus:border-neon/40 transition-all placeholder:text-gray-400 dark:placeholder:text-white/15"
-            />
+          {/* Search + Ubicaciones — right side */}
+          <div className="flex items-center gap-1.5 ml-auto shrink-0">
+            <div className="relative group">
+              <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/20 group-focus-within:text-neon transition-colors text-[13px]">search</span>
+              <input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar..."
+                className="w-36 bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.06] rounded-full h-7 pl-7 pr-2 text-[8px] font-bold text-gray-700 dark:text-white/70 uppercase tracking-wider outline-none focus:border-neon/40 focus:w-48 transition-all placeholder:text-gray-400 dark:placeholder:text-white/15"
+              />
+            </div>
+            <button
+              onClick={() => setFilter('logistics')}
+              className={`hidden md:flex items-center gap-1 px-2 py-1 rounded-full transition-all text-[8px] font-bold uppercase tracking-wider border ${filter === 'logistics' ? 'bg-white border-white text-black' : 'bg-gray-100 dark:bg-white/[0.04] border-transparent text-gray-500 dark:text-white/40 hover:bg-gray-200 dark:hover:bg-white/[0.08]'}`}
+            >
+              <span className="material-symbols-outlined text-[11px]">store</span>
+              Ubic.
+            </button>
           </div>
         </div>
 
@@ -2091,17 +2100,6 @@ const InventoryManagement: React.FC = () => {
         </div>
       ) : (
         <>
-          {/* UBICACIONES toggle (search is now inline with categories above) */}
-          <div className="flex gap-2 relative z-[100]">
-            <button
-              onClick={() => setFilter('logistics')}
-              className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 border rounded-lg transition-all group text-[9px] font-bold uppercase tracking-wider ${filter === 'logistics' ? 'bg-white border-white text-black' : 'bg-gray-50 dark:bg-white/[0.04] border-gray-200 dark:border-white/[0.06] text-gray-500 dark:text-white/40 hover:bg-gray-100 dark:hover:bg-white/[0.08]'}`}
-            >
-              <span className="material-symbols-outlined text-sm">store</span>
-              Ubicaciones
-            </button>
-          </div>
-
           {/* TABLA PRINCIPAL / LOGISTICS VIEW */}
           {filter === 'logistics' ? (
             <LogisticsView preselectedLocationName={activeLocationFilter} />
