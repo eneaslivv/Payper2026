@@ -7,6 +7,7 @@ import { useToast } from '../components/ToastSystem';
 import { useOffline } from '../contexts/OfflineContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { Tab, TabGroup } from '../components/ui/Tab';
 
 const OrderBoard: React.FC = () => {
   const { addToast } = useToast();
@@ -430,14 +431,10 @@ const OrderBoard: React.FC = () => {
 
             <div className="w-px h-6 bg-black/5 dark:bg-white/10 mx-1"></div>
 
-            <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg border border-border-color/30 dark:border-white/5">
-              <button onClick={() => setViewMode('kanban')} className={`size-8 flex items-center justify-center rounded-md transition-all ${viewMode === 'kanban' ? 'bg-neon text-black shadow-neon-soft' : 'text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white'}`}>
-                <span className="material-symbols-outlined text-lg">view_kanban</span>
-              </button>
-              <button onClick={() => setViewMode('list')} className={`size-8 flex items-center justify-center rounded-md transition-all ${viewMode === 'list' ? 'bg-neon text-black shadow-neon-soft' : 'text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white'}`}>
-                <span className="material-symbols-outlined text-lg">format_list_bulleted</span>
-              </button>
-            </div>
+            <TabGroup className="bg-black/5 dark:bg-white/5">
+              <Tab variant="segment" active={viewMode === 'kanban'} onClick={() => setViewMode('kanban')} icon="view_kanban" />
+              <Tab variant="segment" active={viewMode === 'list'} onClick={() => setViewMode('list')} icon="format_list_bulleted" />
+            </TabGroup>
             <div className="relative group flex-1 xl:w-48">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary/40 dark:text-white/20 text-sm">search</span>
               <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="BUSCAR..." className="h-9 w-full pl-9 pr-3 rounded-lg border border-border-color/30 dark:border-white/5 bg-black/5 dark:bg-white/5 outline-none focus:ring-1 focus:ring-neon/20 text-[9px] font-bold uppercase tracking-widest text-text-main dark:text-white placeholder:text-text-secondary/40 dark:placeholder:text-white/10" />

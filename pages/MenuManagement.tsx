@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ToastSystem';
+import { Tab, TabGroup } from '../components/ui/Tab';
 import {
     Plus, Edit2, Trash2, ChevronRight, Clock, Calendar,
     MapPin, Star, AlertTriangle, Check, X, GripVertical,
@@ -418,19 +419,11 @@ const MenuManagement: React.FC = () => {
                         )}
 
                         {/* Tabs */}
-                        <div className="px-4 pt-4 flex gap-2">
-                            <button
-                                onClick={() => setActiveTab('products')}
-                                className={`px-4 py-2 rounded-lg text-xs font-bold ${activeTab === 'products' ? 'bg-neon/20 text-neon' : 'bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/40'}`}
-                            >
-                                Productos ({menuProducts.length})
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('rules')}
-                                className={`px-4 py-2 rounded-lg text-xs font-bold ${activeTab === 'rules' ? 'bg-neon/20 text-neon' : 'bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/40'}`}
-                            >
-                                Reglas ({selectedMenu.rules?.filter(r => r.is_active).length || 0})
-                            </button>
+                        <div className="px-4 pt-4">
+                          <TabGroup>
+                            <Tab active={activeTab === 'products'} onClick={() => setActiveTab('products')}>Productos ({menuProducts.length})</Tab>
+                            <Tab active={activeTab === 'rules'} onClick={() => setActiveTab('rules')}>Reglas ({selectedMenu.rules?.filter(r => r.is_active).length || 0})</Tab>
+                          </TabGroup>
                         </div>
 
                         {/* Tab Content */}

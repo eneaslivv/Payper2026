@@ -6,6 +6,7 @@ import { useToast } from '../components/ToastSystem';
 import { sendEmailNotification } from '../lib/notifications';
 import { MOCK_STAFF, MOCK_ROLES, DEFAULT_AI_CONFIG } from '../constants';
 import { StaffMember, CustomRole, SectionSlug, AuditLogEntry, AuditCategory, AIConfig } from '../types';
+import { Tab, TabGroup } from '../components/ui/Tab';
 
 type SettingsTab = 'general' | 'staff' | 'audit' | 'pagos' | 'ai';
 
@@ -84,18 +85,6 @@ const auditImpact = (row: AuditLogRow): string => {
 };
 
 // --- HELPER COMPONENTS (Moved to top for hoisting) ---
-const TabButton: React.FC<{ active: boolean, onClick: () => void, label: string, icon: string, saas?: boolean }> = ({ active, onClick, label, icon, saas }) => (
-  <button
-    onClick={onClick}
-    className={`px-3 py-1.5 rounded-md text-[8px] font-bold uppercase tracking-widest transition-all flex items-center gap-1.5 shrink-0 ${active
-      ? saas ? 'bg-accent/20 text-accent border border-accent/20 shadow-soft' : 'bg-primary dark:bg-neon/10 text-white dark:text-neon border border-primary dark:border-neon/20 shadow-soft'
-      : 'text-text-secondary hover:text-primary dark:hover:text-neon'
-      }`}
-  >
-    <span className="material-symbols-outlined text-[14px]">{icon}</span>
-    {label}
-  </button>
-);
 
 const Section: React.FC<{ title: string, icon: string, children: React.ReactNode }> = ({ title, icon, children }) => (
   <div className="bg-white dark:bg-surface-dark p-3 rounded-lg border border-black/[0.04] dark:border-white/[0.04] shadow-soft space-y-2.5">
@@ -645,13 +634,13 @@ const Settings: React.FC = () => {
       </header>
 
       {/* Tabs Tácticos Principal */}
-      <div className="flex bg-white dark:bg-surface-dark p-0.5 rounded-lg border border-black/[0.04] dark:border-white/[0.04] shadow-soft max-w-fit overflow-x-auto no-scrollbar">
-        <TabButton active={activeTab === 'general'} onClick={() => setActiveTab('general')} label="Negocio" icon="storefront" />
-        <TabButton active={activeTab === 'staff'} onClick={() => setActiveTab('staff')} label="Staff & Roles" icon="badge" />
-        <TabButton active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} label="Auditoría" icon="history_edu" />
-        <TabButton active={activeTab === 'ai'} onClick={() => setActiveTab('ai')} label="SquadAI" icon="auto_awesome" />
-        <TabButton active={activeTab === 'pagos'} onClick={() => setActiveTab('pagos')} label="Pasarela" icon="payments" />
-      </div>
+      <TabGroup className="max-w-fit overflow-x-auto no-scrollbar">
+        <Tab active={activeTab === 'general'} onClick={() => setActiveTab('general')} icon="storefront">Negocio</Tab>
+        <Tab active={activeTab === 'staff'} onClick={() => setActiveTab('staff')} icon="badge">Staff & Roles</Tab>
+        <Tab active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} icon="history_edu">Auditoría</Tab>
+        <Tab active={activeTab === 'ai'} onClick={() => setActiveTab('ai')} icon="auto_awesome">SquadAI</Tab>
+        <Tab active={activeTab === 'pagos'} onClick={() => setActiveTab('pagos')} icon="payments">Pasarela</Tab>
+      </TabGroup>
 
       <div className="min-h-[400px]">
         {activeTab === 'general' && (
@@ -743,18 +732,11 @@ const Settings: React.FC = () => {
         {activeTab === 'audit' && (
           <div className="space-y-3 animate-in slide-in-from-bottom-4 duration-500">
             <div className="flex flex-col xl:flex-row justify-between gap-2 items-center">
-              <div className="flex bg-white dark:bg-surface-dark p-0.5 rounded-lg border border-black/[0.04] dark:border-white/[0.04] shadow-soft overflow-x-auto no-scrollbar">
+              <TabGroup className="overflow-x-auto no-scrollbar">
                 {AUDIT_CATEGORIES.map(cat => (
-                  <button
-                    key={cat.slug}
-                    onClick={() => setAuditFilter(cat.slug)}
-                    className={`px-2.5 py-1.5 rounded-md text-[8px] font-bold uppercase tracking-widest transition-all flex items-center gap-1.5 whitespace-nowrap ${auditFilter === cat.slug ? 'bg-primary dark:bg-white/10 text-white shadow-soft' : 'text-text-secondary hover:text-primary dark:hover:text-neon'}`}
-                  >
-                    <span className="material-symbols-outlined text-[14px]">{cat.icon}</span>
-                    {cat.label}
-                  </button>
+                  <Tab key={cat.slug} active={auditFilter === cat.slug} onClick={() => setAuditFilter(cat.slug)} icon={cat.icon} variant="pill">{cat.label}</Tab>
                 ))}
-              </div>
+              </TabGroup>
               <div className="relative flex-1 xl:w-56 group">
                 <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-text-secondary opacity-40 text-xs">search</span>
                 <input value={auditSearch} onChange={(e) => setAuditSearch(e.target.value)} placeholder="BUSCAR EVENTO..." className="h-8 w-full pl-8 pr-2 rounded-lg border border-white/5 bg-white/5 outline-none focus:ring-1 focus:ring-neon/20 text-[8px] font-bold uppercase tracking-widest text-white placeholder:text-white/20 transition-all" />
@@ -821,10 +803,10 @@ const Settings: React.FC = () => {
             {/* Sub-Header para Staff */}
             <div className="flex justify-between items-center mb-1">
               <h3 className="text-sm italic-black uppercase tracking-tighter dark:text-white">Equipo y <span className="text-neon">Permisos</span></h3>
-              <div className="flex bg-white dark:bg-surface-dark p-0.5 rounded-lg border border-black/[0.04] dark:border-white/[0.04] shadow-soft">
-                <button onClick={() => setStaffSubTab('members')} className={`px-3 py-1.5 rounded-md text-[8px] font-bold uppercase tracking-widest transition-all ${staffSubTab === 'members' ? 'bg-white dark:bg-white/10 text-neon' : 'text-text-secondary hover:text-white'}`}>Directorio Staff</button>
-                <button onClick={() => setStaffSubTab('roles')} className={`px-3 py-1.5 rounded-md text-[8px] font-bold uppercase tracking-widest transition-all ${staffSubTab === 'roles' ? 'bg-white dark:bg-white/10 text-neon' : 'text-text-secondary hover:text-white'}`}>Definición Roles</button>
-              </div>
+              <TabGroup>
+                <Tab active={staffSubTab === 'members'} onClick={() => setStaffSubTab('members')}>Directorio Staff</Tab>
+                <Tab active={staffSubTab === 'roles'} onClick={() => setStaffSubTab('roles')}>Definición Roles</Tab>
+              </TabGroup>
               {staffSubTab === 'members' && (
                 <button onClick={() => setShowInviteModal(true)} className="ml-3 px-3 py-1.5 rounded-md bg-neon text-black text-[8px] font-black uppercase tracking-widest hover:bg-white transition-all shadow-neon-soft">
                   + Invitar

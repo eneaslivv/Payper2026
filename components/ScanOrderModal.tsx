@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { markOrderAsDelivered } from '../lib/scanHandler';
 import { toast } from 'sonner';
+import { Tab, TabGroup } from './ui/Tab';
 
 interface ScanOrderModalProps {
     isOpen: boolean;
@@ -418,29 +419,11 @@ const ScanOrderModal: React.FC<ScanOrderModalProps> = ({ isOpen, onClose, curren
                     <div className="flex gap-2">
                         {/* Mode Toggles */}
                         {status === 'idle' && (
-                            <div className="flex bg-black/5 dark:bg-white/5 rounded-lg p-0.5 border border-border-color/30 dark:border-white/5 mr-2">
-                                <button
-                                    onClick={() => setInputMode('gun')}
-                                    className={`px-3 py-1 rounded-md text-[9px] font-bold uppercase transition-all ${inputMode === 'gun' ? 'bg-neon text-black' : 'text-text-secondary/60 dark:text-white/30 hover:text-text-main dark:hover:text-white'}`}
-                                    title="Modo Pistola (Input Oculto)"
-                                >
-                                    <span className="material-symbols-outlined text-sm">barcode_reader</span>
-                                </button>
-                                <button
-                                    onClick={() => setInputMode('camera')}
-                                    className={`px-3 py-1 rounded-md text-[9px] font-bold uppercase transition-all ${inputMode === 'camera' ? 'bg-neon text-black' : 'text-text-secondary/60 dark:text-white/30 hover:text-text-main dark:hover:text-white'}`}
-                                    title="Usar Cámara"
-                                >
-                                    <span className="material-symbols-outlined text-sm">videocam</span>
-                                </button>
-                                <button
-                                    onClick={() => setInputMode('manual')}
-                                    className={`px-3 py-1 rounded-md text-[9px] font-bold uppercase transition-all ${inputMode === 'manual' ? 'bg-neon text-black' : 'text-text-secondary/60 dark:text-white/30 hover:text-text-main dark:hover:text-white'}`}
-                                    title="Entrada Manual"
-                                >
-                                    <span className="material-symbols-outlined text-sm">keyboard</span>
-                                </button>
-                            </div>
+                            <TabGroup className="bg-black/5 dark:bg-white/5 mr-2">
+                                <Tab variant="segment" active={inputMode === 'gun'} onClick={() => setInputMode('gun')} icon="barcode_reader" />
+                                <Tab variant="segment" active={inputMode === 'camera'} onClick={() => setInputMode('camera')} icon="videocam" />
+                                <Tab variant="segment" active={inputMode === 'manual'} onClick={() => setInputMode('manual')} icon="keyboard" />
+                            </TabGroup>
                         )}
 
                         <button onClick={onClose} className="size-8 rounded-full bg-black/5 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 flex items-center justify-center text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white transition-all">

@@ -280,7 +280,7 @@ const BarDetail: React.FC<BarDetailProps> = ({
           </div>
 
           {/* MODE-AWARE TABS */}
-          <div className="px-8 bg-[#080808] border-b border-zinc-900 flex">
+          <div className="px-8 py-2 bg-[#080808] border-b border-zinc-900 flex gap-1">
             {isEditMode ? (
               <>
                 <TabButton active={editTab === 'config'} onClick={() => setEditTab('config')} icon={<Beer size={14} />} label="Config" />
@@ -620,10 +620,10 @@ const BarDetail: React.FC<BarDetailProps> = ({
 const TabButton: React.FC<{ active: boolean, onClick: () => void, icon: React.ReactNode, label: string }> = ({ active, onClick, icon, label }) => (
   <button
     onClick={onClick}
-    className={`flex-1 py-4 flex flex-col items-center gap-1 border-b-2 transition-all ${active ? 'border-[#36e27b] text-[#36e27b] bg-[#36e27b]/5' : 'border-transparent text-zinc-600 hover:text-zinc-400'}`}
+    className={`flex-1 py-2.5 rounded-full flex items-center justify-center gap-1.5 transition-all text-[8px] font-black uppercase tracking-widest ${active ? 'bg-[#36e27b]/15 text-[#36e27b] border border-[#36e27b]/25' : 'text-zinc-600 hover:text-zinc-400 border border-transparent'}`}
   >
     {icon}
-    <span className="text-[8px] font-black uppercase tracking-widest">{label}</span>
+    {label}
   </button>
 );
 

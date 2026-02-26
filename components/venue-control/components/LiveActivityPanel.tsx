@@ -250,7 +250,7 @@ const LiveActivityPanel: React.FC<LiveActivityPanelProps> = ({
             <div className="px-4 py-2 border-b border-zinc-900 flex gap-2">
                 <button
                     onClick={() => setActiveTab('alerts')}
-                    className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'alerts'
+                    className={`flex-1 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'alerts'
                         ? 'bg-red-500/20 text-red-400 border border-red-500/30'
                         : 'bg-zinc-900 text-zinc-500 hover:text-white border border-zinc-800'
                         }`}
@@ -260,7 +260,7 @@ const LiveActivityPanel: React.FC<LiveActivityPanelProps> = ({
                 </button>
                 <button
                     onClick={() => setActiveTab('orders')}
-                    className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'orders'
+                    className={`flex-1 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'orders'
                         ? 'bg-[#36e27b]/20 text-[#36e27b] border border-[#36e27b]/30'
                         : 'bg-zinc-900 text-zinc-500 hover:text-white border border-zinc-800'
                         }`}

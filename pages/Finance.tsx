@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useCashShift, Zone } from '../hooks/useCashShift';
 import { safeQuery } from '../src/lib/pagination';
+import { Tab, TabGroup } from '../components/ui/Tab';
 
 const AreaChart = React.lazy(() => import('recharts').then((mod) => ({ default: mod.AreaChart })));
 const Area = React.lazy(() => import('recharts').then((mod) => ({ default: mod.Area })));
@@ -423,26 +424,11 @@ const Finance: React.FC = () => {
         <div className="flex flex-col md:flex-row gap-6 items-start md:items-end w-full xl:w-auto">
           <DateRangeSelector onRangeChange={(start, end) => setDateRange({ start, end })} />
 
-          <div className="flex bg-white dark:bg-surface-dark p-1 rounded-xl border border-black/[0.04] dark:border-white/[0.04] shadow-soft h-fit">
-            <button
-              onClick={() => setActiveTab('analytics')}
-              className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'analytics' ? 'bg-primary dark:bg-neon/10 text-white dark:text-neon border border-primary dark:border-neon/20' : 'text-text-secondary hover:text-primary dark:hover:text-neon'}`}
-            >
-              Ventas
-            </button>
-            <button
-              onClick={() => setActiveTab('resultados')}
-              className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'resultados' ? 'bg-primary dark:bg-neon/10 text-white dark:text-neon border border-primary dark:border-neon/20' : 'text-text-secondary hover:text-primary dark:hover:text-neon'}`}
-            >
-              Resultados
-            </button>
-            <button
-              onClick={() => setActiveTab('caja')}
-              className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'caja' ? 'bg-primary dark:bg-neon/10 text-white dark:text-neon border border-primary dark:border-neon/20' : 'text-text-secondary hover:text-primary dark:hover:text-neon'}`}
-            >
-              Caja y Turnos
-            </button>
-          </div>
+          <TabGroup className="h-fit">
+            <Tab active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')}>Ventas</Tab>
+            <Tab active={activeTab === 'resultados'} onClick={() => setActiveTab('resultados')}>Resultados</Tab>
+            <Tab active={activeTab === 'caja'} onClick={() => setActiveTab('caja')}>Caja y Turnos</Tab>
+          </TabGroup>
         </div>
       </header>
 

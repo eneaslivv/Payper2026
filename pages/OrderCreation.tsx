@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useCashShift } from '../hooks/useCashShift';
 import { supabase } from '../lib/supabase';
 import PaymentQRModal from '../components/PaymentQRModal';
+import { Tab } from '../components/ui/Tab';
 
 type PaymentMethod = 'cash' | 'card' | 'qr' | 'wallet';
 
@@ -772,13 +773,7 @@ const OrderCreation: React.FC = () => {
             </div>
             <div className="flex gap-2 overflow-x-auto no-scrollbar">
               {categories.map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${activeCategory === cat ? 'bg-neon text-black border-neon shadow-neon-soft' : 'bg-black/5 dark:bg-white/5 border-border-color/30 dark:border-white/5 text-text-secondary dark:text-white/40'}`}
-                >
-                  {cat}
-                </button>
+                <Tab key={cat} active={activeCategory === cat} onClick={() => setActiveCategory(cat)} variant="pill">{cat}</Tab>
               ))}
             </div>
           </div>

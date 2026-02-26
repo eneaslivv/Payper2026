@@ -10,6 +10,7 @@ import {
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import InvoiceProcessor from './InvoiceProcessor';
 import { useOffline } from '../contexts/OfflineContext';
+import { Tab, TabGroup } from '../components/ui/Tab';
 
 type DrawerTab = 'details' | 'recipe' | 'history';
 type InventoryFilter = 'all' | 'ingredient' | 'sellable' | 'recipes' | 'logistics';
@@ -50,28 +51,6 @@ const STOCK_MOVEMENT_REASON_LABELS: Record<string, string> = {
 };
 
 // Auxiliary Components (Hoisted)
-function TabBtn({ active, onClick, children }: { active: boolean, onClick: () => void, children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-6 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${active ? 'bg-neon text-black shadow-lg shadow-neon/10' : 'text-text-secondary dark:text-white/40 hover:text-neon hover:bg-gray-100 dark:hover:bg-white/5'}`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function DrawerTabBtn({ active, onClick, label, icon }: { active: boolean, onClick: () => void, label: string, icon: string }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex-1 flex flex-col items-center py-4 border-b-2 gap-1.5 transition-all duration-500 ${active ? 'border-neon text-neon bg-black/5 dark:bg-white/5' : 'border-transparent text-text-secondary/40 dark:text-white/20 hover:text-text-secondary dark:hover:text-white/40'}`}
-    >
-      <span className="material-symbols-outlined text-[18px]">{icon}</span>
-      <span className="text-[10px] font-black uppercase tracking-[0.2em]">{label}</span>
-    </button>
-  );
-}
 
 function KpiCard({ label, value, icon, color }: { label: string, value: string, icon: string, color: string }) {
   return (
@@ -1861,12 +1840,12 @@ const InventoryManagement: React.FC = () => {
 
       <div className="flex flex-col gap-3">
         {/* Type Filters */}
-        <div className="flex overflow-x-auto no-scrollbar bg-white dark:bg-surface-dark p-1 rounded-xl border border-border-color/30 dark:border-white/[0.04] shadow-soft max-w-full md:max-w-fit">
-          <TabBtn active={filter === 'all'} onClick={() => setFilter('all')}>GLOBAL</TabBtn>
-          <TabBtn active={filter === 'ingredient'} onClick={() => setFilter('ingredient')}>INSUMOS</TabBtn>
-          <TabBtn active={filter === 'sellable'} onClick={() => setFilter('sellable')}>PRODUCTOS</TabBtn>
-          <TabBtn active={filter === 'recipes'} onClick={() => setFilter('recipes')}>RECETAS</TabBtn>
-        </div>
+        <TabGroup className="overflow-x-auto no-scrollbar max-w-full md:max-w-fit">
+          <Tab active={filter === 'all'} onClick={() => setFilter('all')}>GLOBAL</Tab>
+          <Tab active={filter === 'ingredient'} onClick={() => setFilter('ingredient')}>INSUMOS</Tab>
+          <Tab active={filter === 'sellable'} onClick={() => setFilter('sellable')}>PRODUCTOS</Tab>
+          <Tab active={filter === 'recipes'} onClick={() => setFilter('recipes')}>RECETAS</Tab>
+        </TabGroup>
 
 
         {/* Category Filters + Search — inline row */}
@@ -2498,12 +2477,12 @@ const InventoryManagement: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex border-b border-border-color/30 dark:border-white/5 px-6 gap-6">
-              <DrawerTabBtn active={drawerTab === 'details'} onClick={() => setDrawerTab('details')} label="FICHA" icon="analytics" />
+            <div className="flex px-6 gap-1 bg-black/[0.02] dark:bg-white/[0.02] p-1">
+              <Tab variant="segment" active={drawerTab === 'details'} onClick={() => setDrawerTab('details')} icon="analytics" fullWidth>FICHA</Tab>
               {selectedItem.item_type === 'sellable' && (
-                <DrawerTabBtn active={drawerTab === 'recipe'} onClick={() => setDrawerTab('recipe')} label="RECETA" icon="biotech" />
+                <Tab variant="segment" active={drawerTab === 'recipe'} onClick={() => setDrawerTab('recipe')} icon="biotech" fullWidth>RECETA</Tab>
               )}
-              <DrawerTabBtn active={drawerTab === 'history'} onClick={() => setDrawerTab('history')} label="LOGS" icon="database" />
+              <Tab variant="segment" active={drawerTab === 'history'} onClick={() => setDrawerTab('history')} icon="database" fullWidth>LOGS</Tab>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar pb-32">

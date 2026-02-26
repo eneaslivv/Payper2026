@@ -6,6 +6,7 @@ import { MenuRenderer } from '../components/MenuRenderer';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ToastSystem';
+import { Tab, TabGroup } from '../components/ui/Tab';
 import {
     Save,
     Image,
@@ -448,27 +449,11 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                         </div>
 
                         {/* Tabs */}
-                        <div className="px-4 py-2 flex gap-1.5 border-b border-border-color/30 dark:border-white/5">
-                            <button
-                                onClick={() => setActiveSubTab('products')}
-                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${activeSubTab === 'products'
-                                    ? 'bg-[#4ADE80]/10 text-[#4ADE80]'
-                                    : 'text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'
-                                    }`}
-                            >
-                                <Coffee size={12} />
-                                Productos ({menuProducts.length})
-                            </button>
-                            <button
-                                onClick={() => setActiveSubTab('rules')}
-                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${activeSubTab === 'rules'
-                                    ? 'bg-[#4ADE80]/10 text-[#4ADE80]'
-                                    : 'text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'
-                                    }`}
-                            >
-                                <Clock size={12} />
-                                Reglas ({selectedMenu.rules?.filter(r => r.is_active).length || 0})
-                            </button>
+                        <div className="px-4 py-2">
+                          <TabGroup>
+                            <Tab active={activeSubTab === 'products'} onClick={() => setActiveSubTab('products')}><Coffee size={12} /> Productos ({menuProducts.length})</Tab>
+                            <Tab active={activeSubTab === 'rules'} onClick={() => setActiveSubTab('rules')}><Clock size={12} /> Reglas ({selectedMenu.rules?.filter(r => r.is_active).length || 0})</Tab>
+                          </TabGroup>
                         </div>
 
                         {/* Content */}
@@ -3357,14 +3342,6 @@ const StyleBtn: React.FC<{ active: boolean, onClick: () => void, children: React
     </button>
 );
 
-const TabBtn: React.FC<{ active: boolean, onClick: () => void, icon?: string, children: React.ReactNode }> = ({ active, onClick, children }) => (
-    <button
-        onClick={onClick}
-        className={`px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${active ? 'bg-white dark:bg-surface-dark text-[#4ADE80] border border-[#4ADE80]/20' : 'text-[#52525B] hover:text-text-main dark:hover:text-white'}`}
-    >
-        {children}
-    </button>
-);
 
 const LogicRow: React.FC<{ label: string, value: number, onChange: (v: number) => void, unit?: string }> = ({ label, value, onChange, unit }) => (
     <div className="flex items-center justify-between p-3 bg-black/20 rounded-2xl border border-white/5">

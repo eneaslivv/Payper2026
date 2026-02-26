@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ToastSystem';
 import { Reward, ProductLoyaltyRule, LoyaltyConfig, Product } from '../types';
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { Tab, TabGroup } from '../components/ui/Tab';
 
 const Loyalty: React.FC = () => {
    const { profile } = useAuth();
@@ -349,12 +350,12 @@ const Loyalty: React.FC = () => {
                </h1>
             </div>
 
-            <div className="flex bg-white dark:bg-surface-dark p-1 rounded-xl border border-border-color/30 dark:border-white/5 shadow-2xl overflow-x-auto no-scrollbar">
-               <SubTabBtn active={activeSubTab === 'rewards'} onClick={() => setActiveSubTab('rewards')} icon="redeem">Catálogo Canje</SubTabBtn>
-               <SubTabBtn active={activeSubTab === 'products'} onClick={() => setActiveSubTab('products')} icon="format_list_bulleted">Reglas Acumulación</SubTabBtn>
-               <SubTabBtn active={activeSubTab === 'config'} onClick={() => setActiveSubTab('config')} icon="settings_suggest">Ajustes</SubTabBtn>
-               <SubTabBtn active={activeSubTab === 'audit'} onClick={() => setActiveSubTab('audit')} icon="history">Auditoría</SubTabBtn>
-            </div>
+            <TabGroup className="overflow-x-auto no-scrollbar">
+               <Tab active={activeSubTab === 'rewards'} onClick={() => setActiveSubTab('rewards')} icon="redeem">Catálogo Canje</Tab>
+               <Tab active={activeSubTab === 'products'} onClick={() => setActiveSubTab('products')} icon="format_list_bulleted">Reglas Acumulación</Tab>
+               <Tab active={activeSubTab === 'config'} onClick={() => setActiveSubTab('config')} icon="settings_suggest">Ajustes</Tab>
+               <Tab active={activeSubTab === 'audit'} onClick={() => setActiveSubTab('audit')} icon="history">Auditoría</Tab>
+            </TabGroup>
 
             <button
                onClick={handleSave}
@@ -686,12 +687,6 @@ const Loyalty: React.FC = () => {
    );
 };
 
-const SubTabBtn: React.FC<{ active: boolean, onClick: () => void, icon: string, children: React.ReactNode }> = ({ active, onClick, icon, children }) => (
-   <button onClick={onClick} className={`px-6 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2.5 whitespace-nowrap ${active ? 'bg-black/10 dark:bg-white/10 text-text-main dark:text-white shadow-sm' : 'text-text-secondary/40 dark:text-white/20 hover:text-text-main dark:hover:text-white'}`}>
-      <span className="material-symbols-outlined text-base">{icon}</span>
-      {children}
-   </button>
-);
 
 const Toggle: React.FC<{ active: boolean, onToggle: () => void }> = ({ active, onToggle }) => (
    <button onClick={onToggle} className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-all ${active ? 'bg-neon shadow-neon-soft' : 'bg-black/10 dark:bg-white/10'}`}>

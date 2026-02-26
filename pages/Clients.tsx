@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ToastSystem';
 import { Client, LoyaltyTransaction } from '../types';
 import { safeQuery } from '../src/lib/pagination';
+import { Tab, TabGroup } from '../components/ui/Tab';
 
 interface TimelineEvent {
   type: 'order' | 'wallet' | 'loyalty' | 'note' | 'login';
@@ -553,13 +554,13 @@ const Clients: React.FC = () => {
 
       {/* Filtros Tácticos */}
       <div className="flex flex-col xl:flex-row justify-between gap-6 items-center">
-        <div className="flex bg-white dark:bg-surface-dark p-1 rounded-xl border border-black/[0.04] dark:border-white/[0.04] shadow-soft w-full xl:w-auto overflow-x-auto no-scrollbar">
-          <FilterTab active={statusFilter === 'all'} onClick={() => setStatusFilter('all')}>Todos</FilterTab>
-          <FilterTab active={statusFilter === 'highest_spend'} onClick={() => setStatusFilter('highest_spend')}>Más Gastaron</FilterTab>
-          <FilterTab active={statusFilter === 'newest'} onClick={() => setStatusFilter('newest')}>Nuevos</FilterTab>
-          <FilterTab active={statusFilter === 'active'} onClick={() => setStatusFilter('active')}>Activos</FilterTab>
-          <FilterTab active={statusFilter === 'blocked'} onClick={() => setStatusFilter('blocked')}>Bloqueados</FilterTab>
-        </div>
+        <TabGroup className="w-full xl:w-auto overflow-x-auto no-scrollbar">
+          <Tab active={statusFilter === 'all'} onClick={() => setStatusFilter('all')}>Todos</Tab>
+          <Tab active={statusFilter === 'highest_spend'} onClick={() => setStatusFilter('highest_spend')}>Más Gastaron</Tab>
+          <Tab active={statusFilter === 'newest'} onClick={() => setStatusFilter('newest')}>Nuevos</Tab>
+          <Tab active={statusFilter === 'active'} onClick={() => setStatusFilter('active')}>Activos</Tab>
+          <Tab active={statusFilter === 'blocked'} onClick={() => setStatusFilter('blocked')}>Bloqueados</Tab>
+        </TabGroup>
         <div className="relative w-full max-w-md group">
           <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary opacity-50 group-focus-within:text-neon transition-colors text-lg">search</span>
           <input
@@ -1084,14 +1085,6 @@ const Clients: React.FC = () => {
   );
 };
 
-const FilterTab: React.FC<{ active: boolean, onClick: () => void, children: React.ReactNode }> = ({ active, onClick, children }) => (
-  <button
-    onClick={onClick}
-    className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${active ? 'bg-primary dark:bg-neon/10 text-white dark:text-neon border border-primary dark:border-neon/20 shadow-soft' : 'text-text-secondary hover:text-primary'}`}
-  >
-    {children}
-  </button>
-);
 
 const MetricBlock: React.FC<{ label: string, value: string, icon: string, color?: string }> = ({ label, value, icon, color }) => (
   <div className="p-5 rounded-3xl bg-black/[0.01] dark:bg-white/[0.01] border border-black/[0.03] dark:border-white/[0.03]">

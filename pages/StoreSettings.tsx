@@ -5,6 +5,7 @@ import { useToast } from '../components/ToastSystem';
 import { Store, StaffMember, CustomRole, SectionSlug, AuditLogEntry, AuditCategory, AIConfig } from '../types';
 import { MOCK_STAFF, MOCK_ROLES, DEFAULT_AI_CONFIG } from '../constants';
 import { formatAuditLog } from '../utils/auditAdapter';
+import { Tab, TabGroup } from '../components/ui/Tab';
 
 const SECTIONS: { slug: SectionSlug, label: string }[] = [
     { slug: 'dashboard', label: 'Dashboard Principal' },
@@ -541,7 +542,7 @@ const StoreSettings: React.FC = () => {
             </header>
 
             {/* MAIN TABS NAVBAR */}
-            <nav className="flex gap-4 p-2 bg-black/[0.02] dark:bg-white/[0.02] border border-border-color/30 dark:border-white/5 rounded-[2.5rem] w-fit backdrop-blur-xl">
+            <nav className="flex gap-2 p-2 bg-black/[0.02] dark:bg-white/[0.02] border border-border-color/30 dark:border-white/5 rounded-full w-fit backdrop-blur-xl">
                 {[
                     { id: 'negocio', label: 'NEGOCIO', icon: 'storefront' },
                     { id: 'staff', label: 'STAFF & ROLES', icon: 'badge' },
@@ -549,14 +550,7 @@ const StoreSettings: React.FC = () => {
                     { id: 'ai', label: 'SQUADAI', icon: 'auto_awesome' },
                     { id: 'payment', label: 'PASARELA', icon: 'payments' },
                 ].map(t => (
-                    <button
-                        key={t.id}
-                        onClick={() => setActiveTab(t.id as any)}
-                        className={`flex items-center gap-3 px-8 py-4 rounded-[1.8rem] text-[11px] font-black tracking-widest transition-all ${activeTab === t.id ? 'bg-neon/10 text-neon border border-neon/20 shadow-neon-soft' : 'text-text-secondary dark:text-white/30 hover:text-text-main dark:hover:text-white/60'}`}
-                    >
-                        <span className="material-symbols-outlined text-xl">{t.icon}</span>
-                        {t.label}
-                    </button>
+                    <Tab key={t.id} active={activeTab === t.id} onClick={() => setActiveTab(t.id as any)} icon={t.icon} variant="nav">{t.label}</Tab>
                 ))}
             </nav>
 
@@ -752,10 +746,10 @@ const StoreSettings: React.FC = () => {
                             {/* Sub-Header para Staff */}
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-sm italic font-black uppercase tracking-tighter text-text-main dark:text-white">Equipo y <span className="text-neon">Permisos</span></h3>
-                                <div className="flex bg-black/[0.02] dark:bg-white/[0.02] p-1 rounded-xl border border-border-color/30 dark:border-white/5 shadow-soft">
-                                    <button onClick={() => setStaffSubTab('members')} className={`px-3 py-1.5 rounded-md text-[8px] font-bold uppercase tracking-widest transition-all ${staffSubTab === 'members' ? 'bg-black/5 dark:bg-white/10 text-neon' : 'text-text-secondary dark:text-white/30 hover:text-text-main dark:hover:text-white'}`}>Directorio Staff</button>
-                                    <button onClick={() => setStaffSubTab('roles')} className={`px-3 py-1.5 rounded-md text-[8px] font-bold uppercase tracking-widest transition-all ${staffSubTab === 'roles' ? 'bg-black/5 dark:bg-white/10 text-neon' : 'text-text-secondary dark:text-white/30 hover:text-text-main dark:hover:text-white'}`}>Definición Roles</button>
-                                </div>
+                                <TabGroup>
+                                    <Tab active={staffSubTab === 'members'} onClick={() => setStaffSubTab('members')}>Directorio Staff</Tab>
+                                    <Tab active={staffSubTab === 'roles'} onClick={() => setStaffSubTab('roles')}>Definición Roles</Tab>
+                                </TabGroup>
                             </div>
 
                             <div className="min-h-[300px]">
@@ -930,10 +924,10 @@ const StoreSettings: React.FC = () => {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                             <div className="p-3 rounded-xl bg-gray-100 dark:bg-black/40 border border-border-color/30 dark:border-white/5 space-y-3">
                                                 <h4 className="text-[11px] font-black uppercase text-neon tracking-[0.2em] italic leading-none">Modo Operativo</h4>
-                                                <div className="flex bg-gray-200 dark:bg-black/60 p-0.5 rounded-lg border border-border-color/30 dark:border-white/5">
-                                                    <button onClick={() => setAiConfig({ ...aiConfig, activeMode: 'assistant' })} className={`flex-1 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${aiConfig.activeMode === 'assistant' ? 'bg-white dark:bg-white/10 text-text-main dark:text-white shadow-xl' : 'text-text-secondary/40 dark:text-white/20 hover:text-text-secondary dark:hover:text-white/40'}`}>Asistente</button>
-                                                    <button onClick={() => setAiConfig({ ...aiConfig, activeMode: 'agent' })} className={`flex-1 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${aiConfig.activeMode === 'agent' ? 'bg-white dark:bg-white/10 text-text-main dark:text-white shadow-xl' : 'text-text-secondary/40 dark:text-white/20 hover:text-text-secondary dark:hover:text-white/40'}`}>Agente</button>
-                                                </div>
+                                                <TabGroup className="bg-gray-200 dark:bg-black/60">
+                                                    <Tab variant="segment" active={aiConfig.activeMode === 'assistant'} onClick={() => setAiConfig({ ...aiConfig, activeMode: 'assistant' })} fullWidth>Asistente</Tab>
+                                                    <Tab variant="segment" active={aiConfig.activeMode === 'agent'} onClick={() => setAiConfig({ ...aiConfig, activeMode: 'agent' })} fullWidth>Agente</Tab>
+                                                </TabGroup>
                                                 <p className="text-[9px] text-text-secondary dark:text-white/30 uppercase font-bold tracking-tight leading-relaxed italic">
                                                     El modo Agente permite a la IA realizar acciones directas como autorizar correcciones de stock o ajustes de precios.
                                                 </p>

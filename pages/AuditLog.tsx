@@ -4,6 +4,7 @@ import { AuditLogEntry, AuditCategory } from '../types';
 import DateRangeSelector from '../components/DateRangeSelector';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { Tab, TabGroup } from '../components/ui/Tab';
 
 // Mapeo de tabla a categoría de auditoría
 const TABLE_CATEGORY_MAP: Record<string, AuditCategory> = {
@@ -295,18 +296,11 @@ const AuditLog: React.FC = () => {
       </div>
 
       <div className="flex flex-col xl:flex-row justify-between gap-6 items-center">
-        <div className="flex bg-white dark:bg-surface-dark p-1 rounded-xl border border-black/[0.04] dark:border-white/[0.04] shadow-soft w-full xl:w-auto overflow-x-auto no-scrollbar">
+        <TabGroup className="w-full xl:w-auto overflow-x-auto no-scrollbar">
           {CATEGORIES.map(cat => (
-            <button
-              key={cat.slug}
-              onClick={() => setFilter(cat.slug)}
-              className={`px-6 py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center gap-2.5 whitespace-nowrap ${filter === cat.slug ? 'bg-primary dark:bg-white/10 text-white shadow-soft' : 'text-text-secondary hover:text-primary dark:hover:text-neon'}`}
-            >
-              <span className="material-symbols-outlined text-lg">{cat.icon}</span>
-              {cat.label}
-            </button>
+            <Tab key={cat.slug} active={filter === cat.slug} onClick={() => setFilter(cat.slug)} icon={cat.icon}>{cat.label}</Tab>
           ))}
-        </div>
+        </TabGroup>
         <div className="relative w-full max-w-md group">
           <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary opacity-40 text-lg group-focus-within:text-neon transition-colors">search</span>
           <input

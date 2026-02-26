@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { generateInsights, OrderAnalysis } from '../lib/insights';
+import { Tab, TabGroup } from './ui/Tab';
 
 interface SmartInsightsProps {
     storeId?: string;
@@ -67,12 +68,12 @@ const SmartInsights: React.FC<SmartInsightsProps> = ({ storeId }) => {
                     </div>
                 </div>
                 {/* TABS */}
-                <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg">
-                    <TabButton active={activeTab === 'PEAK'} onClick={() => setActiveTab('PEAK')} icon="schedule" />
-                    <TabButton active={activeTab === 'PRODUCTS'} onClick={() => setActiveTab('PRODUCTS')} icon="star" />
-                    <TabButton active={activeTab === 'TABLES'} onClick={() => setActiveTab('TABLES')} icon="table_restaurant" />
-                    <TabButton active={activeTab === 'PREDICTION'} onClick={() => setActiveTab('PREDICTION')} icon="trending_up" />
-                </div>
+                <TabGroup className="bg-black/5 dark:bg-white/5">
+                    <Tab variant="segment" active={activeTab === 'PEAK'} onClick={() => setActiveTab('PEAK')} icon="schedule" />
+                    <Tab variant="segment" active={activeTab === 'PRODUCTS'} onClick={() => setActiveTab('PRODUCTS')} icon="star" />
+                    <Tab variant="segment" active={activeTab === 'TABLES'} onClick={() => setActiveTab('TABLES')} icon="table_restaurant" />
+                    <Tab variant="segment" active={activeTab === 'PREDICTION'} onClick={() => setActiveTab('PREDICTION')} icon="trending_up" />
+                </TabGroup>
             </div>
 
             {/* CONTENT AREA */}
@@ -207,13 +208,5 @@ const SmartInsights: React.FC<SmartInsightsProps> = ({ storeId }) => {
     );
 };
 
-const TabButton: React.FC<{ active: boolean, onClick: () => void, icon: string }> = ({ active, onClick, icon }) => (
-    <button
-        onClick={onClick}
-        className={`size-7 rounded flex items-center justify-center transition-all ${active ? 'bg-black/5 dark:bg-white/10 text-text-main dark:text-white shadow-sm' : 'text-text-secondary/60 dark:text-white/30 hover:text-text-main dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'}`}
-    >
-        <span className="material-symbols-outlined text-base">{icon}</span>
-    </button>
-);
 
 export default SmartInsights;

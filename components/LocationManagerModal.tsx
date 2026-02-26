@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useToast } from './ToastSystem';
 import type { StorageLocation } from '../types';
+import { Tab, TabGroup } from './ui/Tab';
 
 interface LocationManagerModalProps {
     isOpen: boolean;
@@ -105,20 +106,10 @@ export const LocationManagerModal: React.FC<LocationManagerModalProps> = ({ isOp
                 <div className="p-4 border-b border-border-color/30 dark:border-white/5 flex justify-between items-center bg-black/[0.02] dark:bg-white/[0.02]">
                     <div className="flex items-center gap-4">
                         <h3 className="text-text-main dark:text-white font-black uppercase tracking-wider text-sm">Logística y Ubicaciones</h3>
-                        <div className="flex bg-gray-100 dark:bg-black/40 p-1 rounded-lg border border-border-color/30 dark:border-white/5">
-                            <button
-                                onClick={() => setActiveTab('manage')}
-                                className={`px-4 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'manage' ? 'bg-white text-black shadow-sm' : 'text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white'}`}
-                            >
-                                Gestionar
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('history')}
-                                className={`px-4 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'history' ? 'bg-white text-black shadow-sm' : 'text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white'}`}
-                            >
-                                Historial
-                            </button>
-                        </div>
+                        <TabGroup>
+                            <Tab active={activeTab === 'manage'} onClick={() => setActiveTab('manage')}>Gestionar</Tab>
+                            <Tab active={activeTab === 'history'} onClick={() => setActiveTab('history')}>Historial</Tab>
+                        </TabGroup>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full text-text-secondary dark:text-white/40 hover:text-text-main dark:hover:text-white transition-colors">
                         <span className="material-symbols-outlined text-lg">close</span>
