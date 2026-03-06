@@ -7,6 +7,7 @@ interface WalletTransferModalProps {
     isOpen: boolean;
     onClose: () => void;
     userBalance: number;
+    storeId?: string;
     theme: MenuTheme;
     onSuccess?: (newBalance: number) => void;
 }
@@ -15,6 +16,7 @@ export const WalletTransferModal: React.FC<WalletTransferModalProps> = ({
     isOpen,
     onClose,
     userBalance,
+    storeId,
     theme,
     onSuccess
 }) => {
@@ -53,7 +55,8 @@ export const WalletTransferModal: React.FC<WalletTransferModalProps> = ({
         try {
             const { data, error } = await (supabase.rpc as any)('p2p_wallet_transfer', {
                 p_recipient_email: email.trim().toLowerCase(),
-                p_amount: amountNum
+                p_amount: amountNum,
+                p_store_id: storeId || null
             });
 
             if (error) throw error;
@@ -90,7 +93,7 @@ export const WalletTransferModal: React.FC<WalletTransferModalProps> = ({
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-4">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     {/* Backdrop */}
                     <motion.div
                         initial={{ opacity: 0 }}
@@ -169,7 +172,7 @@ export const WalletTransferModal: React.FC<WalletTransferModalProps> = ({
                                             <input
                                                 type="number"
                                                 value={amount}
-                                                onChange={e => setAmount(e.target.value)}
+                                                onChange={e => { setAmount(e.target.value); setErrorMessage(''); }}
                                                 placeholder="0.00"
                                                 className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-lg font-mono font-bold focus:border-white/30 outline-none transition-all pl-10"
                                             />

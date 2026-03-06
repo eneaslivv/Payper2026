@@ -485,6 +485,7 @@ const MenuPage: React.FC = () => {
           isOpen={showTransfer}
           onClose={() => setShowTransfer(false)}
           userBalance={user.balance || 0}
+          storeId={store.id}
           theme={store.menu_theme || { accentColor, backgroundColor, textColor } as any}
           onSuccess={(newBalance) => {
             if (user && setUser) {
