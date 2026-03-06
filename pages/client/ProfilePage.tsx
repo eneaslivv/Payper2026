@@ -147,7 +147,7 @@ const ProfilePage: React.FC = () => {
         <div className="w-12"></div>
         <h2 className="text-xl font-black flex-1 text-center tracking-tight uppercase italic leading-none">Tu Perfil</h2>
         <div className="flex w-12 items-center justify-end">
-          <button onClick={() => setUser(null)} className="flex items-center justify-center h-12 w-12 hover:text-red-500 transition-colors active:scale-90" style={{ color: textColor }}>
+          <button onClick={() => supabase.auth.signOut()} className="flex items-center justify-center h-12 w-12 hover:text-red-500 transition-colors active:scale-90" style={{ color: textColor }}>
             <span className="material-symbols-outlined text-2xl">logout</span>
           </button>
         </div>

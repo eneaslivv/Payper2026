@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { useToast } from '../components/ToastSystem';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -85,6 +85,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const [store, setStore] = useState<Store | null>(null);
     const [loadingStore, setLoadingStore] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const authUserIdRef = useRef<string | null>(null);
 
     const [products, setProducts] = useState<MenuItem[]>([]);
     const [categories, setCategories] = useState<string[]>([]);
@@ -181,6 +182,15 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             const { data: userData } = await supabase.auth.getUser();
             if (!userData.user) throw new Error('Usuario no autenticado');
 
+            // Always use auth.uid() for client lookup, not the passed userId
+            // (realtime handler may pass clients.id instead of auth.uid())
+            const authUserId = userData.user.id;
+            authUserIdRef.current = authUserId;
+            if (userId !== authUserId) {
+                console.warn('[ClientContext] fetchUserProfile called with non-auth ID, using auth.uid() instead:', authUserId);
+                userId = authUserId;
+            }
+
             // 1. Fetch from 'clients' looking for auth_user_id in this store
             let clientDataWrapper = await supabase
                 .from('clients')
@@ -188,6 +198,10 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 .eq('auth_user_id', userId) // Match Auth User ID
                 .eq('store_id', store.id)   // Match Current Store
                 .maybeSingle();
+
+            console.log('[ClientContext] Client lookup result:',
+                clientDataWrapper.data ? `found (id: ${clientDataWrapper.data.id})` : 'not found',
+                clientDataWrapper.error ? `error: ${clientDataWrapper.error.message}` : '');
 
             if (!clientDataWrapper.data) {
                 // Check if user has a STAFF profile - if so, don't auto-create client profile
@@ -230,8 +244,14 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 }
             }
 
+            if (!clientDataWrapper.data) {
+                console.warn('[ClientContext] WARNING: No client record found, using auth.uid() fallback. Orders may not match!',
+                    'userId:', userId, 'storeId:', store.id,
+                    'error:', clientDataWrapper.error?.message || 'none');
+            }
+
             const clientData = clientDataWrapper.data || {
-                id: userId, // Fallback for UI only
+                id: userId, // Fallback for UI only — orders WON'T match if client exists with different id
                 name: userData.user?.user_metadata?.full_name || 'Cliente Nuevo',
                 full_name: userData.user?.user_metadata?.full_name || 'Cliente Nuevo',
                 email: userData.user?.email || '',
@@ -247,6 +267,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
             // 3. Fetch Vouchers (use clients.id, not auth.uid())
             const clientId = clientData.id;
+            console.log('[ClientContext] Using clientId for queries:', clientId, '(auth.uid:', userId, ')');
             const { data: vouchersData } = await supabase
                 .from('loyalty_vouchers')
                 .select('*')
@@ -255,12 +276,17 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             // 4. Fetch Order History with Items
             // FIX: Use clientData.id (clients.id) instead of auth.uid()
             // Orders are created with client_id = clients.id, so query must match
-            const { data: ordersData } = await supabase
+            const { data: ordersData, error: ordersError } = await supabase
                 .from('orders')
                 .select('*, order_items(*)')
                 .eq('store_id', store.id)
                 .eq('client_id', clientId)
                 .order('created_at', { ascending: false });
+
+            if (ordersError) {
+                console.error('[ClientContext] Orders fetch error:', ordersError);
+            }
+            console.log('[ClientContext] Orders fetched:', ordersData?.length ?? 0, 'orders for client', clientId);
 
             // 4.5 Check for Active OrderS (Plural)
             const activeOrdersFound = ordersData?.filter(o =>
@@ -850,7 +876,9 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                         const activeFinal = ['delivered', 'cancelled', 'served'].includes(orderData.status);
                         if (activeFinal) {
                             // Fetch fresh list to be safe instead of just filtering local state
-                            fetchUserProfile(user.id);
+                            // Use auth.uid() (from ref), NOT user.id (which is clients.id)
+                            const authId = authUserIdRef.current;
+                            if (authId) fetchUserProfile(authId);
                         }
                     }
                 }
