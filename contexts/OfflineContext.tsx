@@ -756,6 +756,12 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
           }
         }
 
+        // Fallback: if node didn't have a dispatch_station, use the one from the original order
+        if (!orderData.dispatch_station && newOrder.dispatch_station) {
+          orderData.dispatch_station = newOrder.dispatch_station;
+          console.log(`[createOrder] Using operator's station: ${newOrder.dispatch_station}`);
+        }
+
         // Fallback: resolve source_location_id from dispatch_stations if not set by node
         if (!(orderData as any).source_location_id && orderData.dispatch_station) {
           try {

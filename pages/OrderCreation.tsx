@@ -47,6 +47,13 @@ const OrderCreation: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [showQRModal, setShowQRModal] = useState(false);
 
+  // Dispatch Station State
+  const [availableStations, setAvailableStations] = useState<{ name: string; storage_location_id: string | null }[]>([]);
+  const [selectedStation, setSelectedStation] = useState<string>(() => {
+    const saved = localStorage.getItem('payper_dispatch_station');
+    return saved && saved !== 'ALL' ? saved : '';
+  });
+
   // Camera Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -168,10 +175,29 @@ const OrderCreation: React.FC = () => {
 
       console.log('[OrderCreation] Unified products (deduplicated):', unifiedProducts.length);
       setMenuProducts(unifiedProducts);
+
+      // 4. Fetch Dispatch Stations
+      const { data: stationsData } = await supabase
+        .from('dispatch_stations' as any)
+        .select('name, storage_location_id')
+        .eq('store_id', profile.store_id)
+        .eq('is_visible', true)
+        .order('sort_order', { ascending: true });
+
+      if (stationsData) {
+        setAvailableStations(stationsData as any);
+      }
     };
 
     fetchData();
   }, [profile?.store_id]);
+
+  // Persist station selection to localStorage (shared with OrderBoard)
+  useEffect(() => {
+    if (selectedStation) {
+      localStorage.setItem('payper_dispatch_station', selectedStation);
+    }
+  }, [selectedStation]);
 
   const filteredProducts = useMemo(() => {
     return menuProducts.filter(p => {
@@ -338,6 +364,13 @@ const OrderCreation: React.FC = () => {
       return;
     }
 
+    // Station validation: require station for takeaway if stations are configured
+    if (availableStations.length > 0 && !selectedStation && !selectedTable) {
+      addToast('SELECCIONA ESTACIÓN', 'error', 'Debes seleccionar una estación de despacho');
+      setIsSubmitting(false);
+      return;
+    }
+
     const tableNum = selectedTable?.name.replace('Mesa ', '') || null;
 
     // CHECK ACTIVE ORDERS WARNING
@@ -447,6 +480,7 @@ const OrderCreation: React.FC = () => {
         payment_status: isPaidOnCreation ? 'paid' : 'pending',
         is_paid: isPaidOnCreation,
         table_number: tableNum,
+        dispatch_station: selectedStation || undefined,
         created_at: new Date().toISOString(), // Important for sorting
         lastModified: Date.now()
       };
@@ -744,6 +778,26 @@ const OrderCreation: React.FC = () => {
                 <span className={`size-1.5 rounded-full ${hasOpenSession ? 'bg-green-400' : 'bg-red-400'}`}></span>
                 {hasOpenSession ? `Caja Abierta (${activeSessions.length})` : 'Sin Caja'}
               </span>
+              {availableStations.length > 0 && (
+                <div className="relative flex items-center">
+                  <span className="material-symbols-outlined absolute left-2 text-xs pointer-events-none" style={{ color: selectedStation ? '#4ade80' : '#f87171' }}>store</span>
+                  <select
+                    value={selectedStation}
+                    onChange={(e) => setSelectedStation(e.target.value)}
+                    className={`h-6 pl-7 pr-6 rounded-full text-[8px] font-black uppercase tracking-wide appearance-none cursor-pointer transition-all outline-none border ${
+                      selectedStation
+                        ? 'bg-neon/10 border-neon/30 text-neon'
+                        : 'bg-red-500/10 border-red-500/30 text-red-400 animate-pulse'
+                    }`}
+                  >
+                    <option value="">Estacion...</option>
+                    {availableStations.map(s => (
+                      <option key={s.name} value={s.name}>{s.name}</option>
+                    ))}
+                  </select>
+                  <span className="material-symbols-outlined absolute right-1.5 text-[10px] pointer-events-none opacity-40">expand_more</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -835,11 +889,11 @@ const OrderCreation: React.FC = () => {
               <span className="material-symbols-outlined text-5xl">check_circle</span>
             </div>
 
-            <h2 className="text-3xl font-black uppercase italic tracking-tighter text-text-main dark:text-white mb-2">Misión <span className="text-neon">Cumplida</span></h2>
+            <h2 className="text-3xl font-black uppercase italic tracking-tighter text-text-main dark:text-white mb-2">Pedido <span className="text-neon">Confirmado</span></h2>
             <p className="text-xs font-bold uppercase tracking-widest text-text-secondary dark:text-white/50 mb-6">Venta registrada con éxito</p>
 
-            <div className="w-full bg-black/5 dark:bg-white/5 rounded-xl p-4 mb-6 border border-border-color dark:border-white/10">
-              <div className="flex justify-between items-center mb-2">
+            <div className="w-full bg-black/5 dark:bg-white/5 rounded-xl p-4 mb-6 border border-border-color dark:border-white/10 space-y-2">
+              <div className="flex justify-between items-center">
                 <span className="text-[10px] font-black uppercase text-text-secondary dark:text-white/50">Monto Total</span>
                 <span className="text-xl font-black text-text-main dark:text-white">${lastOrderTotal.toFixed(2)}</span>
               </div>
@@ -857,11 +911,20 @@ const OrderCreation: React.FC = () => {
                   {paymentMethod === 'wallet' && 'Saldo'}
                 </span>
               </div>
+              {selectedStation && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-black uppercase text-text-secondary dark:text-white/50">Estación</span>
+                  <span className="text-xs font-black uppercase text-neon flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">store</span>
+                    {selectedStation}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">
               <button autoFocus onClick={() => window.location.reload()} className="w-full py-4 bg-neon text-black font-black uppercase tracking-widest rounded-xl hover:bg-neon/90 transition-all shadow-neon-soft active:scale-95">
-                Nueva Operación [ENTER]
+                Nuevo Pedido [ENTER]
               </button>
               <button onClick={() => navigate('/orders')} className="w-full py-4 border border-border-color dark:border-white/10 text-text-secondary dark:text-white/40 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:text-text-main dark:hover:text-white transition-all">VER TABLERO DESPACHO</button>
             </div>
