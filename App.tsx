@@ -456,7 +456,7 @@ const OperativeLayout: React.FC<{ children: React.ReactNode, activeNode: CafeNod
             <Link to="/scanner" className="flex items-center justify-center size-8 rounded-lg border border-gray-200 dark:border-white/5 text-[#9B9A97] dark:text-[#71766F] hover:text-emerald-600 dark:hover:text-neon transition-all"><span className="material-symbols-outlined text-[18px]">center_focus_weak</span></Link>
             <Link to="/create-order" className="flex items-center gap-2 px-4 py-1.5 bg-emerald-500 dark:bg-neon text-white dark:text-black rounded-lg font-black text-[9px] uppercase tracking-[0.15em] shadow-lg dark:shadow-neon-soft hover:scale-105 active:scale-95 transition-all">
               <span className="material-symbols-outlined text-[16px]">add</span>
-              <span className="hidden sm:inline italic">NUEVA MISIÓN [N]</span>
+              <span className="hidden sm:inline italic">NUEVO PEDIDO [N]</span>
             </Link>
           </div>
         </header>

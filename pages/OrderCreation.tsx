@@ -48,7 +48,7 @@ const OrderCreation: React.FC = () => {
   const [showQRModal, setShowQRModal] = useState(false);
 
   // Dispatch Station State
-  const [availableStations, setAvailableStations] = useState<{ name: string; storage_location_id: string | null }[]>([]);
+  const [availableStations, setAvailableStations] = useState<{ name: string }[]>([]);
   const [selectedStation, setSelectedStation] = useState<string>(() => {
     const saved = localStorage.getItem('payper_dispatch_station');
     return saved && saved !== 'ALL' ? saved : '';
@@ -179,7 +179,7 @@ const OrderCreation: React.FC = () => {
       // 4. Fetch Dispatch Stations
       const { data: stationsData } = await supabase
         .from('dispatch_stations' as any)
-        .select('name, storage_location_id')
+        .select('name')
         .eq('store_id', profile.store_id)
         .eq('is_visible', true)
         .order('sort_order', { ascending: true });
