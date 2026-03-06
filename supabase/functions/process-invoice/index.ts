@@ -94,7 +94,7 @@ serve(async (req) => {
         }
 
         const genAI = new GoogleGenerativeAI(geminiApiKey)
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro-latest' })
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
         // System prompt for Argentine invoice extraction (Spanish is required for the model context)
         const systemPrompt = `Eres un experto contable argentino especializado en OCR de facturas. 
