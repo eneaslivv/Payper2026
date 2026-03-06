@@ -37,14 +37,27 @@ const SessionSelector: React.FC<SessionSelectorProps> = ({
         setError(null);
 
         try {
-            // Create session via RPC (without QR, manual selection)
+            // Get current user's client ID for linking
+            let clientId: string | null = null;
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data: clientData } = await supabase
+                    .from('clients')
+                    .select('id')
+                    .eq('auth_user_id', user.id)
+                    .eq('store_id', storeId)
+                    .single();
+                clientId = clientData?.id || null;
+            }
+
+            // Create session via RPC
             const { data, error: rpcError } = await (supabase.rpc as any)('create_client_session', {
                 p_store_id: storeId,
                 p_session_type: selectedType === 'pickup' ? 'pickup' : selectedType,
-                p_table_id: null, // Manual selection doesn't have venue_node
+                p_table_id: null,
                 p_bar_id: null,
                 p_location_id: null,
-                p_client_id: null
+                p_client_id: clientId
             });
 
             if (rpcError) throw rpcError;

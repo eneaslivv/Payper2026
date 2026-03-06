@@ -594,7 +594,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     if (productsError) console.error('[ClientContext] Error fetching menu products:', productsError);
 
                     if (menuProducts && menuProducts.length > 0) {
-                        finalProducts = menuProducts.map((item: any) => ({
+                        const menuItems: MenuItem[] = menuProducts.map((item: any) => ({
                             id: item.product_id,
                             name: item.name,
                             description: item.description || '',
@@ -606,8 +606,34 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                             availableStock: getAvailableStock(item),
                             variants: [],
                             addons: [],
-                            item_type: 'sellable' as const,
+                            item_type: 'product' as const,
                         }));
+
+                        // Also load visible inventory items (not in dynamic menu but marked visible)
+                        const { data: extraInv } = await (supabase.from('inventory_items') as any)
+                            .select('*')
+                            .eq('store_id', store!.id)
+                            .eq('is_menu_visible', true)
+                            .gt('price', 0);
+
+                        const extraItems: MenuItem[] = (extraInv || []).map((item: any) => {
+                            const catName = item.category_id ? categoryMap[item.category_id] : (item.category || 'General');
+                            return {
+                                id: item.id,
+                                name: item.name,
+                                description: item.description || '',
+                                price: item.price || 0,
+                                image: item.image_url || item.image || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
+                                category: catName,
+                                isPopular: item.is_popular || false,
+                                isOutOfStock: (item.current_stock !== undefined && item.current_stock <= 0) || false,
+                                variants: item.variants || [],
+                                addons: item.addons || [],
+                                item_type: 'sellable' as const,
+                            };
+                        });
+
+                        finalProducts = [...menuItems, ...extraItems];
                     } else {
                         console.warn('[ClientContext] Menu has no products, loading all inventory');
                         finalProducts = await loadAllProducts(categoryMap);
