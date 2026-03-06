@@ -1187,15 +1187,29 @@ const MenuDesign: React.FC = () => {
 
             // Map Products (Recipes/Sellables) - Source of Truth for Menu
             // We use 'sellable' type to distinguish them for persistence
+            // Build ingredient stock lookup for recipe availability
+            const ingredientStockMap: Record<string, number> = {};
+            (inventoryItems || []).forEach((inv: any) => {
+                const closed = inv.current_stock || 0;
+                const openRemaining = (inv.open_packages || []).reduce((sum: number, pkg: any) => sum + (pkg.remaining || 0), 0);
+                ingredientStockMap[inv.id] = closed + openRemaining;
+            });
+
             const mappedProducts: InventoryItem[] = (products || []).map((p: any) => {
-                // Calculate recipe cost
+                // Calculate recipe cost + available portions
                 const itemRecipes = (recipesData || []).filter((r: any) => r.product_id === p.id);
                 let recipeCost = 0;
+                let availablePortions = Infinity;
 
                 itemRecipes.forEach((r: any) => {
                     const ingredient = (inventoryItems || []).find((inv: any) => inv.id === r.inventory_item_id);
                     if (ingredient && ingredient.cost) {
                         recipeCost += (ingredient.cost * (parseFloat(r.quantity_required) || 0));
+                    }
+                    const qtyRequired = parseFloat(r.quantity_required) || 0;
+                    if (qtyRequired > 0) {
+                        const stock = ingredientStockMap[r.inventory_item_id] || 0;
+                        availablePortions = Math.min(availablePortions, Math.floor(stock / qtyRequired));
                     }
                 });
 
@@ -1206,6 +1220,9 @@ const MenuDesign: React.FC = () => {
                         recipeCost += (component.cost * (link.quantity || 1));
                     }
                 });
+
+                // If no recipe, portions is 0; if Infinity (empty recipe), treat as available
+                const calculatedStock = itemRecipes.length === 0 ? 0 : (availablePortions === Infinity ? 999 : availablePortions);
 
                 return {
                     id: p.id,
@@ -1218,7 +1235,7 @@ const MenuDesign: React.FC = () => {
                     is_active: p.is_available,
                     is_menu_visible: p.is_visible, // Map from 'is_visible' column in products table
                     min_stock: 0,
-                    current_stock: 0,
+                    current_stock: calculatedStock,
                     cost: recipeCost, // Use calculated recipe cost
                     price: (p.base_price !== undefined && p.base_price !== null) ? Number(p.base_price) : (p.price || 0),
                     category_ids: p.category_id ? [p.category_id] : [],
