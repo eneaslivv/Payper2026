@@ -140,23 +140,23 @@ export const OrderPickupTicket = ({ order, storeSlug, theme, allowDisconnect, ta
     // DELIVERED ORDER UI
     if (isDelivered) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen text-center p-8 relative overflow-hidden animate-in fade-in duration-1000" style={{ backgroundColor, color: textColor }}>
+            <div className="flex flex-col items-center justify-center min-h-screen text-center px-6 py-10 relative overflow-hidden animate-in fade-in duration-1000" style={{ backgroundColor, color: textColor }}>
                 {/* Background Decorations 🎨 */}
                 <div className="absolute top-[-10%] left-[-20%] w-[60%] h-[40%] blur-[120px] rounded-full" style={{ backgroundColor: `${accentColor}1A` }} />
                 <div className="absolute bottom-[-10%] right-[-20%] w-[60%] h-[40%] blur-[120px] rounded-full" style={{ backgroundColor: `${accentColor}1A` }} />
                 <div className="absolute inset-0" style={{ background: `radial-gradient(circle at center, ${accentColor}0D 0%, transparent 70%)` }} />
 
                 {/* Main Success Icon 🏆 */}
-                <div className="relative mb-12 z-10">
+                <div className="relative mb-6 z-10">
                     <div className="absolute inset-0 blur-[60px] rounded-full opacity-20 animate-pulse" style={{ backgroundColor: accentColor }} />
-                    <div className="relative w-32 h-32 rounded-[2.5rem] border flex items-center justify-center shadow-2xl rotate-3" style={{ backgroundColor: surfaceColor, borderColor: `${textColor}1A` }}>
-                        <div className="absolute inset-px rounded-[2.4rem] bg-gradient-to-br from-white/5 to-transparent" />
-                        <span className="material-symbols-outlined text-7xl drop-shadow-[0_0_15px_rgba(54,226,123,0.5)] animate-in zoom-in duration-700 delay-300" style={{ color: accentColor }}>verified</span>
+                    <div className="relative w-24 h-24 rounded-[2rem] border flex items-center justify-center shadow-2xl rotate-3" style={{ backgroundColor: surfaceColor, borderColor: `${textColor}1A` }}>
+                        <div className="absolute inset-px rounded-[1.9rem] bg-gradient-to-br from-white/5 to-transparent" />
+                        <span className="material-symbols-outlined text-6xl drop-shadow-[0_0_15px_rgba(54,226,123,0.5)] animate-in zoom-in duration-700 delay-300" style={{ color: accentColor }}>verified</span>
                     </div>
                 </div>
 
                 {/* Text Content 📝 */}
-                <div className="relative z-10 mb-16">
+                <div className="relative z-10 mb-8">
                     <h2 className="text-5xl font-black italic uppercase tracking-[-0.05em] mb-4 leading-[0.85]" style={{ color: textColor }}>
                         ¡DISFRUTA<br />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#36e27b] to-white"
@@ -216,7 +216,7 @@ export const OrderPickupTicket = ({ order, storeSlug, theme, allowDisconnect, ta
                 </div>
 
                 {/* Bottom Brand Detail */}
-                <div className="absolute bottom-12 flex flex-col items-center gap-2 opacity-20">
+                <div className="absolute bottom-8 flex flex-col items-center gap-2 opacity-20">
                     <p className="text-[10px] font-black uppercase tracking-[0.5em]" style={{ color: textColor }}>Coffee Squad</p>
                     <div className="h-1 w-1 rounded-full" style={{ backgroundColor: accentColor }} />
                 </div>

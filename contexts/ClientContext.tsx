@@ -245,18 +245,21 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             // 2. Wallet balance now comes directly from clients.wallet_balance
             // (No need to query wallets table - admin loads to clients.wallet_balance)
 
-            // 3. Fetch Vouchers
+            // 3. Fetch Vouchers (use clients.id, not auth.uid())
+            const clientId = clientData.id;
             const { data: vouchersData } = await supabase
                 .from('loyalty_vouchers')
                 .select('*')
-                .eq('client_id', userId);
+                .eq('client_id', clientId);
 
             // 4. Fetch Order History with Items
+            // FIX: Use clientData.id (clients.id) instead of auth.uid()
+            // Orders are created with client_id = clients.id, so query must match
             const { data: ordersData } = await supabase
                 .from('orders')
                 .select('*, order_items(*)')
                 .eq('store_id', store.id)
-                .eq('client_id', userId) // Use ID for reliable matching
+                .eq('client_id', clientId)
                 .order('created_at', { ascending: false });
 
             // 4.5 Check for Active OrderS (Plural)
@@ -594,6 +597,36 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     if (productsError) console.error('[ClientContext] Error fetching menu products:', productsError);
 
                     if (menuProducts && menuProducts.length > 0) {
+                        // Fetch variants + addons for menu product IDs
+                        const productIds = menuProducts.map((p: any) => p.product_id);
+                        const [variantsResult, addonsResult] = await Promise.all([
+                            (supabase.from('product_variants') as any)
+                                .select('*').in('product_id', productIds),
+                            (supabase.from('product_addons') as any)
+                                .select('*').in('product_id', productIds)
+                        ]);
+                        if (cancelled) return;
+
+                        const variantsByProduct: Record<string, any[]> = {};
+                        (variantsResult.data || []).forEach((v: any) => {
+                            if (!variantsByProduct[v.product_id]) variantsByProduct[v.product_id] = [];
+                            variantsByProduct[v.product_id].push({
+                                id: v.id, name: v.name,
+                                price_adjustment: v.price_delta ?? 0,
+                                recipe_overrides: v.recipe_overrides || [],
+                                recipe_multiplier: v.recipe_multiplier ?? null,
+                            });
+                        });
+                        const addonsByProduct: Record<string, any[]> = {};
+                        (addonsResult.data || []).forEach((a: any) => {
+                            if (!addonsByProduct[a.product_id]) addonsByProduct[a.product_id] = [];
+                            addonsByProduct[a.product_id].push({
+                                id: a.id, name: a.name, price: a.price ?? 0,
+                                inventory_item_id: a.inventory_item_id || null,
+                                quantity_consumed: a.quantity_consumed ?? 0,
+                            });
+                        });
+
                         const menuItems: MenuItem[] = menuProducts.map((item: any) => ({
                             id: item.product_id,
                             name: item.name,
@@ -604,8 +637,8 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                             isPopular: false,
                             isOutOfStock: !item.is_available || (item.current_stock !== undefined && item.current_stock <= 0),
                             availableStock: getAvailableStock(item),
-                            variants: [],
-                            addons: [],
+                            variants: variantsByProduct[item.product_id] || [],
+                            addons: addonsByProduct[item.product_id] || [],
                             item_type: 'product' as const,
                         }));
 
@@ -691,7 +724,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     .gt('price', 0)
                     .order('name', { ascending: true }),
                 (supabase.from('products') as any)
-                    .select('*, product_variants(*)')
+                    .select('*, product_variants(*), product_addons(*)')
                     .eq('store_id', store!.id)
                     .eq('active', true)
                     .eq('is_visible', true)
@@ -832,7 +865,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const addToCart = (item: MenuItem, quantity: number, customs: string[], size: string, notes: string) => {
         const result = enforceStockLimit(item, quantity);
         if (!result.allowed) return;
-        setCart(prev => [...prev, { ...item, quantity: result.quantity, customizations: customs, size, notes }]);
+        setCart(prev => [...prev, { ...item, quantity: result.quantity, customizations: customs, size, notes, variant_id: size || undefined, addon_ids: customs.length > 0 ? customs : undefined }]);
     };
 
     const updateQuantity = (itemId: string, delta: number, size: string) => {

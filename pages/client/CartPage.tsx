@@ -103,7 +103,7 @@ const CartPage: React.FC = () => {
                           <span className="material-symbols-outlined text-xl">close</span>
                         </button>
                       </div>
-                      <p className="text-[10px] font-black uppercase tracking-widest mt-1 opacity-60" style={{ color: textColor }}>{item.size} {item.customizations?.length ? `• ${item.customizations.join(', ')}` : ''}</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest mt-1 opacity-60" style={{ color: textColor }}>{item.variant_id && item.variants?.find(v => v.id === item.variant_id)?.name}{item.addon_ids?.length ? ` • ${item.addon_ids.map(aid => item.addons?.find(a => a.id === aid)?.name || '').filter(Boolean).join(', ')}` : ''}</p>
 
                       <div className="flex items-center justify-between mt-4">
                         <p className="text-lg font-black italic" style={{ color: textColor }}>${item.price.toFixed(2)}</p>

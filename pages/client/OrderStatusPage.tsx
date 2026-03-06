@@ -130,6 +130,9 @@ export default function OrderStatusPage() {
     useEffect(() => {
         if (!orderId) return;
 
+        // Clear MP pending order from localStorage (we've arrived at the order page)
+        try { localStorage.removeItem('mp_pending_order'); } catch { /* ignore */ }
+
         // 1. Carga inicial
         fetchOrder();
 

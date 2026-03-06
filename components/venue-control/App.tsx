@@ -497,11 +497,21 @@ const App: React.FC = () => {
   // For "Occupied", we rely on open_table RPC in TableDetail (to be implemented)
   // For now, this generic updater can stick around for manual overrides if needed, but safe creation should be preferred.
   const handleUpdateTableStatus = useCallback(async (id: string, status: TableStatus) => {
-    // This legacy function might need to be smarter. 
-    // If changing to OCCUPIED, should normally create an order. 
-    // For now, we update node status directly, but Sync Trigger might override it if no order exists?
-    // Actually trigger syncs FROM order TO node. Manual node update is allowed.
     try {
+      if (status === TableStatus.FREE) {
+        // Cancel all active orders for this table so derived_status becomes 'free'
+        await supabase
+          .from('orders' as any)
+          .update({ status: 'cancelled' })
+          .eq('node_id', id)
+          .in('status', ['draft', 'pending', 'preparing', 'ready', 'served', 'delivered', 'bill_requested']);
+        // End any active client sessions
+        await supabase
+          .from('client_sessions' as any)
+          .update({ is_active: false, ended_at: new Date().toISOString(), end_reason: 'table_freed' })
+          .eq('node_id', id)
+          .eq('is_active', true);
+      }
       await supabase.from('venue_nodes' as any).update({ status }).eq('id', id);
     } catch (e) { console.error(e); }
   }, []);

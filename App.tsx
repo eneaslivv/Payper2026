@@ -508,6 +508,47 @@ const MainRouter: React.FC = () => {
     );
   }
 
+  // FIX: Recover from Mercado Pago redirect that lost the hash fragment
+  // When MP redirects back, the #/m/slug/order/id part may be stripped
+  // Two recovery strategies:
+  // 1. MP query params (external_reference = orderId) in the URL
+  // 2. Pending order saved in localStorage before redirect
+  try {
+    const noMeaningfulHash = !window.location.hash || window.location.hash === '#/' || window.location.hash === '#';
+
+    if (noMeaningfulHash) {
+      // Strategy 1: Check URL query params for MP redirect params
+      const urlParams = new URLSearchParams(window.location.search);
+      const mpExternalRef = urlParams.get('external_reference');
+      const mpStatus = urlParams.get('status') || urlParams.get('collection_status');
+
+      if (mpExternalRef && mpStatus) {
+        // MP redirect detected — external_reference is our orderId
+        const mpPending = localStorage.getItem('mp_pending_order');
+        const slug = mpPending ? JSON.parse(mpPending).slug : null;
+        localStorage.removeItem('mp_pending_order');
+        // Clean MP params from URL to avoid re-triggering
+        window.history.replaceState({}, '', window.location.pathname);
+        if (slug) {
+          window.location.hash = `/m/${slug}/order/${mpExternalRef}`;
+        }
+      } else {
+        // Strategy 2: Fallback to localStorage pending order
+        const mpPending = localStorage.getItem('mp_pending_order');
+        if (mpPending) {
+          const { orderId, slug, timestamp } = JSON.parse(mpPending);
+          // Only recover if < 30 minutes old
+          if (orderId && slug && Date.now() - timestamp < 30 * 60 * 1000) {
+            localStorage.removeItem('mp_pending_order');
+            window.location.hash = `/m/${slug}/order/${orderId}`;
+          } else {
+            localStorage.removeItem('mp_pending_order');
+          }
+        }
+      }
+    }
+  } catch { /* ignore localStorage errors */ }
+
   // PUBLIC ROUTES - These must work regardless of auth status!
   // Check BEFORE any auth logic so logged-in users can also access client menu
   const isClientMenu = window.location.hash.includes('#/m/');

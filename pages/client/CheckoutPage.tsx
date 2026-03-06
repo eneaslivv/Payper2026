@@ -157,7 +157,7 @@ const CheckoutPage: React.FC = () => {
           unit_price: item.price,
           notes: (item as any).notes || null,
           addon_ids: item.addon_ids || [],
-          addon_prices: item.addons?.map((a: any) => ({ id: a.id, price: a.price })) || []
+          addon_prices: item.addons?.filter((a: any) => item.addon_ids?.includes(a.id)).map((a: any) => ({ id: a.id, price: a.price })) || []
         }));
 
         const { data: rpcResult, error: rpcError } = await (supabase.rpc as any)('create_order_atomic', {
@@ -247,7 +247,7 @@ const CheckoutPage: React.FC = () => {
           unit_price: item.price,
           notes: (item as any).notes || null,
           addon_ids: item.addon_ids || [],
-          addon_prices: item.addons?.map((a: any) => ({ id: a.id, price: a.price })) || []
+          addon_prices: item.addons?.filter((a: any) => item.addon_ids?.includes(a.id)).map((a: any) => ({ id: a.id, price: a.price })) || []
         }));
 
         const { data: rpcResult, error: rpcError } = await (supabase.rpc as any)('create_order_atomic', {
@@ -312,7 +312,7 @@ const CheckoutPage: React.FC = () => {
           unit_price: item.price,
           notes: (item as any).notes || null,
           addon_ids: item.addon_ids || [],
-          addon_prices: item.addons?.map((a: any) => ({ id: a.id, price: a.price })) || []
+          addon_prices: item.addons?.filter((a: any) => item.addon_ids?.includes(a.id)).map((a: any) => ({ id: a.id, price: a.price })) || []
         }));
 
         const { data: mpRpcResult, error: mpRpcError } = await (supabase.rpc as any)('create_order_atomic', {
@@ -405,6 +405,16 @@ const CheckoutPage: React.FC = () => {
         const checkoutUrl = checkoutData?.checkout_url || checkoutData?.sandbox_url || checkoutData?.init_point;
         if (checkoutUrl) {
           clearCart();
+          // FIX: Save pending MP order to localStorage before redirect
+          // Hash fragments (#/...) can be lost during MP redirect on mobile
+          // This allows the app to recover and navigate to the order on return
+          try {
+            localStorage.setItem('mp_pending_order', JSON.stringify({
+              orderId: mpOrderId,
+              slug,
+              timestamp: Date.now()
+            }));
+          } catch { /* localStorage might not be available */ }
           window.location.href = checkoutUrl;
           return;
         }
