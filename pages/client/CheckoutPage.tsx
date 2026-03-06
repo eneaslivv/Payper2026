@@ -4,16 +4,9 @@ import { useLayoutEffect } from 'react';
 import { useClient } from '../../contexts/ClientContext';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../components/ToastSystem';
+import { Reward } from '../../types';
 
 type PaymentMethodType = 'wallet' | 'mercadopago' | 'table_credit';
-
-interface Reward {
-  id: string;
-  name: string;
-  points: number;
-  product_id?: string;
-  is_active: boolean;
-}
 
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();

@@ -36,6 +36,7 @@ const BarDetail: React.FC<BarDetailProps> = ({
 
   const [view, setView] = useState<'details' | 'qr'>('details');
   const [qrHash, setQrHash] = useState<string | null>(null);
+  const [qrStats, setQrStats] = useState<{ scan_count: number; last_scanned_at: string | null; is_active: boolean; orders_count: number } | null>(null);
   const [loadingQr, setLoadingQr] = useState(false);
   const { addToast } = useToast();
 
@@ -109,41 +110,49 @@ const BarDetail: React.FC<BarDetailProps> = ({
     setView('qr');
 
     try {
-      // Generate hash
-      const newHash = btoa(`${profile.store_id}-${bar.id}-${Date.now()}`).replace(/[^a-zA-Z0-9]/g, '').substring(0, 12);
-
-      // Upsert: insert or update if exists
-      const { data, error: upsertError } = await supabase
-        .from('qr_links' as any)
-        .upsert({
-          store_id: profile.store_id,
-          target_node_id: bar.id,
-          code_hash: newHash,
-          target_type: 'bar',
-          is_active: true
-        }, {
-          onConflict: 'store_id,target_node_id',
-          ignoreDuplicates: false
-        })
-        .select('code_hash')
+      // 1. Check if QR already exists for this bar
+      const { data: existing } = await supabase
+        .from('qr_codes' as any)
+        .select('id, code_hash, scan_count, last_scanned_at, is_active')
+        .eq('store_id', profile.store_id)
+        .eq('bar_id', bar.id)
         .single();
 
-      if (upsertError) {
-        // If upsert fails, try to fetch existing
-        const { data: existing } = await supabase
-          .from('qr_links' as any)
-          .select('code_hash')
-          .eq('store_id', profile.store_id)
-          .eq('target_node_id', bar.id)
-          .maybeSingle();
-
-        if (existing) {
-          setQrHash((existing as any).code_hash);
-        } else {
-          throw upsertError;
-        }
+      if (existing) {
+        setQrHash((existing as any).code_hash);
+        // Count orders generated from sessions linked to this QR
+        let ordersCount = 0;
+        const { count } = await supabase
+          .from('orders' as any)
+          .select('id', { count: 'exact', head: true })
+          .in('session_id',
+            (await supabase.from('client_sessions' as any).select('id').eq('qr_id', (existing as any).id)).data?.map((s: any) => s.id) || []
+          );
+        ordersCount = count || 0;
+        setQrStats({
+          scan_count: (existing as any).scan_count || 0,
+          last_scanned_at: (existing as any).last_scanned_at,
+          is_active: (existing as any).is_active,
+          orders_count: ordersCount
+        });
       } else {
-        setQrHash((data as any).code_hash);
+        // 2. Generate and insert into qr_codes
+        const newHash = btoa(`${profile.store_id}-${bar.id}-${Date.now()}`).replace(/[^a-zA-Z0-9]/g, '').substring(0, 12);
+
+        const { error: insertError } = await supabase
+          .from('qr_codes' as any)
+          .insert({
+            store_id: profile.store_id,
+            qr_type: 'bar',
+            bar_id: bar.id,
+            code_hash: newHash,
+            label: bar.name || 'Barra',
+            is_active: true
+          });
+
+        if (insertError) throw insertError;
+        setQrHash(newHash);
+        setQrStats({ scan_count: 0, last_scanned_at: null, is_active: true, orders_count: 0 });
       }
     } catch (e: any) {
       console.error('QR Error:', e);
@@ -211,6 +220,34 @@ const BarDetail: React.FC<BarDetailProps> = ({
                 >
                   Copiar URL
                 </button>
+
+                {/* QR STATS */}
+                {qrStats && (
+                  <div className="grid grid-cols-4 gap-2 w-full max-w-[360px]">
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 text-center">
+                      <p className="text-xl font-black text-white tabular-nums">{qrStats.scan_count}</p>
+                      <p className="text-[7px] font-black uppercase tracking-widest text-zinc-500">Escaneos</p>
+                    </div>
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 text-center">
+                      <p className="text-xl font-black text-[#36e27b] tabular-nums">{qrStats.orders_count}</p>
+                      <p className="text-[7px] font-black uppercase tracking-widest text-zinc-500">Pedidos</p>
+                    </div>
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 text-center">
+                      <p className="text-xs font-bold text-white">
+                        {qrStats.last_scanned_at
+                          ? new Date(qrStats.last_scanned_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })
+                          : 'Nunca'}
+                      </p>
+                      <p className="text-[7px] font-black uppercase tracking-widest text-zinc-500">Ultimo Scan</p>
+                    </div>
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 text-center">
+                      <div className={`w-3 h-3 rounded-full mx-auto mb-1 ${qrStats.is_active ? 'bg-[#36e27b]' : 'bg-rose-500'}`} />
+                      <p className="text-[7px] font-black uppercase tracking-widest text-zinc-500">
+                        {qrStats.is_active ? 'Activo' : 'Inactivo'}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>

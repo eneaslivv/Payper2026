@@ -120,55 +120,45 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
             .eq('active', true)
             .order('name');
 
-        // 2. Fetch Inventory Items (All active, for enrichment)
+        // 2. Fetch Inventory Items (All active)
         const inventoryReq = await supabase
             .from('inventory_items')
             .select('*')
             .eq('store_id', storeId)
-            .eq('is_active', true); // Removed is_menu_visible filter to ensure we get images
+            .eq('is_active', true);
 
         const rawProducts = productsReq.data || [];
         const rawInventory = inventoryReq.data || [];
 
-        // 3. Merge Logic (Same as useProducts.ts)
+        // 3. Enrich Products with images from Inventory if missing
         const inventoryMap = new Map<string, any>();
         rawInventory.forEach((item: any) => {
             inventoryMap.set(item.name.trim().toLowerCase(), item);
         });
 
-        // Enrich Products with images from Inventory if missing
         const enrichedProducts = rawProducts.map((p: any) => {
-            // Normalize image field
-            if (!p.image_url && p.image) {
-                p.image_url = p.image;
-            }
-
+            if (!p.image_url && p.image) p.image_url = p.image;
             if (!p.image_url || p.image_url === '') {
                 const invItem = inventoryMap.get(p.name.trim().toLowerCase());
-                if (invItem && invItem.image_url) {
-                    return { ...p, image_url: invItem.image_url };
-                }
+                if (invItem && invItem.image_url) return { ...p, image_url: invItem.image_url };
             }
             return p;
         });
 
-        // Add "Sellable Inventory Items" that are NOT in products table yet
-        // (This happens if user created item in Inventory but didn't convert to Product)
-        // In MenuDesign, we usually only show 'products' table items because Menu is built on Products.
-        // BUT if we want to be consistent with Client Menu, we should allow adding pure inventory items too?
-        // Current system seems to favor Products for Menus.
-        // However, the client menu DOES show inventory items.
-        // If I want to add them to a menu, I need to treat them as potential targets.
-        // But `menu_products` links to `products` table (foreign key).
-        // Check `menu_products` definition: product_id REFERENCES products(id).
-        // SO: We CANNOT add pure inventory items to a menu unless they are in the products table.
-        //
-        // CONCLUSION: For MenuDesign, we only show enriched Products.
-        // Pure inventory items must be "Converted" to products first to be added here.
-        // (Unlike Client Menu which has a fallback to show raw inventory items if no menu is active or "All Items" mode).
-        // Since this is "Menu Management", we restrict to Products.
+        // 4. Include visible/sellable inventory items NOT already in products (dedup by name)
+        const productNames = new Set(rawProducts.map((p: any) => (p.name || '').trim().toLowerCase()));
+        const sellableInventory = rawInventory
+            .filter((item: any) => !productNames.has((item.name || '').trim().toLowerCase()))
+            .filter((item: any) => item.is_menu_visible || item.item_type === 'sellable' || (item.price && parseFloat(item.price) > 0))
+            .map((item: any) => ({
+                ...item,
+                _source: 'inventory' as const,
+                base_price: item.price,
+                image: item.image_url,
+                category: item.category_id ? undefined : 'General',
+            }));
 
-        setAllProducts(enrichedProducts);
+        setAllProducts([...enrichedProducts, ...sellableInventory]);
     };
 
     const fetchVenueNodes = async () => {
@@ -479,8 +469,20 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                                         {allProducts
                                             .filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()))
                                             .map(product => {
-                                                const menuProduct = menuProducts.find(mp => mp.product_id === product.id);
-                                                const isSelected = !!menuProduct;
+                                                const isInvItem = product._source === 'inventory';
+                                                const menuProduct = isInvItem ? null : menuProducts.find(mp => mp.product_id === product.id);
+                                                const isSelected = isInvItem ? !!product.is_menu_visible : !!menuProduct;
+
+                                                const handleToggle = async () => {
+                                                    if (isInvItem) {
+                                                        const newVal = !product.is_menu_visible;
+                                                        await supabase.from('inventory_items').update({ is_menu_visible: newVal }).eq('id', product.id);
+                                                        setAllProducts(prev => prev.map(p => p.id === product.id ? { ...p, is_menu_visible: newVal } : p));
+                                                        addToast(newVal ? `${product.name} visible en menú` : `${product.name} oculto del menú`, 'success');
+                                                    } else {
+                                                        isSelected ? handleRemoveProduct(menuProduct!.id) : handleAddProduct(product.id);
+                                                    }
+                                                };
 
                                                 return (
                                                     <div
@@ -494,7 +496,7 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                                                     >
                                                         {/* Toggle Checkbox */}
                                                         <button
-                                                            onClick={() => isSelected ? handleRemoveProduct(menuProduct!.id) : handleAddProduct(product.id)}
+                                                            onClick={handleToggle}
                                                             className={`
                                                                 w-10 h-10 rounded-xl flex items-center justify-center transition-all shrink-0
                                                                 ${isSelected
@@ -509,10 +511,11 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                                                         <div className="flex-1 min-w-0">
                                                             <p className={`text-sm font-bold truncate ${isSelected ? 'text-text-main dark:text-white' : 'text-text-secondary dark:text-white/60'}`}>
                                                                 {product.name}
+                                                                {isInvItem && <span className="ml-1.5 text-[8px] text-amber-500 font-black uppercase">INV</span>}
                                                             </p>
                                                             <div className="flex items-center gap-2">
                                                                 <span className="text-[10px] text-text-secondary/60 dark:text-white/30 bg-black/5 dark:bg-white/5 px-1.5 py-0.5 rounded uppercase tracking-wider">
-                                                                    {product.category}
+                                                                    {product.category || 'General'}
                                                                 </span>
                                                                 <span className="text-[10px] text-text-secondary dark:text-white/40 font-mono">
                                                                     ${product.base_price}
@@ -520,8 +523,8 @@ const MenusPanel: React.FC<{ storeId: string | undefined }> = ({ storeId: propSt
                                                             </div>
                                                         </div>
 
-                                                        {/* Inline Price Override (Only if selected) */}
-                                                        {isSelected && (
+                                                        {/* Inline Price Override (Only if selected, products only) */}
+                                                        {isSelected && !isInvItem && menuProduct && (
                                                             <div className="flex flex-col items-end gap-1 animate-in slide-in-from-right-2 duration-200">
                                                                 <span className="text-[9px] text-[#4ADE80] uppercase font-bold tracking-wider">Precio Menu</span>
                                                                 <input
@@ -971,7 +974,7 @@ const MenuDesign: React.FC = () => {
     const [editingAddonId, setEditingAddonId] = useState<string | null>(null);
     const [editingComboItemId, setEditingComboItemId] = useState<number | null>(null);
     const [itemSelectorSearch, setItemSelectorSearch] = useState('');
-    const [linkType, setLinkType] = useState<'addon' | 'combo'>('addon'); // New state for item selector
+    const [linkType, setLinkType] = useState<'addon' | 'combo' | 'variant' | 'variant_override' | null>('addon');
 
     const selectedItem = useMemo(() => items.find(i => i.id === editingId), [items, editingId]);
 
@@ -1049,7 +1052,7 @@ const MenuDesign: React.FC = () => {
             // Fetch all independent data sources simultaneously to reduce load time
             console.log('[MenuDesign] Starting parallel data fetch...');
 
-            const [stores, inventoryItems, products, categoriesData, recipesData] = await Promise.all([
+            const [stores, inventoryItems, products, categoriesData, recipesData, variantsData, addonsData] = await Promise.all([
                 // 1. Fetch Store Details
                 fetchWithTimeout(`${baseUrl}/stores?id=eq.${storeId}`),
                 // 2. Fetch INVENTORY items
@@ -1059,7 +1062,11 @@ const MenuDesign: React.FC = () => {
                 // 3. Fetch CATEGORIES
                 fetchWithTimeout(`${baseUrl}/categories?store_id=eq.${storeId}&is_active=eq.true&order=position.asc`),
                 // 4. Fetch RECIPES
-                fetchWithTimeout(`${baseUrl}/product_recipes`)
+                fetchWithTimeout(`${baseUrl}/product_recipes`),
+                // 5. Fetch PRODUCT VARIANTS (relational table)
+                fetchWithTimeout(`${baseUrl}/product_variants?tenant_id=eq.${storeId}`),
+                // 6. Fetch PRODUCT ADDONS (relational table)
+                fetchWithTimeout(`${baseUrl}/product_addons?tenant_id=eq.${storeId}`)
             ]);
 
             console.log('[MenuDesign] Parallel fetch complete.');
@@ -1158,12 +1165,13 @@ const MenuDesign: React.FC = () => {
                 id: item.id,
                 cafe_id: item.store_id, // Map store_id to cafe_id
                 name: item.name,
-                sku: item.sku,
+                sku: item.sku || '',
                 // These are typically ingredients since they are in inventory_items but not products
                 // However, we preserve the price check just in case
                 item_type: (item.cost > 0 || item.price > 0) ? 'sellable' : 'ingredient',
                 unit_type: item.unit_type as UnitType,
                 image: item.image || item.image_url || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
+                image_url: item.image || item.image_url || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
                 is_active: true, // Default to true if not present
                 min_stock: item.min_stock_alert,
                 current_stock: item.current_stock,
@@ -1232,6 +1240,7 @@ const MenuDesign: React.FC = () => {
                     item_type: 'sellable' as const,
                     unit_type: 'unit' as UnitType,
                     image: p.image || p.image_url || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
+                    image_url: p.image || p.image_url || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200',
                     is_active: p.is_available,
                     is_menu_visible: p.is_visible, // Map from 'is_visible' column in products table
                     min_stock: 0,
@@ -1243,8 +1252,11 @@ const MenuDesign: React.FC = () => {
                     presentations: [],
                     closed_packages: [],
                     open_packages: [],
-                    variants: p.product_variants || [],
-                    addon_links: p.addons || [],
+                    variants: (variantsData || []).filter((v: any) => v.product_id === p.id).map((v: any) => ({
+                        ...v,
+                        price_adjustment: v.price_delta ?? 0,
+                    })),
+                    addon_links: (addonsData || []).filter((a: any) => a.product_id === p.id),
                     combo_links: p.combo_items || [],
                     recipe: itemRecipes.map((r: any) => ({
                         inventory_item_id: r.inventory_item_id,
@@ -1721,6 +1733,10 @@ const MenuDesign: React.FC = () => {
                 v.id === variantId ? { ...v, recipe_overrides: [...(v.recipe_overrides || []), newOverride] } : v
             );
             updateItemImmediate(selectedItem.id, { variants: updatedVariants });
+        } else if ((linkType as string) === 'addon_update') {
+            // Update existing addon's inventory_item_id (not create new)
+            if (!editingAddonId) return;
+            handleUpdateAddon(editingAddonId, 'inventory_item_id', itemToLink.id);
         }
         setShowItemSelector(false);
     };
@@ -2584,7 +2600,7 @@ const MenuDesign: React.FC = () => {
                         <div className="bg-white dark:bg-surface-dark border border-border-color dark:border-white/10 rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-[0_0_100px_rgba(74,222,128,0.1)]">
                             <div className="p-8 border-b border-white/5 flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-xl font-black uppercase tracking-tight">Vincular {linkType === 'addon' ? 'Adicional' : 'Componente'}</h3>
+                                    <h3 className="text-xl font-black uppercase tracking-tight">Vincular {linkType === 'addon' || (linkType as string) === 'addon_update' ? 'Insumo' : (linkType as string) === 'variant_override' ? 'Insumo a Variante' : 'Componente'}</h3>
                                     <p className="text-xs text-[#A1A1AA]">Selecciona un item de tu inventario base.</p>
                                 </div>
                                 <button onClick={() => setShowItemSelector(false)} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 transition-all"><X className="w-4 h-4" /></button>
@@ -2601,7 +2617,7 @@ const MenuDesign: React.FC = () => {
                                 </div>
                             </div>
                             <div className="flex-1 max-h-[400px] overflow-y-auto p-4 space-y-2 custom-scrollbar">
-                                {items.filter(i => i.id !== selectedItem?.id && i.name.toLowerCase().includes(itemSelectorSearch.toLowerCase())).map(item => (
+                                {items.filter(i => i.id !== selectedItem?.id && (i.name.toLowerCase().includes(itemSelectorSearch.toLowerCase()) || (i.sku || '').toLowerCase().includes(itemSelectorSearch.toLowerCase()))).map(item => (
                                     <button
                                         key={item.id}
                                         onClick={() => handleAddLink(item)}
@@ -2609,11 +2625,11 @@ const MenuDesign: React.FC = () => {
                                     >
                                         <div className="flex items-center gap-4">
                                             <div className="w-10 h-10 bg-black/40 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center">
-                                                {item.image_url ? <img src={item.image_url} className="w-full h-full object-cover" /> : <Coffee className="w-5 h-5 text-[#52525B]" />}
+                                                {(item.image || item.image_url) ? <img src={item.image || item.image_url} className="w-full h-full object-cover" /> : <Coffee className="w-5 h-5 text-[#52525B]" />}
                                             </div>
                                             <div>
                                                 <h4 className="text-xs font-black">{item.name}</h4>
-                                                <p className="text-[10px] text-[#52525B] font-mono uppercase italic">{item.sku}</p>
+                                                <p className="text-[10px] text-[#52525B] font-mono uppercase italic">{item.sku || 'N/A'}</p>
                                             </div>
                                         </div>
                                         <ChevronRight className="w-4 h-4 text-[#52525B]" />
@@ -3184,7 +3200,7 @@ const MenuDesign: React.FC = () => {
                                                             <div className="px-3 pb-3 space-y-2">
                                                                 <div className="flex items-center gap-2">
                                                                     <button
-                                                                        onClick={() => { setEditingAddonId(addon.id); setItemSelectorSearch(''); setShowItemSelector(true); }}
+                                                                        onClick={() => { setEditingAddonId(addon.id); setLinkType('addon_update' as any); setItemSelectorSearch(''); setShowItemSelector(true); }}
                                                                         className="flex-1 h-7 px-2 rounded bg-white/5 border border-white/5 flex items-center justify-between text-[8px] font-bold text-white uppercase hover:border-neon/30 hover:bg-white/10 transition-all text-left truncate"
                                                                     >
                                                                         <span className="truncate">{linkedItem?.name || 'SELECCIONAR INSUMO...'}</span>
@@ -3251,77 +3267,7 @@ const MenuDesign: React.FC = () => {
             }
 
 
-            {/* ITEM SELECTOR MODAL */}
-            {
-                showItemSelector && (
-                    <div className="fixed inset-0 z-[300] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300">
-                        <div className="bg-white dark:bg-surface-dark border border-border-color dark:border-white/10 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[80vh] animate-in zoom-in-95 duration-300">
-                            <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                                <h3 className="text-sm font-black text-white uppercase tracking-widest">Vincular Insumo</h3>
-                                <button onClick={() => setShowItemSelector(false)} className="text-white/40 hover:text-white transition-colors">
-                                    <span className="material-symbols-outlined">close</span>
-                                </button>
-                            </div>
-                            <div className="p-4 border-b border-white/5">
-                                <div className="relative">
-                                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/30">search</span>
-                                    <input
-                                        autoFocus
-                                        value={itemSelectorSearch}
-                                        onChange={(e) => setItemSelectorSearch(e.target.value)}
-                                        placeholder="BUSCAR INSUMO..."
-                                        className="w-full h-10 pl-10 pr-4 bg-black/40 border border-white/10 rounded-xl text-xs font-bold text-white uppercase outline-none focus:border-neon/50 placeholder:text-white/20 transition-all"
-                                    />
-                                </div>
-                            </div>
-                            <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                                {items
-                                    .filter(i =>
-                                    (i.name.toLowerCase().includes(itemSelectorSearch.toLowerCase()) ||
-                                        i.sku.toLowerCase().includes(itemSelectorSearch.toLowerCase()))
-                                    )
-                                    .map(item => (
-                                        <button
-                                            key={item.id}
-                                            onClick={() => {
-                                                if (editingAddonId) {
-                                                    handleUpdateAddon(editingAddonId, 'inventory_item_id', item.id);
-                                                } else if (editingComboItemId !== null && selectedItem) {
-                                                    const newCombo = [...(selectedItem.combo_links || [])];
-                                                    if (newCombo[editingComboItemId]) {
-                                                        newCombo[editingComboItemId] = { ...newCombo[editingComboItemId], component_item_id: item.id };
-                                                        updateItemImmediate(selectedItem.id, { combo_links: newCombo });
-                                                    }
-                                                }
-                                                setShowItemSelector(false);
-                                            }}
-                                            className="w-full text-left p-3 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/5 flex items-center gap-3 group transition-all"
-                                        >
-                                            <div className="size-10 rounded-lg bg-black/40 border border-white/5 overflow-hidden shrink-0">
-                                                <img src={item.image_url} className="size-full object-cover" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[10px] font-black text-white uppercase truncate">{item.name}</p>
-                                                <p className="text-[8px] text-white/40 font-bold uppercase tracking-widest group-hover:text-neon/70 transition-colors">SKU: {item.sku} • Stock: {item.current_stock}</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <span className={`text-[9px] font-bold px-2 py-1 rounded-md ${item.item_type === 'ingredient' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
-                                                    {item.item_type === 'ingredient' ? 'INSUMO' : 'PROD'}
-                                                </span>
-                                            </div>
-                                        </button>
-                                    ))
-                                }
-                                {items.length === 0 && (
-                                    <div className="p-8 text-center opacity-30">
-                                        <p className="text-[10px] font-bold uppercase">No hay items disponibles</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
+            {/* Duplicate item selector removed — unified into Modal A above */}
 
         </div >
     );

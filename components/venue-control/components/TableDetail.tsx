@@ -24,7 +24,7 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'qr'>('card');
   const [isProcessing, setIsProcessing] = useState(false);
   const [qrHash, setQrHash] = useState<string | null>(null);
-  const [qrStats, setQrStats] = useState<{ scan_count: number; last_scanned_at: string | null; is_active: boolean } | null>(null);
+  const [qrStats, setQrStats] = useState<{ scan_count: number; last_scanned_at: string | null; is_active: boolean; orders_count: number } | null>(null);
   const [loadingQr, setLoadingQr] = useState(false);
   const [pax, setPax] = useState(2); // Default 2 people
   const [customerName, setCustomerName] = useState('');
@@ -441,10 +441,20 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
       if (existingQR) {
         // QR exists - use it and show stats
         setQrHash((existingQR as any).code_hash);
+        // Count orders generated from sessions linked to this QR
+        let ordersCount = 0;
+        const { count } = await supabase
+          .from('orders' as any)
+          .select('id', { count: 'exact', head: true })
+          .in('session_id',
+            (await supabase.from('client_sessions' as any).select('id').eq('qr_id', (existingQR as any).id)).data?.map((s: any) => s.id) || []
+          );
+        ordersCount = count || 0;
         setQrStats({
           scan_count: (existingQR as any).scan_count || 0,
           last_scanned_at: (existingQR as any).last_scanned_at,
-          is_active: (existingQR as any).is_active
+          is_active: (existingQR as any).is_active,
+          orders_count: ordersCount
         });
       } else {
         // Create new QR in qr_codes table
@@ -467,7 +477,7 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
 
         if (insertError) throw insertError;
         setQrHash((newQR as any).code_hash);
-        setQrStats({ scan_count: 0, last_scanned_at: null, is_active: true });
+        setQrStats({ scan_count: 0, last_scanned_at: null, is_active: true, orders_count: 0 });
       }
     } catch (e: any) {
       console.error('QR Error:', e);
@@ -886,10 +896,14 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
 
               {/* QR STATS */}
               {qrStats && (
-                <div className="grid grid-cols-3 gap-3 w-full max-w-[320px]">
+                <div className="grid grid-cols-4 gap-2 w-full max-w-[360px]">
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 text-center">
                     <p className="text-xl font-black text-white tabular-nums">{qrStats.scan_count}</p>
                     <p className="text-[7px] font-black uppercase tracking-widest text-zinc-500">Escaneos</p>
+                  </div>
+                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 text-center">
+                    <p className="text-xl font-black text-[#36e27b] tabular-nums">{qrStats.orders_count}</p>
+                    <p className="text-[7px] font-black uppercase tracking-widest text-zinc-500">Pedidos</p>
                   </div>
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 text-center">
                     <p className="text-xs font-bold text-white">

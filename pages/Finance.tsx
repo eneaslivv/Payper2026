@@ -1,4 +1,5 @@
 import React, { useState, useEffect, Suspense, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
 import { CashRegisterSession } from '../types';
 import DateRangeSelector from '../components/DateRangeSelector';
@@ -1616,6 +1617,7 @@ const CashShiftModal: React.FC<{
   const [eventSummary, setEventSummary] = useState<any | null>(null);
   const [loadingExpected, setLoadingExpected] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
     if (isClosing && sessionId) {
@@ -1649,189 +1651,209 @@ const CashShiftModal: React.FC<{
   const showCloseSummary = isClosing && !!closeResult?.statistics;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in transition-all">
-      <div className="bg-white dark:bg-[#141414] border border-border-color dark:border-white/10 p-8 rounded-3xl w-full max-w-md shadow-2xl relative overflow-hidden">
-        {/* Decorative Background */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-neon/10 blur-[80px] -mr-16 -mt-16 pointer-events-none" />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in transition-all">
+      <motion.div
+        initial={{ y: '100%', opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: '100%', opacity: 0 }}
+        transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+        className="relative w-full max-w-md max-h-[92vh] flex flex-col bg-[#0C0E0C] border border-white/[0.06] shadow-2xl sm:rounded-3xl rounded-t-3xl overflow-hidden"
+      >
+        {/* Glow accent */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-1 rounded-b-full bg-neon/60 blur-sm pointer-events-none" />
 
-        <button onClick={onClose} className="absolute top-4 right-4 text-text-secondary/40 dark:text-white/20 hover:text-text-main dark:hover:text-white transition-colors">
-          <span className="material-symbols-outlined">close</span>
-        </button>
+        {/* Header — fixed */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-white/[0.06]">
+          <div>
+            <h3 className="text-base font-black uppercase italic text-white tracking-tight leading-none">
+              {isClosing ? 'Arqueo de Caja' : 'Apertura de Turno'}
+            </h3>
+            <p className="text-[10px] text-white/40 mt-1 uppercase tracking-wider font-bold">
+              {isClosing ? 'Verificá el efectivo físico contra el sistema' : 'Ingresá el fondo inicial de la caja'}
+            </p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 transition-colors">
+            <span className="material-symbols-outlined text-white/40 text-[18px]">close</span>
+          </button>
+        </div>
 
-        <h3 className="text-xl font-black uppercase italic-black text-text-main dark:text-white mb-2 tracking-tight">
-          {isClosing ? 'Arqueo de Caja' : 'Apertura de Turno'}
-        </h3>
-        <p className="text-[11px] text-text-secondary dark:text-white/50 mb-6 uppercase tracking-wider font-bold">
-          {isClosing ? 'Verifique el efectivo físico contra el sistema.' : 'Ingrese el fondo inicial de la caja.'}
-        </p>
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4 custom-scrollbar">
 
-        <div className="space-y-6">
-          {/* Comparison Display (Only for Closing) */}
+          {/* ── CLOSING: Breakdown ── */}
           {isClosing && !showCloseSummary && (
-            <div className="space-y-4">
-              {/* CASH BREAKDOWN */}
-              <div className="bg-black/5 dark:bg-white/5 p-5 rounded-2xl border border-border-color/30 dark:border-white/5 space-y-3">
-                <div className="flex justify-between items-center border-b border-border-color/30 dark:border-white/5 pb-2">
-                  <span className="text-[10px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest">Fondo Inicial</span>
-                  <span className="text-sm font-black text-text-main/80 dark:text-white/80">${(eventSummary?.opening_amount || 0).toLocaleString('es-AR')}</span>
-                </div>
-                <div className="flex justify-between items-center border-b border-border-color/30 dark:border-white/5 pb-2">
-                  <span className="text-[10px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest">Ventas Totales</span>
-                  <span className="text-sm font-black text-text-main/80 dark:text-white/80">${(eventSummary?.total_sales || 0).toLocaleString('es-AR')}</span>
-                </div>
-                <div className="flex justify-between items-center border-b border-border-color/30 dark:border-white/5 pb-2">
-                  <span className="text-[10px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest">Anulaciones</span>
-                  <span className="text-sm font-black text-red-500">-${Math.abs(eventSummary?.total_cancellations || 0).toLocaleString('es-AR')}</span>
-                </div>
-                <div className="flex justify-between items-center border-b border-border-color/30 dark:border-white/5 pb-2">
-                  <span className="text-[10px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest">Retiros</span>
-                  <span className="text-sm font-black text-red-500">-${Math.abs(eventSummary?.total_withdrawals || 0).toLocaleString('es-AR')}</span>
-                </div>
-                <div className="flex justify-between items-center border-b border-border-color/30 dark:border-white/5 pb-2">
-                  <span className="text-[10px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest">Ajustes</span>
-                  <span className={`text-sm font-black ${eventSummary?.total_adjustments >= 0 ? 'text-neon' : 'text-red-500'}`}>
-                    {eventSummary?.total_adjustments >= 0 ? '+' : '-'}${Math.abs(eventSummary?.total_adjustments || 0).toLocaleString('es-AR')}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center border-b border-border-color/30 dark:border-white/5 pb-2">
-                  <span className="text-[10px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest">Topups</span>
-                  <span className="text-sm font-black text-text-main/80 dark:text-white/80">${(eventSummary?.total_topups || 0).toLocaleString('es-AR')}</span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-2 pt-2">
-                  <div>
-                    <span className="text-[9px] font-bold text-neon uppercase tracking-widest block mb-1">Esperado en Caja</span>
-                    {loadingExpected ? (
-                      <span className="text-sm text-text-secondary/40 dark:text-white/20 animate-pulse uppercase font-black">Calculando...</span>
-                    ) : (
-                      <span className="text-2xl font-black text-neon shadow-neon-soft font-mono">${expected.toLocaleString('es-AR')}</span>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[9px] font-bold text-text-secondary dark:text-white/40 uppercase tracking-widest block mb-1">Diferencia</span>
-                    <span className={`text-2xl font-black font-mono ${diffColor}`}>
-                      {difference > 0 ? '+' : ''}${difference.toLocaleString('es-AR')}
+            <>
+              {/* Compact ledger rows */}
+              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] overflow-hidden">
+                {[
+                  { label: 'Fondo Inicial', value: eventSummary?.opening_amount || 0, color: 'text-white/70' },
+                  { label: 'Ventas Efectivo', value: eventSummary?.total_sales || 0, color: 'text-white/70' },
+                  { label: 'Anulaciones', value: -(eventSummary?.total_cancellations || 0), color: 'text-red-400', prefix: true },
+                  { label: 'Retiros', value: -(eventSummary?.total_withdrawals || 0), color: 'text-red-400', prefix: true },
+                  { label: 'Ajustes', value: eventSummary?.total_adjustments || 0, color: (eventSummary?.total_adjustments || 0) >= 0 ? 'text-neon' : 'text-red-400', prefix: true },
+                  { label: 'Topups', value: eventSummary?.total_topups || 0, color: 'text-white/70' },
+                ].map((row, i) => (
+                  <div key={i} className="flex justify-between items-center px-4 py-2.5 border-b border-white/[0.04] last:border-b-0">
+                    <span className="text-[10px] font-bold text-white/35 uppercase tracking-wider">{row.label}</span>
+                    <span className={`text-xs font-black font-mono ${row.color}`}>
+                      {row.prefix && row.value > 0 ? '+' : ''}{row.prefix && row.value < 0 ? '-' : ''}${Math.abs(row.value).toLocaleString('es-AR')}
                     </span>
                   </div>
-                </div>
+                ))}
               </div>
-            </div>
-          )}
 
-          {showCloseSummary && (
-            <div className="space-y-4">
-              <div className="bg-black/5 dark:bg-white/5 p-5 rounded-2xl border border-border-color/30 dark:border-white/5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest">Pedidos</span>
-                  <span className="text-sm font-black text-text-main/80 dark:text-white/80">
-                    {closeResult.statistics?.total_orders || 0} ({closeResult.statistics?.cancelled_orders || 0} anulados)
+              {/* Hero: Expected vs Difference */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl bg-neon/[0.08] border border-neon/20 p-4 text-center">
+                  <span className="text-[9px] font-black text-neon/70 uppercase tracking-widest block mb-1">Esperado</span>
+                  {loadingExpected ? (
+                    <span className="text-sm text-white/20 animate-pulse font-black">...</span>
+                  ) : (
+                    <span className="text-2xl font-black text-neon font-mono">${expected.toLocaleString('es-AR')}</span>
+                  )}
+                </div>
+                <div className={`rounded-2xl p-4 text-center border ${difference === 0 ? 'bg-white/[0.03] border-white/[0.06]' : difference > 0 ? 'bg-neon/[0.05] border-neon/10' : 'bg-red-500/[0.08] border-red-500/20'}`}>
+                  <span className="text-[9px] font-black text-white/40 uppercase tracking-widest block mb-1">Diferencia</span>
+                  <span className={`text-2xl font-black font-mono ${diffColor}`}>
+                    {difference > 0 ? '+' : ''}{difference === 0 ? '$0' : `$${difference.toLocaleString('es-AR')}`}
                   </span>
                 </div>
+              </div>
+            </>
+          )}
 
-                <div className="border-t border-border-color/30 dark:border-white/5 pt-3 space-y-2">
-                  <span className="text-[10px] font-black text-text-secondary dark:text-white/40 uppercase tracking-widest">Ventas por Metodo</span>
+          {/* ── CLOSING: Success Summary ── */}
+          {showCloseSummary && (
+            <div className="space-y-3">
+              {/* Success badge */}
+              <div className="flex items-center gap-3 p-4 rounded-2xl bg-neon/[0.08] border border-neon/20">
+                <div className="w-10 h-10 rounded-full bg-neon/20 flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined text-neon text-xl">check_circle</span>
+                </div>
+                <div>
+                  <span className="text-sm font-black text-white block">Cierre Completo</span>
+                  <span className="text-[10px] text-white/40 font-bold">
+                    {closeResult.statistics?.total_orders || 0} pedidos &middot; {closeResult.statistics?.cancelled_orders || 0} anulados
+                  </span>
+                </div>
+              </div>
+
+              {/* Payment methods */}
+              {Object.keys(closeResult.statistics?.by_payment_method || {}).length > 0 && (
+                <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4">
+                  <span className="text-[9px] font-black text-white/30 uppercase tracking-widest block mb-3">Ventas por Método</span>
                   <div className="grid grid-cols-2 gap-2">
                     {Object.entries(closeResult.statistics?.by_payment_method || {}).map(([method, total]: [string, any]) => (
-                      <div key={method} className="flex justify-between items-center bg-black/5 dark:bg-white/5 px-3 py-2 rounded-xl">
-                        <span className="text-[9px] font-bold text-text-secondary dark:text-white/40 uppercase">{method}</span>
-                        <span className="text-[10px] font-black text-text-main dark:text-white">${Number(total || 0).toLocaleString('es-AR')}</span>
+                      <div key={method} className="flex justify-between items-center bg-white/[0.04] px-3 py-2 rounded-xl">
+                        <span className="text-[9px] font-bold text-white/40 uppercase">{method}</span>
+                        <span className="text-[11px] font-black text-white font-mono">${Number(total || 0).toLocaleString('es-AR')}</span>
                       </div>
                     ))}
                   </div>
                 </div>
+              )}
 
-                <div className="border-t border-border-color/30 dark:border-white/5 pt-3 space-y-2">
-                  <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
-                    <span className="text-text-secondary dark:text-white/40">Fondo Inicial</span>
-                    <span className="text-text-main dark:text-white">${Number(closeResult.statistics?.start_amount || 0).toLocaleString('es-AR')}</span>
+              {/* Final numbers */}
+              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] overflow-hidden">
+                {[
+                  { label: 'Fondo Inicial', value: Number(closeResult.statistics?.start_amount || 0) },
+                  { label: 'Ventas Cash', value: Number(closeResult.statistics?.by_payment_method?.cash || 0) },
+                  { label: 'Topups', value: Number(closeResult.statistics?.cash_topups || 0) },
+                  { label: 'Retiros', value: Number(closeResult.statistics?.withdrawals || 0), color: 'text-red-400' },
+                  { label: 'Ajustes', value: Number(closeResult.statistics?.adjustments || 0), color: Number(closeResult.statistics?.adjustments || 0) >= 0 ? 'text-neon' : 'text-red-400' },
+                ].map((row, i) => (
+                  <div key={i} className="flex justify-between items-center px-4 py-2 border-b border-white/[0.04] last:border-b-0">
+                    <span className="text-[10px] font-bold text-white/35 uppercase tracking-wider">{row.label}</span>
+                    <span className={`text-xs font-black font-mono ${row.color || 'text-white/70'}`}>${row.value.toLocaleString('es-AR')}</span>
                   </div>
-                  <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
-                    <span className="text-text-secondary dark:text-white/40">Ventas Cash</span>
-                    <span className="text-text-main dark:text-white">${Number(closeResult.statistics?.by_payment_method?.cash || 0).toLocaleString('es-AR')}</span>
-                  </div>
-                  <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
-                    <span className="text-text-secondary dark:text-white/40">Topups Cash</span>
-                    <span className="text-text-main dark:text-white">${Number(closeResult.statistics?.cash_topups || 0).toLocaleString('es-AR')}</span>
-                  </div>
-                  <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
-                    <span className="text-text-secondary dark:text-white/40">Retiros</span>
-                    <span className="text-red-500">${Number(closeResult.statistics?.withdrawals || 0).toLocaleString('es-AR')}</span>
-                  </div>
-                  <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
-                    <span className="text-text-secondary dark:text-white/40">Ajustes</span>
-                    <span className={Number(closeResult.statistics?.adjustments || 0) >= 0 ? 'text-neon' : 'text-red-500'}>
-                      {Number(closeResult.statistics?.adjustments || 0) >= 0 ? '+' : '-'}${Math.abs(Number(closeResult.statistics?.adjustments || 0)).toLocaleString('es-AR')}
-                    </span>
-                  </div>
-                  <div className="border-t border-border-color/30 dark:border-white/5 pt-2 flex justify-between text-[11px] font-black uppercase tracking-widest">
-                    <span className="text-text-secondary dark:text-white/40">Esperado</span>
-                    <span className="text-text-main dark:text-white">${Number(closeResult.statistics?.expected_cash || 0).toLocaleString('es-AR')}</span>
-                  </div>
-                  <div className="flex justify-between text-[11px] font-black uppercase tracking-widest">
-                    <span className="text-text-secondary dark:text-white/40">Real</span>
-                    <span className="text-text-main dark:text-white">${Number(closeResult.statistics?.real_cash || 0).toLocaleString('es-AR')}</span>
-                  </div>
-                  <div className="flex justify-between text-[11px] font-black uppercase tracking-widest">
-                    <span className="text-text-secondary dark:text-white/40">Diferencia</span>
-                    <span className={Number(closeResult.statistics?.difference || 0) >= 0 ? 'text-neon' : 'text-red-500'}>
-                      {Number(closeResult.statistics?.difference || 0) >= 0 ? '+' : '-'}${Math.abs(Number(closeResult.statistics?.difference || 0)).toLocaleString('es-AR')}
-                    </span>
-                  </div>
+                ))}
+              </div>
+
+              {/* Totals hero */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-xl bg-white/[0.04] border border-white/[0.06] p-3 text-center">
+                  <span className="text-[8px] font-black text-white/30 uppercase tracking-widest block mb-0.5">Esperado</span>
+                  <span className="text-sm font-black text-white font-mono">${Number(closeResult.statistics?.expected_cash || 0).toLocaleString('es-AR')}</span>
+                </div>
+                <div className="rounded-xl bg-white/[0.04] border border-white/[0.06] p-3 text-center">
+                  <span className="text-[8px] font-black text-white/30 uppercase tracking-widest block mb-0.5">Real</span>
+                  <span className="text-sm font-black text-white font-mono">${Number(closeResult.statistics?.real_cash || 0).toLocaleString('es-AR')}</span>
+                </div>
+                <div className={`rounded-xl p-3 text-center border ${Number(closeResult.statistics?.difference || 0) >= 0 ? 'bg-neon/[0.08] border-neon/20' : 'bg-red-500/[0.08] border-red-500/20'}`}>
+                  <span className="text-[8px] font-black text-white/30 uppercase tracking-widest block mb-0.5">Dif.</span>
+                  <span className={`text-sm font-black font-mono ${Number(closeResult.statistics?.difference || 0) >= 0 ? 'text-neon' : 'text-red-400'}`}>
+                    {Number(closeResult.statistics?.difference || 0) >= 0 ? '+' : ''}${Number(closeResult.statistics?.difference || 0).toLocaleString('es-AR')}
+                  </span>
                 </div>
               </div>
             </div>
           )}
 
+          {/* ── Inputs ── */}
           {!showCloseSummary && (
-            <>
+            <div className="space-y-4">
+              {/* Cash amount input */}
               <div className="relative group">
                 <label className="text-[9px] font-black text-neon uppercase tracking-[0.2em] block mb-2">
                   Contaje {isClosing ? 'Real (Físico)' : 'Inicial'}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-text-secondary/40 dark:text-white/20 group-focus-within:text-neon transition-colors">$</span>
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-black text-white/15 group-focus-within:text-neon/60 transition-colors">$</span>
                   <input
                     type="number"
                     value={amount}
                     onChange={e => setAmount(e.target.value)}
-                    className="w-full bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 rounded-2xl pl-10 pr-4 py-6 text-text-main dark:text-white font-black outline-none focus:border-neon/50 focus:bg-neon/5 text-4xl placeholder:text-text-secondary/40 dark:placeholder:text-white/5 transition-all font-mono"
+                    className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl pl-10 pr-4 py-5 text-white font-black outline-none focus:border-neon/40 focus:bg-neon/[0.03] text-3xl placeholder:text-white/10 transition-all font-mono"
                     placeholder="0"
                     autoFocus
                   />
                 </div>
               </div>
 
+              {/* Dispatch station selector (opening only) */}
               {!isClosing && dispatchStations.length > 0 && (
                 <div>
-                  <label className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.2em] block mb-2 leading-none">Estacion de despacho (opcional)</label>
+                  <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] block mb-2">Estación de Despacho (opcional)</label>
                   <select
                     value={selectedStation}
                     onChange={(e) => setSelectedStation(e.target.value)}
-                    className="w-full bg-gray-50 dark:bg-[#1a1c1a] border border-border-color dark:border-white/10 rounded-2xl px-4 py-4 text-text-main dark:text-white text-xs font-bold outline-none focus:border-neon/30 transition-all appearance-none cursor-pointer"
-                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.4)' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 16px center' }}
+                    className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl px-4 py-3.5 text-white text-xs font-bold outline-none focus:border-neon/30 transition-all appearance-none cursor-pointer"
+                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.3)' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 16px center' }}
                   >
-                    <option value="" className="bg-[#1a1c1a] text-white/60">Sin estacion especifica</option>
+                    <option value="" className="bg-[#0C0E0C] text-white/60">Sin estación especifica</option>
                     {dispatchStations.map((station) => (
-                      <option key={station.id} value={station.id} className="bg-[#1a1c1a] text-white">{station.name}</option>
+                      <option key={station.id} value={station.id} className="bg-[#0C0E0C] text-white">{station.name}</option>
                     ))}
                   </select>
                 </div>
               )}
 
+              {/* Notes (closing only) */}
               {isClosing && (
                 <div>
-                  <label className="text-[9px] font-black text-text-secondary/60 dark:text-white/30 uppercase tracking-[0.2em] block mb-2 leading-none">Observaciones del Turno</label>
+                  <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] block mb-2">Observaciones</label>
                   <textarea
                     value={notes}
                     onChange={e => setNotes(e.target.value)}
-                    className="w-full bg-black/5 dark:bg-white/5 border border-border-color dark:border-white/10 rounded-2xl px-4 py-4 text-text-main dark:text-white text-xs font-bold outline-none focus:border-border-color dark:focus:border-white/20 min-h-[100px] transition-all"
-                    placeholder="Ej. Falta cambio, retiro parcial, merma encontrada..."
+                    className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl px-4 py-3 text-white text-xs font-medium outline-none focus:border-white/15 min-h-[80px] resize-none transition-all placeholder:text-white/15"
+                    placeholder="Ej. Falta cambio, retiro parcial..."
                   />
                 </div>
               )}
-            </>
+            </div>
           )}
 
+          {/* Error */}
+          {submitError && (
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium flex items-center gap-2">
+              <span className="material-symbols-outlined text-sm">error</span>
+              {submitError}
+            </div>
+          )}
+        </div>
+
+        {/* Footer — fixed */}
+        <div className="px-6 pb-6 pt-4 border-t border-white/[0.06]">
           <button
             onClick={async () => {
               if (showCloseSummary) {
@@ -1839,22 +1861,40 @@ const CashShiftModal: React.FC<{
                 return;
               }
               setIsSubmitting(true);
+              setSubmitError('');
               try {
                 await onConfirm(realAmount, expected, notes, selectedStation || null);
-              } catch (err) {
+              } catch (err: any) {
                 console.error('Cash shift action failed:', err);
+                setSubmitError(err?.message || 'Error al procesar la operación');
               } finally {
                 setIsSubmitting(false);
               }
             }}
             disabled={isSubmitting}
-            className="w-full py-5 rounded-2xl bg-neon text-black font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-neon-soft group flex items-center justify-center gap-2 disabled:opacity-60"
+            className="w-full py-4 rounded-2xl bg-neon text-black font-black uppercase tracking-widest text-xs hover:brightness-110 active:scale-[0.98] transition-all shadow-lg shadow-neon/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {showCloseSummary ? 'Listo' : isClosing ? 'Confirmar Cierre' : 'Confirmar Apertura'}
-            <span className="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
+            {isSubmitting ? (
+              <>
+                <div className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                Procesando...
+              </>
+            ) : showCloseSummary ? (
+              'Listo'
+            ) : isClosing ? (
+              <>
+                Confirmar Cierre
+                <span className="material-symbols-outlined text-base">lock</span>
+              </>
+            ) : (
+              <>
+                Confirmar Apertura
+                <span className="material-symbols-outlined text-base">play_arrow</span>
+              </>
+            )}
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };

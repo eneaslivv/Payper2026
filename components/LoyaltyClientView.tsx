@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { MenuTheme, Store } from '../types';
+import { MenuTheme, Store, Reward } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'framer-motion';
 
@@ -9,14 +9,6 @@ interface LoyaltyClientViewProps {
     store: Store;
     user: any; // User from auth context
     onClose?: () => void; // Optional if we want a back button
-}
-
-interface Reward {
-    id: string;
-    name: string;
-    points: number;
-    image_url?: string;
-    is_active: boolean;
 }
 
 export const LoyaltyClientView: React.FC<LoyaltyClientViewProps> = ({ theme, store, user, onClose }) => {

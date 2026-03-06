@@ -558,10 +558,9 @@ BEGIN
         RETURN jsonb_build_object('success', FALSE, 'error', 'store_id is required');
     END IF;
 
-    -- 2. Generate order_number
+    -- 2. Generate order_number (order_number is INTEGER — just MAX + 1)
     v_order_number := '#' || LPAD(
-        (SELECT COALESCE(MAX(NULLIF(REGEXP_REPLACE(order_number, '[^0-9]', '', 'g'), '')::INTEGER), 0) + 1
-         FROM orders WHERE store_id = v_store_id)::TEXT,
+        (COALESCE((SELECT MAX(order_number) FROM orders WHERE store_id = v_store_id), 0) + 1)::TEXT,
         3, '0'
     );
 
@@ -592,7 +591,7 @@ BEGIN
         v_client_id,
         v_total_amount,
         COALESCE((p_order->>'subtotal')::NUMERIC, v_total_amount),
-        COALESCE(p_order->>'status', 'pending'),
+        COALESCE(p_order->>'status', 'pending')::order_status_enum,
         v_payment_method,
         p_order->>'payment_provider',
         CASE
@@ -603,7 +602,7 @@ BEGIN
         p_order->>'table_number',
         v_node_id,
         v_cash_session_id,
-        COALESCE(p_order->>'channel', 'pos'),
+        COALESCE(p_order->>'channel', 'pos')::order_channel_enum,
         p_order->>'delivery_mode',
         COALESCE(p_order->>'delivery_status', 'pending'),
         (p_order->>'session_id')::UUID,

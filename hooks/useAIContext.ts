@@ -57,9 +57,9 @@ export const useAIContext = () => {
             // This assumes we have an inventory_items table with quantity and min_quantity
             const { data: lowStock } = await supabase
                 .from('inventory_items')
-                .select('name, current_stock, min_stock')
+                .select('name, current_stock, min_stock_alert')
                 .eq('store_id', profile.store_id)
-                .lt('current_stock', 10) // Fallback threshold if min_stock is null
+                .lt('current_stock', 10) // Fallback threshold if min_stock_alert is null
                 .limit(5);
 
             // Filter strictly if min_quantity exists, else use raw low count logic

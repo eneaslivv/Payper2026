@@ -1164,7 +1164,9 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
           }
 
           if (!result.success) {
-            throw new Error(result.message || 'Sync failed');
+            const errMsg = result.message || result.error || 'Sync failed';
+            console.error(`[Sync] RPC returned error for order ${order.id}:`, result);
+            throw new Error(errMsg);
           }
 
           // Success

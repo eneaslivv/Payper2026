@@ -116,9 +116,6 @@ const Loyalty: React.FC = () => {
          // PARALLEL FETCHING
          console.log('[Loyalty] Fetching fresh data for store:', storeId);
 
-         // PARALLEL FETCHING
-         console.log('[Loyalty] Fetching fresh data for store:', storeId);
-
          const [pData, iData, cDataRaw, rData, ruleData] = await Promise.all([
             fetchWithTimeout(`${baseUrl}/products?store_id=eq.${storeId}`),
             fetchWithTimeout(`${baseUrl}/inventory_items?store_id=eq.${storeId}`),
@@ -131,17 +128,21 @@ const Loyalty: React.FC = () => {
          const rawProducts = pData || [];
          const rawInventory = iData || [];
 
-         // Map Inventory Items to Product shape
+         // Map Inventory Items to Product shape (tagged as inventory source)
          const inventoryAsProducts = rawInventory.map((i: any) => ({
             id: i.id,
             name: i.name,
             image_url: i.image_url,
-            store_id: i.store_id
+            store_id: i.store_id,
+            _source: 'inventory'
          }));
 
-         // Merge and remove duplicates by ID
+         // Tag products with source
+         const taggedProducts = rawProducts.map((p: any) => ({ ...p, _source: 'product' }));
+
+         // Merge and remove duplicates by ID (products take priority)
          const allProductsMap = new Map();
-         rawProducts.forEach((p: any) => allProductsMap.set(p.id, p));
+         taggedProducts.forEach((p: any) => allProductsMap.set(p.id, p));
          inventoryAsProducts.forEach((p: any) => {
             if (!allProductsMap.has(p.id)) {
                allProductsMap.set(p.id, p);
@@ -197,63 +198,65 @@ const Loyalty: React.FC = () => {
    };
 
    const handleSave = async () => {
-      if (!profile?.store_id) return;
+      if (!profile?.store_id) {
+         addToast('No se pudo identificar la tienda. Recargá la página.', 'error');
+         return;
+      }
       setIsSaving(true);
+      let hasError = false;
       try {
-         // 1. Save Config
-         try {
-            const { error: configError } = await (supabase.from('loyalty_configs' as any) as any).upsert({
-               store_id: profile.store_id,
-               config: config
-            });
-            if (configError) throw configError;
-         } catch (e) {
-            console.warn('Config save failed:', e);
-            addToast('No se pudo guardar la configuración global. ¿Ejecutaste el SQL?', 'warning');
+         // 1. Save Config (upsert with onConflict on store_id)
+         const { error: configError } = await (supabase.from('loyalty_configs' as any) as any).upsert(
+            { store_id: profile.store_id, config: config },
+            { onConflict: 'store_id' }
+         );
+         if (configError) {
+            console.error('Config save failed:', configError);
+            addToast('Error al guardar configuración: ' + configError.message, 'error');
+            hasError = true;
          }
 
-         // 2. Save Rewards (Delete and re-insert)
-         try {
-            await (supabase.from('loyalty_rewards' as any) as any).delete().eq('store_id', profile.store_id);
-            if (rewards.length > 0) {
-               await (supabase.from('loyalty_rewards' as any) as any).insert(
-                  rewards.map(r => ({
-                     store_id: profile.store_id,
-                     product_id: (r as any).product_id || null,
-                     name: r.name,
-                     points: r.points,
-                     is_active: r.is_active,
-                     image_url: r.image
-                  }))
-               );
-            }
-         } catch (e) {
-            console.warn('Rewards save failed:', e);
-            addToast('No se pudieron guardar las recompensas.', 'warning');
+         // 2. Save Rewards (atomic DELETE + INSERT via RPC)
+         const { error: rewardsErr } = await (supabase as any).rpc('upsert_loyalty_rewards', {
+            p_store_id: profile.store_id,
+            p_rewards: rewards.map(r => ({
+               product_id: (r as any).product_id || null,
+               name: r.name,
+               points: r.points,
+               is_active: r.is_active,
+               image_url: r.image || r.image_url || ''
+            }))
+         });
+         if (rewardsErr) {
+            console.error('Rewards save failed:', rewardsErr);
+            addToast('Error al guardar recompensas: ' + rewardsErr.message, 'error');
+            hasError = true;
          }
 
-         // 3. Save Product Rules
-         try {
-            await (supabase.from('loyalty_product_rules' as any) as any).delete().eq('store_id', profile.store_id);
-            if (productRules.length > 0) {
-               await (supabase.from('loyalty_product_rules' as any) as any).insert(
-                  productRules.map(r => ({
-                     store_id: profile.store_id,
-                     product_id: r.productId,
-                     multiplier: r.multiplier
-                  }))
-               );
-            }
-         } catch (e) {
-            console.warn('Rules save failed:', e);
-            addToast('No se pudieron guardar las reglas de puntos.', 'warning');
+         // 3. Save Product Rules (atomic DELETE + INSERT via RPC)
+         const { error: rulesErr } = await (supabase as any).rpc('upsert_loyalty_rules', {
+            p_store_id: profile.store_id,
+            p_rules: productRules.map(r => ({
+               product_id: r.productId,
+               multiplier: r.multiplier
+            }))
+         });
+         if (rulesErr) {
+            console.error('Rules save failed:', rulesErr);
+            addToast('Error al guardar reglas: ' + rulesErr.message, 'error');
+            hasError = true;
          }
 
-         addToast('Ajustes de lealtad procesados', 'success');
+         if (!hasError) {
+            addToast('Configuración de lealtad guardada', 'success');
+         }
+         // Clear cache and re-fetch fresh data
+         const CACHE_KEY = `loyalty_cache_${profile.store_id}`;
+         localStorage.removeItem(CACHE_KEY);
          await fetchData(true);
       } catch (err: any) {
          console.error('Save error:', err);
-         addToast('Error al procesar ajustes de lealtad', 'error');
+         addToast('Error al procesar ajustes de lealtad: ' + err.message, 'error');
       } finally {
          setIsSaving(false);
       }
@@ -265,7 +268,8 @@ const Loyalty: React.FC = () => {
 
    useEffect(() => {
       if (products.length > 0 && !simProduct) {
-         setSimProduct(products[0].id);
+         const firstProduct = products.find((p: any) => p._source === 'product');
+         if (firstProduct) setSimProduct(firstProduct.id);
       }
    }, [products]);
 
@@ -278,7 +282,9 @@ const Loyalty: React.FC = () => {
    }, [simProduct, simAmount, productRules, config]);
 
    const filteredProducts = useMemo(() => {
-      return products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+      return products
+         .filter((p: any) => p._source === 'product') // Only products table items (FK constraint)
+         .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
    }, [products, searchTerm]);
 
    const handleUpdateRule = (rule: ProductLoyaltyRule) => {
@@ -291,16 +297,16 @@ const Loyalty: React.FC = () => {
    };
 
    const handleAddReward = () => {
-      const product = products.find(p => p.id === newReward.productId);
+      const product = products.find(p => p.id === newReward.productId && (p as any)._source === 'product');
       if (product && newReward.points > 0) {
          const reward: Reward = {
             id: `rew-${Date.now()}`,
             name: product.name,
-            image: product.image_url || '',
+            image: product.image || product.image_url || '',
             points: newReward.points,
             is_active: true,
             product_id: product.id
-         } as any;
+         };
          setRewards([...rewards, reward]);
          setShowRewardModal(false);
          setNewReward({ productId: '', points: 0 });
@@ -397,7 +403,7 @@ const Loyalty: React.FC = () => {
                         </div>
                         <button
                            onClick={() => setShowRewardModal(true)}
-                           disabled={products.length === 0}
+                           disabled={products.filter((p: any) => p._source === 'product').length === 0}
                            className="px-5 py-3 bg-neon text-black rounded-xl font-black text-[10px] uppercase tracking-wider hover:scale-105 active:scale-95 transition-all shadow-neon-soft flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                            <span className="material-symbols-outlined text-base">add</span>
@@ -539,7 +545,7 @@ const Loyalty: React.FC = () => {
                            <div className="py-20 text-center opacity-20 italic">
                               <p className="text-[10px] font-black uppercase tracking-[0.2em]">Cargando Productos...</p>
                            </div>
-                        ) : products.length === 0 ? (
+                        ) : filteredProducts.length === 0 ? (
                            <div className="py-20 flex flex-col items-center justify-center text-center opacity-20 border-t border-border-color/30 dark:border-white/5">
                               <span className="material-symbols-outlined text-4xl mb-4">inventory_2</span>
                               <p className="text-[10px] font-black uppercase tracking-widest px-10 leading-relaxed">Sin productos detectados para aplicar reglas de acumulación.</p>
@@ -553,7 +559,7 @@ const Loyalty: React.FC = () => {
                                        <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.01] transition-all group">
                                           <td className="px-6 py-4">
                                              <div className="flex items-center gap-3">
-                                                <img src={p.image_url || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200'} className="size-8 rounded-lg object-cover grayscale group-hover:grayscale-0 transition-all border border-border-color/30 dark:border-white/5" />
+                                                <img src={p.image || p.image_url || 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=200'} className="size-8 rounded-lg object-cover grayscale group-hover:grayscale-0 transition-all border border-border-color/30 dark:border-white/5" />
                                                 <div>
                                                    <p className="text-[10px] font-black text-text-main dark:text-white uppercase italic leading-none">{p.name}</p>
                                                    <p className="text-[7px] text-text-secondary font-bold uppercase opacity-30 mt-1">PRODUCTO</p>
@@ -598,8 +604,8 @@ const Loyalty: React.FC = () => {
                      <div className="space-y-1.5">
                         <label className="text-[7px] font-black uppercase text-text-secondary ml-1">Producto</label>
                         <select value={simProduct} onChange={e => setSimProduct(e.target.value)} className="w-full h-9 px-3 rounded-lg bg-gray-50 dark:bg-black/40 border border-border-color dark:border-white/10 text-[10px] font-bold text-text-main dark:text-white uppercase outline-none">
-                           {products.length > 0 ? (
-                              products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)
+                           {filteredProducts.length > 0 ? (
+                              filteredProducts.map(p => <option key={p.id} value={p.id}>{p.name}</option>)
                            ) : (
                               <option value="">Sin productos</option>
                            )}
@@ -638,8 +644,8 @@ const Loyalty: React.FC = () => {
                            onChange={e => setNewReward({ ...newReward, productId: e.target.value })}
                            className="w-full h-10 px-4 rounded-xl bg-gray-50 dark:bg-black/40 border border-border-color dark:border-white/10 text-[10px] font-bold text-text-main dark:text-white uppercase outline-none focus:ring-1 focus:ring-neon/20"
                         >
-                           <option value="">Seleccionar Item...</option>
-                           {products.map(p => (
+                           <option value="">Seleccionar Producto...</option>
+                           {products.filter((p: any) => p._source === 'product').map(p => (
                               <option key={p.id} value={p.id}>{p.name}</option>
                            ))}
                         </select>

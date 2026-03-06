@@ -1053,8 +1053,8 @@ const InventoryManagement: React.FC = () => {
           package_size: newItemForm.package_size || null,
           content_unit: newItemForm.content_unit || (newItemForm.unit_type === 'gram' ? 'g' : newItemForm.unit_type === 'ml' ? 'ml' : newItemForm.unit_type === 'kg' ? 'kg' : newItemForm.unit_type === 'liter' ? 'L' : 'un'),
           cost: newItemForm.cost,
-          current_stock: newItemForm.current_stock,
-          closed_stock: newItemForm.current_stock,
+          current_stock: 0,
+          closed_stock: 0,
           min_stock_alert: newItemForm.min_stock,
           store_id: storeId,
           category_id: newItemForm.category_id || null,
@@ -1077,6 +1077,67 @@ const InventoryManagement: React.FC = () => {
       if (!response.ok) {
         const errData = await response.json();
         throw new Error(errData.message || 'Error al crear');
+      }
+
+      // If initial stock was specified, assign it to the default storage location via transfer_stock RPC
+      const initialStock = newItemForm.current_stock;
+      if (!isSellable && initialStock > 0) {
+        try {
+          const responseData = await response.clone().json();
+          const newItemId = Array.isArray(responseData) ? responseData[0]?.id : responseData?.id;
+
+          if (newItemId) {
+            // Find default storage location
+            const { data: defaultLoc } = await supabase
+              .from('storage_locations')
+              .select('id, name')
+              .eq('store_id', storeId)
+              .eq('is_default', true)
+              .single();
+
+            const targetLocId = defaultLoc?.id;
+
+            if (targetLocId) {
+              const { retryStockRpc } = await import('../src/lib/retryRpc');
+              const { data: { user } } = await supabase.auth.getUser();
+
+              const { error: stockError } = await retryStockRpc(
+                () => (supabase as any).rpc('transfer_stock', {
+                  p_item_id: newItemId,
+                  p_from_location_id: null,
+                  p_to_location_id: targetLocId,
+                  p_quantity: initialStock,
+                  p_user_id: user?.id || null,
+                  p_notes: '[CARGA INICIAL] Stock inicial al crear producto',
+                  p_movement_type: 'PURCHASE',
+                  p_reason: 'Carga inicial'
+                }),
+                addToast
+              );
+
+              if (stockError) {
+                console.error('Initial stock assignment error:', stockError);
+                addToast(`Item creado, pero error al asignar stock a ${defaultLoc.name}: ${stockError.message}`, 'error');
+              } else {
+                // Update current_stock cache on the item
+                await supabase.from('inventory_items')
+                  .update({ current_stock: initialStock, closed_stock: initialStock })
+                  .eq('id', newItemId);
+                addToast(`Stock inicial (${initialStock}) asignado a ${defaultLoc.name}`, 'success');
+              }
+            } else {
+              // No default location — still update cache so stock isn't lost
+              await supabase.from('inventory_items')
+                .update({ current_stock: initialStock, closed_stock: initialStock })
+                .eq('id', newItemId);
+              console.warn('No default storage location found — initial stock left unassigned');
+              addToast('Item creado. No hay ubicación predeterminada — asigná stock manualmente.', 'error');
+            }
+          }
+        } catch (stockErr: any) {
+          console.error('Initial stock flow error:', stockErr);
+          addToast('Item creado pero error al asignar stock inicial', 'error');
+        }
       }
 
       addToast('✅ Ítem creado correctamente', 'success');

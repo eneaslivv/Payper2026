@@ -599,6 +599,16 @@ export interface LoyaltyConfig {
   combosEarn: boolean;
 }
 
+export interface Reward {
+  id: string;
+  name: string;
+  image?: string;
+  image_url?: string;
+  points: number;
+  is_active: boolean;
+  product_id?: string;
+}
+
 export interface ProductLoyaltyRule {
   productId: string;
   type: LoyaltyRuleType;

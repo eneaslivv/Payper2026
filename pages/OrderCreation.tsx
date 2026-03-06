@@ -85,12 +85,12 @@ const OrderCreation: React.FC = () => {
         setClients(mappedClients);
       }
 
-      // 2. Fetch Venue Nodes (Tables) - all tables, not filtered by status
+      // 2. Fetch Venue Nodes (Tables only, exclude bar seats)
       const { data: nodesData } = await supabase
         .from('venue_nodes')
         .select('*')
         .eq('store_id', profile.store_id)
-        .in('type', ['table', 'bar']);
+        .eq('type', 'table');
 
       if (nodesData) {
         setTables(nodesData);
@@ -105,15 +105,13 @@ const OrderCreation: React.FC = () => {
         // .eq('active', true) // TEMPORARILY DISABLED
         .not('name', 'ilike', '[ELIMINADO]%');
 
+      // Fetch sellable inventory items OR items explicitly marked as menu-visible
       const { data: inventoryData } = await supabase
         .from('inventory_items')
-        .select(`id, name, price, image_url, description, category_id, current_stock, item_type`)
+        .select(`id, name, price, image_url, description, category_id, current_stock, item_type, is_menu_visible`)
         .eq('store_id', profile.store_id)
-        .eq('is_menu_visible', true)
-        .eq('item_type', 'sellable')
-        // .eq('is_active', true) // TEMPORARILY DISABLED
-        .not('name', 'ilike', '[ELIMINADO]%'); // Double check to exclude soft-deleted
-      // Removed .gt('price', 0) so manual 'Menu ON' override works even for $0 items
+        .or('item_type.eq.sellable,is_menu_visible.eq.true')
+        .not('name', 'ilike', '[ELIMINADO]%');
 
       console.log('[OrderCreation] Data fetch results:', { products: productsData?.length, inventory: inventoryData?.length });
 
@@ -154,6 +152,7 @@ const OrderCreation: React.FC = () => {
 
         unifiedProducts = [...unifiedProducts, ...inventoryData
           .filter((item: any) => !item.name?.startsWith('[ELIMINADO]'))
+          .filter((item: any) => item.item_type === 'sellable' || (item.is_menu_visible && parseFloat(item.price) > 0)) // Sellable items + visible items with price
           .filter((item: any) => !productIds.has(item.id)) // SKIP DUPLICATES
           .filter((item: any) => !productNames.has((item.name || '').trim().toLowerCase())) // SKIP NAME DUPLICATES
           .map((item: any) => ({

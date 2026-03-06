@@ -131,7 +131,6 @@ export const useCashShift = () => {
         const { data, error } = await supabase.rpc('close_cash_session' as any, {
             p_session_id: sessionId,
             p_real_cash: safeReal,
-            p_closed_by: profile.id,
             p_notes: notes || null
         });
 

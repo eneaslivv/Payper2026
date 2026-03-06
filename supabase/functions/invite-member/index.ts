@@ -152,7 +152,7 @@ serve(async (req) => {
             targetUserId = existingUser.id;
         }
 
-        // 5. Upsert profile
+        // 5. Upsert profile — is_active: true because user was explicitly invited by an admin
         await supabaseAdmin.from('profiles').upsert({
             id: targetUserId,
             email: email,
@@ -160,7 +160,7 @@ serve(async (req) => {
             role: 'staff', // Always 'staff' for permissions system baseline
             role_id: targetRoleId, // Link to custom role
             store_id: storeId,
-            is_active: false
+            is_active: true
         });
 
         // 6. Generate recovery link

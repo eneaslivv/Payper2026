@@ -59,6 +59,8 @@ export const mapOrderToSupabase = (order: Order, storeId: string): SupabaseOrder
         client_id: order.client_id || null,
         // customer_name column does not exist in DB
         total_amount: order.amount,
+        subtotal: order.amount, // Match total if no separate subtotal
+        channel: (order as any).channel || ((order as any).type === 'takeaway' ? 'pos' : (order as any).type === 'delivery' ? 'delivery' : 'pos'),
         status: mapStatusToSupabase(order.status),
         node_id: nodeId,
         session_id: sessionId,
