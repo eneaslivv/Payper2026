@@ -1965,31 +1965,31 @@ const MenuDesign: React.FC = () => {
                         <p className="text-[#52525B] text-[11px] font-medium uppercase tracking-wider">Identidad Visual & Protocolos de Storefront</p>
                     </div>
 
-                    <div className="flex items-center gap-3 bg-white dark:bg-black/40 p-1 rounded-xl border border-border-color/30 dark:border-white/5 backdrop-blur-xl">
+                    <div className="flex items-center gap-2 bg-white/80 dark:bg-white/[0.03] p-1.5 rounded-full border border-gray-200/60 dark:border-white/5 backdrop-blur-xl">
                         {(['ESTÉTICA', 'LÓGICA', 'INVENTARIO', 'MENÚS'] as const).map(tab => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
                                 className={`
-                                    px-4 py-2 rounded-lg text-[10px] font-black transition-all duration-300 tracking-[0.15em]
+                                    px-5 py-2 rounded-full text-[10px] font-black transition-all duration-300 tracking-[0.12em]
                                     ${activeTab === tab
-                                        ? 'bg-white dark:bg-[#141714] text-[#4ADE80] border border-[#4ADE80]/20'
-                                        : 'text-[#52525B] hover:text-text-main dark:hover:text-white'
+                                        ? 'bg-emerald-500 dark:bg-neon text-white dark:text-black shadow-sm'
+                                        : 'text-[#9B9A97] dark:text-[#71766F] hover:text-[#37352F] dark:hover:text-white hover:bg-black/[0.03] dark:hover:bg-white/[0.03]'
                                     }
                                 `}
                             >
                                 {tab}
                             </button>
                         ))}
-                        <div className="w-px h-5 bg-border-color dark:bg-white/10 mx-1" />
+                        <div className="w-px h-5 bg-gray-200 dark:bg-white/10 mx-0.5" />
                         <button
                             onClick={handlePublish}
                             disabled={isSaving}
-                            className="bg-[#4ADE80] hover:bg-[#22C55E] disabled:bg-[#4ADE80]/50 text-black px-5 py-2 rounded-lg text-[10px] font-black transition-all flex items-center gap-2"
+                            className="bg-emerald-500 hover:bg-emerald-600 dark:bg-neon dark:hover:bg-emerald-400 disabled:opacity-50 text-white dark:text-black px-5 py-2 rounded-full text-[10px] font-black transition-all flex items-center gap-2 shadow-sm"
                         >
                             {isSaving ? (
                                 <>
-                                    <div className="w-2.5 h-2.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                                    <div className="w-2.5 h-2.5 border-2 border-white/30 dark:border-black/30 border-t-white dark:border-t-black rounded-full animate-spin" />
                                     GUARDANDO...
                                 </>
                             ) : (
@@ -2002,7 +2002,7 @@ const MenuDesign: React.FC = () => {
                         <button
                             onClick={() => storeSlug && window.open(`/m/${storeSlug}`, '_blank')}
                             disabled={!storeSlug}
-                            className="bg-black/5 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 disabled:opacity-50 text-text-main dark:text-white px-5 py-2 rounded-lg text-[10px] font-black transition-all flex items-center gap-2 border border-border-color/30 dark:border-white/5"
+                            className="bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/10 disabled:opacity-50 text-[#37352F] dark:text-white/80 px-5 py-2 rounded-full text-[10px] font-black transition-all flex items-center gap-2"
                             title={storeSlug ? "Ver menú en vivo" : "Guarda la configuración para generar el link"}
                         >
                             <Monitor className="w-3 h-3" />
