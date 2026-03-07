@@ -325,81 +325,32 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden group">
-        {/* Animated gradient border */}
-        <div className="absolute -inset-[1px] rounded-2xl sm:rounded-3xl bg-gradient-to-r from-emerald-500/40 via-emerald-300/20 to-emerald-500/40 dark:from-neon/50 dark:via-neon/10 dark:to-neon/50 opacity-60 group-hover:opacity-100 transition-opacity duration-700" style={{ backgroundSize: '200% 100%', animation: 'shimmer 3s ease-in-out infinite' }} />
-
-        <div className="relative p-4 sm:p-6 bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-[#0D120D] dark:via-[#111611] dark:to-[#0A0F0A] rounded-2xl sm:rounded-3xl">
-
-          {/* Scan line effect */}
-          <div className="absolute inset-0 overflow-hidden rounded-2xl sm:rounded-3xl pointer-events-none">
-            <div className="absolute inset-0 opacity-[0.015] dark:opacity-[0.03]" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, currentColor 2px, currentColor 3px)', backgroundSize: '100% 4px' }} />
-            <div className="absolute w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/30 dark:via-neon/40 to-transparent" style={{ animation: 'scanline 4s ease-in-out infinite' }} />
-          </div>
-
-          {/* Corner accents */}
-          <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-emerald-500/20 dark:border-neon/20 rounded-tl-2xl sm:rounded-tl-3xl" />
-          <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-emerald-500/20 dark:border-neon/20 rounded-tr-2xl sm:rounded-tr-3xl" />
-          <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-emerald-500/20 dark:border-neon/20 rounded-bl-2xl sm:rounded-bl-3xl" />
-          <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-emerald-500/20 dark:border-neon/20 rounded-br-2xl sm:rounded-br-3xl" />
-
-          {/* Background glyph */}
-          <div className="absolute top-1/2 right-6 sm:right-10 -translate-y-1/2 opacity-[0.02] dark:opacity-[0.04] group-hover:opacity-[0.06] transition-opacity duration-700 pointer-events-none hidden sm:block">
-            <span className="material-symbols-outlined text-[120px] text-emerald-900 dark:text-neon">radar</span>
-          </div>
-
-          {/* Content */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6 relative z-10">
-            <div className="space-y-3 max-w-2xl">
-              {/* Status bar */}
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-neon animate-pulse shadow-[0_0_6px_rgba(74,222,128,0.5)] dark:shadow-[0_0_6px_var(--neon)]" />
-                  <span className="text-[7px] font-black uppercase tracking-[0.5em] text-emerald-600/70 dark:text-neon/70">ACTIVO</span>
-                </div>
-                <div className="h-3 w-px bg-emerald-500/20 dark:bg-neon/20" />
-                <span className="text-[7px] font-mono uppercase tracking-[0.3em] text-[#9B9A97] dark:text-[#71766F]">v2.0</span>
-              </div>
-
-              {/* Title */}
-              <div className="space-y-1">
-                <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-[0.35em] text-emerald-600 dark:text-neon flex items-center gap-2">
-                  <span className="material-symbols-outlined text-sm opacity-70">neurology</span>
-                  SQUADAI TACTICAL BRIEFING
-                </h3>
-                <p className="text-[11px] sm:text-xs font-medium text-[#37352F]/60 dark:text-white/50 leading-relaxed max-w-lg">
-                  {briefingText || "Análisis de inteligencia operativa impulsado por IA. Genera un reporte táctico basado en tus métricas en tiempo real."}
-                </p>
-              </div>
+      <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white dark:bg-[#141714] border border-gray-200 dark:border-white/5 shadow-xl dark:shadow-2xl">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6">
+          <div className="space-y-2.5 max-w-2xl">
+            <div className="flex items-center gap-2.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-neon" />
+              <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.35em] text-emerald-600 dark:text-neon">SQUADAI TACTICAL BRIEFING</h3>
             </div>
-
-            {/* CTA Button */}
-            <button
-              onClick={handleGenerateBriefing}
-              disabled={isBriefing}
-              className={`relative px-6 sm:px-8 h-11 sm:h-12 rounded-xl sm:rounded-2xl font-black text-[8px] sm:text-[9px] uppercase tracking-[0.25em] transition-all active:scale-95 flex items-center gap-2.5 sm:gap-3 shrink-0 w-full sm:w-auto justify-center overflow-hidden ${
-                isBriefing
-                  ? 'bg-emerald-500/10 dark:bg-neon/10 text-emerald-600 dark:text-neon border border-emerald-500/30 dark:border-neon/30'
-                  : 'bg-gradient-to-r from-emerald-500 to-emerald-600 dark:from-neon dark:to-emerald-400 text-white dark:text-black shadow-lg shadow-emerald-500/25 dark:shadow-neon/25 hover:shadow-xl hover:shadow-emerald-500/40 dark:hover:shadow-neon/40 hover:scale-[1.03]'
-              }`}
-            >
-              {isBriefing && (
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-500/10 dark:via-neon/10 to-transparent" style={{ animation: 'shimmer 1.5s ease-in-out infinite', backgroundSize: '200% 100%' }} />
-              )}
-              <span className={`material-symbols-outlined text-base sm:text-lg relative z-10 ${isBriefing ? 'animate-spin' : ''}`}>
-                {isBriefing ? 'progress_activity' : 'auto_awesome'}
-              </span>
-              <span className="relative z-10">{isBriefing ? 'PROCESANDO INTEL...' : 'GENERAR BRIEFING'}</span>
-            </button>
+            <p className="text-[11px] sm:text-xs font-medium text-[#37352F]/60 dark:text-white/50 leading-relaxed">
+              {briefingText || "Análisis de inteligencia operativa impulsado por IA. Genera un reporte táctico basado en tus métricas en tiempo real."}
+            </p>
           </div>
+          <button
+            onClick={handleGenerateBriefing}
+            disabled={isBriefing}
+            className={`size-12 sm:size-14 rounded-full font-black transition-all active:scale-90 flex items-center justify-center shrink-0 ${
+              isBriefing
+                ? 'bg-emerald-500/10 dark:bg-neon/10 text-emerald-600 dark:text-neon'
+                : 'bg-emerald-500 dark:bg-neon text-white dark:text-black shadow-lg shadow-emerald-500/25 dark:shadow-neon/25 hover:shadow-xl hover:shadow-emerald-500/40 dark:hover:shadow-neon/40 hover:scale-105'
+            }`}
+          >
+            <span className={`material-symbols-outlined text-xl sm:text-2xl ${isBriefing ? 'animate-spin' : ''}`}>
+              {isBriefing ? 'progress_activity' : 'auto_awesome'}
+            </span>
+          </button>
         </div>
       </div>
-
-      {/* Keyframe animations for briefing card */}
-      <style>{`
-        @keyframes shimmer { 0%, 100% { background-position: 200% 0; } 50% { background-position: -200% 0; } }
-        @keyframes scanline { 0% { top: -2px; } 100% { top: 100%; } }
-      `}</style>
 
       {/* FINANCIAL OVERVIEW */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
