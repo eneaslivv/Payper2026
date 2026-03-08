@@ -279,7 +279,7 @@ const MenuPage: React.FC = () => {
 
       {/* CART FLOATING BUTTON */}
       {cartCount > 0 && (
-        <div className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] left-0 right-0 z-50 px-6 max-w-md mx-auto animate-in slide-in-from-bottom-12 duration-700">
+        <div className={`fixed ${hasActiveOrder ? 'bottom-[calc(13rem+env(safe-area-inset-bottom))]' : 'bottom-[calc(6rem+env(safe-area-inset-bottom))]'} left-0 right-0 z-50 px-6 max-w-md mx-auto animate-in slide-in-from-bottom-12 duration-700 transition-all`}>
           <button
             onClick={() => navigate(`/m/${slug}/cart`)}
             className={`group relative w-full h-20 ${radiusClass} shadow-[0_30px_70px_rgba(0,0,0,0.8)] flex items-center justify-between pl-8 pr-5 transition-all active:scale-[0.97] overflow-hidden border border-white/20`}
