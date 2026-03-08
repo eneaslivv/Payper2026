@@ -39,6 +39,13 @@ const OrderBoard: React.FC = () => {
     localStorage.setItem('payper_dispatch_station', locationFilter);
   }, [locationFilter]);
 
+  // Staff with assigned station cannot change filter
+  const isStationLocked = useMemo(() => {
+    if (!profile) return false;
+    if (profile.role === 'super_admin' || profile.role === 'store_owner') return false;
+    return !!profile.default_station_id;
+  }, [profile]);
+
   // Dispatch stations from database
   const [availableStations, setAvailableStations] = useState<string[]>([]);
 
@@ -329,9 +336,9 @@ const OrderBoard: React.FC = () => {
       // In specific station view: ONLY show orders that have been assigned to that exact station
       if (!showHistory && locationFilter !== 'ALL') {
         const orderStation = o.dispatch_station;
-        // Strict match: order must have the exact station assigned to appear in this view
-        // Unassigned orders (null/undefined) will only be visible in the "ALL" view
-        if (!orderStation || orderStation.trim().toLowerCase() !== locationFilter.toLowerCase()) {
+        // Show orders assigned to this station OR unassigned orders (they need attention)
+        // Only hide orders explicitly assigned to a DIFFERENT station
+        if (orderStation && orderStation.trim().toLowerCase() !== locationFilter.toLowerCase()) {
           return false;
         }
       }
@@ -390,14 +397,17 @@ const OrderBoard: React.FC = () => {
             {/* LOCATION/BAR FILTER */}
             {availableStations.length > 0 && !showHistory && (
               <div className="relative flex items-center">
-                <span className="material-symbols-outlined absolute left-3 text-neon text-base pointer-events-none">store</span>
+                <span className="material-symbols-outlined absolute left-3 text-neon text-base pointer-events-none">{isStationLocked ? 'lock' : 'store'}</span>
                 <select
                   value={locationFilter}
                   onChange={(e) => setLocationFilter(e.target.value)}
-                  className={`h-10 pl-10 pr-10 rounded-xl border text-xs font-bold uppercase tracking-wide appearance-none cursor-pointer transition-all outline-none
-                    ${locationFilter !== 'ALL'
-                      ? 'bg-neon/10 border-neon/40 text-neon'
-                      : 'bg-black/5 dark:bg-white/5 border-border-color dark:border-white/10 text-text-main dark:text-white hover:border-border-color dark:hover:border-white/20'
+                  disabled={isStationLocked}
+                  className={`h-10 pl-10 pr-10 rounded-full border text-xs font-bold uppercase tracking-wide appearance-none transition-all outline-none
+                    ${isStationLocked
+                      ? 'bg-neon/10 border-neon/40 text-neon cursor-not-allowed opacity-80'
+                      : locationFilter !== 'ALL'
+                        ? 'bg-neon/10 border-neon/40 text-neon cursor-pointer'
+                        : 'bg-black/5 dark:bg-white/5 border-border-color dark:border-white/10 text-text-main dark:text-white hover:border-border-color dark:hover:border-white/20 cursor-pointer'
                     } focus:ring-2 focus:ring-neon/30`}
                 >
                   <option value="ALL" className="bg-[#1a1a1a] text-white">🏪 Todas las estaciones</option>
@@ -405,14 +415,14 @@ const OrderBoard: React.FC = () => {
                     <option key={loc} value={loc} className="bg-[#1a1a1a] text-white">📍 {loc}</option>
                   ))}
                 </select>
-                <span className="material-symbols-outlined absolute right-3 text-text-secondary dark:text-white/40 text-base pointer-events-none">expand_more</span>
+                {!isStationLocked && <span className="material-symbols-outlined absolute right-3 text-text-secondary dark:text-white/40 text-base pointer-events-none">expand_more</span>}
               </div>
             )}
 
             {/* HISTORY TOGGLE */}
             <button
               onClick={() => setShowHistory(!showHistory)}
-              className={`h-9 px-4 rounded-lg border flex items-center gap-2 transition-all ${showHistory ? 'bg-white text-black border-white' : 'bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/60 border-border-color/30 dark:border-white/5 hover:text-text-main dark:hover:text-white'}`}
+              className={`h-9 px-4 rounded-full border flex items-center gap-2 transition-all ${showHistory ? 'bg-white text-black border-white' : 'bg-black/5 dark:bg-white/5 text-text-secondary dark:text-white/60 border-border-color/30 dark:border-white/5 hover:text-text-main dark:hover:text-white'}`}
             >
               <span className="material-symbols-outlined text-lg">{showHistory ? 'history_toggle_off' : 'history'}</span>
               <span className="text-[9px] font-black uppercase tracking-widest hidden sm:inline">{showHistory ? 'VOLVER A ACTIVO' : 'HISTORIAL'}</span>
@@ -422,7 +432,7 @@ const OrderBoard: React.FC = () => {
             {!showHistory && (
               <button
                 onClick={() => setShowCloseShiftConfirm(true)}
-                className="h-9 px-4 rounded-lg border border-orange-500/20 bg-orange-500/10 text-orange-400 flex items-center gap-2 transition-all hover:bg-orange-500/20"
+                className="h-9 px-4 rounded-full border border-orange-500/20 bg-orange-500/10 text-orange-400 flex items-center gap-2 transition-all hover:bg-orange-500/20"
               >
                 <span className="material-symbols-outlined text-lg">event_busy</span>
                 <span className="text-[9px] font-black uppercase tracking-widest hidden sm:inline">CERRAR TURNO</span>
@@ -437,7 +447,7 @@ const OrderBoard: React.FC = () => {
             </TabGroup>
             <div className="relative group flex-1 xl:w-48">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary/40 dark:text-white/20 text-sm">search</span>
-              <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="BUSCAR..." className="h-9 w-full pl-9 pr-3 rounded-lg border border-border-color/30 dark:border-white/5 bg-black/5 dark:bg-white/5 outline-none focus:ring-1 focus:ring-neon/20 text-[9px] font-bold uppercase tracking-widest text-text-main dark:text-white placeholder:text-text-secondary/40 dark:placeholder:text-white/10" />
+              <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="BUSCAR..." className="h-9 w-full pl-9 pr-3 rounded-full border border-border-color/30 dark:border-white/5 bg-black/5 dark:bg-white/5 outline-none focus:ring-1 focus:ring-neon/20 text-[9px] font-bold uppercase tracking-widest text-text-main dark:text-white placeholder:text-text-secondary/40 dark:placeholder:text-white/10" />
             </div>
           </div>
         </header>
