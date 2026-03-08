@@ -58,6 +58,9 @@ const StoreSettings: React.FC = () => {
     });
     const [inviteForm, setInviteForm] = useState({ email: '', fullName: '', roleId: '' });
 
+    // --- DISPATCH STATIONS STATE ---
+    const [dispatchStations, setDispatchStations] = useState<{ id: string; name: string }[]>([]);
+
     // --- AUDIT STATE ---
     const [logs, setLogs] = useState<AuditLogEntry[]>([]);
     const [auditFilter, setAuditFilter] = useState<AuditCategory | 'all'>('all');
@@ -139,6 +142,33 @@ const StoreSettings: React.FC = () => {
         } catch (error: any) {
             addToast('Error', 'error', error.message);
         }
+    };
+
+    const handleStationAssign = async (profileId: string, stationId: string | null) => {
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({ default_station_id: stationId || null } as any)
+                .eq('id', profileId);
+            if (error) throw error;
+            setMembers(prev => prev.map(m =>
+                m.id === profileId ? { ...m, defaultStationId: stationId || undefined } : m
+            ));
+            addToast('Estación Asignada', 'success', 'Estación predeterminada actualizada');
+        } catch (error: any) {
+            addToast('Error', 'error', error.message);
+        }
+    };
+
+    const fetchStations = async () => {
+        if (!profile?.store_id) return;
+        const { data } = await (supabase as any)
+            .from('dispatch_stations')
+            .select('id, name')
+            .eq('store_id', profile.store_id)
+            .eq('is_visible', true)
+            .order('sort_order', { ascending: true });
+        if (data) setDispatchStations(data);
     };
 
     const handleEditRole = (role: CustomRole) => {
@@ -231,7 +261,8 @@ const StoreSettings: React.FC = () => {
                     // Default to 'active' if status is null/undefined/empty
                     status: (m.status && m.status !== '') ? m.status : 'active',
                     avatar: '',
-                    joinDate: m.created_at
+                    joinDate: m.created_at,
+                    defaultStationId: m.default_station_id || undefined
                 };
             });
 
@@ -380,6 +411,7 @@ const StoreSettings: React.FC = () => {
             fetchStore(profile.store_id);
             fetchStaff();
             fetchRoles();
+            fetchStations();
         } else if (profile?.role === 'store_owner' || isAdmin) {
             // Attempt to auto-initialize or show setup
             console.log("No store_id found for owner/admin. Needs initialization.");
@@ -770,6 +802,7 @@ const StoreSettings: React.FC = () => {
                                                     <tr className="bg-black/[0.01] dark:bg-white/[0.01] border-b border-black/[0.02] dark:border-white/[0.02]">
                                                         <th className="px-3 py-2 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest">Operador</th>
                                                         <th className="px-3 py-2 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest">Rango</th>
+                                                        <th className="px-3 py-2 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest">Estación</th>
                                                         <th className="px-3 py-2 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest text-center">Estatus</th>
                                                         <th className="px-3 py-2 text-[9px] font-black uppercase text-text-secondary dark:text-white/30 tracking-widest text-right">Acciones</th>
                                                     </tr>
@@ -793,6 +826,22 @@ const StoreSettings: React.FC = () => {
 
                                                                 </span>
                                                             </td>
+                                                            <td className="px-3 py-2">
+                                                                {dispatchStations.length > 0 ? (
+                                                                    <select
+                                                                        value={(m as any).defaultStationId || ''}
+                                                                        onChange={(e) => handleStationAssign(m.id, e.target.value || null)}
+                                                                        className="h-7 px-2 rounded-lg bg-black/5 dark:bg-white/5 border border-border-color/20 dark:border-white/10 text-[9px] font-bold uppercase tracking-wider outline-none text-text-main dark:text-white cursor-pointer"
+                                                                    >
+                                                                        <option value="">Sin Asignar</option>
+                                                                        {dispatchStations.map(s => (
+                                                                            <option key={s.id} value={s.id}>{s.name}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                ) : (
+                                                                    <span className="text-[8px] text-text-secondary/30 dark:text-white/20 italic uppercase">—</span>
+                                                                )}
+                                                            </td>
                                                             <td className="px-3 py-2 text-center">
                                                                 <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase border ${m.status === 'active' ? 'bg-neon/5 text-neon border-neon/10' : m.status === 'pending' ? 'bg-amber-500/5 text-amber-500 border-amber-500/10' : 'bg-red-500/5 text-red-500 border-red-500/10'}`}>
                                                                     {m.status === 'active' ? 'READY' : m.status === 'pending' ? 'PENDIENTE' : 'SUSPENDIDO'}
@@ -806,7 +855,7 @@ const StoreSettings: React.FC = () => {
                                                         </tr>
                                                     ))}
                                                     {members.length === 0 && (
-                                                        <tr><td colSpan={4} className="px-8 py-20 text-center text-text-secondary/40 dark:text-white/10 font-black uppercase tracking-widest italic text-xs">No hay operarios registrados</td></tr>
+                                                        <tr><td colSpan={5} className="px-8 py-20 text-center text-text-secondary/40 dark:text-white/10 font-black uppercase tracking-widest italic text-xs">No hay operarios registrados</td></tr>
                                                     )}
                                                 </tbody>
                                             </table>

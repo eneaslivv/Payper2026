@@ -72,13 +72,22 @@ serve(async (req) => {
         }
 
         // 4. Build back URLs with transaction reference
-        const origin = back_urls?.success?.split('/m/')[0] || supabaseUrl;
-        const defaultBackUrls = {
-            success: `${origin}/m/default/wallet?status=success&txn=${txn.id}`,
-            failure: `${origin}/m/default/wallet?status=failure&txn=${txn.id}`,
-            pending: `${origin}/m/default/wallet?status=pending&txn=${txn.id}`
+        const appendTxn = (url: string) => {
+            const sep = url.includes('?') ? '&' : '?';
+            return `${url}${sep}txn=${txn.id}`;
         };
-        const finalBackUrls = back_urls || defaultBackUrls;
+        const origin = back_urls?.success?.split('/m/')[0] || supabaseUrl;
+        const finalBackUrls = back_urls
+            ? {
+                success: appendTxn(back_urls.success),
+                failure: appendTxn(back_urls.failure),
+                pending: appendTxn(back_urls.pending),
+            }
+            : {
+                success: `${origin}/m/default/wallet?status=success&txn=${txn.id}`,
+                failure: `${origin}/m/default/wallet?status=failure&txn=${txn.id}`,
+                pending: `${origin}/m/default/wallet?status=pending&txn=${txn.id}`,
+            };
 
         // 5. Create MP Preference
         const preferenceData = {

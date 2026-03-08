@@ -304,7 +304,7 @@ BEGIN
         real_cash = p_real_cash,
         difference = v_difference,
         closed_at = NOW(),
-        closure_notes = p_notes
+        closing_notes = p_notes
     WHERE id = p_session_id;
 
     RETURN jsonb_build_object(

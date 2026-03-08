@@ -84,6 +84,8 @@ export interface Table {
   reservedAt?: Date; // RESERVATION: when
   reservedFor?: string; // RESERVATION: who
   reservationNote?: string; // RESERVATION: notes
+  dispatch_station?: string;
+  activeOrderId?: string;
   qrId?: string;
   assignedStaff?: string;
   lastUpdate: Date;

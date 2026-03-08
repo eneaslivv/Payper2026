@@ -250,7 +250,25 @@ const ProfilePage: React.FC = () => {
                   </div>
                   <div className="flex flex-col items-end">
                     <span className="text-[18px] font-black italic tracking-tighter leading-none">${order.total.toFixed(2)}</span>
-                    <span className="text-[7px] font-black uppercase tracking-widest mt-2" style={{ color: accentColor }}>Completado</span>
+                    <span className="text-[7px] font-black uppercase tracking-widest mt-2" style={{ color:
+                      ['served', 'completed', 'delivered'].includes(order.status) ? accentColor
+                      : ['cancelled', 'refunded'].includes(order.status) ? '#ef4444'
+                      : ['pending', 'draft', 'bill_requested'].includes(order.status) ? '#f59e0b'
+                      : ['preparing', 'in_progress'].includes(order.status) ? '#3b82f6'
+                      : ['ready', 'paid'].includes(order.status) ? '#22c55e'
+                      : accentColor
+                    }}>
+                      {['served', 'completed', 'delivered'].includes(order.status) ? 'Completado'
+                        : order.status === 'pending' ? 'Pendiente'
+                        : order.status === 'draft' ? 'Borrador'
+                        : order.status === 'paid' ? 'Pagado'
+                        : ['preparing', 'in_progress'].includes(order.status) ? 'En Preparación'
+                        : order.status === 'ready' ? 'Listo'
+                        : order.status === 'cancelled' ? 'Cancelado'
+                        : order.status === 'refunded' ? 'Reembolsado'
+                        : order.status === 'bill_requested' ? 'Cuenta Pedida'
+                        : order.status}
+                    </span>
                   </div>
                 </div>
 

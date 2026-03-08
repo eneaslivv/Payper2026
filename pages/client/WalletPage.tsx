@@ -18,26 +18,62 @@ const WalletPage: React.FC = () => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [walletBalance, setWalletBalance] = useState<number>(0);
     const [isLoading, setIsLoading] = useState(true);
+    const [isVerifying, setIsVerifying] = useState(false);
 
     // Theme
     const accentColor = store?.menu_theme?.accentColor || '#36e27b';
     const backgroundColor = store?.menu_theme?.backgroundColor || '#000000';
     const textColor = store?.menu_theme?.textColor || '#FFFFFF';
 
-    // Handle redirect status from MP
+    // Handle redirect status from MP — poll for actual payment confirmation
     useEffect(() => {
         const status = searchParams.get('status');
         const txnId = searchParams.get('txn');
 
-        if (status === 'success' && txnId) {
-            addToast('¡Recarga exitosa!', 'success', 'Tu saldo ha sido actualizado');
-            // Clean URL
-            navigate(`/m/${slug}/wallet`, { replace: true });
-            // Refresh balance
-            fetchBalance();
-        } else if (status === 'failure') {
+        if (status === 'failure') {
             addToast('Recarga fallida', 'error', 'El pago no pudo ser procesado');
             navigate(`/m/${slug}/wallet`, { replace: true });
+            return;
+        }
+
+        if (status === 'pending' && txnId) {
+            addToast('Pago pendiente', 'info', 'Te notificaremos cuando se confirme');
+            navigate(`/m/${slug}/wallet`, { replace: true });
+            return;
+        }
+
+        if (status === 'success' && txnId) {
+            // Clean URL immediately but keep verifying
+            navigate(`/m/${slug}/wallet`, { replace: true });
+            setIsVerifying(true);
+
+            let attempts = 0;
+            const maxAttempts = 20; // ~30 seconds total
+            const pollInterval = 1500;
+
+            const poll = setInterval(async () => {
+                attempts++;
+
+                const { data } = await (supabase as any)
+                    .from('wallet_transactions')
+                    .select('status')
+                    .eq('id', txnId)
+                    .single();
+
+                if (data?.status === 'completed') {
+                    clearInterval(poll);
+                    setIsVerifying(false);
+                    addToast('¡Recarga exitosa!', 'success', 'Tu saldo ha sido actualizado');
+                    fetchBalance();
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(poll);
+                    setIsVerifying(false);
+                    addToast('Pago en proceso', 'info', 'Tu saldo se actualizará en unos minutos');
+                    fetchBalance();
+                }
+            }, pollInterval);
+
+            return () => clearInterval(poll);
         }
     }, [searchParams]);
 
@@ -124,6 +160,16 @@ const WalletPage: React.FC = () => {
 
     return (
         <div className="flex flex-col min-h-screen pb-48 transition-colors duration-500" style={{ backgroundColor, color: textColor }}>
+            {/* VERIFYING PAYMENT OVERLAY */}
+            {isVerifying && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-xl" style={{ backgroundColor: `${backgroundColor}E6` }}>
+                    <div className="flex flex-col items-center gap-6 px-8">
+                        <span className="material-symbols-outlined animate-spin text-5xl" style={{ color: accentColor }}>sync</span>
+                        <p className="text-lg font-black uppercase tracking-tight" style={{ color: textColor }}>Verificando pago...</p>
+                        <p className="text-xs text-center" style={{ color: `${textColor}66` }}>Estamos confirmando tu pago con Mercado Pago. Esto puede demorar unos segundos.</p>
+                    </div>
+                </div>
+            )}
             {/* HEADER */}
             <header className="sticky top-0 z-50 flex items-center pt-[calc(1rem+env(safe-area-inset-top))] px-6 pb-4 justify-between border-b backdrop-blur-xl" style={{ backgroundColor: `${backgroundColor}E6`, borderColor: `${textColor}0D` }}>
                 <button

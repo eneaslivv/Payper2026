@@ -7,6 +7,16 @@ import { MenuLogic, Store } from '../types'; // Import from global types
 import { INITIAL_USER } from '../components/client/constants';
 import { getQRContext, clearQRContext, QRContext } from '../lib/qrContext';
 
+// Maps raw DB status to client-displayable OrderStatus.
+// Separate from POS mapStatusFromSupabase which maps 'paid'->'pending'.
+const mapClientStatus = (dbStatus: string): OrderStatus => {
+    const s = dbStatus.toLowerCase();
+    switch (s) {
+        case 'bill_requested': return 'paid';
+        default: return s as OrderStatus;
+    }
+};
+
 // Local interfaces removed in favor of global types
 
 export interface ReservationContext {
@@ -308,7 +318,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 const currentStillActive = activeOrdersFound.find(o => o.id === activeOrderId);
                 const primaryOrder = currentStillActive || activeOrdersFound[0];
 
-                setOrderStatus(primaryOrder.status as OrderStatus);
+                setOrderStatus(mapClientStatus(primaryOrder.status));
                 setActiveOrderId(primaryOrder.id);
             } else {
                 setHasActiveOrder(false);
@@ -337,6 +347,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     date: new Date(o.created_at).toLocaleDateString(),
                     items: (o.order_items || []).map((oi: any) => `${oi.quantity}x ${oi.name}`).join(', ') || 'Pedido sin detalles',
                     total: o.total_amount,
+                    status: o.status || 'pending',
                     // Points now come from loyalty_transactions ledger, not calculated here
                     pointsEarned: undefined
                 }))
@@ -863,13 +874,13 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                         setActiveOrders(prev => [orderData, ...prev]);
                         setHasActiveOrder(true);
                         setActiveOrderId(orderData.id);
-                        setOrderStatus(orderData.status as OrderStatus);
+                        setOrderStatus(mapClientStatus(orderData.status));
                     } else if (payload.event === 'UPDATE') {
                         setActiveOrders(prev => prev.map(o => o.id === orderData.id ? { ...o, ...orderData } : o));
 
                         // If it's the current order, update main status
                         if (orderData.id === activeOrderId) {
-                            setOrderStatus(orderData.status as OrderStatus);
+                            setOrderStatus(mapClientStatus(orderData.status));
                         }
 
                         // Check if we should clear active orders (if all finalized/cancelled)

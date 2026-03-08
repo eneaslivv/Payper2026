@@ -433,17 +433,17 @@ const OperativeLayout: React.FC<{ children: React.ReactNode, activeNode: CafeNod
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/5">
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/5">
               <span className="text-[8px] font-bold text-[#9B9A97] dark:text-white/30 uppercase tracking-widest">Atajos:</span>
-              <span className="text-[9px] font-black text-emerald-600 dark:text-neon bg-white dark:bg-white/5 px-1.5 rounded">N</span>
-              <span className="text-[9px] font-black text-emerald-600 dark:text-neon bg-white dark:bg-white/5 px-1.5 rounded">G</span>
+              <span className="text-[9px] font-black text-emerald-600 dark:text-neon bg-white dark:bg-white/5 px-1.5 rounded-full">N</span>
+              <span className="text-[9px] font-black text-emerald-600 dark:text-neon bg-white dark:bg-white/5 px-1.5 rounded-full">G</span>
             </div>
 
             {/* NOTIFICATION CENTER BUTTON */}
             <div className="relative" ref={notifRef}>
               <button
                 onClick={() => setIsNotifPanelOpen(!isNotifPanelOpen)}
-                className={`relative flex items-center justify-center size-8 rounded-lg border transition-all ${isNotifPanelOpen ? 'bg-gray-100 dark:bg-white/10 border-gray-300 dark:border-white/20 text-[#37352F] dark:text-white' : 'border-gray-200 dark:border-white/5 text-[#9B9A97] dark:text-[#71766F] hover:text-[#37352F] dark:hover:text-white'}`}
+                className={`relative flex items-center justify-center size-8 rounded-full border transition-all ${isNotifPanelOpen ? 'bg-gray-100 dark:bg-white/10 border-gray-300 dark:border-white/20 text-[#37352F] dark:text-white' : 'border-gray-200 dark:border-white/5 text-[#9B9A97] dark:text-[#71766F] hover:text-[#37352F] dark:hover:text-white'}`}
               >
                 <span className="material-symbols-outlined text-[18px]">notifications</span>
                 {unreadCount > 0 && (
@@ -453,8 +453,8 @@ const OperativeLayout: React.FC<{ children: React.ReactNode, activeNode: CafeNod
               {isNotifPanelOpen && <NotificationPanel onClose={() => setIsNotifPanelOpen(false)} />}
             </div>
 
-            <Link to="/scanner" className="flex items-center justify-center size-8 rounded-lg border border-gray-200 dark:border-white/5 text-[#9B9A97] dark:text-[#71766F] hover:text-emerald-600 dark:hover:text-neon transition-all"><span className="material-symbols-outlined text-[18px]">center_focus_weak</span></Link>
-            <Link to="/create-order" className="flex items-center gap-2 px-4 py-1.5 bg-emerald-500 dark:bg-neon text-white dark:text-black rounded-lg font-black text-[9px] uppercase tracking-[0.15em] shadow-lg dark:shadow-neon-soft hover:scale-105 active:scale-95 transition-all">
+            <Link to="/scanner" className="flex items-center justify-center size-8 rounded-full border border-gray-200 dark:border-white/5 text-[#9B9A97] dark:text-[#71766F] hover:text-emerald-600 dark:hover:text-neon transition-all"><span className="material-symbols-outlined text-[18px]">center_focus_weak</span></Link>
+            <Link to="/create-order" className="flex items-center gap-2 px-4 py-1.5 bg-emerald-500 dark:bg-neon text-white dark:text-black rounded-full font-black text-[9px] uppercase tracking-[0.15em] shadow-lg dark:shadow-neon-soft hover:scale-105 active:scale-95 transition-all">
               <span className="material-symbols-outlined text-[16px]">add</span>
               <span className="hidden sm:inline italic">NUEVO PEDIDO [N]</span>
             </Link>

@@ -20,6 +20,8 @@ export interface UserProfile {
     store_id?: string;
     role_id?: string;
     balance?: number; // Added for wallet support
+    default_station_id?: string;
+    default_station_name?: string; // Resolved at login from default_station_id
 }
 
 interface AuthContextType {
@@ -304,6 +306,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                         setProfile(userProfile);
 
+                        // Auto-assign default station to localStorage if profile has one
+                        if (userProfile.default_station_id) {
+                            try {
+                                const { data: stationData } = await (supabase as any)
+                                    .from('dispatch_stations')
+                                    .select('name')
+                                    .eq('id', userProfile.default_station_id)
+                                    .single();
+                                if (stationData?.name) {
+                                    localStorage.setItem('payper_dispatch_station', stationData.name);
+                                    userProfile.default_station_name = stationData.name;
+                                    setProfile({ ...userProfile });
+                                }
+                            } catch (e) {
+                                console.warn('[AUTH] Failed to resolve default station:', e);
+                            }
+                        }
+
                         if (userProfile.role_id) {
                             const { data: permData } = await supabase
                                 .from('store_role_permissions')
@@ -396,7 +416,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const signOut = async () => {
         try {
             const keysToRemove = Object.keys(localStorage).filter(key =>
-                key.startsWith('sb-') || key.includes('supabase') || key === 'impersonated_store_id'
+                key.startsWith('sb-') || key.includes('supabase') || key === 'impersonated_store_id' || key === 'payper_dispatch_station'
             );
             keysToRemove.forEach(key => localStorage.removeItem(key));
             sessionStorage.clear();

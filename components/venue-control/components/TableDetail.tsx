@@ -549,10 +549,10 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
         .eq('node_id', table.id)
         .in('status', ['active', 'arrived']);
 
-      // Reset venue node
+      // Reset venue node status (preserve metadata like shape, size, etc.)
       const { error } = await supabase
         .from('venue_nodes' as any)
-        .update({ status: 'free', metadata: {} })
+        .update({ status: 'free' })
         .eq('id', table.id);
 
       if (error) throw error;
@@ -1135,6 +1135,28 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
                       <option value="">Sin asignar</option>
                       {dispatchStations.map(station => (
                         <option key={station.id} value={station.name}>{station.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* STOCK LOCATION SELECTOR */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Ubicación de Stock</span>
+                      {table.locationId && storageLocations.find(l => l.id === table.locationId) && (
+                        <span className="text-[9px] font-black text-[#36e27b] uppercase tracking-widest">
+                          {storageLocations.find(l => l.id === table.locationId)?.name}
+                        </span>
+                      )}
+                    </div>
+                    <select
+                      value={table.locationId || ''}
+                      onChange={(e) => handleUpdateNodeLocation(e.target.value || null)}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-[#36e27b]/50 focus:outline-none transition-all"
+                    >
+                      <option value="">Automática (según estación)</option>
+                      {storageLocations.map(loc => (
+                        <option key={loc.id} value={loc.id}>{loc.name}</option>
                       ))}
                     </select>
                   </div>

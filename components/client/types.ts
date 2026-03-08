@@ -1,5 +1,5 @@
 
-export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'served';
+export type OrderStatus = 'pending' | 'paid' | 'received' | 'preparing' | 'ready' | 'served' | 'delivered' | 'completed';
 
 export interface MenuItem {
   id: string;
@@ -56,6 +56,7 @@ export interface OrderHistoryItem {
   items: string;
   total: number;
   pointsEarned?: number;
+  status: string;
 }
 
 export interface UserProfile {

@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Order, OrderStatus } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,8 +34,10 @@ const OrderBoard: React.FC = () => {
     return localStorage.getItem('payper_dispatch_station') || 'ALL';
   });
 
-  // Persist filter changes to localStorage
+  // Ref to avoid stale closure in realtime callback
+  const locationFilterRef = useRef(locationFilter);
   useEffect(() => {
+    locationFilterRef.current = locationFilter;
     localStorage.setItem('payper_dispatch_station', locationFilter);
   }, [locationFilter]);
 
@@ -115,9 +117,21 @@ const OrderBoard: React.FC = () => {
         table: 'orders',
         filter: `store_id=eq.${profile.store_id}`
       }, (payload) => {
-        console.log('[REALTIME] New order received:', payload.new);
-        setIncomingOrder(payload.new as Order);
-        addToast('NUEVO PEDIDO', 'success', `Pedido #${(payload.new as Order).order_number || 'nuevo'} recibido`);
+        const newOrder = payload.new as any;
+        console.log('[REALTIME] New order received:', newOrder);
+
+        // Filter notification by station
+        const currentFilter = locationFilterRef.current;
+        if (currentFilter !== 'ALL') {
+          const orderStation = newOrder.dispatch_station;
+          if (orderStation && orderStation.trim().toLowerCase() !== currentFilter.toLowerCase()) {
+            console.log('[REALTIME] Skipping notification - different station:', orderStation, 'vs', currentFilter);
+            return;
+          }
+        }
+
+        setIncomingOrder(newOrder as Order);
+        addToast('NUEVO PEDIDO', 'success', `Pedido #${newOrder.order_number || 'nuevo'} recibido`);
         playNotificationSound();
       })
       .subscribe((status) => {
@@ -235,6 +249,14 @@ const OrderBoard: React.FC = () => {
     const order = orders.find(o => o.id === id);
     if (!order) return;
 
+    // Block advancing orders from other stations
+    if (locationFilter !== 'ALL' && order.dispatch_station) {
+      if (order.dispatch_station.trim().toLowerCase() !== locationFilter.toLowerCase()) {
+        addToast("OTRA ESTACIÓN", 'error', `Este pedido es de ${order.dispatch_station}`);
+        return;
+      }
+    }
+
     // Fase 3 Plan L: Block advancing unpaid MP orders
     const provider = order.payment_provider;
     const isPaid = order.is_paid || order.payment_status === 'approved' || order.payment_status === 'paid';
@@ -331,15 +353,21 @@ const OrderBoard: React.FC = () => {
         if (orderDate < start || orderDate > end) return false;
       }
 
-      // Station Filter (only in active mode)
+      // Station Filter (active + history mode)
       // In "ALL" view: show all orders (assigned + unassigned)
-      // In specific station view: ONLY show orders that have been assigned to that exact station
-      if (!showHistory && locationFilter !== 'ALL') {
+      // In specific station view: show orders assigned to that station (+ unassigned in active mode)
+      if (locationFilter !== 'ALL') {
         const orderStation = o.dispatch_station;
-        // Show orders assigned to this station OR unassigned orders (they need attention)
-        // Only hide orders explicitly assigned to a DIFFERENT station
-        if (orderStation && orderStation.trim().toLowerCase() !== locationFilter.toLowerCase()) {
-          return false;
+        if (showHistory) {
+          // History: only show orders that were assigned to this station
+          if (!orderStation || orderStation.trim().toLowerCase() !== locationFilter.toLowerCase()) {
+            return false;
+          }
+        } else {
+          // Active: show ONLY this station's orders (exclude unassigned)
+          if (!orderStation || orderStation.trim().toLowerCase() !== locationFilter.toLowerCase()) {
+            return false;
+          }
         }
       }
 
@@ -395,7 +423,7 @@ const OrderBoard: React.FC = () => {
 
           <div className="flex items-center gap-3 w-full xl:w-auto">
             {/* LOCATION/BAR FILTER */}
-            {availableStations.length > 0 && !showHistory && (
+            {availableStations.length > 0 && (
               <div className="relative flex items-center">
                 <span className="material-symbols-outlined absolute left-3 text-neon text-base pointer-events-none">{isStationLocked ? 'lock' : 'store'}</span>
                 <select

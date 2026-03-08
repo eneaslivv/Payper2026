@@ -135,6 +135,8 @@ const App: React.FC = () => {
             capacity: 4,
             status: node.derived_status as TableStatus,
             locationId: node.location_id,
+            dispatch_station: node.dispatch_station || undefined,
+            activeOrderId: node.active_order_id || undefined,
             position,
             size,
             rotation,
@@ -143,6 +145,8 @@ const App: React.FC = () => {
             orders: [], // Will be populated by fetchActiveOrders
             activeOrderIds: node.active_order_ids || [],
             openedAt: node.order_start_time ? new Date(node.order_start_time) : undefined,
+            reservedAt: node.reserved_at ? new Date(node.reserved_at) : undefined,
+            reservedFor: node.reserved_for || undefined,
             lastUpdate: new Date(node.updated_at || new Date())
           });
         } else if (node.type === 'bar') {

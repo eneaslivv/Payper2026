@@ -244,12 +244,12 @@ export default function OrderStatusPage() {
     // Mappers (More robust to handle English/Spanish from DB)
     const mapToDeliveryStatus = (status: string) => {
         const s = (status || '').toLowerCase();
-        if (s === 'received' || s === 'pendiente' || !s) return 'received';
-        if (s === 'preparing' || s === 'en preparación' || s === 'preparando') return 'preparing';
+        if (s === 'received' || s === 'pendiente' || s === 'paid' || s === 'pending' || !s) return 'received';
+        if (s === 'preparing' || s === 'en preparación' || s === 'preparando' || s === 'in_progress') return 'preparing';
         if (s === 'ready' || s === 'listo') return 'ready';
-        if (s === 'delivered' || s === 'entregado' || s === 'served' || s === 'finalizado') return 'delivered';
+        if (s === 'delivered' || s === 'entregado' || s === 'served' || s === 'finalizado' || s === 'completed') return 'delivered';
         if (s === 'burned' || s === 'cancelado' || s === 'cancelled') return 'burned';
-        return 'received'; // Base status is always received if logic fails
+        return 'received';
     };
 
     // Normalize Items (Relation > JSONB Fallback)
