@@ -46,6 +46,7 @@ const OrderCreation: React.FC = () => {
   const [showMultipleOrderWarning, setShowMultipleOrderWarning] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [showQRModal, setShowQRModal] = useState(false);
+  const [lastOrderNumber, setLastOrderNumber] = useState<number | null>(null);
 
   // Dispatch Station State
   const [availableStations, setAvailableStations] = useState<{ name: string }[]>([]);
@@ -53,6 +54,13 @@ const OrderCreation: React.FC = () => {
     const saved = localStorage.getItem('payper_dispatch_station');
     return saved && saved !== 'ALL' ? saved : '';
   });
+
+  // Staff with assigned station cannot change it
+  const isStationLocked = useMemo(() => {
+    if (!profile) return false;
+    if (profile.role === 'super_admin' || profile.role === 'store_owner') return false;
+    return !!profile.default_station_id;
+  }, [profile]);
 
   // Camera Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -486,7 +494,8 @@ const OrderCreation: React.FC = () => {
       };
 
       // 2. Delegate to OfflineContext (Handles Local Save + Sync + order_items)
-      await createOrder(newOrder);
+      const result = await createOrder(newOrder);
+      if (result?.orderNumber) setLastOrderNumber(result.orderNumber);
 
       // 3. Post-Creation: Wallet deduction is now handled atomically by create_order_atomic RPC
       // When online, the RPC deducts wallet inside the same transaction as order creation.
@@ -780,14 +789,17 @@ const OrderCreation: React.FC = () => {
               </span>
               {availableStations.length > 0 && (
                 <div className="relative flex items-center">
-                  <span className="material-symbols-outlined absolute left-2 text-xs pointer-events-none" style={{ color: selectedStation ? '#4ade80' : '#f87171' }}>store</span>
+                  <span className="material-symbols-outlined absolute left-2 text-xs pointer-events-none" style={{ color: selectedStation ? '#4ade80' : '#f87171' }}>{isStationLocked ? 'lock' : 'store'}</span>
                   <select
                     value={selectedStation}
                     onChange={(e) => setSelectedStation(e.target.value)}
-                    className={`h-6 pl-7 pr-6 rounded-full text-[8px] font-black uppercase tracking-wide appearance-none cursor-pointer transition-all outline-none border ${
-                      selectedStation
-                        ? 'bg-neon/10 border-neon/30 text-neon'
-                        : 'bg-red-500/10 border-red-500/30 text-red-400 animate-pulse'
+                    disabled={isStationLocked}
+                    className={`h-6 pl-7 pr-6 rounded-full text-[8px] font-black uppercase tracking-wide appearance-none transition-all outline-none border ${
+                      isStationLocked
+                        ? 'bg-neon/10 border-neon/30 text-neon cursor-not-allowed opacity-80'
+                        : selectedStation
+                          ? 'bg-neon/10 border-neon/30 text-neon cursor-pointer'
+                          : 'bg-red-500/10 border-red-500/30 text-red-400 animate-pulse cursor-pointer'
                     }`}
                   >
                     <option value="">Estacion...</option>
@@ -795,7 +807,7 @@ const OrderCreation: React.FC = () => {
                       <option key={s.name} value={s.name}>{s.name}</option>
                     ))}
                   </select>
-                  <span className="material-symbols-outlined absolute right-1.5 text-[10px] pointer-events-none opacity-40">expand_more</span>
+                  {!isStationLocked && <span className="material-symbols-outlined absolute right-1.5 text-[10px] pointer-events-none opacity-40">expand_more</span>}
                 </div>
               )}
             </div>
@@ -885,12 +897,28 @@ const OrderCreation: React.FC = () => {
         <div className="fixed inset-0 z-[600] flex items-center justify-center p-6 animate-in fade-in duration-300">
           <div className="absolute inset-0 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-xl"></div>
           <div className="relative w-full max-w-sm bg-white dark:bg-surface-dark rounded-[3.5rem] border border-border-color dark:border-white/10 p-10 text-center shadow-[0_0_100px_rgba(74,222,128,0.1)] animate-in zoom-in-95 duration-300">
-            <div className="size-24 rounded-full bg-neon/10 border border-neon/20 flex items-center justify-center text-neon mx-auto mb-8 shadow-neon-soft animate-bounce">
-              <span className="material-symbols-outlined text-5xl">check_circle</span>
-            </div>
-
-            <h2 className="text-3xl font-black uppercase italic tracking-tighter text-text-main dark:text-white mb-2">Pedido <span className="text-neon">Confirmado</span></h2>
-            <p className="text-xs font-bold uppercase tracking-widest text-text-secondary dark:text-white/50 mb-6">Venta registrada con éxito</p>
+            {/* Order number + QR */}
+            {lastOrderNumber ? (
+              <div className="mb-6">
+                <p className="text-[9px] font-black uppercase tracking-[0.4em] text-text-secondary dark:text-white/40 mb-1">Pedido</p>
+                <h2 className="text-5xl font-black italic tracking-tighter text-neon mb-4">#{lastOrderNumber}</h2>
+                <div className="inline-block p-3 bg-white rounded-2xl shadow-lg">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${lastOrderNumber}&color=000`}
+                    alt={`QR Pedido #${lastOrderNumber}`}
+                    className="w-28 h-28"
+                  />
+                </div>
+                <p className="text-[8px] font-bold uppercase tracking-widest text-text-secondary dark:text-white/30 mt-3">Muestra este código al cliente</p>
+              </div>
+            ) : (
+              <div className="mb-6">
+                <div className="size-20 rounded-full bg-neon/10 border border-neon/20 flex items-center justify-center text-neon mx-auto mb-4 shadow-neon-soft">
+                  <span className="material-symbols-outlined text-4xl">check_circle</span>
+                </div>
+                <h2 className="text-3xl font-black uppercase italic tracking-tighter text-text-main dark:text-white">Pedido <span className="text-neon">Confirmado</span></h2>
+              </div>
+            )}
 
             <div className="w-full bg-black/5 dark:bg-white/5 rounded-xl p-4 mb-6 border border-border-color dark:border-white/10 space-y-2">
               <div className="flex justify-between items-center">
