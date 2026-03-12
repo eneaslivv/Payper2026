@@ -1255,6 +1255,12 @@ const MenuDesign: React.FC = () => {
                     variants: (variantsData || []).filter((v: any) => v.product_id === p.id).map((v: any) => ({
                         ...v,
                         price_adjustment: v.price_delta ?? 0,
+                        recipe_overrides: (v.recipe_overrides || []).map((ov: any) => ({
+                            ingredient_id: ov.inventory_item_id || ov.ingredient_id,
+                            consumption_type: ov.consumption_type || 'fixed',
+                            value: ov.quantity ?? ov.value ?? 0,
+                            quantity_delta: ov.quantity ?? ov.quantity_delta ?? 0,
+                        })),
                     })),
                     addon_links: (addonsData || []).filter((a: any) => a.product_id === p.id),
                     combo_links: p.combo_items || [],
@@ -1381,7 +1387,15 @@ const MenuDesign: React.FC = () => {
                 price_delta: v.price_adjustment ?? v.price_delta ?? 0,
                 active: v.active !== false,
                 recipe_multiplier: v.recipe_multiplier ?? null,
-                recipe_overrides: v.recipe_overrides ?? null,
+                recipe_overrides: v.recipe_overrides?.length
+                    ? v.recipe_overrides.map((ov: any) => ({
+                        inventory_item_id: ov.ingredient_id || ov.inventory_item_id,
+                        quantity: ov.consumption_type === 'multiplier'
+                            ? (ov.value ?? 1)
+                            : (ov.value ?? ov.quantity_delta ?? 0),
+                        consumption_type: ov.consumption_type || 'fixed',
+                    }))
+                    : null,
             };
             if (existingIds.has(v.id)) {
                 await (supabase.from as any)('product_variants').update(row).eq('id', v.id);
@@ -3067,7 +3081,10 @@ const MenuDesign: React.FC = () => {
                                                         </button>
                                                     </div>
                                                     {/* Collapsible advanced: recipe multiplier + stock overrides */}
-                                                    <details className="group/adv">
+                                                    <details className="group/adv" open={
+                                                        (variant.recipe_overrides?.length || 0) > 0 ||
+                                                        (variant.recipe_multiplier != null && variant.recipe_multiplier !== 1)
+                                                    }>
                                                         <summary className="px-3 pb-2 text-[8px] font-bold text-white/20 uppercase tracking-widest cursor-pointer hover:text-white/40 transition-colors flex items-center gap-1 select-none">
                                                             <span className="material-symbols-outlined text-[10px] group-open/adv:rotate-90 transition-transform">chevron_right</span>
                                                             Avanzado

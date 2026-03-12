@@ -275,6 +275,7 @@ const InventoryManagement: React.FC = () => {
     quantity_required: number;
   }
   const [productRecipes, setProductRecipes] = useState<ProductRecipeDB[]>([]);
+  const [productAddons, setProductAddons] = useState<any[]>([]);
   const [showRecipeModal, setShowRecipeModal] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [customRecipeName, setCustomRecipeName] = useState('');
@@ -551,10 +552,13 @@ const InventoryManagement: React.FC = () => {
             console.log(`[Inventory] Using cached data (${(age / 1000).toFixed(0)}s old)`);
             setCategories(cached.categories || []);
             setItems(cached.items || []);
-            // Also restore productRecipes from cache
+            // Also restore productRecipes and productAddons from cache
             if (cached.productRecipes && cached.productRecipes.length > 0) {
               setProductRecipes(cached.productRecipes);
               console.log(`[Inventory] Restored ${cached.productRecipes.length} recipes from cache`);
+            }
+            if (cached.productAddons) {
+              setProductAddons(cached.productAddons);
             }
             setLoading(false);
             return; // EXIT EARLY
@@ -630,14 +634,15 @@ const InventoryManagement: React.FC = () => {
       console.log('[Inventory] Fetching data for Store ID:', storeId);
 
       // 2. Fetch Fresh Data (including recipes & locations)
-      const [insumos, prods, cats, openPackages, recipesData, locationsData, locationStockData] = await Promise.all([
+      const [insumos, prods, cats, openPackages, recipesData, locationsData, locationStockData, addonsData] = await Promise.all([
         fetchWithTimeout(`${baseUrl}/inventory_items?store_id=eq.${storeId}`),
         fetchWithTimeout(`${baseUrl}/products?select=*,product_variants(*)&store_id=eq.${storeId}`),
         fetchWithTimeout(`${baseUrl}/categories?store_id=eq.${storeId}`),
         fetchWithTimeout(`${baseUrl}/open_packages?store_id=eq.${storeId}`),
         fetchWithTimeout(`${baseUrl}/product_recipes?select=*`),
         fetchWithTimeout(`${baseUrl}/storage_locations?store_id=eq.${storeId}`),
-        fetchWithTimeout(`${baseUrl}/inventory_location_stock?store_id=eq.${storeId}`)
+        fetchWithTimeout(`${baseUrl}/inventory_location_stock?store_id=eq.${storeId}`),
+        fetchWithTimeout(`${baseUrl}/product_addons?tenant_id=eq.${storeId}`)
       ]);
 
       // Map Locations for quick lookup
@@ -650,6 +655,7 @@ const InventoryManagement: React.FC = () => {
       // Store recipes - debug log
       console.log('[Inventory] product_recipes loaded:', recipesData?.length || 0, 'recipes');
       setProductRecipes(recipesData || []);
+      setProductAddons(addonsData || []);
 
       // 3. Transform & Set State
       const mappedCategories = (cats || []).map((c: any) => ({
@@ -801,7 +807,8 @@ const InventoryManagement: React.FC = () => {
           timestamp: Date.now(),
           items: finalItems,
           categories: mappedCategories,
-          productRecipes: recipesData || []
+          productRecipes: recipesData || [],
+          productAddons: addonsData || []
         }));
         console.log('[Inventory] Data refreshed and cached.');
       } catch (cacheErr) {
@@ -1110,7 +1117,7 @@ const InventoryManagement: React.FC = () => {
                   p_user_id: user?.id || null,
                   p_notes: '[CARGA INICIAL] Stock inicial al crear producto',
                   p_movement_type: 'PURCHASE',
-                  p_reason: 'Carga inicial'
+                  p_reason: 'restock'
                 }),
                 addToast
               );
@@ -1465,8 +1472,8 @@ const InventoryManagement: React.FC = () => {
 
           let qtyRequired = parseFloat(r.quantity_required as any) || 0;
           if (variant.recipe_overrides) {
-            const override = (variant.recipe_overrides as any[]).find((o: any) => o.ingredient_id === r.inventory_item_id);
-            if (override) qtyRequired += override.quantity_delta;
+            const override = (variant.recipe_overrides as any[]).find((o: any) => (o.ingredient_id || o.inventory_item_id) === r.inventory_item_id);
+            if (override) qtyRequired += (override.quantity_delta ?? override.quantity ?? 0);
           }
 
           const totalStock = getTotalAvailableStock(ingredient);
@@ -3269,7 +3276,12 @@ const InventoryManagement: React.FC = () => {
                           if (!ing) return sum;
                           return sum + ((ing.cost || ing.last_purchase_price || 0) / (ing.package_size || 1)) * (parseFloat(r.quantity_required as any) || 0);
                         }, 0);
-                        return rc.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        const ac = productAddons.filter(a => a.product_id === selectedItem.id && a.inventory_item_id).reduce((sum: number, a: any) => {
+                          const ing = items.find((i: any) => i.id === a.inventory_item_id);
+                          if (!ing) return sum;
+                          return sum + ((ing.cost || ing.last_purchase_price || 0) / (ing.package_size || 1)) * (a.quantity_consumed || 0);
+                        }, 0);
+                        return (rc + ac).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                       })()}</p>
                     </div>
                     {!isAddingRecipeItem && (
@@ -3478,6 +3490,47 @@ const InventoryManagement: React.FC = () => {
                         <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] text-center max-w-[200px]">SIN MATERIA PRIMA VINCULADA</p>
                       </div>
                     )}
+
+                    {/* EXTRAS / ADDONS LINKED TO THIS PRODUCT */}
+                    {(() => {
+                      const addons = productAddons.filter(a => a.product_id === selectedItem.id);
+                      if (addons.length === 0) return null;
+                      return (
+                        <div className="space-y-3 mt-6">
+                          <div className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-amber-400/60 text-sm">extension</span>
+                            <span className="text-[9px] font-black uppercase text-amber-400/60 tracking-[0.2em]">Extras / Adicionales</span>
+                            <div className="flex-1 h-px bg-amber-500/10"></div>
+                            <span className="text-[7px] font-bold text-white/20 uppercase tracking-widest">Gestionar en Menu Design</span>
+                          </div>
+                          {addons.map((addon: any) => {
+                            const ingredient = items.find(i => i.id === addon.inventory_item_id);
+                            const addonCost = ingredient ? (addon.quantity_consumed || 0) * ((ingredient.cost || 0) / (ingredient.package_size || 1)) : 0;
+                            return (
+                              <div key={addon.id} className="p-4 rounded-2xl bg-amber-500/[0.03] border border-amber-500/10 flex justify-between items-center">
+                                <div className="flex items-center gap-4">
+                                  {ingredient && <img src={ingredient.image_url} className="size-10 rounded-xl object-cover grayscale" />}
+                                  {!ingredient && <div className="size-10 rounded-xl bg-amber-500/10 flex items-center justify-center"><span className="material-symbols-outlined text-amber-400/40 text-lg">extension</span></div>}
+                                  <div>
+                                    <p className="text-[11px] font-black text-amber-300 uppercase italic tracking-tight">{addon.name}</p>
+                                    <p className="text-[8px] font-bold text-white/60 uppercase mt-0.5">
+                                      {ingredient ? `${addon.quantity_consumed || 0} ${ingredient.unit_type} de ${ingredient.name}` : 'Sin insumo vinculado'}
+                                    </p>
+                                    <p className="text-[7px] font-bold text-white/30 uppercase mt-0.5">
+                                      Precio cliente: ${(addon.price || 0).toFixed(2)}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-[12px] font-black text-amber-300/70 font-mono">{formatCurrency(addonCost)}</p>
+                                  <p className="text-[7px] font-bold text-white/20 uppercase">costo</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               )}
