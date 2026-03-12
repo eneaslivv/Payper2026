@@ -87,6 +87,8 @@ const CheckoutPage: React.FC = () => {
     return null;
   }
 
+  const isUUID = (v: any): boolean => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+
   const handlePlaceOrder = async () => {
     if (!store?.id) return;
     setIsProcessingPayment(true);
@@ -95,7 +97,8 @@ const CheckoutPage: React.FC = () => {
       // 1. Construct Order Payload
       // Include node_id from QR context to link order to scanned location
       // Include session_id for full session tracking
-      const sessionId = localStorage.getItem('client_session_id') || null;
+      const rawSessionId = localStorage.getItem('client_session_id') || null;
+      const sessionId = isUUID(rawSessionId) ? rawSessionId : null;
 
       // Security: Only use QR node_id if context belongs to THIS store
       const safeQrContext = qrContext?.store_id === store.id ? qrContext : null;
@@ -152,11 +155,11 @@ const CheckoutPage: React.FC = () => {
 
         const itemsPayload = cart.map(item => ({
           product_id: item.id,
-          variant_id: item.variant_id || null,
+          variant_id: isUUID(item.variant_id) ? item.variant_id : null,
           quantity: item.quantity,
           unit_price: item.price,
           notes: (item as any).notes || null,
-          addon_ids: item.addon_ids || [],
+          addon_ids: item.addon_ids?.filter(isUUID) || [],
           addon_prices: item.addons?.filter((a: any) => item.addon_ids?.includes(a.id)).map((a: any) => ({ id: a.id, price: a.price })) || []
         }));
 
@@ -190,7 +193,8 @@ const CheckoutPage: React.FC = () => {
 
         const result = rpcResult as any;
         if (!result?.success) {
-          addToast(result?.message || 'Error al crear pedido', 'error');
+          console.error('[TableCredit] create_order_atomic returned failure:', JSON.stringify(result));
+          addToast(result?.error || result?.message || 'Error al crear pedido', 'error');
           setIsProcessingPayment(false);
           return;
         }
@@ -242,11 +246,11 @@ const CheckoutPage: React.FC = () => {
         // 2.2 Atomic order creation + wallet deduction via RPC
         const itemsPayload = cart.map(item => ({
           product_id: item.id,
-          variant_id: item.variant_id || null,
+          variant_id: isUUID(item.variant_id) ? item.variant_id : null,
           quantity: item.quantity,
           unit_price: item.price,
           notes: (item as any).notes || null,
-          addon_ids: item.addon_ids || [],
+          addon_ids: item.addon_ids?.filter(isUUID) || [],
           addon_prices: item.addons?.filter((a: any) => item.addon_ids?.includes(a.id)).map((a: any) => ({ id: a.id, price: a.price })) || []
         }));
 
@@ -284,11 +288,11 @@ const CheckoutPage: React.FC = () => {
 
         const result = rpcResult as any;
         if (!result?.success) {
-          console.error('[CheckoutPage] Atomic order failed:', result);
+          console.error('[Wallet] create_order_atomic returned failure:', JSON.stringify(result));
           if (selectedRewardId) {
             await (supabase.rpc as any)('rollback_redemption', { p_order_id: orderId });
           }
-          addToast(result?.message || result?.error || 'Error al procesar pago', 'error');
+          addToast(result?.error || result?.message || 'Error al procesar pago', 'error');
           setIsProcessingPayment(false);
           return;
         }
@@ -307,14 +311,15 @@ const CheckoutPage: React.FC = () => {
         // 3.1 Create order atomically via RPC (pending state, no wallet)
         const mpItemsPayload = cart.map(item => ({
           product_id: item.id,
-          variant_id: item.variant_id || null,
+          variant_id: isUUID(item.variant_id) ? item.variant_id : null,
           quantity: item.quantity,
           unit_price: item.price,
           notes: (item as any).notes || null,
-          addon_ids: item.addon_ids || [],
+          addon_ids: item.addon_ids?.filter(isUUID) || [],
           addon_prices: item.addons?.filter((a: any) => item.addon_ids?.includes(a.id)).map((a: any) => ({ id: a.id, price: a.price })) || []
         }));
 
+        console.log('[MP] Creating order with items:', JSON.stringify(mpItemsPayload));
         const { data: mpRpcResult, error: mpRpcError } = await (supabase.rpc as any)('create_order_atomic', {
           p_order: {
             id: mpOrderId,
@@ -336,9 +341,15 @@ const CheckoutPage: React.FC = () => {
           p_items: mpItemsPayload
         });
 
-        if (mpRpcError) throw mpRpcError;
+        if (mpRpcError) {
+          console.error('[MP] create_order_atomic RPC error:', mpRpcError);
+          throw mpRpcError;
+        }
         const mpResult = mpRpcResult as any;
-        if (!mpResult?.success) throw new Error(mpResult?.message || 'Failed to create order');
+        if (!mpResult?.success) {
+          console.error('[MP] create_order_atomic returned failure:', JSON.stringify(mpResult));
+          throw new Error(mpResult?.error || mpResult?.message || 'Failed to create order');
+        }
 
         // 3.2 Invoke create-checkout Edge Function
         let checkoutData: any = null;
@@ -425,8 +436,8 @@ const CheckoutPage: React.FC = () => {
       }
 
     } catch (err: any) {
-      console.error('Order Error:', err);
-      const msg = err?.message || err?.error || 'Error desconocido';
+      console.error('Order Error:', err, 'Details:', JSON.stringify(err));
+      const msg = err?.message || err?.error || err?.details || 'Error desconocido';
       addToast(`Error al procesar la orden: ${msg}`, 'error');
       setIsProcessingPayment(false);
     }

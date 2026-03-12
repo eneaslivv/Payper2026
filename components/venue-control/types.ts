@@ -84,6 +84,12 @@ export interface Table {
   reservedAt?: Date; // RESERVATION: when
   reservedFor?: string; // RESERVATION: who
   reservationNote?: string; // RESERVATION: notes
+  reservationId?: string; // Active reservation UUID
+  reservationInviteToken?: string; // For persistent invite link
+  reservationCredit?: number; // Initial credit amount
+  reservationRemaining?: number; // Remaining credit
+  reservationClientId?: string; // Linked client ID
+  reservationPax?: number; // Number of people
   dispatch_station?: string;
   activeOrderId?: string;
   qrId?: string;

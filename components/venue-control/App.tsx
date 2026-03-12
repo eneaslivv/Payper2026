@@ -34,7 +34,7 @@ const App: React.FC = () => {
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [selectedBarId, setSelectedBarId] = useState<string | null>(null);
   const [selectedQrId, setSelectedQrId] = useState<string | null>(null);
-  const [selectedQrTarget, setSelectedQrTarget] = useState<{ id: string, name: string } | null>(null);
+  const [selectedQrTarget, setSelectedQrTarget] = useState<{ id: string, name: string, nodeType: 'table' | 'bar' } | null>(null);
 
   const [zoom, setZoom] = useState(1);
   const [showAddMenu, setShowAddMenu] = useState(false);
@@ -147,6 +147,12 @@ const App: React.FC = () => {
             openedAt: node.order_start_time ? new Date(node.order_start_time) : undefined,
             reservedAt: node.reserved_at ? new Date(node.reserved_at) : undefined,
             reservedFor: node.reserved_for || undefined,
+            reservationId: node.reservation_id || undefined,
+            reservationInviteToken: node.reservation_invite_token || undefined,
+            reservationCredit: node.reservation_credit || undefined,
+            reservationRemaining: node.reservation_remaining || undefined,
+            reservationClientId: node.reservation_client_id || undefined,
+            reservationPax: node.reservation_pax || undefined,
             lastUpdate: new Date(node.updated_at || new Date())
           });
         } else if (node.type === 'bar') {
@@ -282,6 +288,7 @@ const App: React.FC = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `store_id=eq.${profile.store_id}` }, () => { fetchNodes(); fetchActiveOrders(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'venue_zones', filter: `store_id=eq.${profile.store_id}` }, () => fetchZones())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'venue_notifications', filter: `store_id=eq.${profile.store_id}` }, () => fetchNotifications())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'table_reservations', filter: `store_id=eq.${profile.store_id}` }, () => fetchNodes())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -409,7 +416,7 @@ const App: React.FC = () => {
     if (!profile?.store_id) return;
     if (property === 'qr_modal') {
       const target = type === 'table' ? tables.find(t => t.id === id) : bars.find(b => b.id === id);
-      if (target) setSelectedQrTarget({ id: target.id, name: target.name });
+      if (target) setSelectedQrTarget({ id: target.id, name: target.name, nodeType: type as 'table' | 'bar' });
       return;
     }
     // Optimistic update
@@ -515,6 +522,12 @@ const App: React.FC = () => {
           .update({ is_active: false, ended_at: new Date().toISOString(), end_reason: 'table_freed' })
           .eq('node_id', id)
           .eq('is_active', true);
+        // Complete any active/arrived reservations
+        await supabase
+          .from('table_reservations' as any)
+          .update({ status: 'completed', completed_at: new Date().toISOString() })
+          .eq('node_id', id)
+          .in('status', ['active', 'arrived']);
       }
       await supabase.from('venue_nodes' as any).update({ status }).eq('id', id);
     } catch (e) { console.error(e); }
@@ -818,8 +831,10 @@ const App: React.FC = () => {
       {
         selectedQrTarget && (
           <QRGenerator
-            targetId={selectedQrTarget.id}
-            targetName={selectedQrTarget.name}
+            nodeId={selectedQrTarget.id}
+            storeId={profile?.store_id || ''}
+            nodeName={selectedQrTarget.name}
+            nodeType={selectedQrTarget.nodeType}
             onClose={() => setSelectedQrTarget(null)}
           />
         )

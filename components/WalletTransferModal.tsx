@@ -45,10 +45,8 @@ export const WalletTransferModal: React.FC<WalletTransferModalProps> = ({
             return;
         }
 
-        if (amountNum > userBalance) {
-            setErrorMessage('Saldo insuficiente');
-            return;
-        }
+        // Balance validation is done server-side in p2p_wallet_transfer RPC
+        // to avoid false negatives from stale client-side balance
 
         setStatus('loading');
 

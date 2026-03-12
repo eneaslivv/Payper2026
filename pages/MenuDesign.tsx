@@ -1182,7 +1182,7 @@ const MenuDesign: React.FC = () => {
                 presentations: [],
                 closed_packages: [],
                 open_packages: [],
-                is_menu_visible: item.is_menu_visible ?? true, // Default to visible for now so they appear
+                is_menu_visible: item.is_menu_visible || item.item_type === 'sellable', // Sellable items visible by default
 
                 // MAPPED JSONB COLUMNS
                 variants: item.variants || [],
@@ -1430,9 +1430,11 @@ const MenuDesign: React.FC = () => {
                 active: a.active !== false,
             };
             if (existingIds.has(a.id)) {
-                await (supabase.from as any)('product_addons').update(row).eq('id', a.id);
+                const { error } = await (supabase.from as any)('product_addons').update(row).eq('id', a.id);
+                if (error) console.error('[MenuDesign] Error updating addon:', error);
             } else {
-                await (supabase.from as any)('product_addons').insert(row);
+                const { error } = await (supabase.from as any)('product_addons').insert(row);
+                if (error) console.error('[MenuDesign] Error inserting addon:', error);
             }
         }
     };

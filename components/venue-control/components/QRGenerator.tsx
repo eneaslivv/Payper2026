@@ -8,10 +8,11 @@ interface QRGeneratorProps {
     nodeId: string;
     storeId: string;
     nodeName: string;
+    nodeType?: 'table' | 'bar';
     onClose: () => void;
 }
 
-const QRGenerator: React.FC<QRGeneratorProps> = ({ nodeId, storeId, nodeName, onClose }) => {
+const QRGenerator: React.FC<QRGeneratorProps> = ({ nodeId, storeId, nodeName, nodeType = 'table', onClose }) => {
     const { addToast } = useToast();
     const [loading, setLoading] = useState(true);
     const [qrHash, setQrHash] = useState<string | null>(null);
@@ -44,7 +45,7 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ nodeId, storeId, nodeName, on
                     .from('qr_codes' as any)
                     .insert({
                         store_id: storeId,
-                        qr_type: 'table',
+                        qr_type: nodeType,
                         table_id: nodeId,
                         code_hash: newHash,
                         label: nodeName,
@@ -87,7 +88,7 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ nodeId, storeId, nodeName, on
                 </button>
 
                 <div className="text-center space-y-1.5 z-10">
-                    <h2 className="text-xl font-black text-white uppercase tracking-tight">QR Mesa {nodeName}</h2>
+                    <h2 className="text-xl font-black text-white uppercase tracking-tight">QR {nodeType === 'bar' ? 'Barra' : 'Mesa'} {nodeName}</h2>
                     <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Escanea para ver menú</p>
                 </div>
 

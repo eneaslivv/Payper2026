@@ -115,7 +115,7 @@ const ProfilePage: React.FC = () => {
     itemNames.forEach(name => {
       const menuItem = products?.find(i => i.name.toLowerCase() === name.toLowerCase());
       if (menuItem) {
-        addToCart(menuItem, 1, [], 'Chico', '');
+        addToCart(menuItem, 1, [], '', '');
         addedCount++;
       }
     });

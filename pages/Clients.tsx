@@ -97,8 +97,9 @@ const Clients: React.FC = () => {
         const { data, error: ordersError } = await safeQuery(
           supabase
             .from('orders')
-            .select('client_id, total_amount, created_at')
+            .select('client_id, total_amount, created_at, is_paid')
             .eq('store_id', profile?.store_id as string)
+            .eq('is_paid', true)
         );
 
         if (!ordersError && data) {
