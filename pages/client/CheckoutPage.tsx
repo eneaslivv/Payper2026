@@ -37,6 +37,10 @@ const CheckoutPage: React.FC = () => {
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [tempValue, setTempValue] = useState('');
 
+  // Resolved station & location from venue_node (for dispatch board + stock deduction)
+  const [resolvedStation, setResolvedStation] = useState<string | null>(null);
+  const [resolvedLocationId, setResolvedLocationId] = useState<string | null>(null);
+
   // Loyalty Rewards State
   const [availableRewards, setAvailableRewards] = useState<Reward[]>([]);
   const [selectedRewardId, setSelectedRewardId] = useState<string | null>(null);
@@ -58,6 +62,43 @@ const CheckoutPage: React.FC = () => {
       navigate(`/m/${slug}/auth`);
     }
   }, [user, navigate, slug]);
+
+  // Resolve dispatch_station + location from venue_node (so order appears in dispatch board & stock deducts from correct location)
+  useEffect(() => {
+    const resolveNodeStation = async () => {
+      const nodeId = qrContext?.store_id === store?.id ? qrContext?.node_id : null;
+      if (!nodeId) return;
+
+      // 1. Get dispatch_station and location_id from the venue_node
+      const { data: nodeData } = await (supabase.from('venue_nodes' as any) as any)
+        .select('dispatch_station, location_id')
+        .eq('id', nodeId)
+        .single();
+
+      if (nodeData?.dispatch_station) {
+        setResolvedStation(nodeData.dispatch_station);
+        console.log(`[Checkout] Resolved station from node: ${nodeData.dispatch_station}`);
+      }
+      if (nodeData?.location_id) {
+        setResolvedLocationId(nodeData.location_id);
+        console.log(`[Checkout] Resolved location from node: ${nodeData.location_id}`);
+      }
+
+      // 2. Fallback: if node has station but no location, resolve from dispatch_stations table
+      if (nodeData?.dispatch_station && !nodeData?.location_id) {
+        const { data: stationData } = await (supabase.from('dispatch_stations' as any) as any)
+          .select('storage_location_id')
+          .eq('store_id', store!.id)
+          .eq('name', nodeData.dispatch_station)
+          .single();
+        if (stationData?.storage_location_id) {
+          setResolvedLocationId(stationData.storage_location_id);
+          console.log(`[Checkout] Resolved location from dispatch_station: ${stationData.storage_location_id}`);
+        }
+      }
+    };
+    resolveNodeStation();
+  }, [qrContext, store?.id]);
 
   // Fetch available rewards
   useEffect(() => {
@@ -170,17 +211,19 @@ const CheckoutPage: React.FC = () => {
             store_id: store.id,
             client_id: user?.id || null,
             total_amount: total,
-            status: 'pending',
+            status: 'paid',
             payment_method: 'table_credit',
             payment_provider: 'table_credit',
-            payment_status: 'paid',
+            payment_status: 'approved',
             is_paid: true,
             table_number: reservationContext.table_label || (deliveryMode === 'local' ? currentTable : currentBar),
             node_id: safeQrContext?.node_id || reservationContext.node_id || null,
             channel: orderChannel || 'table',
             delivery_mode: 'local',
             delivery_status: 'pending',
-            session_id: sessionId
+            session_id: sessionId,
+            dispatch_station: resolvedStation || null,
+            source_location_id: resolvedLocationId || null
           },
           p_items: itemsPayload
         });
@@ -262,17 +305,19 @@ const CheckoutPage: React.FC = () => {
             store_id: store.id,
             client_id: user?.id || null,
             total_amount: total,
-            status: 'pending',
+            status: 'paid',
             payment_method: 'wallet',
             payment_provider: 'wallet',
-            payment_status: 'pending',
+            payment_status: 'approved',
             is_paid: true,
             table_number: deliveryMode === 'local' ? currentTable : currentBar,
             node_id: safeQrContext?.node_id || null,
             channel: orderChannel || 'qr',
             delivery_mode: deliveryMode,
             delivery_status: 'pending',
-            session_id: sessionId
+            session_id: sessionId,
+            dispatch_station: resolvedStation || null,
+            source_location_id: resolvedLocationId || null
           },
           p_items: itemsPayload
         });
@@ -339,7 +384,9 @@ const CheckoutPage: React.FC = () => {
             channel: orderChannel || 'qr',
             delivery_mode: deliveryMode,
             delivery_status: 'pending',
-            session_id: sessionId
+            session_id: sessionId,
+            dispatch_station: resolvedStation || null,
+            source_location_id: resolvedLocationId || null
           },
           p_items: mpItemsPayload
         });

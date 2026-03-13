@@ -919,6 +919,31 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         };
     }, [store?.id, user?.id, activeOrderId]);
 
+    // Realtime: auto-disconnect client when table is freed/closed by staff
+    useEffect(() => {
+        if (!qrContext?.node_id) return;
+
+        const nodeChannel = supabase
+            .channel(`node-status-${qrContext.node_id}`)
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'venue_nodes',
+                filter: `id=eq.${qrContext.node_id}`
+            }, (payload: any) => {
+                const newStatus = payload.new?.status;
+                if (newStatus === 'free' || newStatus === 'closed') {
+                    console.log(`[ClientContext] Table ${qrContext.node_id} status → ${newStatus}, disconnecting client`);
+                    disconnectTable();
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(nodeChannel);
+        };
+    }, [qrContext?.node_id]);
+
     const addToCart = (item: MenuItem, quantity: number, customs: string[], size: string, notes: string, modifierIds?: string[]) => {
         const result = enforceStockLimit(item, quantity);
         if (!result.allowed) return;

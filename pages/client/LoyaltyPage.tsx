@@ -32,28 +32,19 @@ const LoyaltyPage: React.FC = () => {
   const borderColor = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
   const headerBg = isLight ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)';
 
-  if (!user) {
-    return (
-      <div className="flex flex-col min-h-screen pb-32 font-display" style={{ backgroundColor, color: textColor }}>
-        <header className="sticky top-0 z-50 backdrop-blur-xl px-6 pt-[calc(1rem+env(safe-area-inset-top))] pb-4 border-b" style={{ backgroundColor: headerBg, borderColor }}>
-          <h1 className="text-xl font-black tracking-tight uppercase">{storeName}</h1>
-        </header>
-        <LoyaltyLockedView title="Puntos y Recompensas" icon="stars" />
-      </div>
-    );
-  }
-
   const tiers = [
     { level: 'Bronce', threshold: 0, text: 'Acumula 10 granos por cada $1 gastado.', color: 'from-orange-400 to-orange-600' },
     { level: 'Plata', threshold: 500, text: 'Bebida gratis en el mes de tu cumpleaños.', color: 'from-slate-300 to-slate-500' },
     { level: 'Oro', threshold: 1200, text: 'Acceso a eventos VIP y tuestes de edición limitada.', color: 'from-yellow-300 to-yellow-600' }
   ];
 
-  const currentTierIndex = user.points < 500 ? 0 : user.points < 1200 ? 1 : 2;
+  const currentTierIndex = user ? (user.points < 500 ? 0 : user.points < 1200 ? 1 : 2) : 0;
   const currentTier = tiers[currentTierIndex];
   const nextTier = tiers[Math.min(currentTierIndex + 1, tiers.length - 1)];
 
+  // Hook must be called unconditionally (before any early returns)
   useEffect(() => {
+    if (!user) return;
     let percentage = 0;
     if (user.points < 500) {
       percentage = (user.points / 500) * 100;
@@ -64,7 +55,18 @@ const LoyaltyPage: React.FC = () => {
     }
     const timer = setTimeout(() => setProgressWidth(percentage), 400);
     return () => clearTimeout(timer);
-  }, [user.points]);
+  }, [user?.points]);
+
+  if (!user) {
+    return (
+      <div className="flex flex-col min-h-screen pb-32 font-display" style={{ backgroundColor, color: textColor }}>
+        <header className="sticky top-0 z-50 backdrop-blur-xl px-6 pt-[calc(1rem+env(safe-area-inset-top))] pb-4 border-b" style={{ backgroundColor: headerBg, borderColor }}>
+          <h1 className="text-xl font-black tracking-tight uppercase">{storeName}</h1>
+        </header>
+        <LoyaltyLockedView title="Puntos y Recompensas" icon="stars" />
+      </div>
+    );
+  }
 
   const rewards = [
     { id: '1', name: 'Shot de Espresso Extra', desc: 'Añade más potencia a tu bebida', cost: 150, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBrG7Tc8jZT1GU4BBz_6vXvNYi59gLiM077nXSgBJSFH5GIEx9Tgr2Gkyl_y8q8ltSvJhYGp8MJXmPnOAxtAPofa04kUzILhHYG3VS_tYCah78aLii-VWkiwRQdbzUVJZ5NGZLo_XgosZ31UlEbMErPxdyZBB0xJKipOkVz_0smoFIgSMgHZU59ypEUfEIQrDHzOz2lDPxbCvUgjq27xcALjn-WhWMVWFONqJuUycIitFYtyeDGLRTHDZJxPG4bUOoIFnQMseiFiMXf' },

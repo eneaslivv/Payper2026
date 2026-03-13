@@ -198,6 +198,45 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [addingItemId, setAddingItemId] = useState<string | null>(null);
 
+  // Client Sessions State
+  const [clientSessions, setClientSessions] = useState<any[]>([]);
+
+  // Fetch active client sessions for this node
+  const fetchClientSessions = async () => {
+    if (!profile?.store_id || !table.id) return;
+    const { data } = await (supabase.from('client_sessions' as any) as any)
+      .select('id, client_id, created_at, clients:client_id(name, full_name, phone)')
+      .eq('table_id', table.id)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+    if (data) setClientSessions(data);
+  };
+
+  // Remove a specific client session (without closing the table)
+  const handleRemoveClientSession = async (sessionId: string) => {
+    try {
+      const { error } = await (supabase.from('client_sessions' as any) as any)
+        .update({ is_active: false, ended_at: new Date().toISOString(), end_reason: 'removed_by_admin' })
+        .eq('id', sessionId);
+      if (error) throw error;
+      addToast('Cliente removido de la mesa', 'success');
+      fetchClientSessions();
+    } catch (e: any) {
+      console.error(e);
+      addToast('Error al remover cliente', 'error', e.message);
+    }
+  };
+
+  useEffect(() => {
+    fetchClientSessions();
+    const channel = supabase.channel(`table-sessions-${table.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'client_sessions', filter: `table_id=eq.${table.id}` },
+        () => fetchClientSessions()
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [table.id]);
+
   // History State
   const [historyOrders, setHistoryOrders] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -303,12 +342,12 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
     try {
       const { data } = await supabase
         .from('orders' as any)
-        .select('id, total, status, payment_method, created_at, paid_at')
+        .select('id, total_amount, status, payment_method, created_at, paid_at')
         .eq('store_id', profile.store_id)
         .eq('node_id', table.id)
-        .in('status', ['paid', 'cancelled', 'completed'])
+        .in('status', ['paid', 'cancelled', 'completed', 'served', 'delivered', 'ready', 'pending', 'preparing', 'in_progress'])
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(100);
 
       if (data) setHistoryOrders(data);
     } catch (e) {
@@ -318,9 +357,9 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
     }
   };
 
-  // Fetch history when tab changes to history
+  // Fetch history when tab changes to history or analytics
   useEffect(() => {
-    if (activeTab === 'history') {
+    if (activeTab === 'history' || activeTab === 'analytics') {
       fetchHistoryOrders();
     }
   }, [activeTab]);
@@ -1338,6 +1377,38 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
                     )}
                   </div>
                 </div>
+
+                {/* CLIENTES CONECTADOS */}
+                {clientSessions.length > 0 && (
+                  <div className="space-y-3 pt-2 border-t border-zinc-900">
+                    <h4 className="text-[9px] font-black uppercase tracking-widest text-zinc-600 italic">Clientes Conectados ({clientSessions.length})</h4>
+                    {clientSessions.map((session: any) => {
+                      const client = session.clients;
+                      const displayName = client?.full_name || client?.name || client?.phone || 'Anónimo';
+                      return (
+                        <div key={session.id} className="bg-[#080808] border border-zinc-900/50 p-3 rounded-2xl flex items-center justify-between group hover:border-zinc-700 transition-all">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-xl bg-zinc-950 flex items-center justify-center text-zinc-500">
+                              <User size={14} />
+                            </div>
+                            <div>
+                              <p className="text-white text-[11px] font-bold uppercase tracking-tight">{displayName}</p>
+                              <p className="text-[8px] text-zinc-600">
+                                {new Date(session.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleRemoveClientSession(session.id)}
+                            className="px-3 py-1.5 text-[8px] font-black uppercase tracking-widest text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl hover:bg-rose-500/20 transition-all"
+                          >
+                            Remover
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -1361,7 +1432,7 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
                       </div>
                       <div>
                         <p className="text-white text-xs font-bold uppercase tracking-tight">
-                          ${order.total?.toLocaleString() || '0'}
+                          ${order.total_amount?.toLocaleString() || '0'}
                           <span className="text-zinc-600 ml-2 text-[9px]">{order.payment_method || 'N/A'}</span>
                         </p>
                         <p className="text-[8px] text-zinc-600 font-medium">
@@ -1393,7 +1464,7 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
               />
               <MetricCard
                 label="Venta Histórica"
-                value={`$${historyOrders.reduce((sum, o) => sum + (o.total || 0), 0).toLocaleString()}`}
+                value={`$${historyOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0).toLocaleString()}`}
               />
             </div>
 
@@ -1402,7 +1473,7 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
                 <h4 className="text-[9px] font-black uppercase tracking-widest text-zinc-600 italic">Ticket Promedio</h4>
                 <p className="text-sm font-black text-[#36e27b] tabular-nums">
                   ${historyOrders.length > 0
-                    ? Math.round(historyOrders.reduce((sum, o) => sum + (o.total || 0), 0) / historyOrders.length).toLocaleString()
+                    ? Math.round(historyOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0) / historyOrders.length).toLocaleString()
                     : '0'
                   }
                 </p>

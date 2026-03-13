@@ -975,6 +975,7 @@ const MenuDesign: React.FC = () => {
     const [editingComboItemId, setEditingComboItemId] = useState<number | null>(null);
     const [itemSelectorSearch, setItemSelectorSearch] = useState('');
     const [linkType, setLinkType] = useState<'addon' | 'combo' | 'variant' | 'variant_override' | 'addon_update' | 'modifier_recipe_op' | null>('addon');
+    const [variantSaveConfirm, setVariantSaveConfirm] = useState(false);
 
     const selectedItem = useMemo(() => items.find(i => i.id === editingId), [items, editingId]);
 
@@ -3181,6 +3182,136 @@ const MenuDesign: React.FC = () => {
                                             />
                                         </div>
                                     </div>
+
+                                    {/* SECCIÓN VARIANTES (TAMAÑOS/TIPOS) */}
+                                    {selectedItem.id_source === 'product' && (
+                                        <div className="space-y-4">
+                                            <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                                                <h4 className="text-[10px] font-black uppercase text-text-secondary tracking-[0.2em] flex items-center gap-2">
+                                                    <span className="material-symbols-outlined text-sm">style</span> Variantes (Tamaños/Tipos)
+                                                </h4>
+                                                <button onClick={handleAddVariant} className="text-[8px] font-black bg-neon/10 hover:bg-neon/20 text-neon px-3 py-1.5 rounded-lg uppercase tracking-widest transition-all border border-neon/20">
+                                                    + Agregar
+                                                </button>
+                                            </div>
+                                            <div className="space-y-3">
+                                                {(selectedItem.variants || []).map((variant) => {
+                                                    const finalPrice = (selectedItem.price || 0) + (variant.price_adjustment || 0);
+                                                    return (
+                                                        <div key={variant.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 group hover:border-white/10 transition-all">
+                                                            <div className="flex items-center gap-2">
+                                                                <input
+                                                                    type="text"
+                                                                    value={variant.name}
+                                                                    onChange={(e) => handleUpdateVariant(variant.id, 'name', e.target.value)}
+                                                                    className="flex-1 h-9 px-3 rounded-lg bg-black/20 border border-white/10 text-[11px] font-bold text-white uppercase outline-none focus:border-neon/30"
+                                                                    placeholder="Nombre variante..."
+                                                                />
+                                                                <div className="flex items-center gap-1">
+                                                                    <button onClick={() => handleUpdateVariant(variant.id, 'price_adjustment', (variant.price_adjustment || 0) - 50)} className="size-7 rounded bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 text-xs font-bold">−</button>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={variant.price_adjustment || 0}
+                                                                        onChange={(e) => handleUpdateVariant(variant.id, 'price_adjustment', parseFloat(e.target.value) || 0)}
+                                                                        className="w-20 h-9 px-2 rounded-lg bg-black/20 border border-white/10 text-[10px] font-black text-white text-right outline-none focus:border-neon/30"
+                                                                    />
+                                                                    <button onClick={() => handleUpdateVariant(variant.id, 'price_adjustment', (variant.price_adjustment || 0) + 50)} className="size-7 rounded bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 text-xs font-bold">+</button>
+                                                                </div>
+                                                                <span className="text-[9px] font-black text-neon min-w-[60px] text-right">${finalPrice.toFixed(0)}</span>
+                                                                <button
+                                                                    onClick={() => handleRemoveVariant(variant.id)}
+                                                                    className="size-7 rounded bg-white/5 flex items-center justify-center text-white/20 hover:text-red-500 hover:bg-red-500/10 transition-all"
+                                                                >
+                                                                    <span className="material-symbols-outlined text-sm">close</span>
+                                                                </button>
+                                                            </div>
+                                                            {/* Recipe Overrides (Advanced) */}
+                                                            <details className="group/adv">
+                                                                <summary className="text-[8px] font-black uppercase tracking-widest text-purple-400/60 cursor-pointer hover:text-purple-400 flex items-center gap-1">
+                                                                    <span className="material-symbols-outlined text-xs">tune</span>
+                                                                    Avanzado ({(variant.recipe_overrides || []).length} override{(variant.recipe_overrides || []).length !== 1 ? 's' : ''})
+                                                                </summary>
+                                                                <div className="mt-2 space-y-2 pl-4 border-l border-purple-500/10">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-[8px] text-white/30 font-bold uppercase">Multiplicador Receta</span>
+                                                                        <input
+                                                                            type="number"
+                                                                            value={(variant as any).recipe_multiplier || 1}
+                                                                            onChange={(e) => handleUpdateVariant(variant.id, 'recipe_multiplier' as any, parseFloat(e.target.value) || 1)}
+                                                                            className="w-14 h-6 px-2 rounded bg-purple-500/10 border border-purple-500/20 text-[9px] font-bold text-purple-300 text-center outline-none"
+                                                                            step="0.1"
+                                                                        />
+                                                                    </div>
+                                                                    {(variant.recipe_overrides || []).map((ov: any, oi: number) => {
+                                                                        const ovItem = items.find((i: any) => i.id === ov.inventory_item_id);
+                                                                        return (
+                                                                            <div key={oi} className="flex items-center gap-2">
+                                                                                <span className="text-[9px] text-white/50 flex-1 truncate">{ovItem?.name || 'Insumo'}</span>
+                                                                                <input
+                                                                                    type="number"
+                                                                                    value={ov.quantity}
+                                                                                    onChange={(e) => {
+                                                                                        const newOverrides = [...(variant.recipe_overrides || [])];
+                                                                                        newOverrides[oi] = { ...newOverrides[oi], quantity: parseFloat(e.target.value) || 0 };
+                                                                                        const updatedVariants = (selectedItem.variants || []).map((v: any) =>
+                                                                                            v.id === variant.id ? { ...v, recipe_overrides: newOverrides } : v
+                                                                                        );
+                                                                                        updateItemDebounced(selectedItem.id, { variants: updatedVariants });
+                                                                                    }}
+                                                                                    className="w-14 h-6 px-2 rounded bg-white/5 border border-white/10 text-[9px] font-bold text-white text-center outline-none"
+                                                                                    step="0.1"
+                                                                                />
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        const newOverrides = (variant.recipe_overrides || []).filter((_: any, i: number) => i !== oi);
+                                                                                        const updatedVariants = (selectedItem.variants || []).map((v: any) =>
+                                                                                            v.id === variant.id ? { ...v, recipe_overrides: newOverrides } : v
+                                                                                        );
+                                                                                        updateItemImmediate(selectedItem.id, { variants: updatedVariants });
+                                                                                    }}
+                                                                                    className="text-white/20 hover:text-red-400 text-xs"
+                                                                                >×</button>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setEditingAddonId(variant.id);
+                                                                            setLinkType('variant_override');
+                                                                            setItemSelectorSearch('');
+                                                                            setShowItemSelector(true);
+                                                                        }}
+                                                                        className="text-[8px] text-purple-400/50 hover:text-purple-400 font-bold uppercase tracking-widest"
+                                                                    >
+                                                                        + Override Insumo
+                                                                    </button>
+                                                                </div>
+                                                            </details>
+                                                        </div>
+                                                    );
+                                                })}
+                                                {(!selectedItem.variants || selectedItem.variants.length === 0) && (
+                                                    <div className="text-center py-6 border border-dashed border-white/10 rounded-xl">
+                                                        <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Sin variantes configuradas</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {/* SAVE BUTTON with confirmation feedback */}
+                                            {(selectedItem.variants || []).length > 0 && (
+                                                <button
+                                                    onClick={() => {
+                                                        updateItemImmediate(selectedItem.id, { variants: selectedItem.variants });
+                                                        setVariantSaveConfirm(true);
+                                                        setTimeout(() => setVariantSaveConfirm(false), 2500);
+                                                    }}
+                                                    className={`w-full py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${variantSaveConfirm ? 'bg-neon/20 border border-neon/30 text-neon' : 'bg-white/5 border border-white/10 text-white/60 hover:bg-neon/10 hover:text-neon hover:border-neon/20'}`}
+                                                >
+                                                    <span className="material-symbols-outlined text-sm">{variantSaveConfirm ? 'check_circle' : 'save'}</span>
+                                                    {variantSaveConfirm ? '¡Variantes Guardadas!' : 'Guardar Variantes'}
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
 
                                     {/* SECCIÓN COMBOS/PACKS (SOLO TIPO PACK) */}
                                     {selectedItem.item_type === 'pack' && (

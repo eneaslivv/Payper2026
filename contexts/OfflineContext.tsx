@@ -154,10 +154,12 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
               client:clients(name, email), 
               items, 
               order_items(
-                id, 
-                quantity, 
-                unit_price, 
-                product_id, 
+                id,
+                quantity,
+                unit_price,
+                product_id,
+                notes,
+                variant:product_variants(name),
                 product:inventory_items(name)
               )
             `)
@@ -186,6 +188,8 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                   quantity: i.quantity,
                   price_unit: i.unit_price || 0,
                   productId: i.product_id,
+                  variant_name: i.variant?.name || null,
+                  notes: i.notes || null,
                   inventory_items_to_deduct: []
                 }))
                 : (Array.isArray(ro.items) ? (ro.items as any[]).map((i) => ({
