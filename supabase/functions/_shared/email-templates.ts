@@ -569,3 +569,76 @@ export function generatePaymentQueueHtml(vars: PaymentQueueVars): string {
 
   return baseEmailLayout({ storeName: vars.store_name, storeLogoUrl: vars.store_logo_url, accentColor: accent, body });
 }
+
+
+// ============================================
+// RESERVATION INVITE
+// ============================================
+export interface ReservationInviteVars {
+  store_name: string;
+  store_logo_url?: string | null;
+  customer_name: string;
+  table_label: string;
+  pax: number;
+  initial_credit?: number;
+  invite_url: string;
+}
+
+export function generateReservationInviteHtml(vars: ReservationInviteVars): string {
+  const accent = '#818cf8'; // Indigo for reservations
+
+  const creditLine = vars.initial_credit && vars.initial_credit > 0
+    ? `<tr>
+        <td style="padding:8px 0; border-top:1px solid #2a2a2a;">
+          <span style="color:#71717a; font-size:11px; text-transform:uppercase;">Crédito</span>
+        </td>
+        <td style="padding:8px 0; text-align:right; border-top:1px solid #2a2a2a;">
+          <span style="color:${accent}; font-size:16px; font-weight:800;">$${Number(vars.initial_credit).toLocaleString('es-AR')}</span>
+        </td>
+      </tr>`
+    : '';
+
+  const body = `
+    ${badge('Mesa Reservada', accent)}
+    <h2 style="margin:0 0 8px 0; color:#fff; font-size:20px; font-weight:700;">
+      ¡Te esperamos${vars.customer_name ? `, ${vars.customer_name.split(' ')[0]}` : ''}!
+    </h2>
+    <p style="margin:0 0 20px 0; color:#a1a1aa; font-size:14px; line-height:1.6;">
+      Tu mesa está reservada. Accedé al menú desde el botón de abajo.
+    </p>
+
+    ${infoCard(`
+      <table style="width:100%;">
+        <tr>
+          <td style="padding:8px 0;">
+            <span style="color:#71717a; font-size:11px; text-transform:uppercase;">Mesa</span>
+          </td>
+          <td style="padding:8px 0; text-align:right;">
+            <span style="color:#fff; font-size:16px; font-weight:700;">${vars.table_label}</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0; border-top:1px solid #2a2a2a;">
+            <span style="color:#71717a; font-size:11px; text-transform:uppercase;">Personas</span>
+          </td>
+          <td style="padding:8px 0; text-align:right; border-top:1px solid #2a2a2a;">
+            <span style="color:#fff; font-size:16px; font-weight:700;">${vars.pax}</span>
+          </td>
+        </tr>
+        ${creditLine}
+      </table>
+    `)}
+
+    ${ctaButton('Acceder al Menú', vars.invite_url, accent)}
+
+    <p style="color:#52525b; font-size:11px; text-align:center; margin-top:8px;">
+      O copiá este link: <a href="${vars.invite_url}" style="color:${accent}; text-decoration:underline;">${vars.invite_url}</a>
+    </p>
+  `;
+
+  return baseEmailLayout({ storeName: vars.store_name, storeLogoUrl: vars.store_logo_url, accentColor: accent, body });
+}
+
+export function getReservationInviteSubject(vars: ReservationInviteVars): string {
+  return `Tu mesa está reservada — ${vars.table_label} | ${vars.store_name}`;
+}

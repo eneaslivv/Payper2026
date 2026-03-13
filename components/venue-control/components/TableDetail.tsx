@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Table, OrderStatus, TableStatus, AppMode } from '../types';
 import { ORDER_STATUS_COLORS, STATUS_COLORS } from '../constants';
-import { X, Plus, MoveHorizontal, CreditCard, CheckCircle2, Clock, BarChart3, Receipt, History as HistoryIcon, ArrowLeft, Banknote, QrCode, Check, AlertCircle, Loader2, Users, Minus, User } from 'lucide-react';
+import { X, Plus, MoveHorizontal, CreditCard, CheckCircle2, Clock, BarChart3, Receipt, History as HistoryIcon, ArrowLeft, Banknote, QrCode, Check, AlertCircle, Loader2, Users, Minus, User, Mail } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { getAppUrl } from '../../../lib/urlUtils';
 import { useAuth } from '../../../contexts/AuthContext';
 import QRCode from 'react-qr-code';
 import { useToast } from '../../../components/ToastSystem';
+import { sendEmailNotification } from '../../../lib/notifications';
 
 interface TableDetailProps {
   table: Table;
@@ -589,6 +590,38 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
       setReservationId(data.reservation_id);
       addToast('Mesa Reservada', 'success');
       setView('invitation');
+
+      // Fire-and-forget: send invitation email if customer has email
+      if (customerEmail) {
+        const inviteUrl = `${getAppUrl()}/reserve/${data.invite_token}`;
+        const credit = reservationAmount ? parseFloat(reservationAmount) : 0;
+        const creditRow = credit > 0
+          ? `<tr><td style="padding:8px 0;border-top:1px solid #2a2a2a"><span style="color:#71717a;font-size:11px;text-transform:uppercase">Crédito</span></td><td style="padding:8px 0;text-align:right;border-top:1px solid #2a2a2a"><span style="color:#818cf8;font-size:16px;font-weight:800">$${credit.toLocaleString()}</span></td></tr>`
+          : '';
+
+        // Fetch store name for email
+        const { data: storeData } = await supabase
+          .from('stores')
+          .select('name, logo_url')
+          .eq('id', profile.store_id)
+          .single();
+
+        const storeName = (storeData as any)?.name || 'Payper';
+        const logoUrl = (storeData as any)?.logo_url;
+        const logoHtml = logoUrl
+          ? `<img src="${logoUrl}" alt="${storeName}" style="max-height:52px;border-radius:8px;margin-bottom:12px;display:block;margin-left:auto;margin-right:auto;" />`
+          : '';
+
+        const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head><body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background-color:#111111"><table role="presentation" style="width:100%;border-collapse:collapse"><tr><td style="padding:32px 16px"><table role="presentation" style="max-width:560px;margin:0 auto;background-color:#1a1a1a;border-radius:16px;overflow:hidden;border:1px solid #2a2a2a"><tr><td style="padding:32px 40px 24px 40px;text-align:center;border-bottom:1px solid #2a2a2a">${logoHtml}<h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.3px">${storeName}</h1></td></tr><tr><td style="padding:32px 40px"><div style="display:inline-block;background:#818cf820;border:1px solid #818cf840;border-radius:50px;padding:6px 16px;margin-bottom:20px"><span style="color:#818cf8;font-size:13px;font-weight:700">Mesa Reservada</span></div><h2 style="margin:0 0 8px 0;color:#fff;font-size:20px;font-weight:700">¡Te esperamos, ${customerName.split(' ')[0]}!</h2><p style="margin:0 0 20px 0;color:#a1a1aa;font-size:14px;line-height:1.6">Tu mesa está reservada. Accedé al menú desde el botón de abajo.</p><div style="background:#111111;border:1px solid #2a2a2a;border-radius:10px;padding:20px;margin:16px 0"><table style="width:100%"><tr><td style="padding:8px 0"><span style="color:#71717a;font-size:11px;text-transform:uppercase">Mesa</span></td><td style="padding:8px 0;text-align:right"><span style="color:#fff;font-size:16px;font-weight:700">${table.name}</span></td></tr><tr><td style="padding:8px 0;border-top:1px solid #2a2a2a"><span style="color:#71717a;font-size:11px;text-transform:uppercase">Personas</span></td><td style="padding:8px 0;text-align:right;border-top:1px solid #2a2a2a"><span style="color:#fff;font-size:16px;font-weight:700">${pax}</span></td></tr>${creditRow}</table></div><a href="${inviteUrl}" style="display:block;background:#818cf8;color:#000;text-align:center;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;margin:24px 0">Acceder al Menú</a><p style="color:#52525b;font-size:11px;text-align:center;margin-top:8px">O copiá este link: <a href="${inviteUrl}" style="color:#818cf8;text-decoration:underline">${inviteUrl}</a></p></td></tr><tr><td style="padding:24px 40px;text-align:center;border-top:1px solid #2a2a2a"><p style="margin:0;color:#52525b;font-size:11px">Powered by Payper</p></td></tr></table></td></tr></table></body></html>`;
+
+        sendEmailNotification({
+          to: customerEmail,
+          subject: `Tu mesa está reservada — ${table.name} | ${storeName}`,
+          html,
+        }).then(res => {
+          if (res.success) addToast('Invitación enviada por email', 'info');
+        }).catch(() => {});
+      }
     } catch (e: any) {
       console.error(e);
       addToast('Error al reservar', 'error', e.message);
@@ -1257,6 +1290,15 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
                                   : ''}
                               </p>
                             </div>
+                          </div>
+                        )}
+
+                        {table.reservationCustomerEmail && (
+                          <div className="flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl px-3 py-2">
+                            <Mail size={12} className="text-indigo-400 shrink-0" />
+                            <span className="text-[9px] text-indigo-300 font-bold truncate">
+                              Invitación enviada a {table.reservationCustomerEmail}
+                            </span>
                           </div>
                         )}
                       </div>

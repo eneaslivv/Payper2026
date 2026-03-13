@@ -11,7 +11,7 @@ type PaymentMethodType = 'wallet' | 'mercadopago' | 'table_credit';
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
-  const { cart, isRedeemingPoints, clearCart, setHasActiveOrder, store, user, qrContext, tableLabel: qrTableLabel, orderChannel, reservationContext, refreshReservationCredit } = useClient();
+  const { cart, isRedeemingPoints, clearCart, setHasActiveOrder, store, user, qrContext, tableLabel: qrTableLabel, orderChannel, reservationContext, refreshReservationCredit, deliveryIntent } = useClient();
   // Use QR context if available, otherwise it's generic
   const initialTable = qrTableLabel || '';
 
@@ -26,7 +26,7 @@ const CheckoutPage: React.FC = () => {
   const tableCredit = reservationContext?.remaining_credit || 0;
   const hasTableCredit = tableCredit > 0;
 
-  const [deliveryMode, setDeliveryMode] = useState<'local' | 'takeout'>(initialTable ? 'local' : 'takeout');
+  const [deliveryMode, setDeliveryMode] = useState<'local' | 'takeout'>(deliveryIntent || (initialTable ? 'local' : 'takeout'));
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>(hasTableCredit ? 'table_credit' : 'wallet');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const { addToast } = useToast();

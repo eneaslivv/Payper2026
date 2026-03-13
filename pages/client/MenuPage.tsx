@@ -15,7 +15,7 @@ const MenuPage: React.FC = () => {
     getMenuRule, isOrderingAllowed, serviceMode, tableLabel,
     showSessionSelector, setShowSessionSelector, onSessionCreated,
     disconnectTable, addToCart, updateQuantity, removeFromCart,
-    reservationContext
+    reservationContext, deliveryIntent, setDeliveryIntent
   } = useClient();
 
   const [selectedCategory, setSelectedCategory] = useState('Todos');
@@ -200,6 +200,8 @@ const MenuPage: React.FC = () => {
         userBalance={user?.balance}
         onTopUp={() => user ? setShowTopUp(true) : navigate(`/m/${slug}/auth`)}
         onTransfer={() => user ? setShowTransfer(true) : navigate(`/m/${slug}/auth`)}
+        deliveryIntent={deliveryIntent}
+        onDeliveryIntentChange={setDeliveryIntent}
       />
 
       {/* CONTEXT BANNER (Always visible to clarify state) */}
@@ -279,31 +281,24 @@ const MenuPage: React.FC = () => {
 
       {/* CART FLOATING BUTTON */}
       {cartCount > 0 && (
-        <div className={`fixed ${hasActiveOrder ? 'bottom-[calc(13rem+env(safe-area-inset-bottom))]' : 'bottom-[calc(6rem+env(safe-area-inset-bottom))]'} left-0 right-0 z-50 px-6 max-w-md mx-auto animate-in slide-in-from-bottom-12 duration-700 transition-all`}>
+        <div className={`fixed ${hasActiveOrder ? 'bottom-[calc(5.5rem+env(safe-area-inset-bottom))]' : 'bottom-[calc(1.2rem+env(safe-area-inset-bottom))]'} left-0 right-0 z-50 px-5 max-w-md mx-auto animate-in slide-in-from-bottom-12 duration-700 transition-all`}>
           <button
             onClick={() => navigate(`/m/${slug}/cart`)}
-            className={`group relative w-full h-20 ${radiusClass} shadow-[0_30px_70px_rgba(0,0,0,0.8)] flex items-center justify-between pl-8 pr-5 transition-all active:scale-[0.97] overflow-hidden border border-white/20`}
-            style={{ backgroundColor: accentColor }}
+            className="group relative w-full h-12 rounded-full flex items-center justify-between pl-4 pr-2 transition-all active:scale-[0.97] overflow-hidden border border-white/10"
+            style={{ backgroundColor: accentColor, boxShadow: `0 8px 24px ${accentColor}30` }}
           >
-            <div className="flex items-center gap-4 relative z-10 shrink-0">
-              <div
-                className={`w-12 h-12 ${radiusClass} flex items-center justify-center font-black text-xs shadow-2xl bg-black`}
-                style={{ color: accentColor }}
-              >
+            <div className="flex items-center gap-3 relative z-10 shrink-0">
+              <div className="w-7 h-7 rounded-full flex items-center justify-center font-black text-[10px] bg-black" style={{ color: accentColor }}>
                 {cartCount}
               </div>
-              <div className="flex flex-col items-start leading-[1] text-left text-black">
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] mb-1 opacity-50">Tu Bolsa</span>
-                <span className="font-black text-[22px] italic tracking-tighter tabular-nums leading-none">${cartTotal.toFixed(2)}</span>
+              <div className="flex items-center gap-2 text-black">
+                <span className="text-[9px] font-black uppercase tracking-wider opacity-50">Tu Bolsa</span>
+                <span className="font-black text-sm italic tracking-tighter tabular-nums leading-none">${cartTotal.toFixed(2)}</span>
               </div>
             </div>
-            <div className="flex items-center gap-4 relative z-10">
-              <div className="h-10 w-px bg-black/10"></div>
-              <div className="w-14 h-14 rounded-full flex items-center justify-center bg-black transition-all group-hover:scale-105 shadow-xl" style={{ color: accentColor }}>
-                <span className="material-symbols-outlined font-black text-[26px]">arrow_forward</span>
-              </div>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center bg-black/20 shrink-0 relative z-10">
+              <span className="material-symbols-outlined text-base" style={{ color: '#000' }}>arrow_forward</span>
             </div>
-            <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </button>
         </div>
       )}

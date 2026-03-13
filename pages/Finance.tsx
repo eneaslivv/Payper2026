@@ -238,10 +238,9 @@ const Finance: React.FC = () => {
       setIsLoading(true);
 
       try {
-        // Get today's date range
-        const today = new Date();
-        const startOfDay = new Date(today.setHours(0, 0, 0, 0)).toISOString();
-        const endOfDay = new Date(today.setHours(23, 59, 59, 999)).toISOString();
+        // Use selected date range
+        const startOfDay = dateRange.start.toISOString();
+        const endOfDay = dateRange.end.toISOString();
 
         // 1. Fetch orders for the store (with pagination limit)
         const { data: orders, error } = await safeQuery(
@@ -480,7 +479,7 @@ const Finance: React.FC = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="bg-white dark:bg-white/[0.02] border border-gray-100 dark:border-white/5 rounded-2xl p-4">
               <p className="text-[8px] font-black text-[#9B9A97] dark:text-white/30 uppercase tracking-widest mb-1">Cargas Wallet</p>
-              <p className="text-lg font-black text-[#37352F] dark:text-white">${(metrics.topupsToday || 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
+              <p className="text-lg font-black text-[#37352F] dark:text-white">${(Number(pnl?.topups_total) || metrics.topupsToday || 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
             </div>
             <div className="bg-white dark:bg-white/[0.02] border border-gray-100 dark:border-white/5 rounded-2xl p-4">
               <p className="text-[8px] font-black text-[#9B9A97] dark:text-white/30 uppercase tracking-widest mb-1">Pasivo Wallets</p>
@@ -871,6 +870,7 @@ const Finance: React.FC = () => {
             const netProfit = Number(prof.net_profit) || 0;
             const margin = Number(prof.margin_percent) || 0;
             const netCashFlow = Number(pnl.net_cash_flow) || 0;
+            const topupsTotal = Number(pnl.topups_total) || 0;
 
             const PnlRow = ({ label, value, indent, bold, color, border }: { label: string; value: number; indent?: boolean; bold?: boolean; color?: string; border?: boolean }) => (
               <div className={`flex justify-between items-center py-3 px-4 ${border ? 'border-t border-border-color dark:border-white/10' : ''} ${bold ? '' : 'opacity-80'}`}>
@@ -911,9 +911,15 @@ const Finance: React.FC = () => {
                 </div>
 
                 {/* Cash Flow footer */}
-                <div className="p-4 bg-black/[0.02] dark:bg-white/[0.02] border-t border-border-color/30 dark:border-white/5 flex justify-between items-center">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary/60 dark:text-white/30">Flujo de Caja Neto (excl. wallet)</span>
-                  <span className="text-sm font-black font-mono text-text-main dark:text-white">${netCashFlow.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+                <div className="p-4 bg-black/[0.02] dark:bg-white/[0.02] border-t border-border-color/30 dark:border-white/5 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-purple-400/80">Cargas Wallet (Efectivo Real)</span>
+                    <span className="text-sm font-black font-mono text-purple-400">${topupsTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary/60 dark:text-white/30">Flujo de Caja Neto (ventas + cargas)</span>
+                    <span className="text-sm font-black font-mono text-text-main dark:text-white">${netCashFlow.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+                  </div>
                 </div>
               </div>
             );

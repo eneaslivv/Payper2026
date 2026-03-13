@@ -164,7 +164,7 @@ const ProductPage: React.FC = () => {
 
   return (
     <div
-      className="relative flex min-h-screen w-full flex-col overflow-x-hidden pb-48 font-display transition-colors duration-500"
+      className="relative flex min-h-screen w-full flex-col overflow-x-hidden pb-32 font-display transition-colors duration-500"
       style={{ backgroundColor, color: textColor }}
     >
       {/* HEADER */}
@@ -174,7 +174,7 @@ const ProductPage: React.FC = () => {
       >
         <button
           onClick={() => navigate(-1)}
-          className="flex h-12 w-12 items-center justify-center rounded-2xl backdrop-blur-xl border transition-all active:scale-90 shadow-2xl"
+          className="flex h-10 w-10 items-center justify-center rounded-2xl backdrop-blur-xl border transition-all active:scale-90 shadow-2xl"
           style={{
             backgroundColor: `${surfaceColor}80`,
             borderColor: `${textColor}1A`,
@@ -185,7 +185,7 @@ const ProductPage: React.FC = () => {
         </button>
       </div>
 
-      <div className="relative w-full h-[45vh] shrink-0">
+      <div className="relative w-full h-[30vh] shrink-0">
         <div
           className="absolute inset-0 bg-no-repeat"
           style={{
@@ -202,17 +202,17 @@ const ProductPage: React.FC = () => {
       </div>
 
       <div
-        className="relative -mt-12 flex flex-1 flex-col rounded-t-[2.5rem] px-6 pt-10 z-10 shadow-[0_-20px_60px_rgba(0,0,0,0.5)] border-t"
+        className="relative -mt-10 flex flex-1 flex-col rounded-t-[2rem] px-5 pt-6 z-10 shadow-[0_-20px_60px_rgba(0,0,0,0.5)] border-t"
         style={{ backgroundColor, borderColor: `${textColor}08` }}
       >
         <div className="absolute left-1/2 top-4 h-1 w-10 -translate-x-1/2 rounded-full" style={{ backgroundColor: `${textColor}0D` }}></div>
 
-        <div className="mb-10">
+        <div className="mb-5">
           <div className="flex items-start justify-between gap-4">
-            <h1 className="text-[32px] font-black leading-[0.95] tracking-tighter uppercase italic" style={{ color: textColor }}>{item.name}</h1>
-            <span className="text-2xl font-black tracking-tighter italic shrink-0" style={{ color: accentColor }}>${totalPrice.toFixed(2)}</span>
+            <h1 className="text-[22px] font-black leading-[0.95] tracking-tighter uppercase italic" style={{ color: textColor }}>{item.name}</h1>
+            <span className="text-lg font-black tracking-tighter italic shrink-0" >${totalPrice.toFixed(2)}</span>
           </div>
-          <p className="mt-4 text-[12px] leading-relaxed font-medium tracking-tight" style={{ color: `${textColor}4D` }}>{item.description}</p>
+          {item.description && <p className="mt-2 text-[11px] leading-relaxed font-medium tracking-tight" style={{ color: `${textColor}4D` }}>{item.description}</p>}
         </div>
 
         {/* MODIFIER GROUPS (new system) */}
@@ -223,8 +223,8 @@ const ProductPage: React.FC = () => {
           const isMissing = isRequired && selected.length < group.min_select;
 
           return (
-            <div key={group.id} className="mb-8">
-              <div className="flex items-center gap-2 mb-4">
+            <div key={group.id} className="mb-5">
+              <div className="flex items-center gap-2 mb-3">
                 <span className="material-symbols-outlined text-sm" style={{ color: `${textColor}33` }}>{typeIcons[group.modifier_type] || 'tune'}</span>
                 <h3 className="text-[8px] font-black uppercase tracking-[0.4em] italic" style={{ color: `${textColor}33` }}>{group.name}</h3>
                 {isRequired && (
@@ -246,7 +246,7 @@ const ProductPage: React.FC = () => {
                       <label
                         key={opt.id}
                         onClick={() => toggleOption(group.id, opt.id, group.max_select)}
-                        className={`group relative flex flex-1 min-w-[30%] cursor-pointer flex-col p-4 rounded-2xl border transition-all duration-500 ${isSelected ? 'shadow-xl' : ''}`}
+                        className={`group relative flex flex-1 min-w-[30%] cursor-pointer flex-col p-3 rounded-2xl border transition-all duration-500 ${isSelected ? 'shadow-xl' : ''}`}
                         style={{
                           backgroundColor: isSelected ? `${accentColor}0D` : `${textColor}03`,
                           borderColor: isSelected ? accentColor : `${textColor}0D`
@@ -280,16 +280,16 @@ const ProductPage: React.FC = () => {
                     return (
                       <label
                         key={opt.id}
-                        className={`flex cursor-pointer items-center justify-between rounded-2xl p-5 transition-all duration-500 border ${atMax ? 'opacity-40' : ''}`}
+                        className={`flex cursor-pointer items-center justify-between rounded-2xl p-3.5 transition-all duration-500 border ${atMax ? 'opacity-40' : ''}`}
                         style={{
                           backgroundColor: isSelected ? `${accentColor}0A` : `${textColor}03`,
                           borderColor: isSelected ? `${accentColor}33` : `${textColor}0D`
                         }}
                         onClick={() => !atMax && toggleOption(group.id, opt.id, group.max_select)}
                       >
-                        <div className="flex items-center gap-5">
+                        <div className="flex items-center gap-3">
                           <div
-                            className="flex h-12 w-12 items-center justify-center rounded-xl transition-all"
+                            className="flex h-9 w-9 items-center justify-center rounded-xl transition-all"
                             style={{
                               backgroundColor: isSelected ? accentColor : `${textColor}0D`,
                               color: isSelected ? '#000000' : `${textColor}33`
@@ -304,7 +304,7 @@ const ProductPage: React.FC = () => {
                           <span className="font-bold text-sm uppercase tracking-tight" style={{ color: textColor }}>{opt.name}</span>
                         </div>
                         {(opt.price_delta || 0) !== 0 && (
-                          <span className="font-black text-sm" style={{ color: accentColor }}>
+                          <span className="font-black text-sm" >
                             {opt.price_delta > 0 ? '+' : ''}${opt.price_delta}
                           </span>
                         )}
@@ -319,8 +319,8 @@ const ProductPage: React.FC = () => {
 
         {/* LEGACY: VARIANTS (when no modifier_groups) */}
         {!hasModifierGroups && item.variants && item.variants.length > 0 && (
-          <div className="mb-10">
-            <h3 className="mb-5 text-[8px] font-black uppercase tracking-[0.4em] italic" style={{ color: `${textColor}33` }}>Selección de Tamaño</h3>
+          <div className="mb-5">
+            <h3 className="mb-3 text-[8px] font-black uppercase tracking-[0.4em] italic" style={{ color: `${textColor}33` }}>Selección de Tamaño</h3>
             <div className="flex gap-3 flex-wrap">
               {item.variants.map((v) => (
                 <label
@@ -347,21 +347,21 @@ const ProductPage: React.FC = () => {
 
         {/* LEGACY: ADDONS (when no modifier_groups) */}
         {!hasModifierGroups && item.addons && item.addons.length > 0 && (
-          <div className="mb-10">
-            <h3 className="mb-5 text-[8px] font-black uppercase tracking-[0.4em] italic" style={{ color: `${textColor}33` }}>Personalización</h3>
-            <div className="grid grid-cols-1 gap-3">
+          <div className="mb-5">
+            <h3 className="mb-3 text-[8px] font-black uppercase tracking-[0.4em] italic" style={{ color: `${textColor}33` }}>Personalización</h3>
+            <div className="grid grid-cols-1 gap-2">
               {item.addons.map((addon) => (
                 <label
                   key={addon.id}
-                  className="flex cursor-pointer items-center justify-between rounded-2xl p-5 transition-all duration-500 border"
+                  className="flex cursor-pointer items-center justify-between rounded-2xl p-3.5 transition-all duration-500 border"
                   style={{
                     backgroundColor: addonIds.includes(addon.id) ? `${accentColor}0A` : `${textColor}03`,
                     borderColor: addonIds.includes(addon.id) ? `${accentColor}33` : `${textColor}0D`
                   }}
                   onClick={() => setAddonIds(prev => prev.includes(addon.id) ? prev.filter(c => c !== addon.id) : [...prev, addon.id])}
                 >
-                  <div className="flex items-center gap-5">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl transition-all" style={{
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl transition-all" style={{
                       backgroundColor: addonIds.includes(addon.id) ? accentColor : `${textColor}0D`,
                       color: addonIds.includes(addon.id) ? '#000000' : `${textColor}33`
                     }}>
@@ -369,7 +369,7 @@ const ProductPage: React.FC = () => {
                     </div>
                     <span className="font-bold text-sm uppercase tracking-tight" style={{ color: textColor }}>{addon.name}</span>
                   </div>
-                  <span className="font-black text-sm" style={{ color: accentColor }}>+${addon.price}</span>
+                  <span className="font-black text-sm" >+${addon.price}</span>
                 </label>
               ))}
             </div>
@@ -377,13 +377,13 @@ const ProductPage: React.FC = () => {
         )}
 
         {/* SPECIAL NOTES */}
-        <div className="mb-14">
-          <h3 className="mb-5 text-[8px] font-black uppercase tracking-[0.4em] italic" style={{ color: `${textColor}33` }}>Notas Especiales</h3>
+        <div className="mb-8">
+          <h3 className="mb-3 text-[8px] font-black uppercase tracking-[0.4em] italic" style={{ color: `${textColor}33` }}>Notas Especiales</h3>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="PREFERENCIAS..."
-            className="w-full rounded-2xl border p-6 text-xs font-bold transition-all resize-none h-32 italic outline-none"
+            className="w-full rounded-2xl border p-4 text-xs font-bold transition-all resize-none h-20 italic outline-none"
             style={{
               backgroundColor: `${textColor}05`,
               borderColor: `${textColor}0D`,
@@ -404,15 +404,15 @@ const ProductPage: React.FC = () => {
 
       {/* FOOTER ACTION */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-30 backdrop-blur-3xl border-t px-6 pt-6 pb-[calc(2.5rem+env(safe-area-inset-bottom))] max-w-md mx-auto shadow-[0_-20px_60px_rgba(0,0,0,0.2)]"
+        className="fixed bottom-0 left-0 right-0 z-30 backdrop-blur-3xl border-t px-5 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))] max-w-md mx-auto"
         style={{
           backgroundColor: `${backgroundColor}F2`,
           borderColor: `${textColor}0D`
         }}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <div
-            className="flex h-20 items-center rounded-full border px-2 shadow-inner shrink-0"
+            className="flex h-11 items-center rounded-full border px-1 shrink-0"
             style={{
               backgroundColor: `${textColor}05`,
               borderColor: `${textColor}0D`
@@ -420,16 +420,16 @@ const ProductPage: React.FC = () => {
           >
             <button
               onClick={() => setQuantity(q => Math.max(1, q - 1))}
-              className="flex size-12 items-center justify-center rounded-full active:scale-90 transition-all"
+              className="flex size-8 items-center justify-center rounded-full active:scale-90 transition-all"
               style={{ color: `${textColor}33` }}
             >
-              <span className="material-symbols-outlined text-lg">remove</span>
+              <span className="material-symbols-outlined text-base">remove</span>
             </button>
-            <span className="w-8 text-center text-xl font-black italic tabular-nums" style={{ color: textColor }}>{quantity}</span>
+            <span className="w-6 text-center text-sm font-black italic tabular-nums" style={{ color: textColor }}>{quantity}</span>
             <button
               onClick={() => setQuantity(q => q + 1)}
-              className="flex size-12 items-center justify-center rounded-full active:scale-90 transition-all"
-              style={{ color: accentColor }}
+              className="flex size-8 items-center justify-center rounded-full active:scale-90 transition-all"
+              
             >
               <span className="material-symbols-outlined text-lg">add</span>
             </button>
@@ -438,22 +438,18 @@ const ProductPage: React.FC = () => {
           <button
             onClick={handleAdd}
             disabled={item.isOutOfStock || !isValid}
-            className={`group relative flex h-20 flex-1 items-center justify-between rounded-full pl-8 pr-3 text-black active:scale-[0.97] transition-all duration-500 overflow-hidden border border-white/20 ${(item.isOutOfStock || !isValid) ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
-            style={{ backgroundColor: (item.isOutOfStock || !isValid) ? '#333' : accentColor, boxShadow: (item.isOutOfStock || !isValid) ? 'none' : `0 20px 40px ${accentColor}40` }}
+            className={`group relative flex h-11 flex-1 items-center justify-between rounded-full pl-5 pr-2 text-black active:scale-[0.97] transition-all duration-500 overflow-hidden border border-white/10 ${(item.isOutOfStock || !isValid) ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
+            style={{ backgroundColor: (item.isOutOfStock || !isValid) ? '#333' : accentColor, boxShadow: (item.isOutOfStock || !isValid) ? 'none' : `0 4px 14px ${accentColor}30` }}
           >
-            <div className="flex flex-col items-start leading-[1] text-left shrink-0">
-              <span className="font-black uppercase text-[11px] tracking-tight">{item.isOutOfStock ? 'Agotado' : !isValid ? 'Seleccioná' : 'Añadir'}</span>
-              <span className="font-black uppercase text-[11px] tracking-tight opacity-40 italic">{item.isOutOfStock ? 'Sin Stock' : !isValid ? 'opciones' : 'Orden'}</span>
-            </div>
+            <span className="font-black uppercase text-[10px] tracking-tight shrink-0">{item.isOutOfStock ? 'Agotado' : !isValid ? 'Seleccionar opciones' : 'Añadir'}</span>
             {!item.isOutOfStock && isValid && (
-              <div className="flex items-center gap-4 relative z-10 ml-2">
-                <div className="flex items-center gap-3">
-                  <span className="font-black text-[22px] italic tabular-nums tracking-tighter leading-none">${totalPrice.toFixed(2)}</span>
+              <div className="flex items-center gap-3 relative z-10 ml-2">
+                <div className="flex items-center gap-2.5">
+                  <span className="font-black text-sm italic tabular-nums tracking-tighter leading-none">${totalPrice.toFixed(2)}</span>
                   <div
-                    className="w-14 h-14 rounded-full flex items-center justify-center bg-black transition-all group-hover:scale-105 shadow-xl shrink-0"
-                    style={{ color: accentColor }}
+                    className="w-7 h-7 rounded-full flex items-center justify-center bg-black/20 shrink-0"
                   >
-                    <span className="material-symbols-outlined font-black text-[28px]">add</span>
+                    <span className="material-symbols-outlined text-base" style={{ color: '#000' }}>add</span>
                   </div>
                 </div>
               </div>

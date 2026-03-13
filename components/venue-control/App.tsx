@@ -153,6 +153,7 @@ const App: React.FC = () => {
             reservationRemaining: node.reservation_remaining || undefined,
             reservationClientId: node.reservation_client_id || undefined,
             reservationPax: node.reservation_pax || undefined,
+            reservationCustomerEmail: node.reservation_customer_email || undefined,
             lastUpdate: new Date(node.updated_at || new Date())
           });
         } else if (node.type === 'bar') {

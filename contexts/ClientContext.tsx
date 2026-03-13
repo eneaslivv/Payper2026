@@ -85,6 +85,8 @@ interface ClientContextType {
     reservationContext: ReservationContext | null;
     refreshReservationCredit: () => Promise<void>;
     disconnectTable: () => void;
+    deliveryIntent: 'local' | 'takeout';
+    setDeliveryIntent: (mode: 'local' | 'takeout') => void;
 }
 
 
@@ -114,6 +116,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // QR Context State
     const [qrContext, setQRContextState] = useState<QRContext | null>(null);
     const [orderChannel, setOrderChannel] = useState<'table' | 'qr' | 'takeaway' | 'delivery' | null>(null);
+    const [deliveryIntent, setDeliveryIntent] = useState<'local' | 'takeout'>('local');
 
     // Session System State
     const [sessionId, setSessionId] = useState<string | null>(null);
@@ -342,7 +345,10 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 })),
                 avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${clientData.id}`,
                 onboardingCompleted: true,
-                orderHistory: (ordersData || []).map(o => ({
+                orderHistory: (ordersData || []).filter(o =>
+                    // Exclude unconfirmed MP payment attempts (is_paid=false, status still pending/draft)
+                    !(o.payment_method === 'mercadopago' && !o.is_paid && ['pending', 'draft'].includes(o.status))
+                ).map(o => ({
                     id: o.id.slice(0, 8).toUpperCase(),
                     date: new Date(o.created_at).toLocaleDateString(),
                     items: (o.order_items || []).map((oi: any) => `${oi.quantity}x ${oi.name}`).join(', ') || 'Pedido sin detalles',
@@ -1115,6 +1121,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setQRContextState(null);
         setTableLabel(null);
         setOrderChannel('takeaway');
+        setDeliveryIntent('local');
         localStorage.removeItem('reservation_context');
         setReservationContext(null);
         window.location.reload();
@@ -1170,6 +1177,9 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             // Reservation System
             reservationContext,
             refreshReservationCredit,
+            disconnectTable,
+            deliveryIntent,
+            setDeliveryIntent,
         }}>
             {children}
         </ClientContext.Provider>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Table, AppMode, TableStatus, OrderStatus, NotificationType } from '../types';
 import { STATUS_COLORS, STATUS_BG_COLORS } from '../constants';
-import { Hand, Receipt, Clock, Beer, Bell } from 'lucide-react';
+import { Hand, Receipt, Clock, Beer, Bell, Mail, User } from 'lucide-react';
 import TableActions from './TableActions';
 import EditControls from './EditControls'; // Need to export this from TableMap or create new file
 
@@ -105,6 +105,20 @@ const VenueItem: React.FC<VenueItemProps> = ({
                 {activeOrdersCount > 0 && mode === AppMode.VIEW && !isBillRequested && !isCallWaiter && (
                     <div className="absolute -top-2 -right-2 w-6 h-6 bg-zinc-950 border border-[#36e27b]/50 rounded-full flex items-center justify-center shadow-2xl z-[60]">
                         <span className="text-[9px] font-black text-[#36e27b] leading-none tabular-nums">{activeOrdersCount}</span>
+                    </div>
+                )}
+
+                {/* Reservation invite badge — top-left */}
+                {table.status === TableStatus.RESERVED && table.reservedFor && mode === AppMode.VIEW && (
+                    <div className="absolute -top-2 -left-2 flex items-center gap-0.5 bg-indigo-950 border border-indigo-500/50 rounded-full px-1.5 py-0.5 z-[60] shadow-lg">
+                        {table.reservationCustomerEmail ? (
+                            <Mail size={8} className="text-indigo-400" />
+                        ) : (
+                            <User size={8} className="text-indigo-400" />
+                        )}
+                        <span className="text-[7px] font-black text-indigo-300 leading-none max-w-[40px] truncate">
+                            {table.reservedFor.split(' ')[0]}
+                        </span>
                     </div>
                 )}
 

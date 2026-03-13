@@ -90,6 +90,7 @@ export interface Table {
   reservationRemaining?: number; // Remaining credit
   reservationClientId?: string; // Linked client ID
   reservationPax?: number; // Number of people
+  reservationCustomerEmail?: string; // Email the invite was sent to
   dispatch_station?: string;
   activeOrderId?: string;
   qrId?: string;

@@ -42,6 +42,8 @@ interface MenuRendererProps {
     userBalance?: number;
     onTopUp?: () => void;
     onTransfer?: () => void;
+    deliveryIntent?: 'local' | 'takeout';
+    onDeliveryIntentChange?: (mode: 'local' | 'takeout') => void;
 }
 
 export const MenuRenderer: React.FC<MenuRendererProps> = ({
@@ -68,7 +70,9 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
     isGuest = true,
     userBalance,
     onTopUp,
-    onTransfer
+    onTransfer,
+    deliveryIntent = 'local',
+    onDeliveryIntentChange
 }) => {
 
     // Derived State
@@ -238,6 +242,36 @@ export const MenuRenderer: React.FC<MenuRendererProps> = ({
                         </div>
                     </div>
                 )
+            )}
+
+            {/* TABLE ACTION CARDS (only for table-assigned logged-in users) */}
+            {tableLabel && !isGuest && onDeliveryIntentChange && (
+                <div className="px-6 -mt-1 mb-0">
+                    <div className="flex gap-1.5">
+                        <button
+                            onClick={() => onDeliveryIntentChange('local')}
+                            className="flex items-center gap-1.5 h-8 px-3 rounded-full border transition-all duration-300"
+                            style={{
+                                backgroundColor: deliveryIntent === 'local' ? `${theme.accentColor}10` : 'transparent',
+                                borderColor: deliveryIntent === 'local' ? `${theme.accentColor}25` : `${theme.textColor}08`,
+                            }}
+                        >
+                            <span className="material-symbols-outlined text-[14px]" style={{ color: deliveryIntent === 'local' ? theme.accentColor : `${theme.textColor}30` }}>table_restaurant</span>
+                            <span className="text-[10px] font-bold" style={{ color: deliveryIntent === 'local' ? theme.textColor : `${theme.textColor}35` }}>Mi Mesa</span>
+                        </button>
+                        <button
+                            onClick={() => onDeliveryIntentChange('takeout')}
+                            className="flex items-center gap-1.5 h-8 px-3 rounded-full border transition-all duration-300"
+                            style={{
+                                backgroundColor: deliveryIntent === 'takeout' ? `${theme.accentColor}10` : 'transparent',
+                                borderColor: deliveryIntent === 'takeout' ? `${theme.accentColor}25` : `${theme.textColor}08`,
+                            }}
+                        >
+                            <span className="material-symbols-outlined text-[14px]" style={{ color: deliveryIntent === 'takeout' ? theme.accentColor : `${theme.textColor}30` }}>shopping_bag</span>
+                            <span className="text-[10px] font-bold" style={{ color: deliveryIntent === 'takeout' ? theme.textColor : `${theme.textColor}35` }}>Para Llevar</span>
+                        </button>
+                    </div>
+                </div>
             )}
 
             {/* SEARCH BAR */}

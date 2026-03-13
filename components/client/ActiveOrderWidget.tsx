@@ -155,10 +155,10 @@ const ActiveOrderWidget: React.FC<ActiveOrderWidgetProps> = ({ hasActiveOrder, s
     <>
       {/* FLOATING ACCESS BUTTON - Always visible when Hub is closed */}
       {!isHubOpen && (
-        <div className={`fixed ${isWalletPage ? 'bottom-[calc(11rem+env(safe-area-inset-bottom))]' : 'bottom-[calc(7rem+env(safe-area-inset-bottom))]'} left-1/2 -translate-x-1/2 z-[60] w-full max-w-md px-5 animate-in slide-in-from-bottom-4 duration-400 transition-all`}>
+        <div className={`fixed ${isWalletPage ? 'bottom-[calc(7rem+env(safe-area-inset-bottom))]' : 'bottom-[calc(5.5rem+env(safe-area-inset-bottom))]'} left-1/2 -translate-x-1/2 z-[45] w-full max-w-md px-5 animate-in slide-in-from-bottom-4 duration-400 transition-all`}>
           <div
             onClick={() => setIsHubOpen(true)}
-            className="w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl bg-white/[0.06] backdrop-blur-2xl border border-white/[0.06] shadow-[0_8px_32px_rgba(0,0,0,0.3)] active:scale-[0.98] transition-all duration-200 cursor-pointer group relative overflow-hidden"
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl bg-white/[0.06] backdrop-blur-2xl border border-white/[0.06] shadow-[0_4px_20px_rgba(0,0,0,0.25)] active:scale-[0.98] transition-all duration-200 cursor-pointer group relative overflow-hidden"
           >
             {hasActiveOrder && (
               <div className={`absolute bottom-0 left-4 right-4 h-[1.5px] rounded-full transition-all duration-700 ${isPolling ? 'opacity-100' : 'opacity-0'}`} style={{ backgroundColor: `${accentColor}40` }}>
@@ -170,11 +170,11 @@ const ActiveOrderWidget: React.FC<ActiveOrderWidgetProps> = ({ hasActiveOrder, s
               <>
                 <div className="relative shrink-0">
                   <div
-                    className="w-11 h-11 rounded-xl bg-cover bg-center border border-white/[0.08]"
+                    className="w-9 h-9 rounded-lg bg-cover bg-center border border-white/[0.08]"
                     style={{ backgroundImage: `url('https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&q=80&w=200')` }}
                   ></div>
-                  <div className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full border-[1.5px] border-[#0a110b] flex items-center justify-center" style={{ backgroundColor: statusInfo.color }}>
-                    <span className="material-symbols-outlined text-[8px] font-black text-black">star</span>
+                  <div className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-[1.5px] border-[#0a110b] flex items-center justify-center" style={{ backgroundColor: statusInfo.color }}>
+                    <span className="material-symbols-outlined text-[7px] font-black text-black">star</span>
                   </div>
                 </div>
 
