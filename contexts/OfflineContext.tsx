@@ -329,10 +329,12 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                   client:clients(name, email),
                   items,
                   order_items(
-                    id, 
-                    quantity, 
-                    unit_price, 
-                    product_id, 
+                    id,
+                    quantity,
+                    unit_price,
+                    product_id,
+                    notes,
+                    variant:product_variants(name),
                     product:inventory_items(name)
                   )
                 `)
@@ -354,6 +356,8 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                     ? orderData.order_items.map((i: any) => ({
                       id: i.id || 'unknown',
                       name: i.product?.name || 'Ítem',
+                      variant_name: i.variant?.name || null,
+                      notes: i.notes || null,
                       quantity: i.quantity,
                       price_unit: i.unit_price || 0,
                       productId: i.product_id,
@@ -416,7 +420,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                     payment_status, payment_method, payment_provider, is_paid, dispatch_station,
                     node_id, node:venue_nodes(dispatch_station),
                     client:clients(name, email), items,
-                    order_items(id, quantity, unit_price, product_id, product:inventory_items(name))
+                    order_items(id, quantity, unit_price, product_id, notes, variant:product_variants(name), product:inventory_items(name))
                   `)
                   .eq('id', updatedOrder.id)
                   .maybeSingle();
@@ -436,6 +440,8 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                       ? orderData.order_items.map((i: any) => ({
                         id: i.id || 'unknown',
                         name: i.product?.name || 'Ítem',
+                        variant_name: i.variant?.name || null,
+                        notes: i.notes || null,
                         quantity: i.quantity,
                         price_unit: i.unit_price || 0,
                         productId: i.product_id,
@@ -557,7 +563,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
             id, store_id, status, total_amount, created_at, payment_status, payment_method,
             payment_provider, is_paid, order_number, table_number, archived_at, dispatch_station,
             node_id, node:venue_nodes(dispatch_station), client:clients(name, email), items,
-            order_items(id, quantity, unit_price, product_id, product:inventory_items(name))
+            order_items(id, quantity, unit_price, product_id, notes, variant:product_variants(name), product:inventory_items(name))
           `)
           .is('archived_at', null)
           .order('created_at', { ascending: false }) as any;
@@ -576,6 +582,8 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
               ? ro.order_items.map((i: any) => ({
                   id: i.id || 'unknown',
                   name: i.product?.name || 'Ítem',
+                  variant_name: i.variant?.name || null,
+                  notes: i.notes || null,
                   quantity: i.quantity,
                   price_unit: i.unit_price || 0,
                   productId: i.product_id,
@@ -645,7 +653,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
         const { data: remoteOrder, error } = await supabase
         .from('orders')
-        .select('*, node:venue_nodes(dispatch_station), client:clients(name, email), items, order_items(id, quantity, unit_price, product_id, product:inventory_items(name))')
+        .select('*, node:venue_nodes(dispatch_station), client:clients(name, email), items, order_items(id, quantity, unit_price, product_id, notes, variant:product_variants(name), product:inventory_items(name))')
         .eq('id', orderId)
         .single();
 
@@ -669,6 +677,8 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
           ? remoteOrder.order_items.map((i: any) => ({
             id: i.id || 'unknown',
             name: i.product?.name || 'Ítem',
+            variant_name: i.variant?.name || null,
+            notes: i.notes || null,
             quantity: i.quantity,
             price_unit: i.unit_price || 0,
             productId: i.product_id,

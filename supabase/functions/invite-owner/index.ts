@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4"
 import { initMonitoring, captureException } from "../_shared/monitoring.ts";
+import { generateInviteOwnerHtml, getInviteOwnerSubject } from "../_shared/email-templates.ts";
 
 const FUNCTION_NAME = 'invite-owner';
 initMonitoring(FUNCTION_NAME);
@@ -147,25 +148,15 @@ serve(async (req) => {
             const resendKey = Deno.env.get('RESEND_API_KEY') || '';
             if (resendKey) {
                 console.log(`[INVITE-OWNER] Sending email to ${email}...`);
+                const emailVars = { store_name: storeName, store_logo_url: store.logo_url, owner_name: ownerName, accept_url: inviteLink };
                 const resendRes = await fetch('https://api.resend.com/emails', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         from: `${storeName} <no-reply@payperapp.io>`,
                         to: email,
-                        subject: `Activación de Cuenta - ${storeName}`,
-                        html: `
-                            <div style="font-family:sans-serif; background:#000; color:#fff; padding:50px; border-radius:30px; border: 1px solid #4ADE80; max-width: 600px; margin: auto;">
-                                <h1 style="color:#4ADE80; font-style:italic; font-weight: 900; text-transform: uppercase; margin-bottom: 20px;">${storeName}</h1>
-                                <p style="font-size: 16px; margin-bottom: 20px;">Te damos la bienvenida, <b>${ownerName || 'Propietario'}</b>.</p>
-                                <p style="margin-bottom: 20px;">Se ha configurado tu cuenta para: <b style="color:#4ADE80;">${storeName}</b>.</p>
-                                <p style="margin-bottom: 30px;">Para comenzar, definí tu contraseña:</p>
-                                <a href="${inviteLink}" style="display:inline-block; background:#4ADE80; color:#000; padding:20px 40px; text-decoration:none; border-radius:15px; font-weight:900; text-transform:uppercase;">ACTIVAR CUENTA</a>
-                                <div style="border-top: 1px solid #222; padding-top: 20px; margin-top: 30px; font-size: 10px; color: #444; text-transform: uppercase;">
-                                    Enlace válido por 24 horas
-                                </div>
-                            </div>
-                        `
+                        subject: getInviteOwnerSubject(emailVars),
+                        html: generateInviteOwnerHtml(emailVars)
                     })
                 });
                 const resendResult = await resendRes.json();

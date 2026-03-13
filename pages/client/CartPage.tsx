@@ -32,7 +32,7 @@ const CartPage: React.FC = () => {
 
   return (
     <div
-      className="flex flex-col min-h-screen pb-48 transition-colors duration-500"
+      className="flex flex-col min-h-screen pb-40 transition-colors duration-500"
       style={{ backgroundColor, color: textColor }}
     >
       <header
@@ -164,53 +164,46 @@ const CartPage: React.FC = () => {
 
       {cart.length > 0 && (
         <div
-          className="fixed bottom-0 left-0 right-0 z-[60] backdrop-blur-3xl border-t px-8 pt-8 pb-[calc(2rem+env(safe-area-inset-bottom))] max-w-md mx-auto shadow-[0_-30px_60px_rgba(0,0,0,0.2)]"
+          className="fixed bottom-0 left-0 right-0 z-[60] backdrop-blur-2xl px-5 pt-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] max-w-md mx-auto"
           style={{
-            backgroundColor: `${backgroundColor}F2`,
-            borderColor: `${textColor}0D`
+            backgroundColor: `${backgroundColor}CC`,
           }}
         >
-          <div className="flex flex-col gap-8">
-            <div className="flex flex-col gap-3">
-              <div className="flex justify-between items-center px-1">
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-60" style={{ color: textColor }}>Subtotal</span>
-                <span className="text-base font-black italic tracking-tighter" style={{ color: textColor }}>${subtotal.toFixed(2)}</span>
+          {/* Soft top fade instead of hard border */}
+          <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${textColor}0A, transparent)` }}></div>
+
+          <div className="flex flex-col gap-4">
+            {/* Compact summary row */}
+            <div className="flex justify-between items-center px-2">
+              <div className="flex items-center gap-2.5">
+                <span className="text-[10px] font-bold uppercase tracking-widest opacity-40" style={{ color: textColor }}>Subtotal</span>
+                {pointsToEarn > 0 && (
+                  <span className="flex items-center gap-1 opacity-60">
+                    <span className="material-symbols-outlined text-[11px] fill-icon" style={{ color: accentColor }}>stars</span>
+                    <span className="text-[8px] font-bold uppercase tracking-wider" style={{ color: accentColor }}>+{pointsToEarn}</span>
+                  </span>
+                )}
               </div>
-              <div className="h-px my-2" style={{ backgroundColor: `${textColor}0D` }}></div>
-              <div className="flex justify-between items-end px-1">
-                <div className="flex flex-col">
-                  <span className="text-xl font-black uppercase italic leading-none tracking-tighter" style={{ color: textColor }}>Total</span>
-                  <div className="mt-3 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[16px] fill-icon" style={{ color: accentColor }}>stars</span>
-                    <span className={`text-[9px] font-black uppercase tracking-widest ${pointsToEarn > 0 ? '' : 'opacity-60'}`} style={{ color: pointsToEarn > 0 ? accentColor : textColor }}>
-                      {pointsToEarn > 0 ? `Ganarás ${pointsToEarn} granos` : 'Sin puntos adicionales'}
-                    </span>
-                  </div>
-                </div>
-                <span className="text-[44px] font-black italic tracking-tighter tabular-nums leading-none" style={{ color: textColor }}>${total.toFixed(2)}</span>
-              </div>
+              <span className="text-sm font-bold tracking-tight opacity-70" style={{ color: textColor }}>${subtotal.toFixed(2)}</span>
             </div>
 
+            {/* Main CTA button - compact and elegant */}
             <button
               onClick={() => navigate(`/m/${slug}/checkout`)}
-              className="group relative w-full active:scale-[0.97] transition-all duration-500 text-black font-black h-24 rounded-full flex items-center justify-between pl-12 pr-5 shadow-2xl overflow-hidden border border-white/20"
-              style={{ backgroundColor: accentColor, boxShadow: `0 20px 50px ${accentColor}59` }}
+              className="group relative w-full active:scale-[0.98] transition-all duration-300 text-black font-black h-[3.75rem] rounded-[1.25rem] flex items-center justify-between pl-7 pr-2.5 overflow-hidden"
+              style={{ backgroundColor: accentColor }}
             >
-              <div className="flex flex-col items-start leading-none relative z-10">
-                <span className="text-[14px] font-black uppercase tracking-tight">Proceder al</span>
-                <span className="text-[14px] font-black uppercase tracking-tight opacity-50">Pago Seguro</span>
+              <div className="flex items-center gap-3 relative z-10">
+                <span className="text-[13px] font-black uppercase tracking-tight">Pagar</span>
+                <span className="text-[13px] font-black opacity-50 tracking-tight">${total.toFixed(2)}</span>
               </div>
 
-              <div className="flex items-center gap-6 relative z-10">
-                <div className="h-12 w-[1px] bg-black/10"></div>
-                <div
-                  className="w-16 h-16 rounded-full flex items-center justify-center bg-black transition-all group-hover:scale-105 shadow-2xl"
-                  style={{ color: accentColor }}
-                >
-                  <span className="material-symbols-outlined font-black text-[32px]">arrow_forward</span>
-                </div>
+              <div
+                className="w-12 h-12 rounded-[0.875rem] flex items-center justify-center bg-black/15 transition-all group-hover:bg-black/20 relative z-10"
+              >
+                <span className="material-symbols-outlined font-bold text-[22px]">arrow_forward</span>
               </div>
-              <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             </button>
           </div>
         </div>

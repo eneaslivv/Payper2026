@@ -105,10 +105,24 @@ const ActiveOrderWidget: React.FC<ActiveOrderWidgetProps> = ({ hasActiveOrder, s
 
   const currentOrder = activeOrders.find(o => o.id === activeOrderId) || activeOrders[0];
 
-  const getStatusInfo = (customStatus?: string) => {
-    const s = customStatus || status;
+  const getStatusInfo = (orderOrStatus?: any) => {
+    // Accept either an order object or a status string for backwards compat
+    const order = typeof orderOrStatus === 'object' ? orderOrStatus : null;
+    const s = order?.status || (typeof orderOrStatus === 'string' ? orderOrStatus : null) || status;
+    const isPaid = order?.is_paid || order?.payment_status === 'approved' || order?.payment_status === 'paid';
+
     switch (s) {
-      case 'pending': return { label: 'PENDIENTE', icon: 'hourglass_empty', color: '#9ca3af', sub: 'Procesando pago...' };
+      case 'pending':
+        if (isPaid) {
+          return { label: 'RECIBIDO', icon: 'check_circle', color: '#60a5fa', sub: 'Pago confirmado.' };
+        }
+        if (order?.payment_provider === 'mercadopago') {
+          return { label: 'PENDIENTE', icon: 'hourglass_empty', color: '#9ca3af', sub: 'Procesando pago...' };
+        }
+        if (order?.payment_provider === 'cash') {
+          return { label: 'PENDIENTE', icon: 'hourglass_empty', color: '#9ca3af', sub: 'Pago en caja.' };
+        }
+        return { label: 'PENDIENTE', icon: 'hourglass_empty', color: '#9ca3af', sub: 'Esperando confirmación...' };
       case 'paid': return { label: 'RECIBIDO', icon: 'check_circle', color: '#60a5fa', sub: 'Pago confirmado.' };
       case 'received': return { label: 'RECIBIDO', icon: 'schedule', color: '#60a5fa', sub: 'Confirmando orden...' };
       case 'preparing': case 'in_progress': return { label: 'PREPARANDO', icon: 'coffee_maker', color: '#fbbf24', sub: 'En proceso artesanal.' };
@@ -118,7 +132,7 @@ const ActiveOrderWidget: React.FC<ActiveOrderWidgetProps> = ({ hasActiveOrder, s
     }
   };
 
-  const statusInfo = getStatusInfo();
+  const statusInfo = getStatusInfo(currentOrder);
 
   const handleConfirmTip = (amount: number) => {
     setTipAmount(amount);
@@ -141,14 +155,14 @@ const ActiveOrderWidget: React.FC<ActiveOrderWidgetProps> = ({ hasActiveOrder, s
     <>
       {/* FLOATING ACCESS BUTTON - Always visible when Hub is closed */}
       {!isHubOpen && (
-        <div className={`fixed ${isWalletPage ? 'bottom-[calc(11rem+env(safe-area-inset-bottom))]' : 'bottom-[calc(7rem+env(safe-area-inset-bottom))]'} left-1/2 -translate-x-1/2 z-[60] w-full max-w-md px-4 animate-in slide-in-from-bottom-6 duration-500 transition-all`}>
+        <div className={`fixed ${isWalletPage ? 'bottom-[calc(11rem+env(safe-area-inset-bottom))]' : 'bottom-[calc(7rem+env(safe-area-inset-bottom))]'} left-1/2 -translate-x-1/2 z-[60] w-full max-w-md px-5 animate-in slide-in-from-bottom-4 duration-400 transition-all`}>
           <div
             onClick={() => setIsHubOpen(true)}
-            className="w-full flex items-center gap-4 p-4 rounded-[2.5rem] bg-surface-dark/95 backdrop-blur-xl border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] active:scale-[0.98] transition-all cursor-pointer group relative overflow-hidden"
+            className="w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl bg-white/[0.06] backdrop-blur-2xl border border-white/[0.06] shadow-[0_8px_32px_rgba(0,0,0,0.3)] active:scale-[0.98] transition-all duration-200 cursor-pointer group relative overflow-hidden"
           >
             {hasActiveOrder && (
-              <div className={`absolute top-0 left-0 w-full h-[2px] transition-all duration-700 ${isPolling ? 'opacity-100' : 'opacity-0'}`} style={{ backgroundColor: `${accentColor}33` }}>
-                <div className="h-full animate-data-stream w-1/3" style={{ backgroundColor: accentColor }}></div>
+              <div className={`absolute bottom-0 left-4 right-4 h-[1.5px] rounded-full transition-all duration-700 ${isPolling ? 'opacity-100' : 'opacity-0'}`} style={{ backgroundColor: `${accentColor}40` }}>
+                <div className="h-full animate-data-stream w-1/3 rounded-full" style={{ backgroundColor: accentColor }}></div>
               </div>
             )}
 
@@ -156,44 +170,44 @@ const ActiveOrderWidget: React.FC<ActiveOrderWidgetProps> = ({ hasActiveOrder, s
               <>
                 <div className="relative shrink-0">
                   <div
-                    className="w-16 h-16 rounded-[1.2rem] bg-cover bg-center border border-white/10 shadow-inner"
+                    className="w-11 h-11 rounded-xl bg-cover bg-center border border-white/[0.08]"
                     style={{ backgroundImage: `url('https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&q=80&w=200')` }}
                   ></div>
-                  <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full border-2 border-[#0a110b] flex items-center justify-center text-black shadow-lg" style={{ backgroundColor: statusInfo.color }}>
-                    <span className="material-symbols-outlined text-[10px] font-black">star</span>
+                  <div className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full border-[1.5px] border-[#0a110b] flex items-center justify-center" style={{ backgroundColor: statusInfo.color }}>
+                    <span className="material-symbols-outlined text-[8px] font-black text-black">star</span>
                   </div>
                 </div>
 
                 <div className="flex flex-col flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-[13px] font-black text-white uppercase tracking-tighter italic">Pedido: {statusInfo.label}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[12px] font-bold text-white/90 uppercase tracking-tight">Pedido: {statusInfo.label}</span>
                     {activeOrders.length > 1 && (
-                      <span className="px-1.5 py-0.5 rounded-full bg-white/10 text-white/40 text-[7px] font-black uppercase tracking-widest">{activeOrders.length} ACTIVOS</span>
+                      <span className="px-1.5 py-px rounded-md bg-white/[0.08] text-white/30 text-[7px] font-bold uppercase tracking-wider">{activeOrders.length} activos</span>
                     )}
                   </div>
-                  <p className="text-[10px] font-bold leading-tight tracking-tight truncate opacity-80 uppercase" style={{ color: accentColor }}>
+                  <p className="text-[9px] font-medium leading-tight tracking-tight truncate opacity-60 uppercase mt-0.5" style={{ color: accentColor }}>
                     {statusInfo.sub}
                   </p>
                 </div>
-                <div className="pr-2 flex flex-col items-end gap-1">
-                  <span className="text-[7px] font-black text-slate-700 uppercase tracking-widest italic">Mesa {tableNumber || 'QR'}</span>
-                  <span className="material-symbols-outlined transition-colors text-xl" style={{ color: accentColor }}>drag_handle</span>
+                <div className="pr-1 flex items-center gap-2">
+                  <span className="text-[7px] font-bold text-white/20 uppercase tracking-wider">Mesa {tableNumber || 'QR'}</span>
+                  <span className="material-symbols-outlined text-white/20 text-lg">chevron_right</span>
                 </div>
               </>
             ) : (
               <>
-                <div className={`w-14 h-14 rounded-[1.2rem] flex items-center justify-center shrink-0 border border-white/10 ${tableNumber ? 'bg-white/10' : 'bg-white/5'}`}>
-                  <span className="material-symbols-outlined text-2xl" style={{ color: accentColor }}>{tableNumber ? 'room_service' : 'restaurant'}</span>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tableNumber ? 'bg-white/[0.08]' : 'bg-white/[0.04]'}`}>
+                  <span className="material-symbols-outlined text-xl" style={{ color: accentColor }}>{tableNumber ? 'room_service' : 'restaurant'}</span>
                 </div>
                 <div className="flex flex-col flex-1 min-w-0">
-                  <span className="text-[13px] font-black text-white uppercase tracking-tighter italic">
+                  <span className="text-[12px] font-bold text-white/90 uppercase tracking-tight">
                     {tableNumber ? `Mesa ${tableNumber}` : 'Comenzar Pedido'}
                   </span>
-                  <p className="text-[10px] font-bold text-slate-600 uppercase tracking-tight">
+                  <p className="text-[9px] font-medium text-white/30 uppercase tracking-tight mt-0.5">
                     {tableNumber ? 'Llamar barista · Pedir cuenta' : 'Escanea QR o pide en barra'}
                   </p>
                 </div>
-                <span className="material-symbols-outlined text-slate-600 text-xl pr-2">{tableNumber ? 'expand_less' : 'chevron_right'}</span>
+                <span className="material-symbols-outlined text-white/20 text-lg pr-1">{tableNumber ? 'expand_less' : 'chevron_right'}</span>
               </>
             )}
           </div>
@@ -244,7 +258,7 @@ const ActiveOrderWidget: React.FC<ActiveOrderWidgetProps> = ({ hasActiveOrder, s
                   {activeOrders.map((o) => {
                     const isSelected = o.id === activeOrderId;
                     const orderNum = o.order_number || o.id.slice(0, 4);
-                    const sInfo = getStatusInfo(o.status);
+                    const sInfo = getStatusInfo(o);
                     return (
                       <button
                         key={o.id}

@@ -264,6 +264,8 @@ export default function OrderStatusPage() {
                 return {
                     quantity: item.quantity,
                     name: productName,
+                    variant_name: item.variant_name || null,
+                    notes: item.notes || null,
                     product: item.product,
                     isDeleted
                 };

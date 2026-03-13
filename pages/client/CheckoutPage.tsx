@@ -160,7 +160,8 @@ const CheckoutPage: React.FC = () => {
           unit_price: item.price,
           notes: (item as any).notes || null,
           addon_ids: item.addon_ids?.filter(isUUID) || [],
-          addon_prices: item.addons?.filter((a: any) => item.addon_ids?.includes(a.id)).map((a: any) => ({ id: a.id, price: a.price })) || []
+          addon_prices: item.addons?.filter((a: any) => item.addon_ids?.includes(a.id)).map((a: any) => ({ id: a.id, price: a.price })) || [],
+          modifier_ids: (item as any).modifier_ids || []
         }));
 
         const { data: rpcResult, error: rpcError } = await (supabase.rpc as any)('create_order_atomic', {
@@ -251,7 +252,8 @@ const CheckoutPage: React.FC = () => {
           unit_price: item.price,
           notes: (item as any).notes || null,
           addon_ids: item.addon_ids?.filter(isUUID) || [],
-          addon_prices: item.addons?.filter((a: any) => item.addon_ids?.includes(a.id)).map((a: any) => ({ id: a.id, price: a.price })) || []
+          addon_prices: item.addons?.filter((a: any) => item.addon_ids?.includes(a.id)).map((a: any) => ({ id: a.id, price: a.price })) || [],
+          modifier_ids: (item as any).modifier_ids || []
         }));
 
         const { data: rpcResult, error: rpcError } = await (supabase.rpc as any)('create_order_atomic', {
@@ -316,7 +318,8 @@ const CheckoutPage: React.FC = () => {
           unit_price: item.price,
           notes: (item as any).notes || null,
           addon_ids: item.addon_ids?.filter(isUUID) || [],
-          addon_prices: item.addons?.filter((a: any) => item.addon_ids?.includes(a.id)).map((a: any) => ({ id: a.id, price: a.price })) || []
+          addon_prices: item.addons?.filter((a: any) => item.addon_ids?.includes(a.id)).map((a: any) => ({ id: a.id, price: a.price })) || [],
+          modifier_ids: (item as any).modifier_ids || []
         }));
 
         console.log('[MP] Creating order with items:', JSON.stringify(mpItemsPayload));

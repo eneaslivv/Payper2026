@@ -753,6 +753,29 @@ const MainRouter: React.FC = () => {
     );
   }
 
+  // Allow /join route regardless of is_active (invite flow via recovery link)
+  const isJoinRoute = window.location.hash.includes('#/join') || window.location.pathname.startsWith('/join');
+  if (isJoinRoute) {
+    // If on pathname /join (Supabase recovery redirect), convert to hash route
+    if (window.location.pathname.startsWith('/join')) {
+      const invToken = new URLSearchParams(window.location.search).get('token');
+      window.location.replace(`${window.location.origin}/#/join${invToken ? '?token=' + invToken : ''}`);
+      return (
+        <div className="flex h-screen w-full items-center justify-center bg-black text-white">
+          <div className="animate-pulse text-xs font-bold tracking-widest uppercase">Procesando invitación...</div>
+        </div>
+      );
+    }
+    return (
+      <Router>
+        <Routes>
+          <Route path="/join" element={<JoinTeam />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    );
+  }
+
   // Pending Approval or Inactive Check (Skip for super_admin)
   if (profile && !profile.is_active && !isAdmin) {
     return (

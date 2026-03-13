@@ -974,7 +974,7 @@ const MenuDesign: React.FC = () => {
     const [editingAddonId, setEditingAddonId] = useState<string | null>(null);
     const [editingComboItemId, setEditingComboItemId] = useState<number | null>(null);
     const [itemSelectorSearch, setItemSelectorSearch] = useState('');
-    const [linkType, setLinkType] = useState<'addon' | 'combo' | 'variant' | 'variant_override' | null>('addon');
+    const [linkType, setLinkType] = useState<'addon' | 'combo' | 'variant' | 'variant_override' | 'addon_update' | 'modifier_recipe_op' | null>('addon');
 
     const selectedItem = useMemo(() => items.find(i => i.id === editingId), [items, editingId]);
 
@@ -1052,7 +1052,7 @@ const MenuDesign: React.FC = () => {
             // Fetch all independent data sources simultaneously to reduce load time
             console.log('[MenuDesign] Starting parallel data fetch...');
 
-            const [stores, inventoryItems, products, categoriesData, recipesData, variantsData, addonsData] = await Promise.all([
+            const [stores, inventoryItems, products, categoriesData, recipesData, variantsData, addonsData, modifierGroupsData] = await Promise.all([
                 // 1. Fetch Store Details
                 fetchWithTimeout(`${baseUrl}/stores?id=eq.${storeId}`),
                 // 2. Fetch INVENTORY items
@@ -1063,10 +1063,12 @@ const MenuDesign: React.FC = () => {
                 fetchWithTimeout(`${baseUrl}/categories?store_id=eq.${storeId}&is_active=eq.true&order=position.asc`),
                 // 4. Fetch RECIPES
                 fetchWithTimeout(`${baseUrl}/product_recipes`),
-                // 5. Fetch PRODUCT VARIANTS (relational table)
+                // 5. Fetch PRODUCT VARIANTS (relational table - legacy)
                 fetchWithTimeout(`${baseUrl}/product_variants?tenant_id=eq.${storeId}`),
-                // 6. Fetch PRODUCT ADDONS (relational table)
-                fetchWithTimeout(`${baseUrl}/product_addons?tenant_id=eq.${storeId}`)
+                // 6. Fetch PRODUCT ADDONS (relational table - legacy)
+                fetchWithTimeout(`${baseUrl}/product_addons?tenant_id=eq.${storeId}`),
+                // 7. Fetch MODIFIER GROUPS with nested options + recipe_ops
+                fetchWithTimeout(`${baseUrl}/modifier_groups?store_id=eq.${storeId}&select=*,modifier_options(*,modifier_option_recipe_ops(*))&order=sort_order.asc`)
             ]);
 
             console.log('[MenuDesign] Parallel fetch complete.');
@@ -1263,6 +1265,10 @@ const MenuDesign: React.FC = () => {
                         })),
                     })),
                     addon_links: (addonsData || []).filter((a: any) => a.product_id === p.id),
+                    modifier_groups: (modifierGroupsData || []).filter((mg: any) => mg.product_id === p.id).map((mg: any) => ({
+                        ...mg,
+                        modifier_options: (mg.modifier_options || []).sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)),
+                    })),
                     combo_links: p.combo_items || [],
                     recipe: itemRecipes.map((r: any) => ({
                         inventory_item_id: r.inventory_item_id,
@@ -1325,6 +1331,9 @@ const MenuDesign: React.FC = () => {
             }
             if (isProduct && updates.addon_links !== undefined) {
                 await syncProductAddons(id, storeId, updates.addon_links);
+            }
+            if (isProduct && (updates as any).modifier_groups !== undefined) {
+                await syncModifierGroups(id, storeId, (updates as any).modifier_groups);
             }
 
             // --- Scalar column updates ---
@@ -1435,6 +1444,84 @@ const MenuDesign: React.FC = () => {
             } else {
                 const { error } = await (supabase.from as any)('product_addons').insert(row);
                 if (error) console.error('[MenuDesign] Error inserting addon:', error);
+            }
+        }
+    };
+
+    // Sync modifier_groups to DB (upsert groups + options + recipe_ops, delete removed)
+    const syncModifierGroups = async (productId: string, storeId: string, groups: any[]) => {
+        const existingGroups = await (supabase.from as any)('modifier_groups').select('id').eq('product_id', productId);
+        const existingGroupIds = new Set((existingGroups.data || []).map((r: any) => r.id));
+        const currentGroupIds = new Set(groups.map(g => g.id));
+
+        // Delete removed groups (cascade deletes options + recipe_ops)
+        const toDeleteGroups = [...existingGroupIds].filter(id => !currentGroupIds.has(id));
+        if (toDeleteGroups.length > 0) {
+            await (supabase.from as any)('modifier_groups').delete().in('id', toDeleteGroups);
+        }
+
+        for (const g of groups) {
+            const groupRow = {
+                id: g.id,
+                product_id: productId,
+                store_id: storeId,
+                name: g.name || 'Grupo',
+                modifier_type: g.modifier_type || 'extra',
+                min_select: g.min_select ?? 0,
+                max_select: g.max_select ?? 1,
+                sort_order: g.sort_order ?? 0,
+                is_active: g.is_active !== false,
+            };
+            if (existingGroupIds.has(g.id)) {
+                await (supabase.from as any)('modifier_groups').update(groupRow).eq('id', g.id);
+            } else {
+                await (supabase.from as any)('modifier_groups').insert(groupRow);
+            }
+
+            // Sync options for this group
+            const existingOpts = await (supabase.from as any)('modifier_options').select('id').eq('group_id', g.id);
+            const existingOptIds = new Set((existingOpts.data || []).map((r: any) => r.id));
+            const currentOptIds = new Set((g.modifier_options || []).map((o: any) => o.id));
+
+            const toDeleteOpts = [...existingOptIds].filter(id => !currentOptIds.has(id));
+            if (toDeleteOpts.length > 0) {
+                await (supabase.from as any)('modifier_options').delete().in('id', toDeleteOpts);
+            }
+
+            for (const opt of (g.modifier_options || [])) {
+                const optRow = {
+                    id: opt.id,
+                    group_id: g.id,
+                    store_id: storeId,
+                    name: opt.name || 'Opción',
+                    price_delta: opt.price_delta ?? 0,
+                    recipe_multiplier: opt.recipe_multiplier ?? null,
+                    is_default: opt.is_default ?? false,
+                    sort_order: opt.sort_order ?? 0,
+                    is_active: opt.is_active !== false,
+                    affects_stock: opt.affects_stock !== false,
+                    affects_price: opt.affects_price !== false,
+                };
+                if (existingOptIds.has(opt.id)) {
+                    await (supabase.from as any)('modifier_options').update(optRow).eq('id', opt.id);
+                } else {
+                    await (supabase.from as any)('modifier_options').insert(optRow);
+                }
+
+                // Sync recipe_ops for this option
+                // Simple approach: delete all + re-insert
+                await (supabase.from as any)('modifier_option_recipe_ops').delete().eq('option_id', opt.id);
+                for (const op of (opt.modifier_option_recipe_ops || [])) {
+                    if (op.inventory_item_id) {
+                        await (supabase.from as any)('modifier_option_recipe_ops').insert({
+                            option_id: opt.id,
+                            operation: op.operation || 'add',
+                            inventory_item_id: op.inventory_item_id,
+                            quantity: op.quantity ?? 0,
+                            unit: op.unit || 'unit',
+                        });
+                    }
+                }
             }
         }
     };
@@ -1708,14 +1795,143 @@ const MenuDesign: React.FC = () => {
         updateItemImmediate(selectedItem.id, { addon_links: filteredAddons });
     };
 
+    // --- MODIFIER GROUP HANDLERS ---
+    const MODIFIER_TYPES = [
+        { value: 'size', label: 'Tamaño', icon: 'straighten', color: 'purple' },
+        { value: 'extra', label: 'Extra', icon: 'add_circle', color: 'neon' },
+        { value: 'replacement', label: 'Reemplazo', icon: 'swap_horiz', color: 'blue' },
+        { value: 'removal', label: 'Sin ingrediente', icon: 'remove_circle', color: 'red' },
+        { value: 'informational', label: 'Informativo', icon: 'info', color: 'gray' },
+    ] as const;
+
+    const handleAddModifierGroup = () => {
+        if (!selectedItem) return;
+        const newGroup = {
+            id: crypto.randomUUID(),
+            product_id: selectedItem.id,
+            store_id: profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533',
+            name: 'Nuevo Grupo',
+            modifier_type: 'extra',
+            min_select: 0,
+            max_select: 5,
+            sort_order: ((selectedItem as any).modifier_groups || []).length,
+            is_active: true,
+            modifier_options: [],
+        };
+        updateItemImmediate(selectedItem.id, { modifier_groups: [...((selectedItem as any).modifier_groups || []), newGroup] } as any);
+    };
+
+    const handleUpdateModifierGroup = (groupId: string, field: string, value: any) => {
+        if (!selectedItem) return;
+        const groups = ((selectedItem as any).modifier_groups || []).map((g: any) =>
+            g.id === groupId ? { ...g, [field]: value } : g
+        );
+        updateItemDebounced(selectedItem.id, { modifier_groups: groups } as any);
+    };
+
+    const handleRemoveModifierGroup = (groupId: string) => {
+        if (!selectedItem) return;
+        const groups = ((selectedItem as any).modifier_groups || []).filter((g: any) => g.id !== groupId);
+        updateItemImmediate(selectedItem.id, { modifier_groups: groups } as any);
+    };
+
+    const handleAddModifierOption = (groupId: string) => {
+        if (!selectedItem) return;
+        const groups = ((selectedItem as any).modifier_groups || []).map((g: any) => {
+            if (g.id !== groupId) return g;
+            const newOpt = {
+                id: crypto.randomUUID(),
+                group_id: groupId,
+                store_id: profile?.store_id || 'f5e3bfcf-3ccc-4464-9eb5-431fa6e26533',
+                name: 'Nueva Opción',
+                price_delta: 0,
+                recipe_multiplier: g.modifier_type === 'size' ? 1 : null,
+                is_default: false,
+                sort_order: (g.modifier_options || []).length,
+                is_active: true,
+                affects_stock: true,
+                affects_price: true,
+                modifier_option_recipe_ops: [],
+            };
+            return { ...g, modifier_options: [...(g.modifier_options || []), newOpt] };
+        });
+        updateItemImmediate(selectedItem.id, { modifier_groups: groups } as any);
+    };
+
+    const handleUpdateModifierOption = (groupId: string, optionId: string, field: string, value: any) => {
+        if (!selectedItem) return;
+        const groups = ((selectedItem as any).modifier_groups || []).map((g: any) => {
+            if (g.id !== groupId) return g;
+            return {
+                ...g,
+                modifier_options: (g.modifier_options || []).map((o: any) =>
+                    o.id === optionId ? { ...o, [field]: value } : o
+                ),
+            };
+        });
+        updateItemDebounced(selectedItem.id, { modifier_groups: groups } as any);
+    };
+
+    const handleRemoveModifierOption = (groupId: string, optionId: string) => {
+        if (!selectedItem) return;
+        const groups = ((selectedItem as any).modifier_groups || []).map((g: any) => {
+            if (g.id !== groupId) return g;
+            return { ...g, modifier_options: (g.modifier_options || []).filter((o: any) => o.id !== optionId) };
+        });
+        updateItemImmediate(selectedItem.id, { modifier_groups: groups } as any);
+    };
+
+    const handleAddRecipeOp = (groupId: string, optionId: string, inventoryItemId: string) => {
+        if (!selectedItem) return;
+        const inv = items.find(i => i.id === inventoryItemId);
+        const groups = ((selectedItem as any).modifier_groups || []).map((g: any) => {
+            if (g.id !== groupId) return g;
+            return {
+                ...g,
+                modifier_options: (g.modifier_options || []).map((o: any) => {
+                    if (o.id !== optionId) return o;
+                    const newOp = {
+                        id: crypto.randomUUID(),
+                        option_id: optionId,
+                        operation: g.modifier_type === 'removal' ? 'remove' : 'add',
+                        inventory_item_id: inventoryItemId,
+                        quantity: 1,
+                        unit: inv?.unit_type || 'unit',
+                    };
+                    return { ...o, modifier_option_recipe_ops: [...(o.modifier_option_recipe_ops || []), newOp] };
+                }),
+            };
+        });
+        updateItemImmediate(selectedItem.id, { modifier_groups: groups } as any);
+    };
+
+    const handleRemoveRecipeOp = (groupId: string, optionId: string, opIdx: number) => {
+        if (!selectedItem) return;
+        const groups = ((selectedItem as any).modifier_groups || []).map((g: any) => {
+            if (g.id !== groupId) return g;
+            return {
+                ...g,
+                modifier_options: (g.modifier_options || []).map((o: any) => {
+                    if (o.id !== optionId) return o;
+                    return { ...o, modifier_option_recipe_ops: (o.modifier_option_recipe_ops || []).filter((_: any, i: number) => i !== opIdx) };
+                }),
+            };
+        });
+        updateItemImmediate(selectedItem.id, { modifier_groups: groups } as any);
+    };
+
+    // State for modifier recipe op item selector
+    const [editingModifierOptId, setEditingModifierOptId] = useState<string | null>(null);
+    const [editingModifierGroupId, setEditingModifierGroupId] = useState<string | null>(null);
+
     // Explicit Save Helper
     const saveItemChanges = async () => {
         if (!selectedItem) return;
-        // Force update to DB to ensure persistence
         await persistItem(selectedItem.id, {
-            addon_links: selectedItem.addon_links
-        });
-        addToast('Extras guardados y sincronizados con la nube', 'success');
+            addon_links: selectedItem.addon_links,
+            modifier_groups: (selectedItem as any).modifier_groups,
+        } as any);
+        addToast('Cambios guardados y sincronizados con la nube', 'success');
     };
 
     // New functions for linking items
@@ -1749,10 +1965,15 @@ const MenuDesign: React.FC = () => {
                 v.id === variantId ? { ...v, recipe_overrides: [...(v.recipe_overrides || []), newOverride] } : v
             );
             updateItemImmediate(selectedItem.id, { variants: updatedVariants });
-        } else if ((linkType as string) === 'addon_update') {
+        } else if (linkType === 'addon_update') {
             // Update existing addon's inventory_item_id (not create new)
             if (!editingAddonId) return;
             handleUpdateAddon(editingAddonId, 'inventory_item_id', itemToLink.id);
+        } else if (linkType === 'modifier_recipe_op') {
+            // Add recipe op to modifier option
+            if (editingModifierGroupId && editingModifierOptId) {
+                handleAddRecipeOp(editingModifierGroupId, editingModifierOptId, itemToLink.id);
+            }
         }
         setShowItemSelector(false);
     };
@@ -2616,7 +2837,7 @@ const MenuDesign: React.FC = () => {
                         <div className="bg-white dark:bg-surface-dark border border-border-color dark:border-white/10 rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-[0_0_100px_rgba(74,222,128,0.1)]">
                             <div className="p-8 border-b border-white/5 flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-xl font-black uppercase tracking-tight">Vincular {linkType === 'addon' || (linkType as string) === 'addon_update' ? 'Insumo' : (linkType as string) === 'variant_override' ? 'Insumo a Variante' : 'Componente'}</h3>
+                                    <h3 className="text-xl font-black uppercase tracking-tight">Vincular {linkType === 'addon' || linkType === 'addon_update' ? 'Insumo' : linkType === 'variant_override' ? 'Insumo a Variante' : linkType === 'modifier_recipe_op' ? 'Insumo a Modificador' : 'Componente'}</h3>
                                     <p className="text-xs text-[#A1A1AA]">Selecciona un item de tu inventario base.</p>
                                 </div>
                                 <button onClick={() => setShowItemSelector(false)} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 transition-all"><X className="w-4 h-4" /></button>
@@ -3043,224 +3264,188 @@ const MenuDesign: React.FC = () => {
                                             </div>
                                         </div>
                                     )}
+                                    {/* SECCIÓN MODIFIER GROUPS (Motor de Composición) */}
                                     <div className="space-y-4">
                                         <div className="flex justify-between items-center border-b border-white/5 pb-2">
                                             <h4 className="text-[10px] font-black uppercase text-text-secondary tracking-[0.2em] flex items-center gap-2">
-                                                <span className="material-symbols-outlined text-sm">style</span> Variantes (Tamaños/Tipos)
+                                                <span className="material-symbols-outlined text-sm">tune</span> Modificadores
                                             </h4>
-                                            <button onClick={handleAddVariant} className="text-[8px] font-black bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg uppercase tracking-widest text-white transition-all border border-white/5">
-                                                + Agregar
+                                            <button onClick={handleAddModifierGroup} className="text-[8px] font-black bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg uppercase tracking-widest text-white transition-all border border-white/5">
+                                                + Grupo
                                             </button>
                                         </div>
-                                        <div className="space-y-2">
-                                            {selectedItem.variants?.map((variant) => {
-                                                const finalPrice = (selectedItem.price || 0) + (variant.price_adjustment || 0);
+                                        <div className="space-y-3">
+                                            {((selectedItem as any).modifier_groups || []).map((group: any, gIdx: number) => {
+                                                const typeInfo = MODIFIER_TYPES.find(t => t.value === group.modifier_type) || MODIFIER_TYPES[1];
+                                                const colorMap: Record<string, string> = {
+                                                    purple: 'border-purple-500/20 bg-purple-500/5',
+                                                    neon: 'border-neon/20 bg-neon/5',
+                                                    blue: 'border-blue-500/20 bg-blue-500/5',
+                                                    red: 'border-red-500/20 bg-red-500/5',
+                                                    gray: 'border-white/10 bg-white/[0.03]',
+                                                };
+                                                const textColorMap: Record<string, string> = {
+                                                    purple: 'text-purple-400',
+                                                    neon: 'text-neon',
+                                                    blue: 'text-blue-400',
+                                                    red: 'text-red-400',
+                                                    gray: 'text-white/50',
+                                                };
                                                 return (
-                                                <div key={variant.id} className="rounded-xl bg-white/[0.02] border border-white/5 group hover:border-white/10 transition-all overflow-hidden">
-                                                    {/* Main row: name + price delta + final price + delete */}
-                                                    <div className="flex items-center gap-2 p-3">
-                                                        <input
-                                                            value={variant.name}
-                                                            onChange={(e) => handleUpdateVariant(variant.id, 'name', e.target.value)}
-                                                            className="flex-1 min-w-0 h-8 px-3 rounded-lg bg-black/20 border border-white/10 text-[10px] font-bold text-white uppercase outline-none focus:border-neon/30 placeholder:text-white/20"
-                                                            placeholder="EJ: GRANDE"
-                                                        />
-                                                        <div className="relative w-20 shrink-0">
-                                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[8px] font-bold text-white/30">+$</span>
-                                                            <input
-                                                                type="number"
-                                                                value={variant.price_adjustment}
-                                                                onChange={(e) => handleUpdateVariant(variant.id, 'price_adjustment', parseFloat(e.target.value) || 0)}
-                                                                className={`w-full h-8 pl-6 pr-1 rounded-lg bg-black/20 border border-white/10 text-[10px] font-black text-right outline-none focus:border-neon/30 ${variant.price_adjustment > 0 ? 'text-neon' : variant.price_adjustment < 0 ? 'text-red-400' : 'text-white/50'}`}
-                                                                placeholder="0"
-                                                            />
-                                                        </div>
-                                                        <span className={`text-[10px] font-black tabular-nums w-16 text-right shrink-0 ${variant.price_adjustment !== 0 ? 'text-white' : 'text-white/40'}`}>
-                                                            ${finalPrice.toFixed(2)}
-                                                        </span>
-                                                        <button onClick={() => handleRemoveVariant(variant.id)} className="size-8 shrink-0 rounded-lg bg-white/5 flex items-center justify-center text-white/20 hover:text-red-500 hover:bg-red-500/10 transition-all">
-                                                            <span className="material-symbols-outlined text-sm">close</span>
-                                                        </button>
-                                                    </div>
-                                                    {/* Collapsible advanced: recipe multiplier + stock overrides */}
-                                                    <details className="group/adv" open={
-                                                        (variant.recipe_overrides?.length || 0) > 0 ||
-                                                        (variant.recipe_multiplier != null && variant.recipe_multiplier !== 1)
-                                                    }>
-                                                        <summary className="px-3 pb-2 text-[8px] font-bold text-white/20 uppercase tracking-widest cursor-pointer hover:text-white/40 transition-colors flex items-center gap-1 select-none">
-                                                            <span className="material-symbols-outlined text-[10px] group-open/adv:rotate-90 transition-transform">chevron_right</span>
-                                                            Avanzado
-                                                            {(variant.recipe_multiplier && variant.recipe_multiplier !== 1) && <span className="text-purple-400 ml-1">({variant.recipe_multiplier}x)</span>}
-                                                            {(variant.recipe_overrides?.length || 0) > 0 && <span className="text-amber-400 ml-1">({variant.recipe_overrides?.length} override{(variant.recipe_overrides?.length || 0) > 1 ? 's' : ''})</span>}
-                                                        </summary>
-                                                        <div className="px-3 pb-3 space-y-2">
-                                                            {/* Recipe multiplier */}
-                                                            <div className="flex items-center gap-2 p-2 rounded-lg bg-purple-500/5 border border-purple-500/10">
-                                                                <span className="material-symbols-outlined text-purple-400 text-sm">percent</span>
-                                                                <span className="flex-1 text-[8px] font-bold text-purple-300/70 uppercase">Multiplicador receta</span>
-                                                                <input
-                                                                    type="number"
-                                                                    value={variant.recipe_multiplier ?? 1}
-                                                                    onChange={(e) => handleUpdateVariant(variant.id, 'recipe_multiplier', parseFloat(e.target.value) || 1)}
-                                                                    className="w-14 h-7 bg-black/30 border border-purple-500/20 rounded px-2 text-[9px] font-black text-purple-300 text-right outline-none focus:border-purple-500"
-                                                                    step={0.1}
-                                                                    min={0.1}
-                                                                />
-                                                                <span className="text-[8px] text-purple-400/50 font-bold">x</span>
-                                                            </div>
-                                                            {/* Stock overrides */}
-                                                            {variant.recipe_overrides?.map((ov, ovIdx) => {
-                                                                const ovItem = items.find(i => i.id === ov.ingredient_id);
-                                                                const isMultiplier = ov.consumption_type === 'multiplier';
-                                                                return (
-                                                                    <div key={ovIdx} className="flex items-center gap-2 p-2 rounded-lg bg-black/30 border border-white/5 group/ov">
-                                                                        <span className="flex-1 text-[8px] font-bold text-white/50 truncate">{ovItem?.name || 'Insumo'}</span>
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                const newOverrides = [...(variant.recipe_overrides || [])];
-                                                                                const newType = isMultiplier ? 'fixed' : 'multiplier';
-                                                                                newOverrides[ovIdx] = { ...ov, consumption_type: newType, value: newType === 'multiplier' ? 1.5 : 0, quantity_delta: newType === 'fixed' ? 0 : 0 };
-                                                                                handleUpdateVariant(variant.id, 'recipe_overrides', newOverrides);
-                                                                            }}
-                                                                            className={`px-1.5 h-6 rounded text-[7px] font-black uppercase ${isMultiplier ? 'bg-purple-500/20 text-purple-400' : 'bg-white/5 text-white/40'}`}
-                                                                        >
-                                                                            {isMultiplier ? 'x' : '+'}
-                                                                        </button>
-                                                                        <input
-                                                                            type="number"
-                                                                            value={isMultiplier ? (ov.value || 1) : (ov.quantity_delta || 0)}
-                                                                            onChange={(e) => {
-                                                                                const val = parseFloat(e.target.value) || 0;
-                                                                                const newOverrides = [...(variant.recipe_overrides || [])];
-                                                                                newOverrides[ovIdx] = { ...ov, value: val, quantity_delta: isMultiplier ? 0 : val };
-                                                                                handleUpdateVariant(variant.id, 'recipe_overrides', newOverrides);
-                                                                            }}
-                                                                            className="w-14 h-6 bg-white/5 border border-white/10 rounded px-1 text-[8px] font-black text-right outline-none focus:border-neon/30 text-white"
-                                                                            step={isMultiplier ? 0.1 : 1}
-                                                                        />
-                                                                        <button onClick={() => handleUpdateVariant(variant.id, 'recipe_overrides', variant.recipe_overrides?.filter((_, i) => i !== ovIdx))} className="size-5 flex items-center justify-center text-white/20 hover:text-red-400 transition-all">
-                                                                            <span className="material-symbols-outlined text-xs">close</span>
-                                                                        </button>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                            <button
-                                                                onClick={() => { setEditingId(selectedItem.id); setEditingAddonId(variant.id); setLinkType('variant_override' as any); setShowItemSelector(true); }}
-                                                                className="w-full h-6 border border-dashed border-white/10 rounded text-[7px] font-bold text-white/25 hover:text-white/50 hover:border-white/20 transition-all uppercase tracking-widest"
-                                                            >
-                                                                + Override Insumo
-                                                            </button>
-                                                        </div>
-                                                    </details>
-                                                </div>
-                                                );
-                                            })}
-                                            {(!selectedItem.variants || selectedItem.variants.length === 0) && (
-                                                <div className="text-center py-4 border border-dashed border-white/10 rounded-xl">
-                                                    <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Sin variantes</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* SECCIÓN EXTRAS Y ADICIONALES */}
-                                    <div className="space-y-4">
-                                        <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                                            <h4 className="text-[10px] font-black uppercase text-text-secondary tracking-[0.2em] flex items-center gap-2">
-                                                <span className="material-symbols-outlined text-sm">extension</span> Extras & Adicionales
-                                            </h4>
-                                            <button onClick={handleAddAddon} className="text-[8px] font-black bg-neon/10 hover:bg-neon/20 text-neon px-3 py-1.5 rounded-lg uppercase tracking-widest transition-all border border-neon/20">
-                                                + Crear Extra
-                                            </button>
-                                        </div>
-                                        <div className="space-y-2">
-                                            {selectedItem.addon_links?.map((addon) => {
-                                                const linkedItem = items.find(i => i.id === addon.inventory_item_id);
-                                                const cost = linkedItem ? linkedItem.cost * (addon.quantity_consumed || 0) : 0;
-                                                const profit = addon.price - cost;
-                                                const margin = addon.price > 0 ? (profit / addon.price) * 100 : 0;
-
-                                                return (
-                                                    <div key={addon.id} className="rounded-xl bg-white/[0.02] border border-white/5 group hover:border-white/10 transition-all overflow-hidden">
-                                                        {/* Main row: name + price + margin badge + delete */}
+                                                    <div key={group.id} className={`rounded-xl border overflow-hidden ${colorMap[typeInfo.color] || colorMap.gray}`}>
+                                                        {/* Group header */}
                                                         <div className="flex items-center gap-2 p-3">
+                                                            <span className={`material-symbols-outlined text-sm ${textColorMap[typeInfo.color]}`}>{typeInfo.icon}</span>
                                                             <input
-                                                                value={addon.name}
-                                                                onChange={(e) => handleUpdateAddon(addon.id, 'name', e.target.value)}
+                                                                value={group.name}
+                                                                onChange={(e) => handleUpdateModifierGroup(group.id, 'name', e.target.value)}
                                                                 className="flex-1 min-w-0 h-8 px-3 rounded-lg bg-black/20 border border-white/10 text-[10px] font-bold text-white uppercase outline-none focus:border-neon/30 placeholder:text-white/20"
-                                                                placeholder="EJ: LECHE ALMENDRA"
+                                                                placeholder="Nombre del grupo"
                                                             />
-                                                            <div className="relative w-20 shrink-0">
-                                                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[8px] font-bold text-neon">$</span>
-                                                                <input
-                                                                    type="number"
-                                                                    value={addon.price}
-                                                                    onChange={(e) => handleUpdateAddon(addon.id, 'price', parseFloat(e.target.value) || 0)}
-                                                                    className="w-full h-8 pl-5 pr-1 rounded-lg bg-black/20 border border-white/10 text-[10px] font-black text-white text-right outline-none focus:border-neon/30"
-                                                                    placeholder="0"
-                                                                />
-                                                            </div>
-                                                            {linkedItem && (
-                                                                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded shrink-0 ${profit > 0 ? 'bg-neon/10 text-neon' : 'bg-red-500/10 text-red-400'}`}>
-                                                                    {profit > 0 ? `+${margin.toFixed(0)}%` : 'LOSS'}
-                                                                </span>
-                                                            )}
-                                                            <button onClick={() => handleRemoveAddon(addon.id)} className="size-8 shrink-0 rounded-lg bg-white/5 flex items-center justify-center text-white/20 hover:text-red-500 hover:bg-red-500/10 transition-all">
+                                                            <select
+                                                                value={group.modifier_type}
+                                                                onChange={(e) => handleUpdateModifierGroup(group.id, 'modifier_type', e.target.value)}
+                                                                className="h-8 px-2 rounded-lg bg-black/30 border border-white/10 text-[9px] font-bold text-white uppercase outline-none cursor-pointer"
+                                                            >
+                                                                {MODIFIER_TYPES.map(t => (
+                                                                    <option key={t.value} value={t.value}>{t.label}</option>
+                                                                ))}
+                                                            </select>
+                                                            <button onClick={() => handleRemoveModifierGroup(group.id)} className="size-8 shrink-0 rounded-lg bg-white/5 flex items-center justify-center text-white/20 hover:text-red-500 hover:bg-red-500/10 transition-all">
                                                                 <span className="material-symbols-outlined text-sm">close</span>
                                                             </button>
                                                         </div>
-                                                        {/* Collapsible: inventory link + cost details */}
-                                                        <details className="group/adv">
-                                                            <summary className="px-3 pb-2 text-[8px] font-bold text-white/20 uppercase tracking-widest cursor-pointer hover:text-white/40 transition-colors flex items-center gap-1 select-none">
-                                                                <span className="material-symbols-outlined text-[10px] group-open/adv:rotate-90 transition-transform">chevron_right</span>
-                                                                Inventario & Costos
-                                                                {linkedItem && <span className="text-white/30 ml-1 normal-case truncate max-w-[120px]">({linkedItem.name})</span>}
-                                                            </summary>
-                                                            <div className="px-3 pb-3 space-y-2">
-                                                                <div className="flex items-center gap-2">
-                                                                    <button
-                                                                        onClick={() => { setEditingAddonId(addon.id); setLinkType('addon_update' as any); setItemSelectorSearch(''); setShowItemSelector(true); }}
-                                                                        className="flex-1 h-7 px-2 rounded bg-white/5 border border-white/5 flex items-center justify-between text-[8px] font-bold text-white uppercase hover:border-neon/30 hover:bg-white/10 transition-all text-left truncate"
-                                                                    >
-                                                                        <span className="truncate">{linkedItem?.name || 'SELECCIONAR INSUMO...'}</span>
-                                                                        <span className="material-symbols-outlined text-[10px] opacity-50">search</span>
-                                                                    </button>
-                                                                    <div className="relative w-16 shrink-0">
+                                                        {/* Group config: min/max select */}
+                                                        <div className="flex items-center gap-3 px-3 pb-2">
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="text-[7px] font-bold text-white/30 uppercase">Min:</span>
+                                                                <input type="number" value={group.min_select ?? 0} min={0}
+                                                                    onChange={(e) => handleUpdateModifierGroup(group.id, 'min_select', parseInt(e.target.value) || 0)}
+                                                                    className="w-10 h-6 bg-black/20 border border-white/10 rounded px-1 text-[9px] font-bold text-white text-center outline-none focus:border-neon/30"
+                                                                />
+                                                            </div>
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="text-[7px] font-bold text-white/30 uppercase">Max:</span>
+                                                                <input type="number" value={group.max_select ?? 1} min={1}
+                                                                    onChange={(e) => handleUpdateModifierGroup(group.id, 'max_select', parseInt(e.target.value) || 1)}
+                                                                    className="w-10 h-6 bg-black/20 border border-white/10 rounded px-1 text-[9px] font-bold text-white text-center outline-none focus:border-neon/30"
+                                                                />
+                                                            </div>
+                                                            {group.min_select > 0 && (
+                                                                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-[7px] font-black text-amber-400 uppercase">Obligatorio</span>
+                                                            )}
+                                                            {group.max_select === 1 && (
+                                                                <span className="px-1.5 py-0.5 rounded bg-white/5 text-[7px] font-black text-white/40 uppercase">Radio</span>
+                                                            )}
+                                                            {group.max_select > 1 && (
+                                                                <span className="px-1.5 py-0.5 rounded bg-white/5 text-[7px] font-black text-white/40 uppercase">Multi</span>
+                                                            )}
+                                                        </div>
+                                                        {/* Options list */}
+                                                        <div className="px-3 pb-3 space-y-1.5">
+                                                            {(group.modifier_options || []).map((opt: any, oIdx: number) => (
+                                                                <div key={opt.id} className="rounded-lg bg-black/20 border border-white/5 overflow-hidden">
+                                                                    <div className="flex items-center gap-2 p-2">
                                                                         <input
-                                                                            type="number"
-                                                                            value={addon.quantity_consumed || 0}
-                                                                            onChange={(e) => handleUpdateAddon(addon.id, 'quantity_consumed', parseFloat(e.target.value) || 0)}
-                                                                            className="w-full h-7 pl-1 pr-6 bg-white/5 border border-white/5 rounded text-[8px] font-bold text-white outline-none focus:border-neon/30 text-right"
-                                                                            step={0.001}
+                                                                            value={opt.name}
+                                                                            onChange={(e) => handleUpdateModifierOption(group.id, opt.id, 'name', e.target.value)}
+                                                                            className="flex-1 min-w-0 h-7 px-2 rounded bg-black/30 border border-white/10 text-[9px] font-bold text-white outline-none focus:border-neon/30 placeholder:text-white/20"
+                                                                            placeholder="Nombre opción"
                                                                         />
-                                                                        <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[7px] font-bold text-white/30">{linkedItem?.unit_type || 'UN'}</span>
-                                                                    </div>
-                                                                </div>
-                                                                {linkedItem && (
-                                                                    <div className="flex items-center justify-between text-[8px] text-white/30 px-1">
-                                                                        <span>Costo: <span className="text-white/50 font-bold">${cost.toFixed(2)}</span></span>
-                                                                        <span>Ganancia: <span className={`font-bold ${profit > 0 ? 'text-neon' : 'text-red-400'}`}>${profit.toFixed(2)}</span></span>
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                const suggestedPrice = cost * 3;
-                                                                                handleUpdateAddon(addon.id, 'price', parseFloat(suggestedPrice.toFixed(2)));
-                                                                            }}
-                                                                            title="Auto-calcular (Costo x 3)"
-                                                                            className="flex items-center gap-0.5 text-neon hover:text-white transition-all"
-                                                                        >
-                                                                            <span className="material-symbols-outlined text-[10px]">bolt</span>
-                                                                            x3
+                                                                        {/* Price delta */}
+                                                                        <div className="relative w-16 shrink-0">
+                                                                            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[7px] font-bold text-white/30">+$</span>
+                                                                            <input
+                                                                                type="number"
+                                                                                value={opt.price_delta ?? 0}
+                                                                                onChange={(e) => handleUpdateModifierOption(group.id, opt.id, 'price_delta', parseFloat(e.target.value) || 0)}
+                                                                                className={`w-full h-7 pl-5 pr-1 rounded bg-black/30 border border-white/10 text-[9px] font-black text-right outline-none focus:border-neon/30 ${(opt.price_delta || 0) > 0 ? 'text-neon' : (opt.price_delta || 0) < 0 ? 'text-red-400' : 'text-white/40'}`}
+                                                                            />
+                                                                        </div>
+                                                                        {/* Size multiplier (only for size type) */}
+                                                                        {group.modifier_type === 'size' && (
+                                                                            <div className="relative w-14 shrink-0">
+                                                                                <input
+                                                                                    type="number"
+                                                                                    value={opt.recipe_multiplier ?? 1}
+                                                                                    onChange={(e) => handleUpdateModifierOption(group.id, opt.id, 'recipe_multiplier', parseFloat(e.target.value) || 1)}
+                                                                                    className="w-full h-7 pl-1 pr-4 rounded bg-purple-500/10 border border-purple-500/20 text-[9px] font-black text-purple-300 text-right outline-none focus:border-purple-500"
+                                                                                    step={0.1} min={0.1}
+                                                                                />
+                                                                                <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[8px] font-bold text-purple-400/50">x</span>
+                                                                            </div>
+                                                                        )}
+                                                                        <button onClick={() => handleRemoveModifierOption(group.id, opt.id)} className="size-6 shrink-0 rounded flex items-center justify-center text-white/20 hover:text-red-400 transition-all">
+                                                                            <span className="material-symbols-outlined text-xs">close</span>
                                                                         </button>
                                                                     </div>
-                                                                )}
-                                                            </div>
-                                                        </details>
+                                                                    {/* Recipe operations (for types that affect stock) */}
+                                                                    {['replacement', 'extra', 'removal'].includes(group.modifier_type) && (
+                                                                        <div className="px-2 pb-2 space-y-1">
+                                                                            {(opt.modifier_option_recipe_ops || []).map((op: any, opIdx: number) => {
+                                                                                const opItem = items.find(i => i.id === op.inventory_item_id);
+                                                                                return (
+                                                                                    <div key={opIdx} className="flex items-center gap-1.5 p-1.5 rounded bg-black/30 border border-white/5">
+                                                                                        <span className={`text-[7px] font-black uppercase px-1 py-0.5 rounded ${op.operation === 'add' ? 'bg-neon/10 text-neon' : op.operation === 'remove' ? 'bg-red-500/10 text-red-400' : 'bg-blue-500/10 text-blue-400'}`}>
+                                                                                            {op.operation}
+                                                                                        </span>
+                                                                                        <span className="flex-1 text-[8px] font-bold text-white/50 truncate">{opItem?.name || 'Insumo'}</span>
+                                                                                        {op.operation !== 'remove' && (
+                                                                                            <input
+                                                                                                type="number"
+                                                                                                value={op.quantity ?? 0}
+                                                                                                onChange={(e) => {
+                                                                                                    const newOps = [...(opt.modifier_option_recipe_ops || [])];
+                                                                                                    newOps[opIdx] = { ...op, quantity: parseFloat(e.target.value) || 0 };
+                                                                                                    handleUpdateModifierOption(group.id, opt.id, 'modifier_option_recipe_ops', newOps);
+                                                                                                }}
+                                                                                                className="w-12 h-5 bg-white/5 border border-white/10 rounded px-1 text-[8px] font-bold text-white text-right outline-none focus:border-neon/30"
+                                                                                                step={0.01}
+                                                                                            />
+                                                                                        )}
+                                                                                        <button onClick={() => handleRemoveRecipeOp(group.id, opt.id, opIdx)} className="size-4 flex items-center justify-center text-white/15 hover:text-red-400">
+                                                                                            <span className="material-symbols-outlined text-[10px]">close</span>
+                                                                                        </button>
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    setEditingModifierGroupId(group.id);
+                                                                                    setEditingModifierOptId(opt.id);
+                                                                                    setLinkType('modifier_recipe_op' as any);
+                                                                                    setItemSelectorSearch('');
+                                                                                    setShowItemSelector(true);
+                                                                                }}
+                                                                                className="w-full h-5 border border-dashed border-white/10 rounded text-[7px] font-bold text-white/20 hover:text-white/40 hover:border-white/20 transition-all uppercase tracking-widest"
+                                                                            >
+                                                                                + Insumo
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                            <button
+                                                                onClick={() => handleAddModifierOption(group.id)}
+                                                                className={`w-full h-7 border border-dashed rounded-lg text-[8px] font-bold uppercase tracking-widest transition-all ${
+                                                                    typeInfo.color === 'purple' ? 'border-purple-500/20 text-purple-400/50 hover:text-purple-400 hover:border-purple-500/40' :
+                                                                    typeInfo.color === 'neon' ? 'border-neon/20 text-neon/50 hover:text-neon hover:border-neon/40' :
+                                                                    typeInfo.color === 'blue' ? 'border-blue-500/20 text-blue-400/50 hover:text-blue-400 hover:border-blue-500/40' :
+                                                                    typeInfo.color === 'red' ? 'border-red-500/20 text-red-400/50 hover:text-red-400 hover:border-red-500/40' :
+                                                                    'border-white/10 text-white/25 hover:text-white/50 hover:border-white/20'
+                                                                }`}
+                                                            >
+                                                                + Opción
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 );
                                             })}
-                                            {(!selectedItem.addon_links || selectedItem.addon_links.length === 0) && (
-                                                <div className="text-center py-4 border border-dashed border-white/10 rounded-xl">
-                                                    <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Sin extras</span>
+                                            {((selectedItem as any).modifier_groups || []).length === 0 && (
+                                                <div className="text-center py-6 border border-dashed border-white/10 rounded-xl">
+                                                    <span className="material-symbols-outlined text-2xl text-white/10 block mb-2">tune</span>
+                                                    <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest block">Sin modificadores</span>
+                                                    <span className="text-[8px] text-white/15 mt-1 block">Tamaños, extras, reemplazos, sin ingredientes</span>
                                                 </div>
                                             )}
                                         </div>

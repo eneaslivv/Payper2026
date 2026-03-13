@@ -660,7 +660,10 @@ const OrderBoard: React.FC = () => {
                         <div className="flex gap-3">
                           <span className="size-6 rounded bg-neon/10 text-neon flex items-center justify-center font-black text-[10px] shrink-0">{item.quantity}x</span>
                           <div className="flex flex-col">
-                            <span className="text-[12px] font-bold text-text-main dark:text-white uppercase tracking-tight leading-snug">{item.name || 'Producto Desconocido'}</span>
+                            <span className="text-[12px] font-bold text-text-main dark:text-white uppercase tracking-tight leading-snug">
+                              {item.name || 'Producto Desconocido'}
+                              {(item as any).variant_name && <span className="text-[10px] font-normal text-text-secondary dark:text-white/40"> · {(item as any).variant_name}</span>}
+                            </span>
                             {item.notes && <span className="text-[10px] text-text-secondary dark:text-white/50 italic mt-0.5">Nota: {item.notes}</span>}
                           </div>
                         </div>
@@ -998,7 +1001,7 @@ const Column: React.FC<{
                   <>
                     {order.items.slice(0, 3).map((item, idx) => (
                       <div key={`preview-item-${order.id}-${item.product_id || item.name || idx}`} className="flex justify-between items-center p-1.5 rounded bg-black/[0.03] dark:bg-white/[0.03] border border-border-color/30 dark:border-white/5">
-                        <span className="text-[9px] font-bold text-text-main dark:text-white uppercase tracking-tight truncate max-w-[150px]">{item.name}</span>
+                        <span className="text-[9px] font-bold text-text-main dark:text-white uppercase tracking-tight truncate max-w-[150px]">{item.name}{(item as any).variant_name ? ` · ${(item as any).variant_name}` : ''}</span>
                         <span className="text-xs font-black text-neon leading-none">x{item.quantity}</span>
                       </div>
                     ))}

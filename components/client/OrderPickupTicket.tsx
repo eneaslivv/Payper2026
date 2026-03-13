@@ -376,7 +376,9 @@ export const OrderPickupTicket = ({ order, storeSlug, theme, allowDisconnect, ta
                                             fontStyle: (item as any).isDeleted ? 'italic' : 'normal'
                                         }}>
                                             {item.name || item.product?.name || 'Producto'}
+                                            {(item as any).variant_name && <span style={{ opacity: 0.5 }}> · {(item as any).variant_name}</span>}
                                         </span>
+                                        {(item as any).notes && <span className="block text-[10px] italic" style={{ color: `${textColor}60` }}>Nota: {(item as any).notes}</span>}
                                     </span>
                                 </div>
                             ))}

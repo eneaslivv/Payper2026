@@ -42,7 +42,7 @@ interface ClientContextType {
     categories: string[];
     loadingProducts: boolean;
     cart: CartItem[];
-    addToCart: (item: MenuItem, quantity: number, customs: string[], size: string, notes: string) => void;
+    addToCart: (item: MenuItem, quantity: number, customs: string[], size: string, notes: string, modifierIds?: string[]) => void;
     removeFromCart: (itemId: string, size?: string) => void;
     updateQuantity: (itemId: string, delta: number, size: string) => void;
     clearCart: () => void;
@@ -636,11 +636,16 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     if (menuProducts && menuProducts.length > 0) {
                         // Fetch variants + addons for menu product IDs
                         const productIds = menuProducts.map((p: any) => p.product_id);
-                        const [variantsResult, addonsResult] = await Promise.all([
+                        const [variantsResult, addonsResult, modGroupsResult] = await Promise.all([
                             (supabase.from('product_variants') as any)
                                 .select('*').in('product_id', productIds),
                             (supabase.from('product_addons') as any)
-                                .select('*').in('product_id', productIds)
+                                .select('*').in('product_id', productIds),
+                            (supabase.from('modifier_groups') as any)
+                                .select('*, modifier_options(*, modifier_option_recipe_ops(*))')
+                                .in('product_id', productIds)
+                                .eq('is_active', true)
+                                .order('sort_order', { ascending: true })
                         ]);
                         if (cancelled) return;
 
@@ -664,6 +669,18 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                             });
                         });
 
+                        // Build modifier_groups by product
+                        const modGroupsByProduct: Record<string, any[]> = {};
+                        (modGroupsResult.data || []).forEach((mg: any) => {
+                            if (!modGroupsByProduct[mg.product_id]) modGroupsByProduct[mg.product_id] = [];
+                            modGroupsByProduct[mg.product_id].push({
+                                ...mg,
+                                modifier_options: (mg.modifier_options || [])
+                                    .filter((o: any) => o.is_active !== false)
+                                    .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)),
+                            });
+                        });
+
                         const menuItems: MenuItem[] = menuProducts.map((item: any) => ({
                             id: item.product_id,
                             name: item.name,
@@ -676,6 +693,7 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                             availableStock: getAvailableStock(item),
                             variants: variantsByProduct[item.product_id] || [],
                             addons: addonsByProduct[item.product_id] || [],
+                            modifier_groups: modGroupsByProduct[item.product_id] || [],
                             item_type: 'product' as const,
                         }));
 
@@ -901,10 +919,19 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         };
     }, [store?.id, user?.id, activeOrderId]);
 
-    const addToCart = (item: MenuItem, quantity: number, customs: string[], size: string, notes: string) => {
+    const addToCart = (item: MenuItem, quantity: number, customs: string[], size: string, notes: string, modifierIds?: string[]) => {
         const result = enforceStockLimit(item, quantity);
         if (!result.allowed) return;
-        setCart(prev => [...prev, { ...item, quantity: result.quantity, customizations: customs, size, notes, variant_id: size || undefined, addon_ids: customs.length > 0 ? customs : undefined }]);
+        setCart(prev => [...prev, {
+            ...item,
+            quantity: result.quantity,
+            customizations: customs,
+            size,
+            notes,
+            variant_id: size || undefined,
+            addon_ids: customs.length > 0 ? customs : undefined,
+            modifier_ids: modifierIds && modifierIds.length > 0 ? modifierIds : undefined,
+        }]);
     };
 
     const updateQuantity = (itemId: string, delta: number, size: string) => {

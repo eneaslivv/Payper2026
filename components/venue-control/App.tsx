@@ -292,7 +292,7 @@ const App: React.FC = () => {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [profile?.store_id, fetchNodes, fetchZones, fetchNotifications]);
+  }, [profile?.store_id, fetchNodes, fetchZones, fetchNotifications, fetchActiveOrders]);
 
 
   // --- ZONE ACTIONS (DB) ---
@@ -508,6 +508,9 @@ const App: React.FC = () => {
   // For "Occupied", we rely on open_table RPC in TableDetail (to be implemented)
   // For now, this generic updater can stick around for manual overrides if needed, but safe creation should be preferred.
   const handleUpdateTableStatus = useCallback(async (id: string, status: TableStatus) => {
+    // Optimistic update — immediately reflect in UI
+    setTables(prev => prev.map(t => t.id === id ? { ...t, status } : t));
+
     try {
       if (status === TableStatus.FREE) {
         // Cancel all active orders for this table so derived_status becomes 'free'
@@ -530,8 +533,15 @@ const App: React.FC = () => {
           .in('status', ['active', 'arrived']);
       }
       await supabase.from('venue_nodes' as any).update({ status }).eq('id', id);
-    } catch (e) { console.error(e); }
-  }, []);
+      // Force refetch to sync derived state from VIEW
+      fetchNodes();
+      fetchActiveOrders();
+    } catch (e) {
+      console.error(e);
+      // Revert optimistic update on error
+      fetchNodes();
+    }
+  }, [fetchNodes, fetchActiveOrders]);
 
   const handleSelectTable = (id: string | null) => { setSelectedTableId(id); setSelectedBarId(null); setSelectedQrId(null); };
   const handleSelectBar = (id: string | null) => { setSelectedBarId(id); setSelectedTableId(null); setSelectedQrId(null); };

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4"
 import { initMonitoring, captureException } from "../_shared/monitoring.ts";
+import { generateInviteUserHtml, getInviteUserSubject } from "../_shared/email-templates.ts";
 
 const FUNCTION_NAME = 'invite-member';
 initMonitoring(FUNCTION_NAME);
@@ -153,7 +154,7 @@ serve(async (req) => {
         }
 
         // 5. Upsert profile — is_active: true because user was explicitly invited by an admin
-        await supabaseAdmin.from('profiles').upsert({
+        const { error: upsertError } = await supabaseAdmin.from('profiles').upsert({
             id: targetUserId,
             email: email,
             full_name: fullName || email.split('@')[0],
@@ -162,6 +163,23 @@ serve(async (req) => {
             store_id: storeId,
             is_active: true
         });
+        if (upsertError) {
+            console.error('[INVITE-MEMBER] Profile upsert FAILED:', upsertError);
+            // Fallback: try activate_invited_user RPC which is SECURITY DEFINER
+            const { error: rpcError } = await supabaseAdmin.rpc('activate_invited_user', {
+                p_user_id: targetUserId,
+                p_store_id: storeId,
+                p_role_id: targetRoleId,
+                p_invitation_token: null
+            });
+            if (rpcError) {
+                console.error('[INVITE-MEMBER] activate_invited_user fallback also failed:', rpcError);
+            } else {
+                console.log('[INVITE-MEMBER] Profile activated via RPC fallback');
+            }
+        } else {
+            console.log('[INVITE-MEMBER] Profile upserted successfully');
+        }
 
         // 6. Generate recovery link
         const origin = req.headers.get('origin') || 'https://payper.vercel.app';
@@ -198,33 +216,15 @@ serve(async (req) => {
             if (resendKey) {
                 console.log(`[INVITE-MEMBER] Sending email to ${email}...`);
 
-                // Map commonly used English roles to Spanish for the email body if needed
-                const roleMap: Record<string, string> = {
-                    'admin': 'Administrador', 'manager': 'Gerente', 'staff': 'Staff',
-                    'cashier': 'Cajero', 'kitchen': 'Cocina', 'waiter': 'Mesero', 'owner': 'Propietario'
-                };
-                // Use fetched name, or mapped name, or raw.
-                const displayRole = roleMap[roleNameForEmail] || roleNameForEmail;
-
+                const emailVars = { store_name: storeName, store_logo_url: store.logo_url, member_name: fullName, invited_role: roleNameForEmail, accept_url: inviteLink, expires_in_days: 7 };
                 const resendRes = await fetch('https://api.resend.com/emails', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         from: `${storeName} <no-reply@payperapp.io>`,
                         to: email,
-                        subject: `Invitación al Equipo - ${storeName}`,
-                        html: `
-                            <div style="font-family:sans-serif; background:#0F110F; color:#fff; padding:40px; border-radius:12px; border: 1px solid #4ADE80; max-width: 500px; margin: auto;">
-                                <h1 style="color:#4ADE80; font-size: 24px; font-weight: 800; margin-bottom: 24px;">${storeName}</h1>
-                                <p style="font-size: 16px; line-height: 1.5; margin-bottom: 16px;">Hola <b>${fullName || 'Nuevo miembro'}</b>,</p>
-                                <p style="font-size: 14px; line-height: 1.5; color: #a1a1aa; margin-bottom: 24px;">Has sido invitado como <b style="color:#4ADE80">${displayRole}</b> al equipo de <b style="color:#fff">${storeName}</b>.</p>
-                                <div style="background: rgba(74, 222, 128, 0.1); padding: 16px; border-radius: 8px; margin-bottom: 24px;">
-                                    <p style="font-size: 12px; color: #4ADE80; margin: 0; text-transform: uppercase; font-weight: bold;">Tu acceso está listo</p>
-                                </div>
-                                <a href="${inviteLink}" style="display:inline-block; background:#4ADE80; color:#000; padding:14px 28px; text-decoration:none; border-radius:6px; font-weight:700; font-size: 14px;">ACEPTAR INVITACIÓN</a>
-                                <p style="font-size: 11px; color: #52525b; margin-top: 24px;">Enlace válido por 7 días. Si no esperabas esta invitación, puedes ignorar este correo.</p>
-                            </div>
-                        `
+                        subject: getInviteUserSubject(emailVars),
+                        html: generateInviteUserHtml(emailVars)
                     })
                 });
                 const resendResult = await resendRes.json();

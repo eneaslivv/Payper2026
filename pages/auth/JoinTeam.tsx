@@ -24,8 +24,13 @@ const JoinTeam = () => {
     const [isRegistering, setIsRegistering] = useState(false);
 
     useEffect(() => {
-        // If user is already logged in, redirect to dashboard
-        if (user) {
+        // If user is logged in AND has invitation token → auto-activate (recovery link flow)
+        if (user && token) {
+            autoActivateProfile();
+            return;
+        }
+        // If user is logged in but no token → they don't need the join page
+        if (user && !token) {
             addToast('Ya tienes una sesión activa', 'info');
             navigate('/');
             return;
@@ -37,6 +42,59 @@ const JoinTeam = () => {
         }
         checkInvitation();
     }, [token, user]);
+
+    const autoActivateProfile = async () => {
+        try {
+            // Fetch invitation
+            const { data: inv, error } = await supabase
+                .from('team_invitations' as any)
+                .select('*')
+                .eq('token', token)
+                .single();
+
+            if (error || !inv) throw new Error('Invitación inválida o expirada');
+
+            if ((inv as any).status !== 'pending') {
+                // Already accepted, just redirect
+                addToast('Invitación ya aceptada. Redirigiendo...', 'info');
+                window.location.href = `${window.location.origin}/#/`;
+                window.location.reload();
+                return;
+            }
+
+            // Resolve role_id from invitation
+            const roleValue = (inv as any).role;
+            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(roleValue);
+            const resolvedRoleId = isUUID ? roleValue : null;
+
+            // Activate via SECURITY DEFINER RPC (sets is_active=true, marks invitation accepted)
+            const { error: activateError } = await (supabase as any).rpc('activate_invited_user', {
+                p_user_id: user!.id,
+                p_store_id: (inv as any).store_id,
+                p_role_id: resolvedRoleId,
+                p_invitation_token: token
+            });
+
+            if (activateError) {
+                console.error('activate_invited_user error:', activateError);
+                throw new Error('Error al activar cuenta');
+            }
+
+            addToast('¡Cuenta activada! Bienvenido al equipo.', 'success');
+
+            // Force full reload to re-fetch profile with is_active: true
+            setTimeout(() => {
+                window.location.href = `${window.location.origin}/#/`;
+                window.location.reload();
+            }, 1000);
+        } catch (e: any) {
+            console.error('Auto-activate error:', e);
+            addToast(e.message || 'Error al activar', 'error');
+            navigate('/');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const checkInvitation = async () => {
         try {

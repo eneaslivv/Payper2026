@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { initMonitoring, captureException } from "../_shared/monitoring.ts";
+import { generatePaymentQueueHtml } from "../_shared/email-templates.ts";
 
 const FUNCTION_NAME = 'process-email-queue';
 initMonitoring(FUNCTION_NAME);
@@ -27,6 +28,7 @@ serve(async (req) => {
         }
 
         const results = [];
+        const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
         for (const item of queueItems) {
             try {
@@ -43,23 +45,35 @@ serve(async (req) => {
                     continue;
                 }
 
-                // 3. Generate HTML payload (Simplified version or call template generator)
-                // For now, we reuse the payload stored in the queue
-                const emailBody = {
-                    to: item.recipient,
-                    subject: item.subject,
-                    html: `<h1>Pedido #${order.order_number} Confirmado</h1><p>Gracias por tu compra en ${order.store?.name}. Total: $${order.total_amount}</p>`, // Basic fallback, in real use we'd reuse the template
-                    text: `Tu pedido #${order.order_number} ha sido confirmado.`
-                };
+                // 3. Send directly via Resend API (avoids inter-function auth issues)
+                const resendKey = Deno.env.get('RESEND_API_KEY') || '';
+                if (!resendKey) throw new Error('RESEND_API_KEY not configured');
 
-                // 4. Send via existing send-email function
-                const emailRes = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+                const storeName = (order.store as any)?.name || 'Tu Tienda';
+                const storeLogoUrl = (order.store as any)?.logo_url || null;
+                const customerName = (order.client as any)?.full_name || 'Cliente';
+
+                const emailHtml = generatePaymentQueueHtml({
+                    store_name: storeName,
+                    store_logo_url: storeLogoUrl,
+                    customer_name: customerName,
+                    order_number: order.order_number,
+                    total_amount: order.total_amount
+                });
+
+                const emailRes = await fetch('https://api.resend.com/emails', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+                        'Authorization': `Bearer ${resendKey}`,
+                        'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(emailBody)
+                    body: JSON.stringify({
+                        from: `${storeName} <no-reply@payperapp.io>`,
+                        to: item.recipient,
+                        subject: item.subject,
+                        html: emailHtml,
+                        text: `Tu pedido #${order.order_number} ha sido confirmado. Total: $${order.total_amount}`
+                    })
                 });
 
                 const emailResult = await emailRes.json();
@@ -75,8 +89,10 @@ serve(async (req) => {
                         })
                         .eq('id', item.id);
                     results.push({ id: item.id, status: 'sent' });
+                    // Rate limit: Resend allows 2 req/s
+                    await delay(600);
                 } else {
-                    throw new Error(emailResult.error || 'Failed to send');
+                    throw new Error(JSON.stringify(emailResult) || 'Failed to send');
                 }
 
             } catch (err) {

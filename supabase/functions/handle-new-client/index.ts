@@ -22,12 +22,8 @@ serve(async (req) => {
             return new Response(JSON.stringify({ error: 'Missing data' }), { status: 400 });
         }
 
-        // 1. Get Store Details (Name)
-        // We can use bare fetch to Rest API or assume store_name is passed?
-        // Database triggers usually send row. Clients has store_id.
-        // We need to fetch Store Name.
-
-        const storeRes = await fetch(`${supabaseUrl}/rest/v1/stores?id=eq.${record.store_id}&select=name`, {
+        // 1. Get Store Details (Name + Logo)
+        const storeRes = await fetch(`${supabaseUrl}/rest/v1/stores?id=eq.${record.store_id}&select=name,logo_url`, {
             headers: {
                 'apikey': supabaseAnonKey,
                 'Authorization': `Bearer ${supabaseAnonKey}`
@@ -36,28 +32,33 @@ serve(async (req) => {
 
         const stores = await storeRes.json();
         const storeName = stores?.[0]?.name || 'Tu Tienda';
+        const storeLogoUrl = stores?.[0]?.logo_url || null;
 
-        // 2. Generate HTML
-        const emailHtml = generateWelcomeClientHtml({
+        // 2. Generate HTML with unified template
+        const emailVars = {
             store_name: storeName,
+            store_logo_url: storeLogoUrl,
             customer_name: record.name || 'Cliente',
-            login_url: 'https://payper.io/' // Or store specific URL?
-        });
+            login_url: 'https://payperapp.io/'
+        };
 
-        const subject = getWelcomeClientSubject({
-            store_name: storeName,
-            customer_name: record.name || 'Cliente',
-            login_url: ''
-        });
+        const emailHtml = generateWelcomeClientHtml(emailVars);
+        const subject = getWelcomeClientSubject(emailVars);
 
-        // 3. Send Email via send-email function
-        const emailRes = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+        // 3. Send Email directly via Resend (avoids 401 inter-function auth issue)
+        const resendKey = Deno.env.get('RESEND_API_KEY') || '';
+        if (!resendKey) {
+            throw new Error('RESEND_API_KEY not configured');
+        }
+
+        const emailRes = await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${supabaseAnonKey}`
+                'Authorization': `Bearer ${resendKey}`,
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
+                from: `${storeName} <no-reply@payperapp.io>`,
                 to: record.email,
                 subject: subject,
                 html: emailHtml
@@ -67,7 +68,7 @@ serve(async (req) => {
         const emailResult = await emailRes.json();
 
         if (!emailRes.ok) {
-            throw new Error(emailResult.error || 'Failed to send email');
+            throw new Error(JSON.stringify(emailResult) || 'Failed to send email');
         }
 
         return new Response(JSON.stringify({ success: true, id: emailResult.id }), {

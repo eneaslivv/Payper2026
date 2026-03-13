@@ -30,6 +30,24 @@ export interface MenuItem {
     name: string;
     options: { label: string; price: number }[];
   }[];
+  // Modifier groups (new system)
+  modifier_groups?: {
+    id: string;
+    name: string;
+    modifier_type: 'size' | 'replacement' | 'extra' | 'removal' | 'informational';
+    min_select: number;
+    max_select: number;
+    sort_order: number;
+    modifier_options: {
+      id: string;
+      name: string;
+      price_delta: number;
+      recipe_multiplier?: number;
+      is_default?: boolean;
+      affects_stock?: boolean;
+      affects_price?: boolean;
+    }[];
+  }[];
 }
 
 export interface CartItem extends MenuItem {
@@ -38,6 +56,7 @@ export interface CartItem extends MenuItem {
   size?: string;
   variant_id?: string;
   addon_ids?: string[];
+  modifier_ids?: string[]; // New: selected modifier option IDs
   notes?: string;
   location?: string; // Mesa o Barra
 }

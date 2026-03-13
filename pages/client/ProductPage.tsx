@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLayoutEffect } from 'react';
 import { useClient } from '../../contexts/ClientContext';
@@ -15,26 +15,43 @@ const ProductPage: React.FC = () => {
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
 
-  // Dynamic Variants/Addons from DB
+  // Modifier group selections: { [groupId]: selectedOptionId[] }
+  const [selections, setSelections] = useState<Record<string, string[]>>({});
+
+  // Legacy fallback state (used when no modifier_groups exist)
   const [variantId, setVariantId] = useState<string | null>(null);
   const [addonIds, setAddonIds] = useState<string[]>([]);
 
-  // Effect to set initial selection from variants if available
+  const hasModifierGroups = (item?.modifier_groups || []).length > 0;
+
+  // Initialize default selections from modifier groups
   useEffect(() => {
-    if (item?.variants && item.variants.length > 0) {
+    if (!item) return;
+    if (hasModifierGroups) {
+      const defaults: Record<string, string[]> = {};
+      for (const group of item.modifier_groups!) {
+        const defaultOpt = group.modifier_options.find(o => o.is_default);
+        if (defaultOpt) {
+          defaults[group.id] = [defaultOpt.id];
+        } else if (group.min_select > 0 && group.modifier_options.length > 0) {
+          // Auto-select first option for required groups
+          defaults[group.id] = [group.modifier_options[0].id];
+        } else {
+          defaults[group.id] = [];
+        }
+      }
+      setSelections(defaults);
+    } else if (item.variants && item.variants.length > 0) {
       setVariantId(item.variants[0].id);
     }
   }, [item]);
 
-  // Theme support
+  // Theme
   const theme = store?.menu_theme || {};
   const accentColor = theme.accentColor || '#36e27b';
   const backgroundColor = theme.backgroundColor || '#000000';
   const textColor = theme.textColor || '#FFFFFF';
   const surfaceColor = theme.surfaceColor || '#141714';
-
-  // Helper to convert hex to rgb for gradients if needed, or just use hex
-  // specific logic for gradients: we'll use inline styles for gradients to support dynamic colors
 
   useLayoutEffect(() => {
     window.scrollTo(0, 0);
@@ -48,36 +65,101 @@ const ProductPage: React.FC = () => {
 
   if (!item) return <div className="h-screen flex items-center justify-center" style={{ backgroundColor, color: textColor }}>Product not found</div>;
 
-  // --- CALCULATIONS ---
-  const currentVariant = item.variants?.find(v => v.id === variantId);
-
-  const variantPriceAdj = currentVariant?.price_adjustment !== undefined ? Number(currentVariant.price_adjustment) : 0;
-  const itemPrice = item.price !== undefined ? Number(item.price) : 0;
-  const basePrice = itemPrice + variantPriceAdj;
-
-  const selectedAddonsCost = item.addons
-    ? item.addons
-      .filter(a => addonIds.includes(a.id))
-      .reduce((sum, a) => sum + (Number(a.price) || 0), 0)
-    : 0;
-
-  const totalPrice = (basePrice + selectedAddonsCost) * quantity;
-
-  // --- HANDLERS ---
-  const toggleCustom = (id: string) => {
-    setAddonIds(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
+  // --- SELECTION HANDLERS ---
+  const toggleOption = (groupId: string, optionId: string, maxSelect: number) => {
+    setSelections(prev => {
+      const current = prev[groupId] || [];
+      if (maxSelect === 1) {
+        // Radio behavior
+        return { ...prev, [groupId]: current.includes(optionId) ? [] : [optionId] };
+      }
+      // Multi-select (checkbox)
+      if (current.includes(optionId)) {
+        return { ...prev, [groupId]: current.filter(id => id !== optionId) };
+      }
+      if (current.length >= maxSelect) return prev; // at max
+      return { ...prev, [groupId]: [...current, optionId] };
+    });
   };
 
-  const handleAdd = () => {
-    // Construct a cart item with the calculated price
-    const cartItem = {
-      ...item,
-      price: basePrice + selectedAddonsCost,
-    };
+  // --- PRICE CALCULATION ---
+  const totalPrice = useMemo(() => {
+    let price = Number(item.price) || 0;
 
-    // We pass IDs to context for the order
-    addToCart(cartItem, quantity, addonIds, variantId || undefined, notes);
+    if (hasModifierGroups) {
+      for (const group of item.modifier_groups!) {
+        const selected = selections[group.id] || [];
+        for (const optId of selected) {
+          const opt = group.modifier_options.find(o => o.id === optId);
+          if (opt && opt.affects_price !== false) {
+            price += Number(opt.price_delta) || 0;
+          }
+        }
+      }
+    } else {
+      // Legacy
+      const currentVariant = item.variants?.find(v => v.id === variantId);
+      price += Number(currentVariant?.price_adjustment) || 0;
+      if (item.addons) {
+        price += item.addons
+          .filter(a => addonIds.includes(a.id))
+          .reduce((sum, a) => sum + (Number(a.price) || 0), 0);
+      }
+    }
+
+    return price * quantity;
+  }, [item, selections, variantId, addonIds, quantity, hasModifierGroups]);
+
+  // All selected modifier option IDs (flat)
+  const allSelectedModifierIds = useMemo(() => {
+    return Object.values(selections).flat();
+  }, [selections]);
+
+  // Validation: check required groups
+  const isValid = useMemo(() => {
+    if (!hasModifierGroups) return true;
+    for (const group of item.modifier_groups!) {
+      const selected = (selections[group.id] || []).length;
+      if (selected < group.min_select) return false;
+    }
+    return true;
+  }, [item, selections, hasModifierGroups]);
+
+  // --- ADD TO CART ---
+  const handleAdd = () => {
+    if (!isValid) return;
+
+    if (hasModifierGroups) {
+      // Calculate unit price with modifiers
+      let unitPrice = Number(item.price) || 0;
+      for (const group of item.modifier_groups!) {
+        for (const optId of (selections[group.id] || [])) {
+          const opt = group.modifier_options.find(o => o.id === optId);
+          if (opt && opt.affects_price !== false) unitPrice += Number(opt.price_delta) || 0;
+        }
+      }
+      const cartItem = { ...item, price: unitPrice };
+      addToCart(cartItem, quantity, [], '', notes, allSelectedModifierIds);
+    } else {
+      // Legacy path
+      const currentVariant = item.variants?.find(v => v.id === variantId);
+      const variantAdj = Number(currentVariant?.price_adjustment) || 0;
+      const addonsCost = item.addons
+        ? item.addons.filter(a => addonIds.includes(a.id)).reduce((sum, a) => sum + (Number(a.price) || 0), 0)
+        : 0;
+      const cartItem = { ...item, price: Number(item.price) + variantAdj + addonsCost };
+      addToCart(cartItem, quantity, addonIds, variantId || '', notes);
+    }
     navigate(`/m/${slug}/cart`);
+  };
+
+  // --- MODIFIER TYPE ICONS ---
+  const typeIcons: Record<string, string> = {
+    size: 'straighten',
+    extra: 'add_circle',
+    replacement: 'swap_horiz',
+    removal: 'remove_circle',
+    informational: 'info',
   };
 
   return (
@@ -85,7 +167,7 @@ const ProductPage: React.FC = () => {
       className="relative flex min-h-screen w-full flex-col overflow-x-hidden pb-48 font-display transition-colors duration-500"
       style={{ backgroundColor, color: textColor }}
     >
-      {/* HEADER SUPERPUESTO */}
+      {/* HEADER */}
       <div
         className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between p-6 pt-[calc(1.2rem+env(safe-area-inset-top))]"
         style={{ background: `linear-gradient(to bottom, ${backgroundColor}F2, transparent)` }}
@@ -133,8 +215,110 @@ const ProductPage: React.FC = () => {
           <p className="mt-4 text-[12px] leading-relaxed font-medium tracking-tight" style={{ color: `${textColor}4D` }}>{item.description}</p>
         </div>
 
-        {/* DYNAMIC SIZES / VARIANTS */}
-        {item.variants && item.variants.length > 0 && (
+        {/* MODIFIER GROUPS (new system) */}
+        {hasModifierGroups && item.modifier_groups!.map((group) => {
+          const selected = selections[group.id] || [];
+          const isRadio = group.max_select === 1;
+          const isRequired = group.min_select > 0;
+          const isMissing = isRequired && selected.length < group.min_select;
+
+          return (
+            <div key={group.id} className="mb-8">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="material-symbols-outlined text-sm" style={{ color: `${textColor}33` }}>{typeIcons[group.modifier_type] || 'tune'}</span>
+                <h3 className="text-[8px] font-black uppercase tracking-[0.4em] italic" style={{ color: `${textColor}33` }}>{group.name}</h3>
+                {isRequired && (
+                  <span className="text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full" style={{
+                    backgroundColor: isMissing ? '#ef444420' : `${accentColor}15`,
+                    color: isMissing ? '#ef4444' : accentColor,
+                  }}>
+                    Obligatorio
+                  </span>
+                )}
+              </div>
+
+              {/* Radio-style (size, replacement) */}
+              {isRadio ? (
+                <div className="flex gap-3 flex-wrap">
+                  {group.modifier_options.map((opt) => {
+                    const isSelected = selected.includes(opt.id);
+                    return (
+                      <label
+                        key={opt.id}
+                        onClick={() => toggleOption(group.id, opt.id, group.max_select)}
+                        className={`group relative flex flex-1 min-w-[30%] cursor-pointer flex-col p-4 rounded-2xl border transition-all duration-500 ${isSelected ? 'shadow-xl' : ''}`}
+                        style={{
+                          backgroundColor: isSelected ? `${accentColor}0D` : `${textColor}03`,
+                          borderColor: isSelected ? accentColor : `${textColor}0D`
+                        }}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span
+                            className="material-symbols-outlined transition-colors"
+                            style={{ fontSize: '24px', color: isSelected ? accentColor : `${textColor}1A` }}
+                          >{typeIcons[group.modifier_type] || 'local_cafe'}</span>
+                          {(opt.price_delta || 0) !== 0 && (
+                            <span className="text-[10px] font-black" style={{ color: isSelected ? accentColor : textColor }}>
+                              {opt.price_delta >= 0 ? '+' : ''}${opt.price_delta}
+                            </span>
+                          )}
+                        </div>
+                        <span
+                          className="text-[9px] font-black uppercase tracking-[0.2em] transition-colors"
+                          style={{ color: isSelected ? accentColor : `${textColor}33` }}
+                        >{opt.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* Multi-select (extra, removal, informational) */
+                <div className="grid grid-cols-1 gap-3">
+                  {group.modifier_options.map((opt) => {
+                    const isSelected = selected.includes(opt.id);
+                    const atMax = !isSelected && selected.length >= group.max_select;
+                    return (
+                      <label
+                        key={opt.id}
+                        className={`flex cursor-pointer items-center justify-between rounded-2xl p-5 transition-all duration-500 border ${atMax ? 'opacity-40' : ''}`}
+                        style={{
+                          backgroundColor: isSelected ? `${accentColor}0A` : `${textColor}03`,
+                          borderColor: isSelected ? `${accentColor}33` : `${textColor}0D`
+                        }}
+                        onClick={() => !atMax && toggleOption(group.id, opt.id, group.max_select)}
+                      >
+                        <div className="flex items-center gap-5">
+                          <div
+                            className="flex h-12 w-12 items-center justify-center rounded-xl transition-all"
+                            style={{
+                              backgroundColor: isSelected ? accentColor : `${textColor}0D`,
+                              color: isSelected ? '#000000' : `${textColor}33`
+                            }}
+                          >
+                            <span className="material-symbols-outlined">
+                              {group.modifier_type === 'removal' ? 'remove_circle' :
+                               group.modifier_type === 'informational' ? 'info' :
+                               isSelected ? 'check_circle' : 'add_circle'}
+                            </span>
+                          </div>
+                          <span className="font-bold text-sm uppercase tracking-tight" style={{ color: textColor }}>{opt.name}</span>
+                        </div>
+                        {(opt.price_delta || 0) !== 0 && (
+                          <span className="font-black text-sm" style={{ color: accentColor }}>
+                            {opt.price_delta > 0 ? '+' : ''}${opt.price_delta}
+                          </span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* LEGACY: VARIANTS (when no modifier_groups) */}
+        {!hasModifierGroups && item.variants && item.variants.length > 0 && (
           <div className="mb-10">
             <h3 className="mb-5 text-[8px] font-black uppercase tracking-[0.4em] italic" style={{ color: `${textColor}33` }}>Selección de Tamaño</h3>
             <div className="flex gap-3 flex-wrap">
@@ -149,37 +333,20 @@ const ProductPage: React.FC = () => {
                   }}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span
-                      className="material-symbols-outlined transition-colors"
-                      style={{ fontSize: '24px', color: variantId === v.id ? accentColor : `${textColor}1A` }}
-                    >local_cafe</span>
+                    <span className="material-symbols-outlined transition-colors" style={{ fontSize: '24px', color: variantId === v.id ? accentColor : `${textColor}1A` }}>local_cafe</span>
                     <span className="text-[10px] font-black" style={{ color: variantId === v.id ? accentColor : textColor }}>
                       {v.price_adjustment >= 0 ? '+' : ''}${v.price_adjustment}
                     </span>
                   </div>
-                  <span
-                    className="text-[9px] font-black uppercase tracking-[0.2em] transition-colors"
-                    style={{ color: variantId === v.id ? accentColor : `${textColor}33` }}
-                  >{v.name}</span>
-
-                  {/* Stock Microcopy for Variants */}
-                  {v.recipe_overrides && v.recipe_overrides.length > 0 && (
-                    <div className="mt-2 space-y-0.5">
-                      {v.recipe_overrides.map((ov, i) => (
-                        <div key={`recipe-override-${ov.ingredient_id || i}`} className="text-[7px] font-bold uppercase tracking-tighter" style={{ color: `${textColor}33` }}>
-                          {ov.quantity_delta > 0 ? '+' : ''}{ov.quantity_delta} impacto stock
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] transition-colors" style={{ color: variantId === v.id ? accentColor : `${textColor}33` }}>{v.name}</span>
                 </label>
               ))}
             </div>
           </div>
         )}
 
-        {/* DYNAMIC ADDONS */}
-        {item.addons && item.addons.length > 0 && (
+        {/* LEGACY: ADDONS (when no modifier_groups) */}
+        {!hasModifierGroups && item.addons && item.addons.length > 0 && (
           <div className="mb-10">
             <h3 className="mb-5 text-[8px] font-black uppercase tracking-[0.4em] italic" style={{ color: `${textColor}33` }}>Personalización</h3>
             <div className="grid grid-cols-1 gap-3">
@@ -191,27 +358,16 @@ const ProductPage: React.FC = () => {
                     backgroundColor: addonIds.includes(addon.id) ? `${accentColor}0A` : `${textColor}03`,
                     borderColor: addonIds.includes(addon.id) ? `${accentColor}33` : `${textColor}0D`
                   }}
-                  onClick={() => toggleCustom(addon.id)}
+                  onClick={() => setAddonIds(prev => prev.includes(addon.id) ? prev.filter(c => c !== addon.id) : [...prev, addon.id])}
                 >
                   <div className="flex items-center gap-5">
-                    <div
-                      className="flex h-12 w-12 items-center justify-center rounded-xl transition-all"
-                      style={{
-                        backgroundColor: addonIds.includes(addon.id) ? accentColor : `${textColor}0D`,
-                        color: addonIds.includes(addon.id) ? '#000000' : `${textColor}33`
-                      }}
-                    >
-                      <span className="material-symbols-outlined">{addon.name.toLowerCase().includes('leche') || addon.name.toLowerCase().includes('milk') ? 'opacity' : 'add_circle'}</span>
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl transition-all" style={{
+                      backgroundColor: addonIds.includes(addon.id) ? accentColor : `${textColor}0D`,
+                      color: addonIds.includes(addon.id) ? '#000000' : `${textColor}33`
+                    }}>
+                      <span className="material-symbols-outlined">add_circle</span>
                     </div>
-                    <div>
-                      <span className="font-bold text-sm uppercase tracking-tight block" style={{ color: textColor }}>{addon.name}</span>
-                      {/* Stock Microcopy for Addons */}
-                      {addon.quantity_consumed && addon.quantity_consumed > 0 && (
-                        <span className="text-[9px] font-bold uppercase tracking-widest block" style={{ color: `${textColor}33` }}>
-                          +{addon.quantity_consumed} por unidad
-                        </span>
-                      )}
-                    </div>
+                    <span className="font-bold text-sm uppercase tracking-tight" style={{ color: textColor }}>{addon.name}</span>
                   </div>
                   <span className="font-black text-sm" style={{ color: accentColor }}>+${addon.price}</span>
                 </label>
@@ -281,15 +437,15 @@ const ProductPage: React.FC = () => {
 
           <button
             onClick={handleAdd}
-            disabled={item.isOutOfStock}
-            className={`group relative flex h-20 flex-1 items-center justify-between rounded-full pl-8 pr-3 text-black active:scale-[0.97] transition-all duration-500 overflow-hidden border border-white/20 ${item.isOutOfStock ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
-            style={{ backgroundColor: item.isOutOfStock ? '#333' : accentColor, boxShadow: item.isOutOfStock ? 'none' : `0 20px 40px ${accentColor}40` }}
+            disabled={item.isOutOfStock || !isValid}
+            className={`group relative flex h-20 flex-1 items-center justify-between rounded-full pl-8 pr-3 text-black active:scale-[0.97] transition-all duration-500 overflow-hidden border border-white/20 ${(item.isOutOfStock || !isValid) ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
+            style={{ backgroundColor: (item.isOutOfStock || !isValid) ? '#333' : accentColor, boxShadow: (item.isOutOfStock || !isValid) ? 'none' : `0 20px 40px ${accentColor}40` }}
           >
             <div className="flex flex-col items-start leading-[1] text-left shrink-0">
-              <span className="font-black uppercase text-[11px] tracking-tight">{item.isOutOfStock ? 'Agotado' : 'Añadir'}</span>
-              <span className="font-black uppercase text-[11px] tracking-tight opacity-40 italic">{item.isOutOfStock ? 'Sin Stock' : 'Orden'}</span>
+              <span className="font-black uppercase text-[11px] tracking-tight">{item.isOutOfStock ? 'Agotado' : !isValid ? 'Seleccioná' : 'Añadir'}</span>
+              <span className="font-black uppercase text-[11px] tracking-tight opacity-40 italic">{item.isOutOfStock ? 'Sin Stock' : !isValid ? 'opciones' : 'Orden'}</span>
             </div>
-            {!item.isOutOfStock && (
+            {!item.isOutOfStock && isValid && (
               <div className="flex items-center gap-4 relative z-10 ml-2">
                 <div className="flex items-center gap-3">
                   <span className="font-black text-[22px] italic tabular-nums tracking-tighter leading-none">${totalPrice.toFixed(2)}</span>

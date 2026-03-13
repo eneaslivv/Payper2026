@@ -68,7 +68,27 @@
       "mcp__claude_ai_Supabase__apply_migration",
       "Bash(git checkout:*)",
       "Bash(git remote:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(git merge:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:www.payperapp.io)",
+      "Bash(750ml\"\\)\n- Color-coded: green >50%, orange >20%, red <20%\n- No open packages: \"Todo sellado\" instead of confusing \"100%)",
+      "Bash(1L\"\n- Multiple packages shown individually \\(up to 3\\)\n\nDrawer breakdown:\n- Stock Total shows closed units as primary number with \"x capacity c/u\"\n- Abiertos shows count of open packages + total remaining\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(npx vite build:*)",
+      "Bash(npx vercel:*)",
+      "mcp__claude_ai_Supabase__get_logs",
+      "Bash(git status -u)",
+      "mcp__claude_ai_Supabase__list_tables",
+      "mcp__claude_ai_Supabase__get_edge_function",
+      "mcp__claude_ai_Supabase__deploy_edge_function",
+      "mcp__claude_ai_Supabase__list_edge_functions",
+      "Bash(git fetch vercel)",
+      "Bash(cd /c/Users/eneas/Downloads/livv/Payper/\"coffe payper\")",
+      "Bash(for f in supabase/migrations/*.sql)",
+      "Bash(do if grep -q \"order_item_addons\" \"$f\")",
+      "Bash(then grep -n \"id.*UUID\\\\|tenant_id\\\\|addon_id\\\\|order_item_id\\\\|price\" \"$f\")",
+      "Bash(fi)",
+      "Bash(sqlite3 \":memory:\" \"SELECT 1\")"
     ]
   }
 }

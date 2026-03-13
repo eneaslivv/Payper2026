@@ -1444,6 +1444,80 @@ const InventoryManagement: React.FC = () => {
     return closed + openRemaining;
   };
 
+  // === VARIANT HANDLERS (for inline editing in RECETA tab) ===
+  const syncProductVariantsInv = async (productId: string, storeId: string, variants: any[]) => {
+    const existing = await (supabase.from as any)('product_variants').select('id').eq('product_id', productId);
+    const existingIds = new Set((existing.data || []).map((r: any) => r.id));
+    const currentIds = new Set(variants.map(v => v.id));
+
+    const toDelete = [...existingIds].filter(id => !currentIds.has(id));
+    if (toDelete.length > 0) {
+      await (supabase.from as any)('product_variants').delete().in('id', toDelete);
+    }
+
+    for (const v of variants) {
+      const row = {
+        id: v.id,
+        product_id: productId,
+        tenant_id: storeId,
+        name: v.name || 'Variante',
+        price_delta: v.price_adjustment ?? v.price_delta ?? 0,
+        active: v.active !== false,
+        recipe_multiplier: v.recipe_multiplier ?? null,
+        recipe_overrides: v.recipe_overrides?.length
+          ? v.recipe_overrides.map((ov: any) => ({
+              inventory_item_id: ov.ingredient_id || ov.inventory_item_id,
+              quantity: ov.consumption_type === 'multiplier' ? (ov.value ?? 1) : (ov.value ?? ov.quantity_delta ?? 0),
+              consumption_type: ov.consumption_type || 'fixed',
+            }))
+          : null,
+      };
+      if (existingIds.has(v.id)) {
+        await (supabase.from as any)('product_variants').update(row).eq('id', v.id);
+      } else {
+        await (supabase.from as any)('product_variants').insert(row);
+      }
+    }
+  };
+
+  const handleAddVariantInv = () => {
+    if (!selectedItem) return;
+    const storeId = profile?.store_id || '';
+    const newVariant = {
+      id: crypto.randomUUID(),
+      product_id: selectedItem.id,
+      name: 'Nueva Variante',
+      price_adjustment: 0,
+      recipe_overrides: [],
+      active: true,
+      created_at: new Date().toISOString()
+    };
+    const updated = [...(selectedItem.variants || []), newVariant];
+    setSelectedItem(prev => prev ? { ...prev, variants: updated } : null);
+    setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, variants: updated } : i));
+    syncProductVariantsInv(selectedItem.id, storeId, updated);
+  };
+
+  const handleUpdateVariantInv = (variantId: string, field: string, value: any) => {
+    if (!selectedItem) return;
+    const storeId = profile?.store_id || '';
+    const updated = (selectedItem.variants || []).map(v =>
+      v.id === variantId ? { ...v, [field]: value } : v
+    );
+    setSelectedItem(prev => prev ? { ...prev, variants: updated } : null);
+    setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, variants: updated } : i));
+    syncProductVariantsInv(selectedItem.id, storeId, updated);
+  };
+
+  const handleRemoveVariantInv = (variantId: string) => {
+    if (!selectedItem) return;
+    const storeId = profile?.store_id || '';
+    const updated = (selectedItem.variants || []).filter(v => v.id !== variantId);
+    setSelectedItem(prev => prev ? { ...prev, variants: updated } : null);
+    setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, variants: updated } : i));
+    syncProductVariantsInv(selectedItem.id, storeId, updated);
+  };
+
   const getRecipeAvailability = (item: InventoryItem) => {
     // 1. Get Variants
     const variants = item.variants && item.variants.length > 0 ? item.variants : [];
@@ -3333,6 +3407,59 @@ const InventoryManagement: React.FC = () => {
                       </div>
                     );
                   })()}
+
+                  {/* VARIANT EDITOR SECTION */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-white/40 text-sm">tune</span>
+                        <span className="text-[9px] font-black uppercase text-white/40 tracking-[0.2em]">Variantes (Tamaños/Tipos)</span>
+                      </div>
+                      <button
+                        onClick={handleAddVariantInv}
+                        className="text-[8px] font-black bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg uppercase tracking-widest text-white transition-all border border-white/5"
+                      >
+                        + Agregar
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {selectedItem.variants?.map((variant: any) => {
+                        const finalPrice = (selectedItem.price || 0) + (variant.price_adjustment || 0);
+                        return (
+                          <div key={variant.id} className="flex items-center gap-2 p-3 rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-all">
+                            <input
+                              value={variant.name}
+                              onChange={(e) => handleUpdateVariantInv(variant.id, 'name', e.target.value)}
+                              className="flex-1 min-w-0 h-8 px-3 rounded-lg bg-black/20 border border-white/10 text-[10px] font-bold text-white uppercase outline-none focus:border-neon/30 placeholder:text-white/20"
+                              placeholder="EJ: GRANDE"
+                            />
+                            <div className="relative w-20 shrink-0">
+                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[8px] font-bold text-white/30">+$</span>
+                              <input
+                                type="number"
+                                value={variant.price_adjustment}
+                                onChange={(e) => handleUpdateVariantInv(variant.id, 'price_adjustment', parseFloat(e.target.value) || 0)}
+                                className={`w-full h-8 pl-6 pr-1 rounded-lg bg-black/20 border border-white/10 text-[10px] font-black text-right outline-none focus:border-neon/30 ${variant.price_adjustment > 0 ? 'text-neon' : variant.price_adjustment < 0 ? 'text-red-400' : 'text-white/50'}`}
+                                placeholder="0"
+                              />
+                            </div>
+                            <span className={`text-[10px] font-black tabular-nums w-16 text-right shrink-0 ${variant.price_adjustment !== 0 ? 'text-white' : 'text-white/40'}`}>
+                              ${finalPrice.toFixed(2)}
+                            </span>
+                            <button onClick={() => handleRemoveVariantInv(variant.id)} className="size-8 shrink-0 rounded-lg bg-white/5 flex items-center justify-center text-white/20 hover:text-red-500 hover:bg-red-500/10 transition-all">
+                              <span className="material-symbols-outlined text-sm">close</span>
+                            </button>
+                          </div>
+                        );
+                      })}
+                      {(!selectedItem.variants || selectedItem.variants.length === 0) && (
+                        <div className="text-center py-4 border border-dashed border-white/10 rounded-xl">
+                          <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Sin variantes</span>
+                          <p className="text-[8px] text-white/15 mt-1">Agregá tamaños o tipos (ej: Grande, Chico)</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
                   {/* UX MICROCOPY FOR RECIPES */}
                   <div className="grid grid-cols-2 gap-3">
