@@ -241,6 +241,9 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
   const [historyOrders, setHistoryOrders] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+  // All sessions (QR scans) for analytics
+  const [allSessions, setAllSessions] = useState<any[]>([]);
+
   // Fetch Items when selectedOrderId changes
   useEffect(() => {
     if (!selectedOrderId) {
@@ -357,10 +360,26 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
     }
   };
 
+  // Fetch all sessions (QR scans) for this node
+  const fetchAllSessions = async () => {
+    if (!profile?.store_id || !table.id) return;
+    try {
+      const { data } = await (supabase.from('client_sessions' as any) as any)
+        .select('id, client_id, created_at, ended_at, is_active, end_reason, clients:client_id(name, full_name, phone)')
+        .eq('table_id', table.id)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (data) setAllSessions(data);
+    } catch (e) {
+      console.error('Failed to fetch sessions:', e);
+    }
+  };
+
   // Fetch history when tab changes to history or analytics
   useEffect(() => {
     if (activeTab === 'history' || activeTab === 'analytics') {
       fetchHistoryOrders();
+      fetchAllSessions();
     }
   }, [activeTab]);
 
@@ -1481,6 +1500,63 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, mode, onClose, onUpdat
               <div className="w-full h-1 bg-black rounded-full overflow-hidden">
                 <div className="h-full bg-[#36e27b]" style={{ width: '100%' }}></div>
               </div>
+            </div>
+
+            {/* QR Scans / Sessions */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-[9px] font-black uppercase tracking-widest text-zinc-600 italic flex items-center gap-2">
+                  <QrCode size={14} className="text-zinc-600" />
+                  Escaneos QR
+                </h4>
+                <span className="text-[10px] font-black text-[#36e27b] tabular-nums">{allSessions.length} total</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <MetricCard
+                  label="Sesiones Activas"
+                  value={allSessions.filter(s => s.is_active).length.toString()}
+                />
+                <MetricCard
+                  label="Sesiones Cerradas"
+                  value={allSessions.filter(s => !s.is_active).length.toString()}
+                />
+              </div>
+
+              {allSessions.length > 0 ? (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {allSessions.map((session: any) => {
+                    const client = session.clients;
+                    const displayName = client?.full_name || client?.name || client?.phone || 'Anónimo';
+                    return (
+                      <div key={session.id} className="bg-[#080808] border border-zinc-900/50 p-3 rounded-2xl flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-xl bg-zinc-950 flex items-center justify-center text-zinc-500">
+                            <QrCode size={14} />
+                          </div>
+                          <div>
+                            <p className="text-white text-[11px] font-bold uppercase tracking-tight">{displayName}</p>
+                            <p className="text-[8px] text-zinc-600 font-medium">
+                              {new Date(session.created_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                              {session.ended_at && (
+                                <span className="text-zinc-700"> → {new Date(session.ended_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        <span className={`text-[7px] px-2 py-0.5 border rounded-full font-black uppercase tracking-widest ${session.is_active ? 'border-[#36e27b]/30 text-[#36e27b]' : 'border-zinc-700 text-zinc-500'}`}>
+                          {session.is_active ? 'Activa' : session.end_reason === 'removed_by_admin' ? 'Removido' : 'Cerrada'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-zinc-700">
+                  <QrCode size={20} className="mx-auto mb-2 opacity-20" />
+                  <p className="text-[8px] font-black uppercase tracking-widest">Sin escaneos registrados</p>
+                </div>
+              )}
             </div>
           </div>
         )}

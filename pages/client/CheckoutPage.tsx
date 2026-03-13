@@ -561,7 +561,7 @@ const CheckoutPage: React.FC = () => {
 
   return (
     <div
-      className="relative flex min-h-screen w-full flex-col overflow-x-hidden pb-48 font-display transition-colors duration-500"
+      className="relative flex min-h-screen w-full flex-col overflow-x-hidden pb-32 font-display transition-colors duration-500"
       style={{ backgroundColor, color: textColor }}
     >
       {/* HEADER AJUSTADO A SAFE AREA TOP */}
@@ -579,10 +579,10 @@ const CheckoutPage: React.FC = () => {
         <h2 className="flex-1 text-center text-[10px] font-black tracking-[0.5em] uppercase pr-12 italic opacity-40" style={{ color: textColor }}>Finalizar Orden</h2>
       </div>
 
-      <main className="flex-1 py-8">
+      <main className="flex-1 py-5">
         {/* SECCIÓN ENTREGA CON INDICADOR DINÁMICO */}
-        <section className="px-6 mb-12">
-          <div className="flex items-center justify-between mb-8">
+        <section className="px-6 mb-8">
+          <div className="flex items-center justify-between mb-5">
             <h3 className="text-[10px] font-black uppercase tracking-[0.4em]" style={{ color: `${textColor}99` }}>Modo de Entrega</h3>
 
             <div className="relative flex items-center">
@@ -625,54 +625,53 @@ const CheckoutPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-5">
+          <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => { setDeliveryMode('local'); setIsEditingLocation(false); }}
-              className={`relative flex flex-col items-center justify-center h-48 rounded-[2.5rem] border-2 transition-all duration-700 overflow-hidden active:scale-95 ${deliveryMode === 'local'
-                ? 'shadow-2xl'
-                : 'opacity-30 grayscale'
+              className={`relative flex flex-col items-center justify-center h-28 rounded-2xl border transition-all duration-500 overflow-hidden active:scale-[0.97] ${deliveryMode === 'local'
+                ? 'shadow-lg'
+                : 'opacity-40 grayscale'
                 }`}
               style={deliveryMode === 'local' ? {
                 borderColor: accentColor,
                 backgroundColor: `${accentColor}0A`,
-                boxShadow: `0 20px 50px ${accentColor}26`
+                boxShadow: `0 8px 24px ${accentColor}1A`
               } : {
                 borderColor: `${textColor}0D`,
                 backgroundColor: `${textColor}05`
               }}
             >
-              <div className="absolute top-0 right-0 w-24 h-24 blur-3xl rounded-full -mr-12 -mt-12" style={{ backgroundColor: `${accentColor}0D` }}></div>
-              <span className={`material-symbols-outlined text-[44px] mb-4 transition-all duration-700 ${deliveryMode === 'local' ? 'fill-icon scale-110' : 'scale-90'}`} style={{ color: deliveryMode === 'local' ? accentColor : `${textColor}80` }}>local_cafe</span>
-              <span className={`text-[11px] font-black uppercase tracking-[0.2em] italic`} style={{ color: deliveryMode === 'local' ? accentColor : `${textColor}80` }}>Consumo Local</span>
-              {deliveryMode === 'local' && <div className="absolute bottom-4 w-6 h-1 rounded-full shadow-lg" style={{ backgroundColor: accentColor, boxShadow: `0 0 10px ${accentColor}` }}></div>}
+              <span className={`material-symbols-outlined text-[28px] mb-2 transition-all duration-500 ${deliveryMode === 'local' ? 'fill-icon' : ''}`} style={{ color: deliveryMode === 'local' ? accentColor : `${textColor}60` }}>local_cafe</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.15em]" style={{ color: deliveryMode === 'local' ? accentColor : `${textColor}60` }}>Consumo Local</span>
+              {deliveryMode === 'local' && <div className="absolute bottom-2.5 w-5 h-0.5 rounded-full" style={{ backgroundColor: accentColor, boxShadow: `0 0 8px ${accentColor}` }}></div>}
             </button>
 
             <button
               onClick={() => { setDeliveryMode('takeout'); setIsEditingLocation(false); }}
-              className={`relative flex flex-col items-center justify-center h-48 rounded-[2.5rem] border-2 transition-all duration-700 overflow-hidden active:scale-95 ${deliveryMode === 'takeout'
-                ? 'shadow-2xl'
-                : 'opacity-30 grayscale'
+              className={`relative flex flex-col items-center justify-center h-28 rounded-2xl border transition-all duration-500 overflow-hidden active:scale-[0.97] ${deliveryMode === 'takeout'
+                ? 'shadow-lg'
+                : 'opacity-40 grayscale'
                 }`}
               style={deliveryMode === 'takeout' ? {
                 borderColor: accentColor,
                 backgroundColor: `${accentColor}0A`,
-                boxShadow: `0 20px 50px ${accentColor}26`
+                boxShadow: `0 8px 24px ${accentColor}1A`
               } : {
                 borderColor: `${textColor}0D`,
                 backgroundColor: `${textColor}05`
               }}
             >
-              <span className={`material-symbols-outlined text-[44px] mb-4 transition-all duration-700 ${deliveryMode === 'takeout' ? 'fill-icon scale-110' : 'scale-90'}`} style={{ color: deliveryMode === 'takeout' ? accentColor : `${textColor}80` }}>shopping_bag</span>
-              <span className={`text-[11px] font-black uppercase tracking-[0.2em] italic`} style={{ color: deliveryMode === 'takeout' ? accentColor : `${textColor}80` }}>Para llevar</span>
-              {deliveryMode === 'takeout' && <div className="absolute bottom-4 w-6 h-1 rounded-full shadow-lg" style={{ backgroundColor: accentColor, boxShadow: `0 0 10px ${accentColor}` }}></div>}
+              <span className={`material-symbols-outlined text-[28px] mb-2 transition-all duration-500 ${deliveryMode === 'takeout' ? 'fill-icon' : ''}`} style={{ color: deliveryMode === 'takeout' ? accentColor : `${textColor}60` }}>shopping_bag</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.15em]" style={{ color: deliveryMode === 'takeout' ? accentColor : `${textColor}60` }}>Para llevar</span>
+              {deliveryMode === 'takeout' && <div className="absolute bottom-2.5 w-5 h-0.5 rounded-full" style={{ backgroundColor: accentColor, boxShadow: `0 0 8px ${accentColor}` }}></div>}
             </button>
           </div>
         </section>
 
         {/* CANJEAR RECOMPENSA - LOYALTY */}
         {availableRewards.length > 0 && (
-          <section className="px-6 mb-12">
-            <h3 className="mb-6 text-[10px] font-black uppercase tracking-[0.4em] px-1 flex items-center gap-2" style={{ color: `${textColor}99` }}>
+          <section className="px-6 mb-8">
+            <h3 className="mb-4 text-[10px] font-black uppercase tracking-[0.4em] px-1 flex items-center gap-2" style={{ color: `${textColor}99` }}>
               <span className="material-symbols-outlined text-sm" style={{ color: accentColor }}>redeem</span>
               Canjear Puntos ({user?.points || 0} disponibles)
             </h3>
@@ -725,127 +724,127 @@ const CheckoutPage: React.FC = () => {
         )}
 
         {/* MÉTODO DE PAGO REFORZADO */}
-        <section className="px-6 mb-12">
-          <h3 className="mb-6 text-[10px] font-black uppercase tracking-[0.4em] px-1" style={{ color: `${textColor}99` }}>Método de Pago</h3>
-          <div className="flex flex-col gap-4">
+        <section className="px-6 mb-10">
+          <h3 className="mb-4 text-[10px] font-black uppercase tracking-[0.4em] px-1" style={{ color: `${textColor}99` }}>Método de Pago</h3>
+          <div className="flex flex-col gap-2.5">
             {/* TABLE CREDIT OPTION */}
             {hasTableCredit && (
               <div
                 onClick={() => setPaymentMethod('table_credit')}
-                className={`group flex cursor-pointer items-center justify-between rounded-[2.8rem] p-6 active:scale-[0.98] transition-all duration-500 border-2 ${paymentMethod === 'table_credit' ? 'shadow-2xl' : 'opacity-50'}`}
+                className={`group flex cursor-pointer items-center justify-between rounded-2xl px-4 py-3.5 active:scale-[0.98] transition-all duration-400 border ${paymentMethod === 'table_credit' ? 'shadow-lg' : 'opacity-50'}`}
                 style={{
                   backgroundColor: paymentMethod === 'table_credit' ? 'rgba(99,102,241,0.05)' : `${textColor}05`,
                   borderColor: paymentMethod === 'table_credit' ? '#818cf8' : `${textColor}0D`
                 }}
               >
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-3.5">
                   <div
-                    className="flex size-16 items-center justify-center rounded-[1.4rem] shadow-xl"
+                    className="flex size-10 items-center justify-center rounded-xl"
                     style={paymentMethod === 'table_credit' ? { backgroundColor: '#818cf8', color: '#fff' } : { backgroundColor: `${textColor}0D`, color: `${textColor}80` }}
                   >
-                    <span className="material-symbols-outlined text-3xl font-black">payments</span>
+                    <span className="material-symbols-outlined text-xl">payments</span>
                   </div>
                   <div className="flex flex-col">
-                    <span className="font-black text-[15px] uppercase tracking-tight italic" style={{ color: textColor }}>Crédito de Mesa</span>
-                    <span className="text-[12px] font-black uppercase tracking-widest mt-1" style={{ color: tableCredit >= total ? '#818cf8' : '#f59e0b' }}>
+                    <span className="font-black text-[13px] uppercase tracking-tight" style={{ color: textColor }}>Crédito de Mesa</span>
+                    <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: tableCredit >= total ? '#818cf8' : '#f59e0b' }}>
                       ${tableCredit.toFixed(2)} disponible
                       {tableCredit < total && ` · Falta $${(total - tableCredit).toFixed(2)}`}
                     </span>
                   </div>
                 </div>
                 <div
-                  className={`flex h-10 w-10 items-center justify-center rounded-full transition-all duration-700 ${paymentMethod === 'table_credit' ? 'scale-100' : 'scale-50'}`}
+                  className={`flex size-7 items-center justify-center rounded-full transition-all duration-500 ${paymentMethod === 'table_credit' ? 'scale-100' : 'scale-50'}`}
                   style={paymentMethod === 'table_credit' ? { backgroundColor: '#818cf8', color: '#fff' } : { backgroundColor: `${textColor}0D`, color: 'transparent' }}
                 >
-                  <span className="material-symbols-outlined text-xl font-black">check</span>
+                  <span className="material-symbols-outlined text-base font-black">check</span>
                 </div>
               </div>
             )}
 
             <div
               onClick={() => setPaymentMethod('wallet')}
-              className={`group flex cursor-pointer items-center justify-between rounded-[2.8rem] p-6 active:scale-[0.98] transition-all duration-500 border-2 ${paymentMethod === 'wallet' ? 'shadow-2xl' : 'opacity-50'
+              className={`group flex cursor-pointer items-center justify-between rounded-2xl px-4 py-3.5 active:scale-[0.98] transition-all duration-400 border ${paymentMethod === 'wallet' ? 'shadow-lg' : 'opacity-50'
                 }`}
               style={{
                 backgroundColor: paymentMethod === 'wallet' ? `${accentColor}08` : `${textColor}05`,
                 borderColor: paymentMethod === 'wallet' ? accentColor : `${textColor}0D`
               }}
             >
-              <div className="flex items-center gap-6">
+              <div className="flex items-center gap-3.5">
                 <div
-                  className={`flex size-16 items-center justify-center rounded-[1.4rem] shadow-xl`}
+                  className="flex size-10 items-center justify-center rounded-xl"
                   style={paymentMethod === 'wallet' ? { backgroundColor: accentColor, color: '#000' } : { backgroundColor: `${textColor}0D`, color: `${textColor}80` }}
                 >
-                  <span className="material-symbols-outlined text-3xl font-black">account_balance_wallet</span>
+                  <span className="material-symbols-outlined text-xl">account_balance_wallet</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-black text-[15px] uppercase tracking-tight italic" style={{ color: textColor }}>Mi Saldo</span>
-                  <span className="text-[12px] font-black uppercase tracking-widest mt-1" style={{ color: hasEnoughBalance ? accentColor : '#ef4444' }}>
+                  <span className="font-black text-[13px] uppercase tracking-tight" style={{ color: textColor }}>Mi Saldo</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: hasEnoughBalance ? accentColor : '#ef4444' }}>
                     ${walletBalance.toFixed(2)} disponible
                   </span>
                 </div>
               </div>
               <div
-                className={`flex h-10 w-10 items-center justify-center rounded-full transition-all duration-700 ${paymentMethod === 'wallet' ? 'scale-100' : 'scale-50'}`}
+                className={`flex size-7 items-center justify-center rounded-full transition-all duration-500 ${paymentMethod === 'wallet' ? 'scale-100' : 'scale-50'}`}
                 style={paymentMethod === 'wallet' ? { backgroundColor: accentColor, color: '#000' } : { backgroundColor: `${textColor}0D`, color: 'transparent' }}
               >
-                <span className="material-symbols-outlined text-xl font-black">check</span>
+                <span className="material-symbols-outlined text-base font-black">check</span>
               </div>
             </div>
 
             <div
               onClick={() => setPaymentMethod('mercadopago')}
-              className={`group flex cursor-pointer items-center justify-between rounded-[2.8rem] p-6 active:scale-[0.98] transition-all duration-500 border-2 ${paymentMethod === 'mercadopago' ? 'shadow-2xl' : 'opacity-50'
+              className={`group flex cursor-pointer items-center justify-between rounded-2xl px-4 py-3.5 active:scale-[0.98] transition-all duration-400 border ${paymentMethod === 'mercadopago' ? 'shadow-lg' : 'opacity-50'
                 }`}
               style={{
                 backgroundColor: paymentMethod === 'mercadopago' ? 'rgba(0,158,227,0.03)' : `${textColor}05`,
                 borderColor: paymentMethod === 'mercadopago' ? '#009ee3' : `${textColor}0D`
               }}
             >
-              <div className="flex items-center gap-6">
-                <div className={`flex size-16 items-center justify-center rounded-[1.4rem] ${paymentMethod === 'mercadopago' ? 'bg-[#009ee3] text-white shadow-xl' : 'text-slate-700'}`} style={{ backgroundColor: paymentMethod === 'mercadopago' ? undefined : `${textColor}0D` }}>
-                  <img src="https://img.icons8.com/color/48/000000/mercado-pago.png" alt="MP" className={`w-10 h-10 transition-all ${paymentMethod === 'mercadopago' ? 'brightness-0 invert' : 'grayscale'}`} />
+              <div className="flex items-center gap-3.5">
+                <div className={`flex size-10 items-center justify-center rounded-xl ${paymentMethod === 'mercadopago' ? 'bg-[#009ee3] text-white' : ''}`} style={{ backgroundColor: paymentMethod === 'mercadopago' ? undefined : `${textColor}0D` }}>
+                  <img src="https://img.icons8.com/color/48/000000/mercado-pago.png" alt="MP" className={`w-7 h-7 transition-all ${paymentMethod === 'mercadopago' ? 'brightness-0 invert' : 'grayscale'}`} />
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-black text-[15px] uppercase tracking-tight italic" style={{ color: textColor }}>Mercado Pago</span>
-                  <span className="text-[10px] font-black uppercase tracking-widest mt-1" style={{ color: `${textColor}99` }}>Plataforma Externa</span>
+                  <span className="font-black text-[13px] uppercase tracking-tight" style={{ color: textColor }}>Mercado Pago</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: `${textColor}99` }}>Plataforma Externa</span>
                 </div>
               </div>
-              <div className={`flex h-10 w-10 items-center justify-center rounded-full transition-all duration-700 ${paymentMethod === 'mercadopago' ? 'scale-100' : 'scale-50'}`} style={{ backgroundColor: paymentMethod === 'mercadopago' ? '#009ee3' : `${textColor}0D`, color: paymentMethod === 'mercadopago' ? '#fff' : 'transparent' }}>
-                <span className="material-symbols-outlined text-xl font-black">check</span>
+              <div className={`flex size-7 items-center justify-center rounded-full transition-all duration-500 ${paymentMethod === 'mercadopago' ? 'scale-100' : 'scale-50'}`} style={{ backgroundColor: paymentMethod === 'mercadopago' ? '#009ee3' : `${textColor}0D`, color: paymentMethod === 'mercadopago' ? '#fff' : 'transparent' }}>
+                <span className="material-symbols-outlined text-base font-black">check</span>
               </div>
             </div>
           </div>
         </section>
 
         {/* RESUMEN FINAL */}
-        <section className="px-6 mb-16">
+        <section className="px-6 mb-10">
           <div
-            className="rounded-[3.5rem] p-10 border shadow-2xl"
+            className="rounded-2xl p-6 border shadow-lg"
             style={{ backgroundColor: `${surfaceColor}40`, borderColor: `${textColor}0D` }}
           >
-            <div className="flex justify-between py-4">
-              <p className="font-black uppercase tracking-widest text-[11px]" style={{ color: `${textColor}99` }}>Subtotal</p>
-              <p className="font-black italic text-[18px] tracking-tighter" style={{ color: textColor }}>${subtotal.toFixed(2)}</p>
+            <div className="flex justify-between py-2">
+              <p className="font-black uppercase tracking-widest text-[10px]" style={{ color: `${textColor}99` }}>Subtotal</p>
+              <p className="font-black text-[15px] tracking-tight" style={{ color: textColor }}>${subtotal.toFixed(2)}</p>
             </div>
             {paymentMethod === 'table_credit' && (
               <>
-                <div className="flex justify-between py-3">
-                  <p className="font-black uppercase tracking-widest text-[11px] text-indigo-400/80">Crédito Mesa</p>
-                  <p className="font-black italic text-[18px] tracking-tighter text-indigo-400">-${Math.min(tableCredit, total).toFixed(2)}</p>
+                <div className="flex justify-between py-2">
+                  <p className="font-black uppercase tracking-widest text-[10px] text-indigo-400/80">Crédito Mesa</p>
+                  <p className="font-black text-[15px] tracking-tight text-indigo-400">-${Math.min(tableCredit, total).toFixed(2)}</p>
                 </div>
                 {total > tableCredit && (
-                  <div className="flex justify-between py-2">
-                    <p className="font-black uppercase tracking-widest text-[11px] text-amber-400/80">Restante</p>
-                    <p className="font-black italic text-[16px] tracking-tighter text-amber-400">${(total - tableCredit).toFixed(2)}</p>
+                  <div className="flex justify-between py-1.5">
+                    <p className="font-black uppercase tracking-widest text-[10px] text-amber-400/80">Restante</p>
+                    <p className="font-black text-[14px] tracking-tight text-amber-400">${(total - tableCredit).toFixed(2)}</p>
                   </div>
                 )}
               </>
             )}
-            <div className="my-6 h-px w-full" style={{ backgroundColor: `${textColor}0D` }}></div>
+            <div className="my-4 h-px w-full" style={{ backgroundColor: `${textColor}0D` }}></div>
             <div className="flex justify-between items-end">
-              <p className="text-[12px] font-black uppercase tracking-[0.5em] italic" style={{ color: textColor }}>Monto a Pagar</p>
-              <p className="text-[48px] font-black tabular-nums tracking-tighter italic leading-none" style={{ color: textColor }}>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em]" style={{ color: textColor }}>Total</p>
+              <p className="text-[32px] font-black tabular-nums tracking-tighter leading-none" style={{ color: textColor }}>
                 ${paymentMethod === 'table_credit' ? Math.max(0, total - tableCredit).toFixed(2) : total.toFixed(2)}
               </p>
             </div>
@@ -855,41 +854,41 @@ const CheckoutPage: React.FC = () => {
 
       {/* FOOTER ACTION POWER BUTTON - OPTIMIZADO PARA IPHONE */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-[60] p-6 pb-[calc(2.5rem+env(safe-area-inset-bottom))] backdrop-blur-3xl border-t flex justify-center shadow-[0_-25px_80px_rgba(0,0,0,0.2)]"
+        className="fixed bottom-0 left-0 right-0 z-[60] px-5 pt-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] backdrop-blur-3xl border-t flex justify-center shadow-[0_-15px_40px_rgba(0,0,0,0.15)]"
         style={{ backgroundColor: `${backgroundColor}F2`, borderColor: `${textColor}0D` }}
       >
         <div className="w-full max-w-md">
           <button
             onClick={handlePlaceOrder}
             disabled={isProcessingPayment}
-            className={`group relative flex h-24 w-full items-center justify-between pl-12 pr-5 transition-all duration-500 active:scale-[0.97] shadow-2xl overflow-hidden disabled:opacity-50 rounded-full border border-white/20`}
+            className={`group relative flex h-16 w-full items-center justify-between pl-8 pr-3 transition-all duration-500 active:scale-[0.97] shadow-lg overflow-hidden disabled:opacity-50 rounded-2xl border border-white/10`}
             style={{
               backgroundColor: paymentMethod === 'mercadopago' ? '#009ee3' : paymentMethod === 'table_credit' ? '#818cf8' : accentColor,
               color: paymentMethod === 'mercadopago' ? '#fff' : paymentMethod === 'table_credit' ? '#fff' : '#000'
             }}
           >
             <div className="relative z-10 flex flex-col items-start leading-none text-left">
-              <span className="text-[14px] font-black uppercase tracking-tight">
-                {isProcessingPayment ? 'VERIFICANDO...' : 'CONFIRMAR'}
+              <span className="text-[12px] font-black uppercase tracking-tight">
+                {isProcessingPayment ? 'Verificando...' : 'Confirmar Pago'}
               </span>
-              <span className="text-[14px] font-black uppercase tracking-tight opacity-50 italic">PAGO SEGURO</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider opacity-50">Seguro</span>
             </div>
 
-            <div className="flex items-center gap-6 relative z-10">
-              <div className="h-12 w-[1px]" style={{ backgroundColor: paymentMethod === 'mercadopago' || paymentMethod === 'table_credit' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)' }}></div>
-              <div className="flex items-center gap-4">
-                <span className="text-[28px] font-black italic tracking-tighter tabular-nums leading-none">${total.toFixed(2)}</span>
+            <div className="flex items-center gap-4 relative z-10">
+              <div className="h-8 w-[1px]" style={{ backgroundColor: paymentMethod === 'mercadopago' || paymentMethod === 'table_credit' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }}></div>
+              <div className="flex items-center gap-3">
+                <span className="text-[20px] font-black tracking-tighter tabular-nums leading-none">${total.toFixed(2)}</span>
                 <div
-                  className="w-16 h-16 rounded-full flex items-center justify-center transition-all group-hover:scale-105 shadow-2xl"
+                  className="w-10 h-10 rounded-xl flex items-center justify-center transition-all group-hover:scale-105"
                   style={{
                     backgroundColor: paymentMethod === 'mercadopago' ? '#fff' : paymentMethod === 'table_credit' ? '#fff' : '#000',
                     color: paymentMethod === 'mercadopago' ? '#009ee3' : paymentMethod === 'table_credit' ? '#818cf8' : accentColor
                   }}
                 >
                   {isProcessingPayment ? (
-                    <span className="material-symbols-outlined animate-spin text-2xl font-black">refresh</span>
+                    <span className="material-symbols-outlined animate-spin text-lg font-black">refresh</span>
                   ) : (
-                    <span className="material-symbols-outlined font-black text-[32px]">arrow_forward</span>
+                    <span className="material-symbols-outlined font-black text-xl">arrow_forward</span>
                   )}
                 </div>
               </div>
