@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useLayoutEffect } from 'react';
 import { Outlet, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { useClient } from '../../contexts/ClientContext';
 import BottomNav from './BottomNav';
@@ -10,6 +10,12 @@ const ClientLayoutContent: React.FC = () => {
     const { store, loadingStore, error, hasActiveOrder, isHubOpen, setIsHubOpen, showAuthModal, setShowAuthModal, activeOrderId, orderStatus, activeOrders, tableLabel } = useClient();
     const navigate = useNavigate();
     const location = useLocation();
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    // Reset scroll to top on every route change
+    useLayoutEffect(() => {
+        if (scrollRef.current) scrollRef.current.scrollTop = 0;
+    }, [location.pathname]);
 
     // Get accent color from store theme
     const accentColor = store?.menu_theme?.accentColor || '#4ADE80';
@@ -66,7 +72,7 @@ const ClientLayoutContent: React.FC = () => {
             } as React.CSSProperties}
         >
             {/* Main Content Area */}
-            <div className="flex-1 overflow-y-auto no-scrollbar pb-48 relative z-10">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto no-scrollbar pb-48 relative z-10">
                 <Outlet />
             </div>
 

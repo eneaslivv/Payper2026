@@ -1,4 +1,4 @@
-import React, { useRef, useLayoutEffect } from 'react';
+import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useClient } from '../../contexts/ClientContext';
 
@@ -18,20 +18,8 @@ const CartPage: React.FC = () => {
   const total = Math.max(0, subtotal - discount);
   const pointsToEarn = isRedeemingPoints ? 0 : Math.floor(total * 10);
 
-  const topRef = useRef<HTMLDivElement>(null);
-
-  useLayoutEffect(() => {
-    // Scroll both window and the parent overflow container (ClientLayout)
-    window.scrollTo(0, 0);
-    topRef.current?.scrollIntoView({ block: 'start' });
-    // Also find the scrollable parent and reset it
-    const scrollParent = topRef.current?.closest('.overflow-y-auto');
-    if (scrollParent) scrollParent.scrollTop = 0;
-  }, []);
-
   return (
     <div
-      ref={topRef}
       className="flex flex-col min-h-screen pb-40 transition-colors duration-500"
       style={{ backgroundColor, color: textColor }}
     >
