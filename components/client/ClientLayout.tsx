@@ -71,7 +71,7 @@ const ClientLayoutContent: React.FC = () => {
             </div>
 
             {/* Overlays */}
-            {(hasActiveOrder || tableLabel) && !location.pathname.includes('/tracking') && !location.pathname.includes('/order/') && !location.pathname.includes('/auth') && (
+            {(hasActiveOrder || tableLabel) && !location.pathname.includes('/tracking') && !location.pathname.includes('/order/') && !location.pathname.includes('/auth') && !location.pathname.includes('/checkout') && !location.pathname.includes('/cart') && (
                 <ActiveOrderWidget
                     hasActiveOrder={hasActiveOrder}
                     status={orderStatus || 'received'}
