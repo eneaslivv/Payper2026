@@ -13,7 +13,6 @@ const CartPage: React.FC = () => {
   const accentColor = theme.accentColor || '#36e27b';
   const backgroundColor = theme.backgroundColor || '#000000';
   const textColor = theme.textColor || '#FFFFFF';
-  const surfaceColor = theme.surfaceColor || '#141714';
 
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const discount = isRedeemingPoints ? 2.00 : 0;
@@ -52,22 +51,22 @@ const CartPage: React.FC = () => {
         <h2 className="text-base font-black tracking-tight uppercase italic pr-12" style={{ color: textColor }}>Tu Bolsa</h2>
       </header>
 
-      <main className="flex-1 p-6 flex flex-col gap-6">
+      <main className="p-5 flex flex-col gap-3">
         {cart.length === 0 ? (
           <div className="flex flex-col items-center justify-center pt-24 px-8 text-center">
             <div
-              className="w-24 h-24 rounded-full flex items-center justify-center mb-8 border"
+              className="w-20 h-20 rounded-full flex items-center justify-center mb-6 border"
               style={{
                 backgroundColor: `${textColor}05`,
                 borderColor: `${textColor}0D`
               }}
             >
-              <span className="material-symbols-outlined text-5xl opacity-50" style={{ color: textColor }}>shopping_cart</span>
+              <span className="material-symbols-outlined text-4xl opacity-40" style={{ color: textColor }}>shopping_cart</span>
             </div>
-            <h3 className="text-2xl font-black uppercase italic tracking-tighter mb-2" style={{ color: textColor }}>Tu bolsa está vacía</h3>
+            <h3 className="text-lg font-black uppercase italic tracking-tighter mb-2" style={{ color: textColor }}>Tu bolsa está vacía</h3>
             <button
               onClick={() => navigate(`/m/${slug}`)}
-              className="mt-8 text-[10px] font-black uppercase tracking-[0.3em] border px-12 py-5 rounded-full active:scale-95 transition-all"
+              className="mt-6 text-[10px] font-black uppercase tracking-[0.3em] border px-10 py-4 rounded-full active:scale-95 transition-all"
               style={{ color: accentColor, borderColor: `${accentColor}33` }}
             >
               Explorar Menú
@@ -75,55 +74,58 @@ const CartPage: React.FC = () => {
           </div>
         ) : (
           <>
-            <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-2.5">
               {cart.map((item, idx) => (
                 <div
                   key={`${item.id}-${item.size}-${idx}`}
-                  className="flex flex-col p-6 rounded-[2.5rem] border shadow-2xl"
+                  className="flex items-center gap-3.5 px-4 py-3 rounded-2xl border"
                   style={{
-                    backgroundColor: `${surfaceColor}40`,
-                    borderColor: `${textColor}0D`
+                    backgroundColor: `${textColor}06`,
+                    borderColor: `${textColor}0A`
                   }}
                 >
-                  <div className="flex gap-5">
-                    <div
-                      className="bg-no-repeat rounded-[1.5rem] size-[90px] shrink-0 border shadow-2xl"
-                      style={{
-                        backgroundImage: `url(${item.image})`,
-                        backgroundSize: 'contain',
-                        backgroundPosition: 'top center',
-                        backgroundColor,
-                        borderColor: `${textColor}1A`
-                      }}
-                    ></div>
-                    <div className="flex-1 flex flex-col justify-center min-w-0">
-                      <div className="flex justify-between items-start">
-                        <p className="text-[17px] font-black uppercase italic truncate tracking-tight" style={{ color: textColor }}>{item.name}</p>
-                        <button onClick={() => removeFromCart(item.id, item.size)} className="hover:text-red-500 transition-colors -mt-1 -mr-1 p-2" style={{ color: `${textColor}80` }}>
-                          <span className="material-symbols-outlined text-xl">close</span>
-                        </button>
+                  <div
+                    className="bg-no-repeat rounded-xl size-14 shrink-0 border"
+                    style={{
+                      backgroundImage: `url(${item.image})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      backgroundColor: `${textColor}08`,
+                      borderColor: `${textColor}0A`
+                    }}
+                  ></div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-bold truncate" style={{ color: textColor }}>{item.name}</p>
+                        {(item.variant_id || item.addon_ids?.length) && (
+                          <p className="text-[9px] font-medium uppercase tracking-wider mt-0.5 opacity-40" style={{ color: textColor }}>
+                            {item.variant_id && item.variants?.find(v => v.id === item.variant_id)?.name}{item.addon_ids?.length ? ` · ${item.addon_ids.map(aid => item.addons?.find(a => a.id === aid)?.name || '').filter(Boolean).join(', ')}` : ''}
+                          </p>
+                        )}
                       </div>
-                      <p className="text-[10px] font-black uppercase tracking-widest mt-1 opacity-60" style={{ color: textColor }}>{item.variant_id && item.variants?.find(v => v.id === item.variant_id)?.name}{item.addon_ids?.length ? ` • ${item.addon_ids.map(aid => item.addons?.find(a => a.id === aid)?.name || '').filter(Boolean).join(', ')}` : ''}</p>
-
-                      <div className="flex items-center justify-between mt-4">
-                        <p className="text-lg font-black italic" style={{ color: textColor }}>${item.price.toFixed(2)}</p>
-                        <div
-                          className="flex items-center gap-4 rounded-full p-1 border"
-                          style={{
-                            backgroundColor: `${textColor}05`,
-                            borderColor: `${textColor}0D`
-                          }}
+                      <button onClick={() => removeFromCart(item.id, item.size)} className="opacity-30 hover:opacity-80 transition-opacity -mr-1 p-1" style={{ color: textColor }}>
+                        <span className="material-symbols-outlined text-[16px]">close</span>
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
+                      <p className="text-sm font-bold" style={{ color: textColor }}>${item.price.toFixed(2)}</p>
+                      <div
+                        className="flex items-center gap-2 rounded-full px-1 py-0.5 border"
+                        style={{
+                          backgroundColor: `${textColor}05`,
+                          borderColor: `${textColor}0A`
+                        }}
+                      >
+                        <button onClick={() => updateQuantity(item.id, -1, item.size)} className="size-7 flex items-center justify-center rounded-full transition-colors opacity-40 hover:opacity-80" style={{ color: textColor }}><span className="material-symbols-outlined text-[14px]">remove</span></button>
+                        <span className="text-[11px] font-bold w-3 text-center tabular-nums" style={{ color: textColor }}>{item.quantity}</span>
+                        <button
+                          onClick={() => updateQuantity(item.id, 1, item.size)}
+                          className="size-7 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+                          style={{ color: accentColor }}
                         >
-                          <button onClick={() => updateQuantity(item.id, -1, item.size)} className="size-10 flex items-center justify-center rounded-full transition-colors opacity-50 hover:opacity-100" style={{ color: textColor }}><span className="material-symbols-outlined text-sm">remove</span></button>
-                          <span className="text-xs font-black w-4 text-center tabular-nums" style={{ color: textColor }}>{item.quantity}</span>
-                          <button
-                            onClick={() => updateQuantity(item.id, 1, item.size)}
-                            className="size-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
-                            style={{ color: accentColor }}
-                          >
-                            <span className="material-symbols-outlined text-sm">add</span>
-                          </button>
-                        </div>
+                          <span className="material-symbols-outlined text-[14px]">add</span>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -133,29 +135,27 @@ const CartPage: React.FC = () => {
 
             {/* Solo mostrar si el usuario tiene 50+ puntos de fidelidad */}
             {user && user.points >= 50 && (
-              <div className="mt-4">
-                <div
-                  className="flex items-center justify-between gap-6 rounded-[2.5rem] border p-8 shadow-2xl"
-                  style={{ borderColor: `${accentColor}33`, backgroundColor: `${accentColor}0D` }}
-                >
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined fill-icon" style={{ fontSize: '24px', color: accentColor }}>stars</span>
-                      <p className="text-[15px] font-black uppercase italic tracking-tight" style={{ color: textColor }}>Usar Puntos</p>
-                    </div>
-                    <p className="text-[9px] font-black uppercase tracking-widest opacity-60" style={{ color: textColor }}>Canjear 50 puntos por $2.00 de descuento</p>
+              <div
+                className="flex items-center justify-between gap-4 rounded-2xl border px-5 py-4"
+                style={{ borderColor: `${accentColor}20`, backgroundColor: `${accentColor}08` }}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="material-symbols-outlined fill-icon text-lg" style={{ color: accentColor }}>stars</span>
+                  <div>
+                    <p className="text-[12px] font-bold" style={{ color: textColor }}>Usar Puntos</p>
+                    <p className="text-[9px] font-medium uppercase tracking-wider opacity-40" style={{ color: textColor }}>50 pts = $2.00 off</p>
                   </div>
-                  <label
-                    className={`relative flex h-9 w-16 shrink-0 cursor-pointer items-center rounded-full p-1.5 transition-all duration-500 ${isRedeemingPoints ? 'shadow-2xl' : ''}`}
-                    style={{
-                      backgroundColor: isRedeemingPoints ? accentColor : `${textColor}1A`,
-                      boxShadow: isRedeemingPoints ? `0 0 20px ${accentColor}4D` : 'none'
-                    }}
-                  >
-                    <input type="checkbox" className="sr-only" checked={isRedeemingPoints} onChange={() => setIsRedeemingPoints(!isRedeemingPoints)} />
-                    <div className={`h-6 w-6 rounded-full shadow-xl transition-transform duration-500 ${isRedeemingPoints ? 'translate-x-7' : 'translate-x-0'}`} style={{ backgroundColor: isRedeemingPoints ? '#FFFFFF' : `${textColor}66` }}></div>
-                  </label>
                 </div>
+                <label
+                  className={`relative flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full p-1 transition-all duration-500`}
+                  style={{
+                    backgroundColor: isRedeemingPoints ? accentColor : `${textColor}1A`,
+                    boxShadow: isRedeemingPoints ? `0 0 12px ${accentColor}33` : 'none'
+                  }}
+                >
+                  <input type="checkbox" className="sr-only" checked={isRedeemingPoints} onChange={() => setIsRedeemingPoints(!isRedeemingPoints)} />
+                  <div className={`h-5 w-5 rounded-full shadow-md transition-transform duration-500 ${isRedeemingPoints ? 'translate-x-5' : 'translate-x-0'}`} style={{ backgroundColor: isRedeemingPoints ? '#FFFFFF' : `${textColor}66` }}></div>
+                </label>
               </div>
             )}
           </>
